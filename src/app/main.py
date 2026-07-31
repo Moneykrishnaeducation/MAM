@@ -1,20 +1,9 @@
-"""Main application entry point."""
-# ruff: noqa: I001
-
 import os
 
 from dotenv import load_dotenv
 
-from app.observability import init_sentry
-
 import django
 from django.conf import settings
-from django.http import JsonResponse
-from django.urls import path
-from ninja import NinjaAPI
-from strawberry.django.views import GraphQLView
-
-from app.graphql_schema import schema as graphql_schema
 
 load_dotenv()
 
@@ -40,6 +29,13 @@ if not settings.configured:
     )
     django.setup()
 
+from app.observability import init_sentry
+from django.http import JsonResponse
+from django.urls import path
+from ninja import NinjaAPI
+from strawberry.django.views import GraphQLView
+
+from app.graphql_schema import schema as graphql_schema
 
 def root(request):
     """Root endpoint."""
