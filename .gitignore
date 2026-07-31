@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+migrations/
+
 # C extensions
 *.so
 
@@ -45,7 +47,6 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
-
 # Translations
 *.mo
 *.pot
@@ -53,9 +54,9 @@ coverage.xml
 # Environments
 .env
 .venv
-env/
+# env/
 venv/
-ENV/
+# ENV/
 env.bak/
 venv.bak/
 
@@ -96,3 +97,4 @@ uv.lock
 # OS
 .DS_Store
 Thumbs.db
+*.db
