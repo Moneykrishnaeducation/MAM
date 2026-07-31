@@ -161,7 +161,12 @@ export class ServerProxy {
       let data: any;
       const contentType = response.headers.get("content-type") || "";
       if (contentType.includes("application/json")) {
-        data = await response.json();
+        const text = await response.text();
+        try {
+          data = text ? JSON.parse(text) : null;
+        } catch (e) {
+          data = text;
+        }
       } else {
         data = await response.text();
       }

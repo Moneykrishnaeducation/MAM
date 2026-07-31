@@ -29,7 +29,7 @@ export default function ClientDashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <div className="flex min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: '#0e2250' }}>
       <Head>
         <title>Student Dashboard | Client Portal</title>
       </Head>

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { 
   LayoutDashboard, 
   UserCheck, 
@@ -11,8 +11,15 @@ import {
 } from 'lucide-react';
 
 export default function ClientSidebar() {
+  const router = useRouter();
+  const currentPath = router.pathname;
+  const [isOpen, setIsOpen] = useState(true);
 
-  const currentPath = usePathname();
+  useEffect(() => {
+    const handleToggle = () => setIsOpen(prev => !prev);
+    window.addEventListener('toggle-client-sidebar', handleToggle);
+    return () => window.removeEventListener('toggle-client-sidebar', handleToggle);
+  }, []);
 
   const navItems = [
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -22,18 +29,14 @@ export default function ClientSidebar() {
   ];
 
   return (
-    <aside className="hidden md:flex flex-col w-64 min-h-screen bg-slate-900/90 backdrop-blur-xl border-r border-slate-800 p-5 z-20 sticky top-0 h-screen justify-between">
+    <aside 
+      className={`flex-col min-h-screen border-r border-[#153176] z-20 sticky top-0 h-screen justify-between transition-all duration-300 ${
+        isOpen ? 'hidden md:flex w-64 p-5' : 'w-0 p-0 overflow-hidden opacity-0 border-none hidden'
+      }`} 
+      style={{ backgroundColor: '#0e2250' }}
+    >
       <div>
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-2 mb-8">
-          <div className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black py-2 px-3.5 rounded-2xl text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] tracking-wider">
-            MAM
-          </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-100 leading-tight">Client Portal</h2>
-            <p className="text-xs text-emerald-400 font-medium">Money Krishna Edu</p>
-          </div>
-        </div>
 
         {/* Navigation */}
         <nav className="space-y-1.5">
