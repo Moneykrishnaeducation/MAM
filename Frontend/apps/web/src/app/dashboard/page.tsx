@@ -11,8 +11,8 @@ import {
   Settings
 } from 'lucide-react';
 
-import Sidebar from '../../components/Client/sidebar';
-import Header from '../../components/Client/header';
+import Sidebar from '@/components/Client/sidebar';
+import Header from '@/components/Client/header';
 
 export default function Dashboard() {
   const [isLoaded, setIsLoaded] = useState(false);
