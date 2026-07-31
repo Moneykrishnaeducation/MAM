@@ -1,26 +1,19 @@
 """Tests for Tortoise ORM models and CRUD operations."""
 
 import pytest
-from tortoise.contrib.test import finalizer, initializer
+from tortoise import Tortoise
 
 from app import crud
 from app.models import Post, User
 
 
-@pytest.fixture(scope="module", autouse=True)
-def initialize_tests():
-    """Initialize Tortoise ORM for testing."""
-    initializer(["app.models"], db_url="sqlite://:memory:")
-    yield
-    finalizer()
-
-
 @pytest.fixture(autouse=True)
-async def cleanup():
-    """Clean up database between tests."""
+async def initialize_tests():
+    """Initialize Tortoise ORM for testing."""
+    await Tortoise.init(db_url="sqlite://:memory:", modules={"models": ["app.models"]})
+    await Tortoise.generate_schemas()
     yield
-    await User.all().delete()
-    await Post.all().delete()
+    await Tortoise.close_connections()
 
 
 class TestUserModel:

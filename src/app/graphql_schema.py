@@ -1,14 +1,14 @@
 """GraphQL schema using Strawberry."""
 
+
 import strawberry
-from typing import Optional
 
 
 @strawberry.type
 class Book:
     title: str
     author: str
-    year: Optional[int] = None
+    year: int | None = None
 
 
 books_db: list[Book] = [
@@ -21,7 +21,7 @@ books_db: list[Book] = [
 class BookInput:
     title: str
     author: str
-    year: Optional[int] = None
+    year: int | None = None
 
 
 @strawberry.type
@@ -31,7 +31,7 @@ class Query:
         return books_db
 
     @strawberry.field
-    def book(self, title: str) -> Optional[Book]:
+    def book(self, title: str) -> Book | None:
         for book in books_db:
             if book.title.lower() == title.lower():
                 return book

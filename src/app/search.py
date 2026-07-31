@@ -12,7 +12,9 @@ def get_search_client() -> meilisearch.Client:
     return meilisearch.Client(host, api_key)
 
 
-def search_documents(index_name: str, query: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
+def search_documents(
+    index_name: str, query: str, options: dict[str, Any] | None = None
+) -> dict[str, Any]:
     index = get_search_client().index(index_name)
     return index.search(query, options or {})
 

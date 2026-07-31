@@ -12,7 +12,9 @@ authors = [
 dependencies = [
     "django>=5.1",
     "django-cors-headers>=4.9.0",
-    "tortoise-orm[aiosqlite]>=0.25.0",
+    "psycopg2-binary>=2.9.9",
+    "asyncpg>=0.29.0",
+    "tortoise-orm>=0.25.0",
     "aerich>=0.8.0",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.13.1",
@@ -31,6 +33,7 @@ dependencies = [
     "upstash-redis>=1.7.0",
     "meilisearch>=0.41.0",
     "python-dotenv>=1.2.2",
+    "waitress>=3.0.2",
 ]
 
 [project.optional-dependencies]
@@ -68,7 +71,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/env.py" = ["E402"]
-"src/app/main.py" = ["I001"]
+"src/app/main.py" = ["I001", "E402"]
+"src/app/users.py" = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"

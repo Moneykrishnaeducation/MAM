@@ -10,11 +10,15 @@ load_dotenv()
 _cors_origin = os.getenv("CORS_ORIGIN")
 
 if not settings.configured:
+    from app.settings import get_settings
+
+    _app_settings = get_settings()
     settings.configure(
         DEBUG=os.getenv("DEBUG", "true").lower() == "true",
         ROOT_URLCONF=__name__,
         SECRET_KEY=os.getenv("SECRET_KEY", "change-me-in-production"),
         ALLOWED_HOSTS=["*"],
+        DATABASES=_app_settings.databases,
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
             "django.contrib.auth",
@@ -29,13 +33,13 @@ if not settings.configured:
     )
     django.setup()
 
-from app.observability import init_sentry
 from django.http import JsonResponse
 from django.urls import path
 from ninja import NinjaAPI
 from strawberry.django.views import GraphQLView
 
 from app.graphql_schema import schema as graphql_schema
+
 
 def root(request):
     """Root endpoint."""
@@ -56,8 +60,6 @@ def api_status(request):
     return {"status": "ok", "framework": "django-ninja"}
 
 
-
-
 urlpatterns = [
     path("", root),
     path("health", health),
@@ -71,8 +73,13 @@ application = get_wsgi_application()
 
 
 if __name__ == "__main__":
-    from django.core.management import execute_from_command_line
     import sys
+    from django.core.management import execute_from_command_line
 
-    sys.argv = ["manage.py", "runserver", f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '8000')}"]
+    if len(sys.argv) == 1:
+        sys.argv = [
+            "manage.py",
+            "runserver",
+            f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '8000')}",
+        ]
     execute_from_command_line(sys.argv)

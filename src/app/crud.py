@@ -24,7 +24,9 @@ async def create_user(email: str, name: str | None = None) -> User:
     return await User.create(email=email, name=name)
 
 
-async def update_user(user_id: int, email: str | None = None, name: str | None = None) -> User | None:
+async def update_user(
+    user_id: int, email: str | None = None, name: str | None = None
+) -> User | None:
     """Update a user."""
     user = await get_user(user_id)
     if user is None:
@@ -70,7 +72,9 @@ async def create_post(title: str, author_id: int, content: str | None = None) ->
     return await Post.create(title=title, content=content, author_id=author_id)
 
 
-async def update_post(post_id: int, title: str | None = None, content: str | None = None) -> Post | None:
+async def update_post(
+    post_id: int, title: str | None = None, content: str | None = None
+) -> Post | None:
     """Update a post."""
     post = await get_post(post_id)
     if post is None:

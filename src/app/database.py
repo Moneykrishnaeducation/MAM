@@ -4,10 +4,14 @@ import os
 
 from tortoise import Tortoise
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "sqlite://app.db",
-)
+from app.settings import get_settings
+
+_settings = get_settings()
+_db_url = _settings.database_url
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgres://", 1)
+
+DATABASE_URL = os.getenv("DATABASE_URL", _db_url)
 
 TORTOISE_ORM = {
     "connections": {"default": DATABASE_URL},
@@ -29,3 +33,5 @@ async def init_db() -> None:
 async def close_db() -> None:
     """Close Tortoise ORM connections."""
     await Tortoise.close_connections()
+
+
