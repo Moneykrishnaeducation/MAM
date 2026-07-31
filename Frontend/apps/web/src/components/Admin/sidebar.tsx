@@ -6,6 +6,7 @@ import {
   Users, 
   UserCheck, 
   Landmark, 
+  Clock,
   Activity, 
   Settings, 
   Mail,
@@ -19,6 +20,7 @@ export default function AdminSidebar() {
 
   const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/admin/requests', label: 'Pending Requests', icon: Clock, badge: '5' },
     { href: '/admin/users', label: 'Users', icon: Users },
     { href: '/admin/managers', label: 'Managers', icon: UserCheck },
     { href: '/admin/investors', label: 'Investors', icon: Landmark },
