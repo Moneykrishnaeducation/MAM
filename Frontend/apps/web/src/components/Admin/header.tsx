@@ -64,7 +64,7 @@ export default function AdminHeader() {
 
         {/* Role Badge / User Profile */}
         <Link 
-          href="/admin/dashboard"
+          href="/admin/profile"
           className="flex items-center gap-3 pl-3 border-l border-slate-800 hover:opacity-80 transition-opacity cursor-pointer decoration-none"
         >
           <div className="hidden sm:block text-right">

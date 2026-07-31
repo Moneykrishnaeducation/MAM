@@ -40,7 +40,7 @@ export default function ClientHeader() {
       {/* Right: User Profile */}
       <div className="flex items-center gap-3">
         <Link 
-          href="/client/dashboard"
+          href="/client/profile"
           className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
         >
           <div className="hidden sm:block text-right">
