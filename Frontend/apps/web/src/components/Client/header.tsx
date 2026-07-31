@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Search, Bell, BookOpen, GraduationCap } from 'lucide-react';
 
 export default function ClientHeader() {
@@ -62,7 +63,10 @@ export default function ClientHeader() {
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
+        <Link 
+          href="/client/profile"
+          className="flex items-center gap-3 pl-3 border-l border-slate-800 hover:opacity-80 transition-opacity cursor-pointer decoration-none"
+        >
           <div className="hidden sm:block text-right">
             <div className="text-sm font-semibold text-slate-200">Alex Rivera</div>
             <div className="text-xs text-slate-400 flex items-center justify-end gap-1">
@@ -74,7 +78,7 @@ export default function ClientHeader() {
             alt="Client Profile" 
             className="w-9 h-9 rounded-xl border-2 border-emerald-500/60 object-cover shadow-sm"
           />
-        </div>
+        </Link>
       </div>
     </header>
   );

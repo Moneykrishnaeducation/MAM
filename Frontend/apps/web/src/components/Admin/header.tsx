@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Search, Bell, Shield, Sparkles } from 'lucide-react';
 
 export default function AdminHeader() {
@@ -61,8 +62,11 @@ export default function AdminHeader() {
           )}
         </div>
 
-        {/* Role Badge */}
-        <div className="flex items-center gap-3 pl-3 border-l border-slate-800">
+        {/* Role Badge / User Profile */}
+        <Link 
+          href="/admin/profile"
+          className="flex items-center gap-3 pl-3 border-l border-slate-800 hover:opacity-80 transition-opacity cursor-pointer decoration-none"
+        >
           <div className="hidden sm:block text-right">
             <div className="text-sm font-semibold text-slate-200">Admin Control</div>
             <div className="text-xs text-slate-400 flex items-center justify-end gap-1">
@@ -74,7 +78,7 @@ export default function AdminHeader() {
             alt="Admin Profile" 
             className="w-9 h-9 rounded-xl border-2 border-blue-500/60 object-cover shadow-sm"
           />
-        </div>
+        </Link>
       </div>
     </header>
   );
