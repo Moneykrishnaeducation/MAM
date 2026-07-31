@@ -4,9 +4,11 @@ import { useRouter } from 'next/router';
 import { 
   LayoutDashboard, 
   Users, 
-  BookOpen, 
-  BarChart3,
-  Settings,
+  UserCheck, 
+  Landmark, 
+  Activity, 
+  Settings, 
+  Mail,
   ShieldCheck,
   LogOut
 } from 'lucide-react';
@@ -17,9 +19,11 @@ export default function AdminSidebar() {
 
   const navItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/admin/students', label: 'Students', icon: Users },
-    { href: '/admin/courses', label: 'Courses', icon: BookOpen },
-    { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
+    { href: '/admin/users', label: 'Users', icon: Users },
+    { href: '/admin/managers', label: 'Managers', icon: UserCheck },
+    { href: '/admin/investors', label: 'Investors', icon: Landmark },
+    { href: '/admin/mails', label: 'Mails', icon: Mail, badge: '3' },
+    { href: '/admin/activity', label: 'Activity', icon: Activity },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
@@ -40,7 +44,7 @@ export default function AdminSidebar() {
         {/* Navigation */}
         <nav className="space-y-1.5">
           <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
-            Main Menu
+            Admin Menu
           </div>
           {navItems.map((item) => {
             const isActive = currentPath === item.href || (item.href === '/admin/dashboard' && currentPath === '/admin');
@@ -49,14 +53,21 @@ export default function AdminSidebar() {
               <Link
                 key={item.href}
                 href={item.href as any}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
                   isActive
                     ? 'bg-blue-600/15 text-blue-400 border-l-4 border-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.15)] font-semibold'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 hover:translate-x-1'
                 }`}
               >
-                <Icon size={19} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3.5">
+                  <Icon size={19} className={isActive ? 'text-blue-400' : 'text-slate-400'} />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500 text-white shadow-sm">
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             );
           })}
