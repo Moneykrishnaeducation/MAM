@@ -11,6 +11,7 @@ import {
   Settings, 
   Mail,
   ShieldCheck,
+  UserPlus,
   LogOut
 } from 'lucide-react';
 
@@ -26,6 +27,7 @@ export default function AdminSidebar() {
     { href: '/admin/investors', label: 'Investors', icon: Landmark },
     { href: '/admin/mails', label: 'Mails', icon: Mail, badge: '3' },
     { href: '/admin/activity', label: 'Activity', icon: Activity },
+    { href: '/admin/admin-users', label: 'Admin Users', icon: ShieldCheck },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
 
