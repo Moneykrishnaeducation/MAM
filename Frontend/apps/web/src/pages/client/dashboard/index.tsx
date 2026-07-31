@@ -10,7 +10,13 @@ import {
   TrendingUp,
   Sparkles,
   Bookmark,
-  FileCheck
+  FileCheck,
+  Briefcase,
+  DollarSign,
+  Wallet,
+  Layers,
+  Server,
+  Users
 } from 'lucide-react';
 
 import ClientSidebar from '@/components/Client/sidebar';
@@ -24,10 +30,12 @@ export default function ClientDashboard() {
   }, []);
 
   const stats = [
-    { title: 'Enrolled Courses', value: '3 Active', change: 'In Progress', icon: BookOpen, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    { title: 'Hours Learned', value: '42.5 hrs', change: '+5.2h this week', icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-    { title: 'Certificates Earned', value: '2 Verified', change: '1 Pending', icon: Award, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-    { title: 'Avg Quiz Score', value: '92%', change: 'Top 5%', icon: TrendingUp, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+    { title: 'MAM Account', value: '1 Active', change: 'Verified', icon: Briefcase, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
+    { title: 'MAM Funds Invested', value: '$12,450', change: '+12% this month', icon: DollarSign, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
+    { title: 'MAM Balance', value: '$15,200', change: 'Updated just now', icon: Wallet, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
+    { title: 'Total Account', value: '1', change: 'Primary', icon: Layers, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
+    { title: 'Active Nodes', value: '4', change: 'All Operational', icon: Server, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
+    { title: 'Available Manager', value: '2', change: 'Ready', icon: Users, color: 'text-blue-400', bg: 'bg-blue-900/20 border-blue-500/20' },
   ];
 
   const activeCourses = [
@@ -51,6 +59,7 @@ export default function ClientDashboard() {
       category: 'Trading',
       gradient: 'from-blue-600 to-indigo-700',
     },
+    
     {
       id: 3,
       title: 'Corporate Risk Management Frameworks',
@@ -80,63 +89,36 @@ export default function ClientDashboard() {
 
       <main className="flex-1 flex flex-col min-w-0 relative overflow-y-auto">
         {/* Background glow effects */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-teal-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
         <ClientHeader />
 
         <div className={`p-6 md:p-8 z-10 transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-          {/* Welcome Banner */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-emerald-950/40 border border-slate-800 p-6 md:p-8 mb-8 shadow-2xl">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-            
-            <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-              <div>
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-3">
-                  <Sparkles size={14} /> Student Dashboard
-                </div>
-                <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white mb-2">
-                  Welcome back, Alex! 👋
-                </h1>
-                <p className="text-slate-300 text-sm md:text-base max-w-xl">
-                  You're making great progress this week. Pick up right where you left off in your financial modeling module!
-                </p>
-              </div>
-
-              {/* Continue Learning CTA Card */}
-              <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/70 p-4 rounded-2xl flex items-center gap-4 min-w-[280px]">
-                <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-                  <PlayCircle size={28} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-semibold text-emerald-400 uppercase tracking-wider">Next Up</div>
-                  <div className="text-xs font-bold text-slate-100 truncate">Advanced Valuation Models</div>
-                  <div className="text-[11px] text-slate-400">Lesson 4 of 12</div>
-                </div>
-                <button className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20 shrink-0">
-                  Resume
-                </button>
-              </div>
-            </div>
-          </div>
-
+     
           {/* Key Metrics Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5 mb-8">
             {stats.map((stat, index) => (
               <div 
                 key={index} 
-                className="group bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700 hover:shadow-[0_10px_30px_rgba(0,0,0,0.4)] hover:-translate-y-1"
+                className="group relative overflow-hidden bg-[#0a1128]/80 backdrop-blur-xl border border-blue-500/20 rounded-3xl p-6 transition-all duration-300 hover:border-blue-400/30 hover:shadow-[0_10px_30px_rgba(37,99,235,0.1)] hover:-translate-y-1"
               >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-2xl border ${stat.bg} ${stat.color} transition-transform duration-300 group-hover:scale-110`}>
-                    <stat.icon size={22} />
+                {/* Decorative circles */}
+                <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all duration-500 z-0"></div>
+                <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-indigo-600/10 rounded-full blur-xl group-hover:bg-indigo-600/20 transition-all duration-500 z-0"></div>
+
+                <div className="relative z-10">
+                  <div className="flex items-start justify-between mb-6">
+                    <div className={`p-3.5 rounded-2xl border ${stat.bg} ${stat.color} transition-transform duration-300 group-hover:scale-110`}>
+                      <stat.icon size={22} strokeWidth={1.5} />
+                    </div>
+                    <div className="w-8 h-8 rounded-full border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/10 transition-colors">
+                      <ChevronRight size={14} />
+                    </div>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-                    {stat.change}
-                  </span>
+                  <h3 className="text-blue-200/60 text-[11px] font-bold tracking-[0.15em] uppercase mb-1.5">{stat.title}</h3>
+                  <div className="text-3xl font-black text-white tracking-tight">{stat.value}</div>
                 </div>
-                <h3 className="text-slate-400 text-xs font-medium tracking-wide uppercase">{stat.title}</h3>
-                <div className="text-3xl font-black text-slate-100 mt-1 tracking-tight">{stat.value}</div>
               </div>
             ))}
           </div>
