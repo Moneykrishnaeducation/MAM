@@ -1,19 +1,13 @@
 import React from 'react';
 import Head from 'next/head';
-import { UserCheck, Mail, Phone, Calendar, MessageSquare, Shield, Clock } from 'lucide-react';
+import { UserCheck, Mail, Phone, Calendar, MessageSquare, Clock } from 'lucide-react';
 import ClientSidebar from '@/components/Client/sidebar';
 import ClientHeader from '@/components/Client/header';
+import { getClientData } from '@/lib/mockDataLoader';
 
 export default function ClientManagerPage() {
-  const managerInfo = {
-    name: 'Robert Vance',
-    role: 'Senior Portfolio Manager',
-    email: 'robert.vance@moneykrishna.com',
-    phone: '+1 (555) 234-5678',
-    avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80',
-    experience: '12+ Years Financial Advisory',
-    nextMeeting: 'Tomorrow at 2:00 PM',
-  };
+  const clientData = getClientData();
+  const managerInfo = clientData.assignedManager;
 
   return (
     <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
@@ -27,7 +21,7 @@ export default function ClientManagerPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
-                <UserCheck size={13} /> Personal Advisory
+                <UserCheck size={13} /> Data from mockData.json
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white">Assigned Relationship Manager</h1>
               <p className="text-slate-400 text-sm mt-1">Direct communication line with your dedicated financial & learning manager.</p>
@@ -35,7 +29,6 @@ export default function ClientManagerPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Manager Card */}
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center">
               <div className="relative mb-4">
                 <img src={managerInfo.avatar} alt={managerInfo.name} className="w-24 h-24 rounded-full object-cover ring-4 ring-emerald-500/40 shadow-lg" />
@@ -57,7 +50,6 @@ export default function ClientManagerPage() {
               </div>
             </div>
 
-            {/* Manager Details & Upcoming Schedule */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
                 <h3 className="text-base font-bold text-white mb-2">Manager Contact & Credentials</h3>

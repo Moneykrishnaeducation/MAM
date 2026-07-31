@@ -10,23 +10,21 @@ import {
   PlusCircle, 
   MinusCircle, 
   History, 
-  CheckCircle2,
-  DollarSign,
-  TrendingUp,
-  UserCheck
+  CheckCircle2
 } from 'lucide-react';
 import AdminSidebar from '@/components/Admin/sidebar';
 import AdminHeader from '@/components/Admin/header';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
+import { getAdminInvestors } from '@/lib/mockDataLoader';
 
-interface InvestorData {
+export interface InvestorData {
   id: string;
   name: string;
   email: string;
   managerName: string;
   managerUserId: string;
   accountId: string;
-  invested: string; // Balance
+  invested: string;
   profit: string;
 }
 
@@ -40,58 +38,8 @@ export default function AdminInvestorsPage() {
   const [modalType, setModalType] = useState<FinancialModalType>(null);
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
 
-  const [investors, setInvestors] = useState<InvestorData[]>([
-    {
-      id: 'INV-301',
-      name: 'Elena Rostova',
-      email: 'elena.r@example.com',
-      managerName: 'Robert Vance',
-      managerUserId: 'MGR-101',
-      accountId: 'ACC-INV-801',
-      invested: '$25,000.00',
-      profit: '+$4,200.00',
-    },
-    {
-      id: 'INV-302',
-      name: 'Alex Rivera',
-      email: 'alex.rivera@example.com',
-      managerName: 'Robert Vance',
-      managerUserId: 'MGR-101',
-      accountId: 'ACC-INV-802',
-      invested: '$14,250.00',
-      profit: '+$2,100.00',
-    },
-    {
-      id: 'INV-303',
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@example.com',
-      managerName: 'Robert Vance',
-      managerUserId: 'MGR-101',
-      accountId: 'ACC-INV-803',
-      invested: '$8,400.00',
-      profit: '+$950.00',
-    },
-    {
-      id: 'INV-304',
-      name: 'Michael Chen',
-      email: 'm.chen@example.com',
-      managerName: 'Sarah Jenkins',
-      managerUserId: 'MGR-102',
-      accountId: 'ACC-INV-804',
-      invested: '$3,500.00',
-      profit: '+$350.00',
-    },
-    {
-      id: 'INV-305',
-      name: 'Apex Edu Capital',
-      email: 'apex@example.com',
-      managerName: 'David Sterling',
-      managerUserId: 'MGR-103',
-      accountId: 'ACC-INV-805',
-      invested: '$100,000.00',
-      profit: '+$15,000.00',
-    },
-  ]);
+  // Load state from single mockData.json
+  const [investors, setInvestors] = useState<InvestorData[]>(getAdminInvestors() as InvestorData[]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -138,7 +86,6 @@ export default function AdminInvestorsPage() {
         <AdminHeader />
 
         <div className="p-6 md:p-8">
-          {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
@@ -146,12 +93,11 @@ export default function AdminInvestorsPage() {
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white">Investors Directory</h1>
               <p className="text-slate-400 text-sm mt-1">
-                Manage investor accounts, assigned portfolio managers, invested balances, profits, and sub-actions.
+                Data loaded from mockData.json. Manage investor accounts, portfolio managers, balances, and operations.
               </p>
             </div>
           </div>
 
-          {/* Toast Notification */}
           {toastMessage && (
             <div className="mb-6 p-4 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-300 text-xs font-semibold flex items-center justify-between animate-in fade-in slide-in-from-top-2">
               <span className="flex items-center gap-2">
@@ -161,7 +107,6 @@ export default function AdminInvestorsPage() {
             </div>
           )}
 
-          {/* Table Container */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2.5 rounded-2xl w-72 md:w-96 border border-slate-700/50">
@@ -170,7 +115,7 @@ export default function AdminInvestorsPage() {
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search investor name, manager, or account ID..." 
+                  placeholder="Search investor..." 
                   className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-500" 
                 />
               </div>
@@ -197,7 +142,6 @@ export default function AdminInvestorsPage() {
 
                     return (
                       <React.Fragment key={i.id}>
-                        {/* MAIN ROW */}
                         <tr 
                           onClick={() => toggleRow(i.id)}
                           className={`cursor-pointer transition-colors ${isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/30'}`}
@@ -223,61 +167,29 @@ export default function AdminInvestorsPage() {
                           </td>
                         </tr>
 
-                        {/* SUB-ROW DROPDOWN WITH BUTTONS */}
                         {isExpanded && (
                           <tr className="bg-slate-900/90 border-b border-slate-800">
                             <td colSpan={8} className="p-4 sm:p-5">
                               <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-4 shadow-inner">
                                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
                                   <span>Investor Financial Operations for <strong className="text-white">{i.name}</strong></span>
-                                  <span className="text-slate-600">•</span>
-                                  <span className="text-blue-400">Click any action to open modal</span>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2.5">
-                                  {/* 1. Deposit */}
-                                  <button
-                                    onClick={() => openFinancialModal(i, 'deposit')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-200 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <ArrowDownCircle size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                                    <span>Deposit</span>
+                                  <button onClick={() => openFinancialModal(i, 'deposit')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <ArrowDownCircle size={15} className="text-emerald-400" /> <span>Deposit</span>
                                   </button>
-
-                                  {/* 2. Withdraw */}
-                                  <button
-                                    onClick={() => openFinancialModal(i, 'withdraw')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 hover:text-blue-300 border border-slate-800 hover:border-blue-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <ArrowUpCircle size={15} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                                    <span>Withdraw</span>
+                                  <button onClick={() => openFinancialModal(i, 'withdraw')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <ArrowUpCircle size={15} className="text-blue-400" /> <span>Withdraw</span>
                                   </button>
-
-                                  {/* 3. Credit-In */}
-                                  <button
-                                    onClick={() => openFinancialModal(i, 'credit-in')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-purple-600/20 text-slate-200 hover:text-purple-300 border border-slate-800 hover:border-purple-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <PlusCircle size={15} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                                    <span>Credit-In</span>
+                                  <button onClick={() => openFinancialModal(i, 'credit-in')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-purple-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <PlusCircle size={15} className="text-purple-400" /> <span>Credit-In</span>
                                   </button>
-
-                                  {/* 4. Credit-Out */}
-                                  <button
-                                    onClick={() => openFinancialModal(i, 'credit-out')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-600/20 text-slate-200 hover:text-amber-300 border border-slate-800 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <MinusCircle size={15} className="text-amber-400 group-hover:scale-110 transition-transform" />
-                                    <span>Credit-Out</span>
+                                  <button onClick={() => openFinancialModal(i, 'credit-out')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <MinusCircle size={15} className="text-amber-400" /> <span>Credit-Out</span>
                                   </button>
-
-                                  {/* 5. History */}
-                                  <button
-                                    onClick={() => openFinancialModal(i, 'history')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600/20 text-slate-200 hover:text-indigo-300 border border-slate-800 hover:border-indigo-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <History size={15} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                                    <span>History</span>
+                                  <button onClick={() => openFinancialModal(i, 'history')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <History size={15} className="text-indigo-400" /> <span>History</span>
                                   </button>
                                 </div>
                               </div>
@@ -294,7 +206,6 @@ export default function AdminInvestorsPage() {
         </div>
       </main>
 
-      {/* REUSABLE FINANCIAL ACTION MODAL */}
       <FinancialActionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

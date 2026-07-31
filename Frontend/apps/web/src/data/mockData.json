@@ -1,0 +1,484 @@
+{
+  "admin": {
+    "dashboardStats": [
+      { "title": "Total MAM Investors", "value": "12,450", "change": "+12% this month", "isPositive": true, "icon": "Users", "color": "text-blue-400", "bg": "bg-blue-500/10 border-blue-500/20" },
+      { "title": "Active MAM Accounts", "value": "184", "change": "High Performance", "isPositive": true, "icon": "TrendingUp", "color": "text-purple-400", "bg": "bg-purple-500/10 border-purple-500/20" },
+      { "title": "Total AUM (Assets)", "value": "$14.8M", "change": "+18.4% YTD", "isPositive": true, "icon": "DollarSign", "color": "text-emerald-400", "bg": "bg-emerald-500/10 border-emerald-500/20" },
+      { "title": "MT5 Server Status", "value": "99.9%", "change": "Optimal Latency", "isPositive": true, "icon": "Activity", "color": "text-amber-400", "bg": "bg-amber-500/10 border-amber-500/20" }
+    ],
+    "users": [
+      {
+        "id": "USR-001",
+        "name": "Alex Rivera",
+        "email": "alex.rivera@example.com",
+        "phone": "+1 (555) 019-2834",
+        "role": "MAM Investor",
+        "status": "Active",
+        "verified": true,
+        "joined": "Jan 15, 2026",
+        "country": "United States",
+        "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+        "tradingAccount": {
+          "accNumber": "MAM-891024",
+          "type": "MAM Master Equity Pool",
+          "balance": "$14,250.00",
+          "equity": "$14,890.50",
+          "leverage": "1:100",
+          "activeTrades": 3
+        },
+        "bankCrypto": {
+          "bankName": "JPMorgan Chase Bank",
+          "accountMask": "**** 4829",
+          "cryptoWallet": "0x71C...39aB (USDT-TRC20)"
+        },
+        "transactions": [
+          { "id": "TX-901", "type": "Deposit", "amount": "$5,000.00", "status": "Completed", "date": "Jul 20, 2026" },
+          { "id": "TX-902", "type": "Withdrawal", "amount": "$1,200.00", "status": "Completed", "date": "Jul 28, 2026" }
+        ],
+        "tickets": [
+          { "id": "TCK-104", "subject": "Inquiry regarding Leverage upgrade to 1:200", "status": "Closed", "date": "Jul 10, 2026" }
+        ]
+      },
+      {
+        "id": "USR-002",
+        "name": "Sarah Jenkins",
+        "email": "sarah.j@example.com",
+        "phone": "+1 (555) 084-9210",
+        "role": "MAM Investor",
+        "status": "Active",
+        "verified": true,
+        "joined": "Feb 02, 2026",
+        "country": "United Kingdom",
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+        "tradingAccount": {
+          "accNumber": "MAM-891025",
+          "type": "Standard Pro MAM",
+          "balance": "$8,400.00",
+          "equity": "$8,400.00",
+          "leverage": "1:50",
+          "activeTrades": 0
+        },
+        "bankCrypto": {
+          "bankName": "Barclays Bank UK",
+          "accountMask": "**** 9102",
+          "cryptoWallet": "0x32A...89eF (USDT-ERC20)"
+        },
+        "transactions": [
+          { "id": "TX-910", "type": "Deposit", "amount": "$8,400.00", "status": "Completed", "date": "Jul 15, 2026" }
+        ],
+        "tickets": [
+          { "id": "TCK-112", "subject": "Document re-verification status", "status": "In Progress", "date": "Jul 30, 2026" }
+        ]
+      },
+      {
+        "id": "USR-003",
+        "name": "Michael Chen",
+        "email": "m.chen@example.com",
+        "phone": "+65 9123 4567",
+        "role": "MAM Investor",
+        "status": "Suspended",
+        "verified": false,
+        "joined": "Mar 18, 2026",
+        "country": "Singapore",
+        "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+        "tradingAccount": {
+          "accNumber": "MAM-891026",
+          "type": "MAM Practice Pool",
+          "balance": "$3,500.00",
+          "equity": "$3,500.00",
+          "leverage": "1:100",
+          "activeTrades": 1
+        },
+        "bankCrypto": {
+          "bankName": "DBS Bank Singapore",
+          "accountMask": "**** 1104",
+          "cryptoWallet": "Not Configured"
+        },
+        "transactions": [
+          { "id": "TX-915", "type": "Withdrawal", "amount": "$3,500.00", "status": "Pending", "date": "Jul 31, 2026" }
+        ],
+        "tickets": [
+          { "id": "TCK-119", "subject": "Account Suspension Appeal", "status": "Open", "date": "Jul 31, 2026" }
+        ]
+      },
+      {
+        "id": "USR-004",
+        "name": "Elena Rostova",
+        "email": "elena.r@example.com",
+        "phone": "+49 151 2345678",
+        "role": "MAM Investor",
+        "status": "Active",
+        "verified": true,
+        "joined": "Apr 11, 2026",
+        "country": "Germany",
+        "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+        "tradingAccount": {
+          "accNumber": "MAM-891027",
+          "type": "VIP Institutional MAM",
+          "balance": "$25,000.00",
+          "equity": "$26,140.00",
+          "leverage": "1:200",
+          "activeTrades": 4
+        },
+        "bankCrypto": {
+          "bankName": "Deutsche Bank",
+          "accountMask": "**** 7712",
+          "cryptoWallet": "0x88F...44aC (USDT-TRC20)"
+        },
+        "transactions": [
+          { "id": "TX-920", "type": "Deposit", "amount": "$20,000.00", "status": "Completed", "date": "Jul 01, 2026" },
+          { "id": "TX-921", "type": "Deposit", "amount": "$5,000.00", "status": "Completed", "date": "Jul 22, 2026" }
+        ],
+        "tickets": []
+      }
+    ],
+    "adminUsers": [
+      {
+        "id": "ADM-001",
+        "name": "Super Admin",
+        "email": "admin@moneykrishna.com",
+        "role": "Super Admin",
+        "department": "MAM Risk & Administration",
+        "permissions": ["Full System Control", "Financial Transfers", "MAM Account Approvals", "Audit Logs"],
+        "status": "Active",
+        "lastLogin": "Just now",
+        "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
+      },
+      {
+        "id": "ADM-002",
+        "name": "Robert Vance",
+        "email": "robert.vance@moneykrishna.com",
+        "role": "Senior MAM Manager",
+        "department": "MAM Portfolio Operations",
+        "permissions": ["MAM Manager Approvals", "Trading Audit Reports"],
+        "status": "Active",
+        "lastLogin": "25m ago",
+        "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80"
+      },
+      {
+        "id": "ADM-003",
+        "name": "Sarah Jenkins",
+        "email": "sarah.j@moneykrishna.com",
+        "role": "MAM Finance Director",
+        "department": "Profit Allocation & Compliance",
+        "permissions": ["Financial Transfers", "Audit Logs"],
+        "status": "Active",
+        "lastLogin": "2h ago",
+        "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80"
+      },
+      {
+        "id": "ADM-004",
+        "name": "David Sterling",
+        "email": "d.sterling@moneykrishna.com",
+        "role": "MAM Risk Admin",
+        "department": "MT5 Risk Control",
+        "permissions": ["MAM Account Approvals"],
+        "status": "Suspended",
+        "lastLogin": "3 days ago",
+        "avatar": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80"
+      }
+    ],
+    "managers": [
+      {
+        "id": "MGR-101",
+        "name": "Robert Vance",
+        "email": "robert.vance@moneykrishna.com",
+        "accountId": "MAM-MGR-001",
+        "balance": "$125,400.00",
+        "profit": "+$18,900.00",
+        "share": "20%",
+        "risk": "Low",
+        "investorsCount": 3,
+        "investorsList": [
+          { "id": "INV-301", "name": "Alex Rivera", "email": "alex.rivera@example.com", "invested": "$14,250", "profit": "+$2,100" },
+          { "id": "INV-302", "name": "Elena Rostova", "email": "elena.r@example.com", "invested": "$25,000", "profit": "+$4,200" },
+          { "id": "INV-303", "name": "Sarah Jenkins", "email": "sarah.j@example.com", "invested": "$8,400", "profit": "+$950" }
+        ]
+      },
+      {
+        "id": "MGR-102",
+        "name": "Sarah Jenkins",
+        "email": "sarah.j@moneykrishna.com",
+        "accountId": "MAM-MGR-002",
+        "balance": "$84,000.00",
+        "profit": "+$9,500.00",
+        "share": "15%",
+        "risk": "Medium",
+        "investorsCount": 1,
+        "investorsList": [
+          { "id": "INV-304", "name": "Michael Chen", "email": "m.chen@example.com", "invested": "$3,500", "profit": "+$350" }
+        ]
+      },
+      {
+        "id": "MGR-103",
+        "name": "David Sterling",
+        "email": "d.sterling@moneykrishna.com",
+        "accountId": "MAM-MGR-003",
+        "balance": "$210,000.00",
+        "profit": "+$32,400.00",
+        "share": "25%",
+        "risk": "Low",
+        "investorsCount": 1,
+        "investorsList": [
+          { "id": "INV-305", "name": "Apex Edu Capital", "email": "apex@example.com", "invested": "$100,000", "profit": "+$15,000" }
+        ]
+      }
+    ],
+    "investors": [
+      {
+        "id": "INV-301",
+        "name": "Elena Rostova",
+        "email": "elena.r@example.com",
+        "managerName": "Robert Vance",
+        "managerUserId": "MGR-101",
+        "accountId": "MAM-INV-801",
+        "invested": "$25,000.00",
+        "profit": "+$4,200.00"
+      },
+      {
+        "id": "INV-302",
+        "name": "Alex Rivera",
+        "email": "alex.rivera@example.com",
+        "managerName": "Robert Vance",
+        "managerUserId": "MGR-101",
+        "accountId": "MAM-INV-802",
+        "invested": "$14,250.00",
+        "profit": "+$2,100.00"
+      },
+      {
+        "id": "INV-303",
+        "name": "Sarah Jenkins",
+        "email": "sarah.j@example.com",
+        "managerName": "Robert Vance",
+        "managerUserId": "MGR-101",
+        "accountId": "MAM-INV-803",
+        "invested": "$8,400.00",
+        "profit": "+$950.00"
+      },
+      {
+        "id": "INV-304",
+        "name": "Michael Chen",
+        "email": "m.chen@example.com",
+        "managerName": "Sarah Jenkins",
+        "managerUserId": "MGR-102",
+        "accountId": "MAM-INV-804",
+        "invested": "$3,500.00",
+        "profit": "+$350.00"
+      },
+      {
+        "id": "INV-305",
+        "name": "Apex Institutional Fund",
+        "email": "apex@example.com",
+        "managerName": "David Sterling",
+        "managerUserId": "MGR-103",
+        "accountId": "MAM-INV-805",
+        "invested": "$100,000.00",
+        "profit": "+$15,000.00"
+      }
+    ],
+    "pendingRequests": {
+      "deposits": [
+        {
+          "id": "DEP-7001",
+          "requesterName": "Alex Rivera",
+          "requesterEmail": "alex.rivera@example.com",
+          "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+          "amount": "$10,000.00",
+          "method": "Bank Wire Transfer",
+          "referenceNo": "WIRE-9941824",
+          "date": "10m ago",
+          "priority": "High",
+          "status": "Pending"
+        },
+        {
+          "id": "DEP-7002",
+          "requesterName": "Elena Rostova",
+          "requesterEmail": "elena.r@example.com",
+          "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+          "amount": "$5,500.00",
+          "method": "USDT-TRC20",
+          "referenceNo": "TX-HASH-0x9a8f...3a1c",
+          "date": "45m ago",
+          "priority": "Normal",
+          "status": "Pending"
+        },
+        {
+          "id": "DEP-7003",
+          "requesterName": "Michael Chen",
+          "requesterEmail": "m.chen@example.com",
+          "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+          "amount": "$2,500.00",
+          "method": "Credit Card",
+          "referenceNo": "PAY-881204",
+          "date": "2h ago",
+          "priority": "Normal",
+          "status": "Pending"
+        }
+      ],
+      "withdrawals": [
+        {
+          "id": "WTH-8001",
+          "requesterName": "Sarah Jenkins",
+          "requesterEmail": "sarah.j@example.com",
+          "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+          "amount": "$3,500.00",
+          "availableBalance": "$8,400.00",
+          "payoutDestination": "Barclays Bank UK (**** 9102)",
+          "method": "Bank Transfer",
+          "date": "20m ago",
+          "priority": "High",
+          "status": "Pending"
+        },
+        {
+          "id": "WTH-8002",
+          "requesterName": "Alex Rivera",
+          "requesterEmail": "alex.rivera@example.com",
+          "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+          "amount": "$1,200.00",
+          "availableBalance": "$14,250.00",
+          "payoutDestination": "0x71C...39aB (USDT-TRC20)",
+          "method": "Crypto USDT",
+          "date": "1h ago",
+          "priority": "Normal",
+          "status": "Pending"
+        }
+      ],
+      "documents": [
+        {
+          "id": "DOC-5001",
+          "requesterName": "Michael Chen",
+          "requesterEmail": "m.chen@example.com",
+          "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+          "documentType": "Passport",
+          "docNumber": "P-9918234-SG",
+          "fileName": "passport_michael_chen.pdf",
+          "date": "30m ago",
+          "priority": "High",
+          "status": "Pending"
+        },
+        {
+          "id": "DOC-5002",
+          "requesterName": "Sarah Jenkins",
+          "requesterEmail": "sarah.j@example.com",
+          "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+          "documentType": "Utility Bill",
+          "docNumber": "UTIL-2026-UK",
+          "fileName": "electric_bill_july.pdf",
+          "date": "3h ago",
+          "priority": "Normal",
+          "status": "Pending"
+        }
+      ],
+      "profiles": [
+        {
+          "id": "PRF-3001",
+          "requesterName": "Elena Rostova",
+          "requesterEmail": "elena.r@example.com",
+          "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+          "fieldToUpdate": "Phone Number",
+          "currentValue": "+49 151 1111111",
+          "requestedValue": "+49 151 2345678",
+          "reason": "Changed SIM card provider in Germany.",
+          "date": "4h ago",
+          "status": "Pending"
+        },
+        {
+          "id": "PRF-3002",
+          "requesterName": "Alex Rivera",
+          "requesterEmail": "alex.rivera@example.com",
+          "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+          "fieldToUpdate": "Residential Address",
+          "currentValue": "123 Wall Street, NY",
+          "requestedValue": "450 Park Avenue, NY 10022",
+          "reason": "Relocated address.",
+          "date": "6h ago",
+          "status": "Pending"
+        }
+      ],
+      "banks": [
+        {
+          "id": "BNK-2001",
+          "requesterName": "Michael Chen",
+          "requesterEmail": "m.chen@example.com",
+          "avatar": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80",
+          "bankName": "DBS Bank Singapore",
+          "accountHolder": "Michael Chen",
+          "accountNumber": "**** 1104",
+          "swiftCode": "DBSSSGSG",
+          "date": "2h ago",
+          "status": "Pending"
+        },
+        {
+          "id": "BNK-2002",
+          "requesterName": "Elena Rostova",
+          "requesterEmail": "elena.r@example.com",
+          "avatar": "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80",
+          "bankName": "Deutsche Bank Germany",
+          "accountHolder": "Elena Rostova",
+          "accountNumber": "**** 7712",
+          "swiftCode": "DEUTDEDB",
+          "date": "5h ago",
+          "status": "Pending"
+        }
+      ],
+      "cryptos": [
+        {
+          "id": "CRP-1001",
+          "requesterName": "Alex Rivera",
+          "requesterEmail": "alex.rivera@example.com",
+          "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+          "network": "USDT-TRC20",
+          "walletAddress": "0x71C8a91b...39aB",
+          "label": "Primary Cold Wallet",
+          "date": "1h ago",
+          "status": "Pending"
+        },
+        {
+          "id": "CRP-1002",
+          "requesterName": "Sarah Jenkins",
+          "requesterEmail": "sarah.j@example.com",
+          "avatar": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80",
+          "network": "USDT-ERC20",
+          "walletAddress": "0x32A4f910...89eF",
+          "label": "Secondary Vault",
+          "date": "4h ago",
+          "status": "Pending"
+        }
+      ]
+    }
+  },
+  "client": {
+    "profile": {
+      "name": "Alex Rivera",
+      "email": "alex.rivera@example.com",
+      "avatar": "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80",
+      "membership": "MAM Institutional Investor"
+    },
+    "stats": [
+      { "title": "Allocated MAM Capital", "value": "$25,500.00", "change": "3 Managed Accounts", "icon": "DollarSign", "color": "text-emerald-400", "bg": "bg-emerald-500/10 border-emerald-500/20" },
+      { "title": "Portfolio Value", "value": "$28,210.00", "change": "+$2,710.00 PnL", "icon": "TrendingUp", "color": "text-blue-400", "bg": "bg-blue-500/10 border-blue-500/20" },
+      { "title": "All-Time Yield", "value": "+10.63%", "change": "Low Drawdown", "icon": "Award", "color": "text-amber-400", "bg": "bg-amber-500/10 border-amber-500/20" },
+      { "title": "Assigned MAM Manager", "value": "Robert Vance", "change": "20% Performance Fee", "icon": "UserCheck", "color": "text-purple-400", "bg": "bg-purple-500/10 border-purple-500/20" }
+    ],
+    "assignedManager": {
+      "name": "Robert Vance",
+      "role": "Senior MAM Portfolio Manager",
+      "email": "robert.vance@moneykrishna.com",
+      "phone": "+1 (555) 234-5678",
+      "avatar": "https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=200&q=80",
+      "experience": "12+ Years Professional Forex & Commodities MAM Trading",
+      "nextMeeting": "Tomorrow at 2:00 PM"
+    },
+    "investments": [
+      { "name": "MAM Alpha Pro FX Master Fund", "invested": "$12,500", "returnRate": "+14.2%", "value": "$14,275", "category": "High Alpha Forex" },
+      { "name": "Global Gold & Indices MAM Basket", "invested": "$8,000", "returnRate": "+8.5%", "value": "$8,680", "category": "Commodities" },
+      { "name": "Conservative Scalping MAM Pool", "invested": "$5,000", "returnRate": "+5.1%", "value": "$5,255", "category": "Low Risk" }
+    ],
+    "availableOpportunities": [
+      { "title": "Quantitative Algorithmic MAM Strategy", "category": "MAM Strategy", "minEntry": "$5,000 Min Entry", "rating": "18.4% Expected Annualized ROI", "badge": "Popular Strategy" },
+      { "title": "Institutional Multi-Asset MAM Fund", "category": "MAM Pool", "minEntry": "$10,000 Min Entry", "rating": "Low Volatility Risk", "badge": "High Capital Pool" },
+      { "title": "Forex Scalping Master Strategy", "category": "MAM Strategy", "minEntry": "$2,500 Min Entry", "rating": "Daily Profit Distribution", "badge": "Verified Track Record" },
+      { "title": "Crypto Arbitrage MAM Pool", "category": "MAM Pool", "minEntry": "$1,000 Min Entry", "rating": "24/7 Algo Trading", "badge": "New Pool" }
+    ]
+  }
+}

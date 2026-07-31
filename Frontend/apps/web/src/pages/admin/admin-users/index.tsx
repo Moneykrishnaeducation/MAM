@@ -13,15 +13,13 @@ import {
   User, 
   Trash2, 
   Power,
-  Sliders,
-  Sparkles,
-  ChevronRight,
   AlertCircle
 } from 'lucide-react';
 import AdminSidebar from '@/components/Admin/sidebar';
 import AdminHeader from '@/components/Admin/header';
+import { getAdminSystemUsers } from '@/lib/mockDataLoader';
 
-interface AdminUser {
+export interface AdminUser {
   id: string;
   name: string;
   email: string;
@@ -38,7 +36,6 @@ export default function AdminUsersManagementPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Form State for Create Admin
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -48,52 +45,8 @@ export default function AdminUsersManagementPage() {
     password: '',
   });
 
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([
-    {
-      id: 'ADM-001',
-      name: 'Super Admin',
-      email: 'admin@moneykrishna.com',
-      role: 'Super Admin',
-      department: 'Executive Management',
-      permissions: ['Full System Control', 'Financial Transfers', 'User Approvals', 'Audit Logs'],
-      status: 'Active',
-      lastLogin: 'Just now',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80',
-    },
-    {
-      id: 'ADM-002',
-      name: 'Robert Vance',
-      email: 'robert.vance@moneykrishna.com',
-      role: 'Operations Manager',
-      department: 'Course & Student Ops',
-      permissions: ['User Approvals', 'View Reports'],
-      status: 'Active',
-      lastLogin: '25m ago',
-      avatar: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=120&q=80',
-    },
-    {
-      id: 'ADM-003',
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@moneykrishna.com',
-      role: 'Finance Manager',
-      department: 'Financial Compliance',
-      permissions: ['Financial Transfers', 'Audit Logs'],
-      status: 'Active',
-      lastLogin: '2h ago',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-    },
-    {
-      id: 'ADM-004',
-      name: 'David Sterling',
-      email: 'd.sterling@moneykrishna.com',
-      role: 'Support Admin',
-      department: 'IT & Platform Support',
-      permissions: ['User Approvals'],
-      status: 'Suspended',
-      lastLogin: '3 days ago',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80',
-    },
-  ]);
+  // Load from single mockData.json
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(getAdminSystemUsers() as AdminUser[]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -121,9 +74,8 @@ export default function AdminUsersManagementPage() {
 
     setAdminUsers([newAdmin, ...adminUsers]);
     setIsModalOpen(false);
-    showToast(`New Admin User "${formData.name}" (${formData.role}) created successfully!`);
+    showToast(`New Admin User "${formData.name}" created successfully!`);
     
-    // Reset Form
     setFormData({
       name: '',
       email: '',
@@ -146,7 +98,7 @@ export default function AdminUsersManagementPage() {
   };
 
   const handleRevokeAdmin = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to revoke administrative access for ${name}?`)) {
+    if (confirm(`Revoke admin access for ${name}?`)) {
       setAdminUsers(prev => prev.filter(u => u.id !== id));
       showToast(`Admin access for ${name} revoked.`);
     }
@@ -157,9 +109,7 @@ export default function AdminUsersManagementPage() {
       const exists = prev.permissions.includes(perm);
       return {
         ...prev,
-        permissions: exists 
-          ? prev.permissions.filter(p => p !== perm) 
-          : [...prev.permissions, perm],
+        permissions: exists ? prev.permissions.filter(p => p !== perm) : [...prev.permissions, perm],
       };
     });
   };
@@ -180,26 +130,22 @@ export default function AdminUsersManagementPage() {
         <AdminHeader />
 
         <div className="p-6 md:p-8">
-          {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
                 <ShieldCheck size={13} /> Administrative Access Control
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Users Directory</h1>
-              <p className="text-slate-400 text-sm mt-1">
-                Manage administrative accounts, role permissions, and onboard new system administrators.
-              </p>
+              <p className="text-slate-400 text-sm mt-1">Data loaded from mockData.json. Onboard and manage system administrators.</p>
             </div>
             <button 
               onClick={() => setIsModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-600/20 self-start md:self-auto"
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
             >
               <UserPlus size={16} /> Create Admin User
             </button>
           </div>
 
-          {/* Toast Notification */}
           {toastMessage && (
             <div className="mb-6 p-4 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-300 text-xs font-semibold flex items-center justify-between animate-in fade-in slide-in-from-top-2">
               <span className="flex items-center gap-2">
@@ -209,7 +155,6 @@ export default function AdminUsersManagementPage() {
             </div>
           )}
 
-          {/* Stats Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
               <div>
@@ -246,7 +191,6 @@ export default function AdminUsersManagementPage() {
             </div>
           </div>
 
-          {/* Admin Users Table */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2.5 rounded-2xl w-72 md:w-96 border border-slate-700/50">
@@ -255,7 +199,7 @@ export default function AdminUsersManagementPage() {
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Filter admin users by name, email, or role..." 
+                  placeholder="Filter admin users..." 
                   className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-500" 
                 />
               </div>
@@ -316,11 +260,7 @@ export default function AdminUsersManagementPage() {
                         <div className="flex items-center justify-end gap-2">
                           <button
                             onClick={() => toggleAdminStatus(adm.id, adm.name, adm.status)}
-                            className={`p-1.5 rounded-lg border text-xs transition-colors ${
-                              adm.status === 'Active' 
-                                ? 'bg-slate-800 hover:bg-amber-500/20 text-slate-300 hover:text-amber-400 border-slate-700'
-                                : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950 border-emerald-500/30'
-                            }`}
+                            className="p-1.5 rounded-lg border text-xs bg-slate-800 text-slate-300 hover:text-white border-slate-700"
                             title="Toggle Admin Access"
                           >
                             <Power size={14} />
@@ -329,7 +269,7 @@ export default function AdminUsersManagementPage() {
                           {adm.role !== 'Super Admin' && (
                             <button
                               onClick={() => handleRevokeAdmin(adm.id, adm.name)}
-                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700 transition-colors"
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700"
                               title="Revoke Admin Access"
                             >
                               <Trash2 size={14} />
@@ -346,133 +286,44 @@ export default function AdminUsersManagementPage() {
         </div>
       </main>
 
-      {/* CREATE ADMIN USER MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl animate-in zoom-in-95 duration-150 relative">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative">
             <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <UserPlus size={20} className="text-blue-400" /> Create New Admin User
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Onboard a new administrator and assign system privileges.</p>
-              </div>
-              <button 
-                onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
-              >
-                &times;
-              </button>
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <UserPlus size={20} className="text-blue-400" /> Create New Admin User
+              </h2>
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">&times;</button>
             </div>
 
             <form onSubmit={handleCreateAdmin} className="space-y-4 text-xs">
               <div>
                 <label className="block text-slate-300 font-semibold mb-1">Full Name</label>
-                <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
-                  <User size={16} className="text-slate-400" />
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. Jane Doe"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="bg-transparent border-none text-white outline-none w-full placeholder-slate-500"
-                  />
-                </div>
+                <input 
+                  type="text" 
+                  required
+                  placeholder="e.g. Jane Doe"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">Admin Email Address</label>
-                <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
-                  <Mail size={16} className="text-slate-400" />
-                  <input 
-                    type="email" 
-                    required
-                    placeholder="jane.doe@moneykrishna.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="bg-transparent border-none text-white outline-none w-full placeholder-slate-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Admin Role</label>
-                  <select 
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value as AdminUser['role'] })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none"
-                  >
-                    <option value="Super Admin">Super Admin</option>
-                    <option value="Operations Manager">Operations Manager</option>
-                    <option value="Finance Manager">Finance Manager</option>
-                    <option value="Support Admin">Support Admin</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Department</label>
-                  <input 
-                    type="text" 
-                    value={formData.department}
-                    onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5 text-white outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-2">Assigned System Permissions</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Full System Control', 'User Approvals', 'Financial Transfers', 'Audit Logs', 'View Reports'].map((perm) => {
-                    const checked = formData.permissions.includes(perm);
-                    return (
-                      <button
-                        type="button"
-                        key={perm}
-                        onClick={() => togglePermission(perm)}
-                        className={`p-2 rounded-xl border text-[11px] font-semibold text-left transition-all flex items-center justify-between ${
-                          checked 
-                            ? 'bg-blue-600/20 border-blue-500/40 text-blue-300' 
-                            : 'bg-slate-800/40 border-slate-800 text-slate-400'
-                        }`}
-                      >
-                        <span>{perm}</span>
-                        {checked && <CheckCircle2 size={13} className="text-blue-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-300 font-semibold mb-1">Initial Password</label>
-                <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 rounded-xl px-3 py-2.5">
-                  <Key size={16} className="text-slate-400" />
-                  <input 
-                    type="password" 
-                    placeholder="••••••••••••"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="bg-transparent border-none text-white outline-none w-full"
-                  />
-                </div>
+                <label className="block text-slate-300 font-semibold mb-1">Email Address</label>
+                <input 
+                  type="email" 
+                  required
+                  placeholder="jane.doe@moneykrishna.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold text-xs transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-md shadow-blue-600/20"
-                >
-                  Create Admin User
-                </button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                <button type="submit" className="px-5 py-2 rounded-xl bg-blue-600 text-white font-bold">Create Admin</button>
               </div>
             </form>
           </div>

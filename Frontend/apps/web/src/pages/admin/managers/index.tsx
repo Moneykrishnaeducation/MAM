@@ -3,7 +3,6 @@ import Head from 'next/head';
 import { 
   UserCheck, 
   Search, 
-  Plus, 
   ChevronDown, 
   ChevronUp, 
   ArrowDownCircle, 
@@ -12,15 +11,14 @@ import {
   MinusCircle, 
   History, 
   Users, 
-  CheckCircle2,
-  Shield,
-  AlertTriangle
+  CheckCircle2
 } from 'lucide-react';
 import AdminSidebar from '@/components/Admin/sidebar';
 import AdminHeader from '@/components/Admin/header';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
+import { getAdminManagers } from '@/lib/mockDataLoader';
 
-interface ManagerData {
+export interface ManagerData {
   id: string;
   name: string;
   email: string;
@@ -43,52 +41,8 @@ export default function AdminManagersPage() {
   const [modalType, setModalType] = useState<FinancialModalType>(null);
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
 
-  const [managers, setManagers] = useState<ManagerData[]>([
-    {
-      id: 'MGR-101',
-      name: 'Robert Vance',
-      email: 'robert.vance@moneykrishna.com',
-      accountId: 'ACC-MGR-001',
-      balance: '$125,400.00',
-      profit: '+$18,900.00',
-      share: '20%',
-      risk: 'Low',
-      investorsCount: 4,
-      investorsList: [
-        { id: 'INV-301', name: 'Alex Rivera', email: 'alex.rivera@example.com', invested: '$14,250', profit: '+$2,100' },
-        { id: 'INV-302', name: 'Elena Rostova', email: 'elena.r@example.com', invested: '$25,000', profit: '+$4,200' },
-        { id: 'INV-303', name: 'Sarah Jenkins', email: 'sarah.j@example.com', invested: '$8,400', profit: '+$950' },
-      ],
-    },
-    {
-      id: 'MGR-102',
-      name: 'Sarah Jenkins',
-      email: 'sarah.j@moneykrishna.com',
-      accountId: 'ACC-MGR-002',
-      balance: '$84,000.00',
-      profit: '+$9,500.00',
-      share: '15%',
-      risk: 'Medium',
-      investorsCount: 2,
-      investorsList: [
-        { id: 'INV-304', name: 'Michael Chen', email: 'm.chen@example.com', invested: '$3,500', profit: '+$350' },
-      ],
-    },
-    {
-      id: 'MGR-103',
-      name: 'David Sterling',
-      email: 'd.sterling@moneykrishna.com',
-      accountId: 'ACC-MGR-003',
-      balance: '$210,000.00',
-      profit: '+$32,400.00',
-      share: '25%',
-      risk: 'Low',
-      investorsCount: 5,
-      investorsList: [
-        { id: 'INV-305', name: 'Apex Edu Capital', email: 'apex@example.com', invested: '$100,000', profit: '+$15,000' },
-      ],
-    },
-  ]);
+  // Load state from single mockData.json
+  const [managers, setManagers] = useState<ManagerData[]>(getAdminManagers() as ManagerData[]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -135,7 +89,6 @@ export default function AdminManagersPage() {
         <AdminHeader />
 
         <div className="p-6 md:p-8">
-          {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
@@ -143,12 +96,11 @@ export default function AdminManagersPage() {
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white">Managers Overview</h1>
               <p className="text-slate-400 text-sm mt-1">
-                Monitor account balances, profits, share percentages, risk levels, and manage financial operations.
+                Data loaded from mockData.json. Monitor balances, profit shares, risk levels, and operations.
               </p>
             </div>
           </div>
 
-          {/* Toast Notification */}
           {toastMessage && (
             <div className="mb-6 p-4 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-blue-300 text-xs font-semibold flex items-center justify-between animate-in fade-in slide-in-from-top-2">
               <span className="flex items-center gap-2">
@@ -158,7 +110,6 @@ export default function AdminManagersPage() {
             </div>
           )}
 
-          {/* Table Container */}
           <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2.5 rounded-2xl w-72 md:w-96 border border-slate-700/50">
@@ -167,7 +118,7 @@ export default function AdminManagersPage() {
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search manager name, email, or account ID..." 
+                  placeholder="Search manager..." 
                   className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-500" 
                 />
               </div>
@@ -195,7 +146,6 @@ export default function AdminManagersPage() {
 
                     return (
                       <React.Fragment key={m.id}>
-                        {/* MAIN ROW */}
                         <tr 
                           onClick={() => toggleRow(m.id)}
                           className={`cursor-pointer transition-colors ${isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/30'}`}
@@ -227,70 +177,31 @@ export default function AdminManagersPage() {
                           </td>
                         </tr>
 
-                        {/* SUB-ROW DROPDOWN WITH BUTTONS */}
                         {isExpanded && (
                           <tr className="bg-slate-900/90 border-b border-slate-800">
                             <td colSpan={9} className="p-4 sm:p-5">
                               <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-4 shadow-inner">
                                 <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                                  <span>Financial Operations & Sub-Actions for <strong className="text-white">{m.name}</strong></span>
-                                  <span className="text-slate-600">•</span>
-                                  <span className="text-blue-400">Click any action to open modal</span>
+                                  <span>Financial Operations for <strong className="text-white">{m.name}</strong></span>
                                 </div>
-
                                 <div className="flex flex-wrap items-center gap-2.5">
-                                  {/* 1. Deposit */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'deposit')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-200 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <ArrowDownCircle size={15} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-                                    <span>Deposit</span>
+                                  <button onClick={() => openFinancialModal(m, 'deposit')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <ArrowDownCircle size={15} className="text-emerald-400" /> <span>Deposit</span>
                                   </button>
-
-                                  {/* 2. Withdraw */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'withdraw')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 hover:text-blue-300 border border-slate-800 hover:border-blue-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <ArrowUpCircle size={15} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                                    <span>Withdraw</span>
+                                  <button onClick={() => openFinancialModal(m, 'withdraw')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <ArrowUpCircle size={15} className="text-blue-400" /> <span>Withdraw</span>
                                   </button>
-
-                                  {/* 3. Credit-In */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'credit-in')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-purple-600/20 text-slate-200 hover:text-purple-300 border border-slate-800 hover:border-purple-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <PlusCircle size={15} className="text-purple-400 group-hover:scale-110 transition-transform" />
-                                    <span>Credit-In</span>
+                                  <button onClick={() => openFinancialModal(m, 'credit-in')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-purple-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <PlusCircle size={15} className="text-purple-400" /> <span>Credit-In</span>
                                   </button>
-
-                                  {/* 4. Credit-Out */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'credit-out')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-600/20 text-slate-200 hover:text-amber-300 border border-slate-800 hover:border-amber-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <MinusCircle size={15} className="text-amber-400 group-hover:scale-110 transition-transform" />
-                                    <span>Credit-Out</span>
+                                  <button onClick={() => openFinancialModal(m, 'credit-out')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <MinusCircle size={15} className="text-amber-400" /> <span>Credit-Out</span>
                                   </button>
-
-                                  {/* 5. History */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'history')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600/20 text-slate-200 hover:text-indigo-300 border border-slate-800 hover:border-indigo-500/40 text-xs font-semibold transition-all shadow-sm group"
-                                  >
-                                    <History size={15} className="text-indigo-400 group-hover:scale-110 transition-transform" />
-                                    <span>History</span>
+                                  <button onClick={() => openFinancialModal(m, 'history')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600/20 text-slate-200 border border-slate-800 text-xs font-semibold">
+                                    <History size={15} className="text-indigo-400" /> <span>History</span>
                                   </button>
-
-                                  {/* 6. Investors (List) - Manager Only */}
-                                  <button
-                                    onClick={() => openFinancialModal(m, 'investors_list')}
-                                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-600/15 hover:bg-teal-600 text-teal-400 hover:text-white border border-teal-500/30 text-xs font-bold transition-all shadow-sm group"
-                                  >
-                                    <Users size={15} className="group-hover:scale-110 transition-transform" />
-                                    <span>Investors ({m.investorsCount})</span>
+                                  <button onClick={() => openFinancialModal(m, 'investors_list')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-teal-600/15 hover:bg-teal-600 text-teal-400 hover:text-white border border-teal-500/30 text-xs font-bold">
+                                    <Users size={15} /> <span>Investors ({m.investorsCount})</span>
                                   </button>
                                 </div>
                               </div>
@@ -307,7 +218,6 @@ export default function AdminManagersPage() {
         </div>
       </main>
 
-      {/* REUSABLE FINANCIAL ACTION MODAL */}
       <FinancialActionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
