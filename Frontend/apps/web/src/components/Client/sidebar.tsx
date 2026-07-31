@@ -1,25 +1,24 @@
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { 
   LayoutDashboard, 
-  BookOpen, 
-  Calendar,
-  Award,
-  Settings,
+  UserCheck, 
+  Wallet, 
+  Compass, 
   Flame,
   LogOut
 } from 'lucide-react';
 
 export default function ClientSidebar() {
-  const currentPath = usePathname();
+  const router = useRouter();
+  const currentPath = router.pathname;
 
   const navItems = [
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/client/courses', label: 'My Courses', icon: BookOpen },
-    { href: '/client/schedule', label: 'Schedule', icon: Calendar },
-    { href: '/client/certificates', label: 'Certificates', icon: Award },
-    { href: '/client/settings', label: 'Settings', icon: Settings },
+    { href: '/client/manager', label: 'Manager', icon: UserCheck },
+    { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
+    { href: '/client/available', label: 'Available', icon: Compass },
   ];
 
   return (
@@ -31,7 +30,7 @@ export default function ClientSidebar() {
             MAM
           </div>
           <div>
-            <h2 className="text-lg font-bold text-slate-100 leading-tight">Student Portal</h2>
+            <h2 className="text-lg font-bold text-slate-100 leading-tight">Client Portal</h2>
             <p className="text-xs text-emerald-400 font-medium">Money Krishna Edu</p>
           </div>
         </div>
@@ -39,7 +38,7 @@ export default function ClientSidebar() {
         {/* Navigation */}
         <nav className="space-y-1.5">
           <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
-            Learning Portal
+            Client Menu
           </div>
           {navItems.map((item) => {
             const isActive = currentPath === item.href || (item.href === '/client/dashboard' && currentPath === '/client');
@@ -61,7 +60,7 @@ export default function ClientSidebar() {
           })}
         </nav>
 
-        {/* Learning Streak Widget */}
+        {/* Learning Streak / Investment Widget */}
         <div className="mt-8 mx-1 p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-800/40 border border-slate-700/60">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -69,7 +68,7 @@ export default function ClientSidebar() {
             </span>
             <span className="text-xs font-bold text-amber-400">7 Days 🔥</span>
           </div>
-          <p className="text-[11px] text-slate-400 mb-3">You're 2 lessons away from completing your weekly goal!</p>
+          <p className="text-[11px] text-slate-400 mb-3">Your portfolio grew +4.2% this week!</p>
           <div className="w-full bg-slate-700/60 rounded-full h-2 overflow-hidden">
             <div className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full w-4/5 transition-all duration-500"></div>
           </div>
@@ -90,7 +89,7 @@ export default function ClientSidebar() {
           <div className="flex-1 min-w-0">
             <h4 className="text-sm font-semibold text-slate-200 truncate">Alex Rivera</h4>
             <div className="text-[11px] text-slate-400 truncate">
-              Premium Student
+              Premium Client
             </div>
           </div>
           <button className="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-slate-700/50" title="Logout">
