@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
+import { usePathname } from 'next/navigation';
 import { 
   LayoutDashboard, 
   UserCheck, 
@@ -11,8 +11,8 @@ import {
 } from 'lucide-react';
 
 export default function ClientSidebar() {
-  const router = useRouter();
-  const currentPath = router.pathname;
+
+  const currentPath = usePathname();
 
   const navItems = [
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
