@@ -6,9 +6,9 @@ export default function AdminHeader() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   const notifications = [
-    { id: 1, text: 'New student enrollment in Advanced Financial Analysis', time: '10m ago', unread: true },
-    { id: 2, text: 'System backup completed successfully', time: '1h ago', unread: true },
-    { id: 3, text: 'Course "Market Regulations" pending approval', time: '3h ago', unread: false },
+    { id: 1, text: 'New MAM Account deposit request ($10,000.00)', time: '10m ago', unread: true },
+    { id: 2, text: 'MT5 Server trade sync & profit allocation completed', time: '1h ago', unread: true },
+    { id: 3, text: 'Manager "Robert Vance" requested leverage adjustment', time: '3h ago', unread: false },
   ];
 
   return (
@@ -18,7 +18,7 @@ export default function AdminHeader() {
         <Search size={18} className="text-slate-400 shrink-0" />
         <input 
           type="text" 
-          placeholder="Search students, courses, metrics..." 
+          placeholder="Search MAM accounts, managers, investors..." 
           className="bg-transparent border-none text-slate-100 outline-none w-full text-sm placeholder-slate-400 font-sans"
         />
       </div>
@@ -28,7 +28,7 @@ export default function AdminHeader() {
         {/* System Badge */}
         <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold">
           <Sparkles size={14} className="animate-pulse" />
-          <span>System Status: Optimal</span>
+          <span>MT5 Server: Optimal</span>
         </div>
 
         {/* Notifications Dropdown */}
@@ -64,11 +64,11 @@ export default function AdminHeader() {
 
         {/* Role Badge / User Profile */}
         <Link 
-          href="/admin/profile"
+          href="/admin/dashboard"
           className="flex items-center gap-3 pl-3 border-l border-slate-800 hover:opacity-80 transition-opacity cursor-pointer decoration-none"
         >
           <div className="hidden sm:block text-right">
-            <div className="text-sm font-semibold text-slate-200">Admin Control</div>
+            <div className="text-sm font-semibold text-slate-200">MAM Super Admin</div>
             <div className="text-xs text-slate-400 flex items-center justify-end gap-1">
               <Shield size={11} className="text-blue-400" /> Full Access
             </div>
