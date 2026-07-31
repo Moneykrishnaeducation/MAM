@@ -107,6 +107,8 @@ export default function ClientDashboard() {
                 <div className="absolute -bottom-16 -right-16 w-48 h-48 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all duration-500 z-0"></div>
                 <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-indigo-600/10 rounded-full blur-xl group-hover:bg-indigo-600/20 transition-all duration-500 z-0"></div>
 
+
+
                 <div className="relative z-10">
                   <div className="flex items-start justify-between mb-6">
                     <div className={`p-3.5 rounded-2xl border ${stat.bg} ${stat.color} transition-transform duration-300 group-hover:scale-110`}>
