@@ -1,0 +1,47 @@
+{
+  "name": "Frontend",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.4.2",
+      "zod": "^4.4.3",
+      "next": "^16.2.10",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "@tailwindcss/postcss": "^4.3.3",
+      "tailwindcss": "^4.3.3",
+      "@types/node": "^26.1.1",
+      "@types/react": "^19.2.17",
+      "@types/react-dom": "^19.2.3"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:docs": "turbo -F docs dev",
+    "build:docs": "turbo -F docs build",
+    "check:docs": "turbo -F docs check-types",
+    "test": "bun run --filter web test",
+    "format:prettier": "prettier --write .",
+    "format:prettier:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@Frontend/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@Frontend/config": "workspace:*",
+    "prettier": "^3.9.6",
+    "turbo": "^2.10.0",
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "bun@1.3.14"
+}

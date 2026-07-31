@@ -1,0 +1,36 @@
+{
+  "version": "1",
+  "createdAt": "2026-07-31T06:33:36.382Z",
+  "hashes": {
+    ".env.example": "5086256dac721db97826569920f639ac0da773990f3d6f4635f9ab43163f523e",
+    ".gitignore": "adc5131aeb9577c0adecad7d3c260bbe948d5f1e3a2c86de52f7cd07dc29fb0a",
+    "AGENTS.md": "47adb4111bd754ae26151f7383e1af5e34f3eb1111024694f3588df53c1cff6f",
+    "CLAUDE.md": "85f11bec556f473d1fb414ea4609f3f8996c4bf80185b6e371c17435cf40ce09",
+    "pyproject.toml": "d68f715041228ce68a6cfec97b028d093d534fc592d781b5acdafb8a42caec61",
+    "README.md": "2ceb17025d6eceef5a06c79814cf7d2b29713174afc3adea1d6367eb25d3ae70",
+    "src/app/__init__.py": "d4b40a7006aba746eb6e7f7a0e47ffb0a0e33c03c06f23aac8000d2fc106dc45",
+    "src/app/aiocache_cache.py": "190703e31a807b0f9ad000c6fbea65561138a8e7a112108404f4f4af7e4a4fa6",
+    "src/app/cache.py": "547da7df266737a7c9ef50e1fae836dc3c112f13a140aaeaacfb4a6df5f9edcf",
+    "src/app/cli.py": "3cdd4b0f8314a5c7ae6463ba8fc71f135a15f3699b2fcc76212ab5790ce433a7",
+    "src/app/crud.py": "11d46fe152088b9af5acde150a77251f76a45e20c333e57f930c123d2eb4f167",
+    "src/app/database.py": "5a62c60266e4f3a33a4c947701bae9f7dcebed84147b26e586b32774c0b96871",
+    "src/app/graphql_schema.py": "424a72a131af5b4d3830904ace3f9bf78732c2345212d4c19390e2280ca7d8ad",
+    "src/app/http_client.py": "f48f8ebba88cfedde20e33d917eb96c2563d4398f213e45091897ff7f8487e22",
+    "src/app/kafka.py": "ad5f906a92d650d1352ab8388ddb2efc730cd8bd57c9f3405b465ed3227d8c74",
+    "src/app/main.py": "7c290341abf82eeae7eca7651b36332133cd2e52c0c511b200c14afb177dc444",
+    "src/app/media.py": "cbb4ffc68fcc8d55fe9d812912dabfcf6c9b1c602901c7224b7370f180507e8f",
+    "src/app/models.py": "942a8ce1f8c228dc3558d7c861d353b5a79d03ce7ad8915aabe2b75de7dc2fdb",
+    "src/app/observability.py": "e254b5be3df24dc6f8ca5a3944510795384c4c6c92f19c147324081ea4dc8dbc",
+    "src/app/realtime.py": "ec0d1b99a3b1c2554ac0ac7341129972fd88f883fb01cfb7db4d67abd472a226",
+    "src/app/search.py": "16f1690815f5abd57f6754f2c5c88e760142000216e15e6b9d1fa23cfb2794fa",
+    "src/app/settings.py": "e6664125ac6e290b3253ce526bf034c0da419f6260b922986cc240b851072684",
+    "src/app/users.py": "820918cb0dc612ee99a32eb28f2dce33b827a2c0f93adac47c7d485f297a6ebb",
+    "tests/__init__.py": "7e9af23c4d8769e855436c950c52874ef9d5ac0c36f24531913b3ca965d6860f",
+    "tests/test_database.py": "2f1cdf4c018e1ab7db21197e8ab46d396f00a0c9551b02ac1f36d162b2193a47",
+    "tests/test_main.py": "a0e8d15c8b579f4eec43a0e201dc6bd472a085c9dfdf4c4741271d6a01fc6576",
+    "tests/test_properties.py": "96ba53247e70f95f205cd2316a5fc0c7416693c75b4fdb8a274d97743cf62b64"
+  },
+  "baselines": {
+    ".env.example": "# Environment Configuration\n# Copy this file to .env and update the values\n\n# Application\nDEBUG=true\nHOST=0.0.0.0\nPORT=8000\n\n# Allowed web origin for CORS (unset or empty = allow any origin)\nCORS_ORIGIN=http://localhost:3001\n\n# Database (if using SQLAlchemy/SQLModel)\nDATABASE_URL=file:../../local.db\n\n# OpenAI (if using AI frameworks)\nOPENAI_API_KEY=your-openai-api-key\n\n# Anthropic (if using Anthropic SDK)\nANTHROPIC_API_KEY=your-anthropic-api-key\n\n# Confluent Kafka\nKAFKA_BOOTSTRAP_SERVERS=localhost:9092\n\n# Celery (if using task queue)\nCELERY_BROKER_URL=redis://localhost:6379/0\nCELERY_RESULT_BACKEND=redis://localhost:6379/0\n\n# FastAPI Users\nAUTH_SECRET=change-me-to-a-real-secret\nUSERS_DATABASE_URL=sqlite+aiosqlite:///./users.db\n# Sentry DSN from your project settings\nSENTRY_DSN=\n# Sentry environment (development, staging, production)\nSENTRY_ENVIRONMENT=development\n# Sentry traces sample rate 0.0-1.0 (reduce in production)\nSENTRY_TRACES_SAMPLE_RATE=1.0\n# Sentry profiles sample rate 0.0-1.0\nSENTRY_PROFILES_SAMPLE_RATE=0.1\n# Upstash Redis REST URL - get it at https://console.upstash.com\nUPSTASH_REDIS_REST_URL=https://your-upstash-redis.upstash.io\n# Upstash Redis REST token - get it at https://console.upstash.com\nUPSTASH_REDIS_REST_TOKEN=your_upstash_redis_rest_token\n# Upstash Redis protocol URL for Go, Rust, and Java clients\nUPSTASH_REDIS_URL=rediss://default:password@host.upstash.io:6379\n# Meilisearch host URL - default for local development\nMEILISEARCH_HOST=http://localhost:7700\n# Meilisearch API key (master key for development, search key for production)\nMEILISEARCH_API_KEY="
+  }
+}
