@@ -1,0 +1,50 @@
+{
+  "name": "MAM",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "apps/*",
+      "packages/*"
+    ],
+    "catalog": {
+      "dotenv": "^17.4.2",
+      "zod": "^4.4.3",
+      "next": "^16.2.10",
+      "react": "^19.2.8",
+      "react-dom": "^19.2.8",
+      "@tailwindcss/postcss": "^4.3.3",
+      "tailwindcss": "^4.3.3",
+      "@types/node": "^26.1.1",
+      "@types/react": "^19.2.17",
+      "@types/react-dom": "^19.2.3",
+      "@types/bun": "^1.3.14"
+    }
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "turbo -F web dev",
+    "build": "turbo build",
+    "check-types": "turbo check-types",
+    "dev:web": "turbo -F web dev",
+    "dev:docs": "turbo -F docs dev",
+    "build:docs": "turbo -F docs build",
+    "check:docs": "turbo -F docs check-types",
+    "dev:server": "cd apps/server && uv run python src/app/main.py",
+    "setup:server": "cd apps/server && uv sync --extra dev",
+    "check:server": "cd apps/server && uv run --extra dev ruff check .",
+    "test:server": "cd apps/server && uv run --extra dev pytest"
+  },
+  "dependencies": {
+    "@MAM/env": "workspace:*",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@MAM/config": "workspace:*",
+    "@types/bun": "catalog:",
+    "lefthook": "^2.1.10",
+    "turbo": "^2.10.0",
+    "typescript": "^6.0.3"
+  },
+  "packageManager": "bun@1.3.14"
+}
