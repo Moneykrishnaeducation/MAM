@@ -25,7 +25,6 @@ export default function TransactionHistory() {
     { id: 'PENDING', label: 'PENDING', icon: Clock },
     { id: 'DEPOSIT', label: 'DEPOSIT', icon: ArrowDownCircle },
     { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: RefreshCw },
-    { id: 'INTERNAL_TRANSFER', label: 'INTERNAL TRANSFER', icon: ArrowRightLeft },
   ];
 
   return (

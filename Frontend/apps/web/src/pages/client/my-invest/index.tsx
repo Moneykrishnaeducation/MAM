@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import { Wallet, TrendingUp, ShieldCheck } from 'lucide-react';
+import { Wallet, TrendingUp, ShieldCheck, X, Lock, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import DepositModal from '../model/depositmodel';
+import WithdrawalModal from '../model/withdrawal';
 
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
@@ -19,6 +21,23 @@ const Modal: React.FC<{ title: string; onClose: () => void; children?: React.Rea
 export default function ClientMyInvestPage() {
   const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
   const [selectedInvModal, setSelectedInvModal] = useState<any>(null);
+  const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [showCoefficientModal, setShowCoefficientModal] = useState<boolean>(false);
+  const [showInvestorTradesModal, setShowInvestorTradesModal] = useState<boolean>(false);
+  const [showManagerTradesModal, setShowManagerTradesModal] = useState<boolean>(false);
+  const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
+  const [coefficientMethod, setCoefficientMethod] = useState<'balance' | 'fixed'>('balance');
+  const [fixedRatioValue, setFixedRatioValue] = useState<string>('1.00');
+  const [multiExecutionEnabled, setMultiExecutionEnabled] = useState<boolean>(false);
+  const [activeDepositTab, setActiveDepositTab] = useState<string>('cheesepay');
+  const [cheeseAmount, setCheeseAmount] = useState<string>('');
+  const [currency, setCurrency] = useState<string>('USD');
+  const [usdtAmount, setUsdtAmount] = useState<string>('');
+  const [newInvestorPassword, setNewInvestorPassword] = useState<string>('');
+  const [confirmInvestorPassword, setConfirmInvestorPassword] = useState<string>('');
+  const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
 
   const openDetailsModal = (inv: any) => {
     setSelectedInvModal(inv);
@@ -28,6 +47,59 @@ export default function ClientMyInvestPage() {
   const closeDetailsModal = () => {
     setSelectedInvModal(null);
     setShowDetailsModal(false);
+  };
+
+  const openDepositModal = (inv?: any) => {
+    if (inv) {
+      setSelectedInvModal(inv);
+    }
+    setShowDetailsModal(false);
+    setShowDepositModal(true);
+  };
+
+  const openWithdrawModal = () => {
+    setShowDetailsModal(false);
+    setShowWithdrawModal(true);
+  };
+
+  const openCoefficientModal = () => {
+    setShowCoefficientModal(true);
+  };
+
+  const openInvestorTradesModal = () => {
+    setShowInvestorTradesModal(true);
+  };
+
+  const openManagerTradesModal = () => {
+    setShowManagerTradesModal(true);
+  };
+
+  const handleInvestorPasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setPasswordError(null);
+
+    if (!newInvestorPassword || !confirmInvestorPassword) {
+      setPasswordError('Please enter and confirm the new password.');
+      return;
+    }
+
+    if (newInvestorPassword !== confirmInvestorPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setShowPasswordModal(false);
+    setNewInvestorPassword('');
+    setConfirmInvestorPassword('');
+    setShowPasswordText(false);
+    console.log('Investor password updated for', selectedInvModal?.loginId || 'unknown');
+  };
+
+  const handleDeployConfiguration = () => {
+    setShowCoefficientModal(false);
+    setMultiExecutionEnabled(false);
+    setCoefficientMethod('balance');
+    console.log('Deployed coefficient configuration for', selectedInvModal?.loginId || 'unknown');
   };
 
   return (
@@ -210,7 +282,10 @@ export default function ClientMyInvestPage() {
                           <button onClick={() => openDetailsModal(inv)} className="px-4 py-2 rounded-xl font-bold text-xs bg-white/10 text-white hover:bg-white/20 border border-white/20 transition-all">
                             Details
                           </button>
-                          <button className="px-4 py-1.5 rounded-xl bg-gradient-to-b from-[#fcd34d] to-[#d97706] text-amber-950 text-xs font-bold transition hover:opacity-90 shadow-lg shadow-amber-500/20">
+                          <button
+                            onClick={() => openDepositModal(inv)}
+                            className="px-4 py-1.5 rounded-xl bg-gradient-to-b from-[#fcd34d] to-[#d97706] text-amber-950 text-xs font-bold transition hover:opacity-90 shadow-lg shadow-amber-500/20"
+                          >
                             Deposit
                           </button>
                         </div>
@@ -250,7 +325,10 @@ export default function ClientMyInvestPage() {
                         {selectedInvModal.balance || '$0.00'} <span className="text-lg font-extrabold text-white/70 ml-2">USD</span>
                       </div>
                       <div className="mt-5 flex items-center gap-3">
-                        <button className="px-5 py-2.5 rounded-lg font-bold bg-[#d9aa2b] hover:bg-[#eabb3a] text-amber-950 transition-colors shadow-lg shadow-amber-500/20 text-sm">
+                        <button
+                          onClick={() => openDepositModal(selectedInvModal)}
+                          className="px-5 py-2.5 rounded-lg font-bold bg-[#d9aa2b] hover:bg-[#eabb3a] text-amber-950 transition-colors shadow-lg shadow-amber-500/20 text-sm"
+                        >
                           Quick Deposit
                         </button>
                         <button className="px-5 py-2.5 rounded-lg border border-blue-700/50 hover:bg-blue-800/30 text-white font-bold transition-colors text-sm">
@@ -291,26 +369,68 @@ export default function ClientMyInvestPage() {
                     </div>
 
                     {/* Account Security */}
-                    <div className="p-6 rounded-[20px] bg-[#0b1739] border border-blue-900/40 flex flex-col items-center text-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-[#122359] flex items-center justify-center mb-4">
+                    <div className="p-6 rounded-[20px] bg-[#08132e] border border-blue-800/50 flex flex-col items-center text-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-[#142c70] flex items-center justify-center mb-4">
                         {/* Custom Lock SVG matching image style */}
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9aa2b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
                       </div>
                       <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Account Security</h4>
                       <div className="w-full space-y-3 mt-1">
-                        <button className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm">Password Settings</button>
-                        <button className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm">Edit Coefficient</button>
+                        <button
+                          onClick={() => setShowPasswordModal(true)}
+                          className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm"
+                        >
+                          Password Settings
+                        </button>
+                        <button
+                          onClick={openCoefficientModal}
+                          className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm"
+                        >
+                          Edit Coefficient
+                        </button>
                       </div>
                     </div>
 
                     {/* Quick Actions */}
-                    <div className="p-6 rounded-[20px] bg-[#0b1739] border border-blue-900/40">
-                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Quick Actions</h4>
-                      <div className="grid grid-cols-2 gap-3 h-[calc(100%-40px)]">
-                        <button className="rounded-xl bg-[#122359] hover:bg-[#1a3275] text-white font-bold transition-colors text-[13px] flex items-center justify-center p-3 text-center leading-tight">Investor<br/>Trades</button>
-                        <button className="rounded-xl bg-[#122359] hover:bg-[#1a3275] text-white font-bold transition-colors text-[13px] flex items-center justify-center p-3 text-center leading-tight">Manager<br/>Trades</button>
-                        <button className="rounded-xl bg-[#122359] hover:bg-[#1a3275] text-white font-bold transition-colors text-[13px] flex items-center justify-center p-3">Withdraw</button>
-                        <button className="rounded-xl bg-[#d9aa2b] hover:bg-[#eabb3a] text-amber-950 font-bold transition-colors text-[13px] flex items-center justify-center p-3">Deposit</button>
+                    <div className="p-6 rounded-[32px] bg-white/5 border border-blue-700/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-100 mb-5">QUICK ACTIONS</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          onClick={openInvestorTradesModal}
+                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
+                        >
+                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
+                            <BarChart3 size={18} />
+                          </span>
+                          Investor Trades
+                        </button>
+                        <button
+                          onClick={openManagerTradesModal}
+                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
+                        >
+                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
+                            <Users size={18} />
+                          </span>
+                          Manager Trades
+                        </button>
+                        <button
+                          onClick={openWithdrawModal}
+                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
+                        >
+                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
+                            <ArrowUpCircle size={18} />
+                          </span>
+                          Withdraw
+                        </button>
+                        <button
+                          onClick={() => openDepositModal(selectedInvModal)}
+                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
+                        >
+                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
+                            <ArrowDownCircle size={18} />
+                          </span>
+                          Deposit
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -319,6 +439,321 @@ export default function ClientMyInvestPage() {
             )}
           </div>
         </div>
+
+        <DepositModal
+          showDepositModal={showDepositModal}
+          setShowDepositModal={setShowDepositModal}
+          activeTab={activeDepositTab}
+          setActiveTab={setActiveDepositTab}
+          cheeseAmount={cheeseAmount}
+          setCheeseAmount={setCheeseAmount}
+          currency={currency}
+          setCurrency={setCurrency}
+          usdtAmount={usdtAmount}
+          setUsdtAmount={setUsdtAmount}
+          selectedDepositAccount={selectedInvModal?.loginId || 'MAM-84930'}
+        />
+
+        {showWithdrawModal && (
+          <WithdrawalModal
+            onClose={() => setShowWithdrawModal(false)}
+            isDarkMode={true}
+            currentAccount={selectedInvModal?.loginId || '2141717315'}
+          />
+        )}
+
+        {showCoefficientModal && (
+          <div className="fixed inset-0 z-[100002] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+            <div className="w-full max-w-lg rounded-[32px] border border-blue-500/20 bg-slate-950 shadow-2xl shadow-blue-950/40 overflow-hidden">
+              <div className="flex items-center justify-between gap-4 px-6 py-5 bg-blue-950/95 border-b border-blue-500/10">
+                <div>
+                  <h3 className="text-xl font-black text-white">Coefficient Configuration</h3>
+                  <p className="text-sm uppercase tracking-[0.26em] text-blue-200/80 mt-1">Risk Engine</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowCoefficientModal(false)}
+                  className="rounded-full border border-blue-500/30 bg-blue-900/70 p-2 text-blue-100 hover:bg-blue-800 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-5 px-6 py-6 bg-[#08132a]">
+                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/10 p-4 shadow-[0_15px_40px_rgba(15,23,42,0.35)]">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-2xl bg-blue-900/80 p-3 text-blue-300">
+                        <ArrowRight size={18} />
+                      </div>
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Target Account</div>
+                        <div className="text-sm font-bold text-white">ID: {selectedInvModal?.loginId || '2141717315'}</div>
+                      </div>
+                    </div>
+                    <span className="rounded-full bg-yellow-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-500">Risk Engine</span>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setCoefficientMethod('balance')}
+                      className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'balance' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
+                    >
+                      Balance Ratio
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoefficientMethod('fixed')}
+                      className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'fixed' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
+                    >
+                      Fixed Ratio
+                    </button>
+                  </div>
+                </div>
+
+                {coefficientMethod === 'fixed' && (
+                  <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
+                    <div className="flex items-center justify-between gap-4 mb-3">
+                      <div>
+                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Multiplication Factor</div>
+                        <div className="text-sm font-black text-white">Multiplier</div>
+                      </div>
+                      <div className="rounded-2xl bg-blue-900/80 px-3 py-2 text-blue-200 text-sm font-black">x{fixedRatioValue}</div>
+                    </div>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={fixedRatioValue}
+                      onChange={(e) => setFixedRatioValue(e.target.value)}
+                      onWheel={(e) => e.currentTarget.blur()}
+                      className="w-full rounded-2xl border border-blue-500/20 bg-[#071127] px-4 py-3 text-lg font-black text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                    />
+                    <p className="mt-2 text-[11px] text-blue-200/70">Example: A factor of 2.0 will double the relative trade size.</p>
+                  </div>
+                )}
+
+                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
+                  <div className="flex items-center justify-between gap-4 mb-4">
+                    <div>
+                      <div className="text-sm font-bold text-white">Multi-Execution</div>
+                      <div className="text-xs text-blue-200/70">Order cloning technology</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMultiExecutionEnabled(!multiExecutionEnabled)}
+                      className={`relative inline-flex h-9 w-16 items-center rounded-full transition ${multiExecutionEnabled ? 'bg-blue-500' : 'bg-slate-800/90'}`}
+                    >
+                      <span className={`inline-block h-7 w-7 rounded-full bg-white shadow transition-transform ${multiExecutionEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+                    </button>
+                  </div>
+                  <div className="text-xs uppercase tracking-[0.24em] text-blue-300/60">Scaling methodology selected: {coefficientMethod === 'balance' ? 'Balance Ratio' : 'Fixed Ratio'}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleDeployConfiguration}
+                  className="w-full rounded-2xl bg-gradient-to-r from-[#d7b128] to-[#b28915] px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-amber-500/20 hover:opacity-95 transition"
+                >
+                  Deploy Configuration
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showInvestorTradesModal && (
+          <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-blue-950/90 backdrop-blur-xl">
+            <div className="w-full max-w-3xl rounded-[32px] bg-[#0c2d62] shadow-2xl overflow-hidden border border-blue-600/70">
+              <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
+                <div>
+                  <h3 className="text-xl font-black text-white">Open Positions</h3>
+                  <p className="text-sm text-blue-200">Real-time trading activity for Account #{selectedInvModal?.loginId || '2141717315'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowInvestorTradesModal(false)}
+                  className="rounded-full bg-blue-800 p-2 text-blue-100 hover:bg-blue-700 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6 bg-[#0b1b46]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm text-blue-100">
+                    <thead>
+                      <tr className="text-xs uppercase tracking-[0.18em] text-blue-200 border-b border-blue-700/50">
+                        {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                          <th key={label} className="px-3 py-3 text-blue-100">{label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-blue-700/40">
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                              <ArrowRight size={20} />
+                            </span>
+                            <div className="text-sm font-semibold text-blue-200">No open positions found</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
+                  <div className="inline-flex items-center gap-2 text-blue-200">
+                    <span className="h-2 w-2 rounded-full bg-blue-400" /> LIVE FEED
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
+                    onClick={() => setShowInvestorTradesModal(false)}
+                  >
+                    Close Panel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showManagerTradesModal && (
+          <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-blue-950/90 backdrop-blur-xl">
+            <div className="w-full max-w-3xl rounded-[32px] bg-[#0c2d62] shadow-2xl overflow-hidden border border-blue-600/70">
+              <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
+                <div>
+                  <h3 className="text-xl font-black text-white">Manager Trades</h3>
+                  <p className="text-sm text-blue-200">Manager activity for Account #{selectedInvModal?.loginId || '2141717315'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowManagerTradesModal(false)}
+                  className="rounded-full bg-blue-800 p-2 text-blue-100 hover:bg-blue-700 transition"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <div className="p-6 bg-[#0b1b46]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm text-blue-100">
+                    <thead>
+                      <tr className="text-xs uppercase tracking-[0.18em] text-blue-200 border-b border-blue-700/50">
+                        {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                          <th key={label} className="px-3 py-3 text-blue-100">{label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b border-blue-700/40">
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                              <ArrowRight size={20} />
+                            </span>
+                            <div className="text-sm font-semibold text-blue-200">No manager trades found</div>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
+                  <div className="inline-flex items-center gap-2 text-blue-200">
+                    <span className="h-2 w-2 rounded-full bg-blue-400" /> LIVE FEED
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
+                    onClick={() => setShowManagerTradesModal(false)}
+                  >
+                    Close Panel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showPasswordModal && (
+          <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+            <div className="w-full max-w-md rounded-[32px] border border-blue-500/30 bg-gradient-to-br from-blue-950 via-[#0b173f] to-[#071125] shadow-2xl shadow-blue-900/40 overflow-hidden">
+              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-blue-500/20">
+                <div>
+                  <h3 className="text-xl font-black text-white">Change Investor Password</h3>
+                  <p className="text-sm text-blue-200 mt-1">Account ID: {selectedInvModal?.loginId || '—'}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="text-blue-200 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleInvestorPasswordSubmit} className="space-y-5 px-6 py-6">
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-[0.24em] text-blue-200">New Investor Password</label>
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={newInvestorPassword}
+                    onChange={(e) => setNewInvestorPassword(e.target.value)}
+                    placeholder="Enter new investor password"
+                    className="w-full rounded-2xl border border-blue-500/30 bg-[#071127] px-4 py-3 text-sm text-slate-100 placeholder:text-blue-200/60 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[11px] font-black uppercase tracking-[0.24em] text-blue-200">Confirm Investor Password</label>
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={confirmInvestorPassword}
+                    onChange={(e) => setConfirmInvestorPassword(e.target.value)}
+                    placeholder="Confirm new investor password"
+                    className="w-full rounded-2xl border border-blue-500/30 bg-[#071127] px-4 py-3 text-sm text-slate-100 placeholder:text-blue-200/60 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                  />
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <label className="inline-flex items-center gap-2 text-sm text-blue-100 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showPasswordText}
+                      onChange={() => setShowPasswordText(!showPasswordText)}
+                      className="accent-blue-400"
+                    />
+                    Show password
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/40 bg-blue-900/40 px-3 py-2 text-xs font-bold text-blue-100 hover:bg-blue-800 transition"
+                  >
+                    {showPasswordText ? <EyeOff size={14} /> : <Eye size={14} />} {showPasswordText ? 'Hide' : 'Reveal'}
+                  </button>
+                </div>
+
+                {passwordError && (
+                  <div className="rounded-2xl bg-rose-500/10 border border-rose-400/20 px-4 py-3 text-sm text-rose-100">
+                    {passwordError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  className="w-full rounded-2xl bg-blue-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 transition"
+                >
+                  Update Investor Password
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
     </>
   );
 }
