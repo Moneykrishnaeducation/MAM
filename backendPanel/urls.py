@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from django.conf import settings
-from django.http import FileResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
 
@@ -47,7 +47,7 @@ def serve_frontend_page(request, route=""):
         for c in candidates:
             target_path = base_path / c
             if target_path.is_file():
-                return FileResponse(open(target_path, "rb"), content_type="text/html")
+                return HttpResponse(target_path.read_bytes(), content_type="text/html")
 
     return JsonResponse({"message": "Welcome to MAM Backend!"})
 
@@ -63,10 +63,10 @@ def serve_next_data(request, path=""):
     for d in search_dirs:
         target_path = Path(d) / "_next" / "data" / path
         if target_path.is_file():
-            return FileResponse(open(target_path, "rb"), content_type="application/json")
+            return HttpResponse(target_path.read_bytes(), content_type="application/json")
         target_path_direct = Path(d) / path
         if target_path_direct.is_file():
-            return FileResponse(open(target_path_direct, "rb"), content_type="application/json")
+            return HttpResponse(target_path_direct.read_bytes(), content_type="application/json")
 
     return JsonResponse({})
 
@@ -82,11 +82,12 @@ def serve_next_static(request, path=""):
     for d in search_dirs:
         target_path = Path(d) / path
         if target_path.is_file():
-            res = FileResponse(open(target_path, "rb"))
+            content_type = "text/plain"
             if path.endswith(".css"):
-                res["Content-Type"] = "text/css"
+                content_type = "text/css"
             elif path.endswith(".js"):
-                res["Content-Type"] = "application/javascript"
+                content_type = "application/javascript"
+            res = HttpResponse(target_path.read_bytes(), content_type=content_type)
             res["Cache-Control"] = "public, max-age=31536000, immutable"
             return res
 

@@ -65,6 +65,16 @@ class Settings(BaseSettings):
     db_atomic_requests: bool = Field(alias="DB_ATOMIC_REQUESTS")
     database_url: str = Field(alias="DATABASE_URL")
 
+    # Upstash Redis settings
+    upstash_redis_rest_url: str | None = Field(
+        default=None,
+        alias="UPSTASH_REDIS_REST_URL",
+    )
+    upstash_redis_rest_token: str | None = Field(
+        default=None,
+        alias="UPSTASH_REDIS_REST_TOKEN",
+    )
+
     @property
     def databases(self) -> dict[str, Any]:
         """Django DATABASES configuration dictionary."""
