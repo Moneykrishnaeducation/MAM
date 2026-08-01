@@ -24,6 +24,7 @@ MAM/
 ├── backendPanel/    # Core server, settings, main WSGI/ASGI entrypoint, static files
 ├── adminPanel/      # Admin user management, managers, investors, MAM accounts, requests
 ├── clientPanel/     # Client profile, trading account details, investments, transactions
+│   └── view/        # Client-specific view modules such as login, profile, account
 ├── tests/           # Test suite
 └── migrations/      # Aerich database migrations
 ```

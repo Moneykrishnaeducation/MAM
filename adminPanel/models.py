@@ -33,6 +33,7 @@ class ClientUser(models.Model):
     user_code = fields.CharField(max_length=50, unique=True, index=True, null=True)
     name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True, index=True)
+    password_hash = fields.CharField(max_length=255, null=True)
     phone = fields.CharField(max_length=50, null=True)
     role = fields.CharField(max_length=50, default="Client")
     status = fields.CharField(max_length=50, default="Active")

@@ -1,18 +1,20 @@
-"""URL routing for clientPanel — all endpoints defined here via path()."""
+"""URL routing for clientPanel - all endpoints defined here via path()."""
 
 from django.urls import path
 
-from clientPanel.views import (
-    get_client_account,
-    get_client_investments,
-    get_client_profile,
-    get_client_tickets,
-    get_client_transactions,
-)
+from clientPanel.view.account import get_client_account
+from clientPanel.view.investments import get_client_investments
+from clientPanel.view.login import login_client
+from clientPanel.view.profile import get_client_profile
+from clientPanel.view.reset_password import reset_client_password
+from clientPanel.view.tickets import get_client_tickets
+from clientPanel.view.transactions import get_client_transactions
 
 app_name = "clientPanel"
 
 urlpatterns = [
+    path("login", login_client, name="login"),
+    path("reset-password", reset_client_password, name="reset-password"),
     path("profile", get_client_profile, name="profile"),
     path("account", get_client_account, name="account"),
     path("my-investments", get_client_investments, name="my-investments"),

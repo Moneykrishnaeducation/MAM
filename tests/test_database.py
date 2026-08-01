@@ -1,17 +1,25 @@
 """Tests for Tortoise ORM models and CRUD operations in adminPanel and clientPanel."""
 
+import json
+
 import pytest
+from django.conf import settings
 from tortoise import Tortoise
 
 from adminPanel import crud as admin_crud
-from adminPanel.models import Investor, Manager
+from adminPanel.models import ClientProfile, ClientUser, Investor, Manager
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
+from clientPanel.view.login import login_client
+from clientPanel.view.profile import get_client_profile
+from clientPanel.view.reset_password import reset_client_password
 
 
 @pytest.fixture(autouse=True)
 async def initialize_tests():
     """Initialize Tortoise ORM for testing."""
+    if not settings.configured:
+        settings.configure(DEFAULT_CHARSET="utf-8")
     await Tortoise.init(
         db_url="sqlite://:memory:",
         modules={
@@ -73,3 +81,119 @@ class TestClientPanelModels:
         )
         assert account.id is not None
         assert account.account_number == "MT5-8849201"
+
+    async def test_client_login_and_token_lookup(self):
+        """Test client login response and token-based profile lookup."""
+        user = await ClientUser.create(
+            user_code="USR-LOGIN1",
+            name="Alex Rivera",
+            email="alex.login@example.com",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Alex Rivera",
+            email="alex.login@example.com",
+            country="United States",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {"email": "alex.login@example.com", "access_code": "USR-LOGIN1"}
+                ).encode(),
+            },
+        )()
+
+        response = await login_client(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["token_type"] == "Bearer"
+        assert payload["client"]["id"] == user.id
+        assert payload["profile"]["user_id"] == profile.user_id
+
+        token_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {"Authorization": f"Bearer {payload['token']}"},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        profile_response = await get_client_profile(token_request)
+        profile_payload = json.loads(profile_response.content)
+
+        assert profile_response.status_code == 200
+        assert profile_payload["status"] == "ok"
+        assert profile_payload["profile"]["email"] == "alex.login@example.com"
+
+    async def test_reset_client_password_by_email(self):
+        """Test resetting a client password with email."""
+        user = await ClientUser.create(
+            user_code="USR-RESET1",
+            name="Taylor Morgan",
+            email="taylor.reset@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Taylor Morgan",
+            email="taylor.reset@example.com",
+            country="United States",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "email": "taylor.reset@example.com",
+                        "new_password": "NewPass123!",
+                        "confirm_password": "NewPass123!",
+                    }
+                ).encode(),
+            },
+        )()
+
+        response = await reset_client_password(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["email"] == "taylor.reset@example.com"
+
+        refreshed = await ClientUser.get(email="taylor.reset@example.com")
+        assert refreshed.password_hash
+
+        login_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {"email": "taylor.reset@example.com", "password": "NewPass123!"}
+                ).encode(),
+            },
+        )()
+
+        login_response = await login_client(login_request)
+        login_payload = json.loads(login_response.content)
+
+        assert login_response.status_code == 200
+        assert login_payload["status"] == "ok"
