@@ -26,6 +26,10 @@ export default function ClientSidebar() {
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
     { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
     { href: '/client/available', label: 'Available', icon: Compass },
+    { href: '/client/platform', label: 'Platform', icon: Flame },
+    { href: '/client/tickets', label: 'Tickets', icon: Flame },
+    { href: '/client/transactions', label: 'Transactions', icon: Flame },
+    { href: '/client/policies', label: 'Policies', icon: Flame },
     
   ];
 
