@@ -13,7 +13,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (isClientRoute) {
     return (
-      <div className="flex h-screen w-screen overflow-hidden bg-[#070d19] text-slate-100 font-sans antialiased">
+      <div className="flex h-screen w-screen overflow-hidden bg-[#0e2250] text-slate-100 font-sans antialiased">
         <ClientSidebar />
         <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
           <ClientHeader />
