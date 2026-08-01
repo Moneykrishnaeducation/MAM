@@ -8,13 +8,11 @@ import {
   UserCheck, 
   Wallet, 
   Compass, 
-  Flame,
   Shield,
   LogOut,
   Activity,
   LifeBuoy,
   ArrowRightLeft,
-  FileText,
   TrendingUp
 } from 'lucide-react';
 
@@ -22,6 +20,12 @@ export default function ClientSidebar() {
 
   const currentPath = usePathname();
   const [isOpen, setIsOpen] = useState(true);
+
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  }, []);
 
   useEffect(() => {
     const handleToggle = () => setIsOpen(prev => !prev);
@@ -41,75 +45,86 @@ export default function ClientSidebar() {
   ];
 
   return (
-    <aside 
-      className={`flex-col min-h-screen border-r border-[#153176] z-20 sticky top-0 h-screen justify-between transition-all duration-300 ${
-        isOpen ? 'hidden md:flex w-64 p-5' : 'w-0 p-0 overflow-hidden opacity-0 border-none hidden'
-      }`} 
-      style={{ backgroundColor: '#0e2250' }}
-    >
-      <div>
-        {/* Brand Header */}
-        <div className="flex items-center gap-2.5 px-2.5 mb-8">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-600 text-slate-950 font-black">
-            <TrendingUp size={18} />
-          </div>
-          <div>
-            <h2 className="text-sm font-black tracking-wider text-slate-100 leading-tight">MONEYKRISHNA</h2>
-            <p className="text-[10px] text-emerald-400 font-bold tracking-wide">MAM PORTAL</p>
-          </div>
-        </div>
+    <>
+      {/* Mobile Sidebar Overlay Backdrop */}
+      {isOpen && (
+        <div 
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 bg-black/40 z-40 md:hidden animate-in fade-in duration-200"
+        />
+      )}
 
-        {/* Navigation */}
-        <nav className="space-y-1.5">
-          <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">
-            Client Menu
-          </div>
-          {navItems.map((item) => {
-            const isActive = currentPath === item.href || (item.href === '/client/dashboard' && currentPath === '/client');
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href as any}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                  isActive
-                    ? 'bg-emerald-500/15 text-emerald-400 border-l-4 border-emerald-500 shadow-[0_4px_20px_rgba(16,185,129,0.15)] font-semibold'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 hover:translate-x-1'
-                }`}
-              >
-                <Icon size={19} className={isActive ? 'text-emerald-400' : 'text-slate-400'} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Learning Streak / Investment Widget */}
-        
-      </div>
-
-      {/* Client User Card at bottom */}
-      <div className="pt-4 border-t border-slate-800/80">
-        <div className="flex items-center gap-3 p-2.5 rounded-xl bg-slate-800/40 border border-slate-800 hover:bg-slate-800/80 transition-colors">
-          <div className="relative">
-            <img
-              src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80"
-              alt="Client Avatar"
-              className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/40"
-            />
-            <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-slate-900" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-semibold text-slate-200 truncate">Alex Rivera</h4>
-            <div className="text-[11px] text-slate-400 truncate">
-              Premium Client
+      <aside 
+        className={`flex flex-col h-screen border-r border-slate-200 z-50 transition-all duration-300 shadow-sm
+          fixed md:sticky top-0 left-0
+          ${isOpen 
+            ? 'w-64 p-5 translate-x-0 opacity-100' 
+            : 'w-0 p-0 overflow-hidden opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:p-0 border-none'
+          }
+        `} 
+        style={{ backgroundColor: '#eef4fc' }}
+      >
+        <div>
+          {/* Brand Header */}
+          <div className="flex items-center gap-2.5 px-2.5 mb-8">
+            <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-600 text-slate-950 font-black">
+              <TrendingUp size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-black tracking-wider text-slate-800 leading-tight">MONEYKRISHNA</h2>
+              <p className="text-[10px] text-emerald-600 font-bold tracking-wide">MAM PORTAL</p>
             </div>
           </div>
-          <button className="text-slate-400 hover:text-red-400 transition-colors p-1.5 rounded-lg hover:bg-slate-700/50" title="Logout">
-            <LogOut size={16} />
-          </button>
+
+          {/* Navigation */}
+          <nav className="space-y-1.5">
+            <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
+              Client Menu
+            </div>
+            {navItems.map((item) => {
+              const isActive = currentPath === item.href || (item.href === '/client/dashboard' && currentPath === '/client');
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href as any}
+                  className={`flex items-center gap-3.5 px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
+                    isActive
+                      ? 'bg-white text-emerald-600 border border-slate-200 border-l-4 border-l-emerald-500 shadow-md font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 hover:translate-x-1'
+                  }`}
+                >
+                  <Icon size={19} className={isActive ? 'text-emerald-600' : 'text-slate-500'} />
+                  <span>{item.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-      </div>
-    </aside>
+
+        {/* Client User Card at bottom */}
+        <div className="pt-4 border-t border-slate-200">
+          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-55 transition-colors">
+            <div className="relative">
+              <img
+                src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80"
+                alt="Client Avatar"
+                className="w-10 h-10 rounded-xl object-cover ring-2 ring-emerald-500/20"
+              />
+              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-semibold text-slate-800 truncate">Alex Rivera</h4>
+              <div className="text-[11px] text-slate-500 truncate">
+                Premium Client
+              </div>
+            </div>
+            <button className="text-slate-500 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-slate-200/60" title="Logout">
+              <LogOut size={16} />
+            </button>
+          </div>
+        </div>
+      </aside>
+    </>
   );
 }
