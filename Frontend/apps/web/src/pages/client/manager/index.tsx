@@ -534,7 +534,7 @@ export default function ClientManagerPage() {
                 <div className="p-6 bg-[#08132a]">
                   {activeManager.investorsList?.length ? (
                     <div className="grid gap-4">
-                      {activeManager.investorsList.map((inv) => (
+                      {activeManager.investorsList.map((inv : any) => (
                         <div key={inv.id} className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                           <div>
                             <div className="text-sm font-black text-white">{inv.name}</div>
@@ -899,7 +899,7 @@ export default function ClientManagerPage() {
                   </span>
                 </p>
                 <div className="flex flex-wrap gap-2">
-                  {activeManager.investorsList.map((inv) => (
+                  {activeManager.investorsList.map((inv: any) => (
                     <div
                       key={inv.id}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-xs"
