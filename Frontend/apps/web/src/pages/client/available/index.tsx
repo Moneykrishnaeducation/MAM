@@ -36,7 +36,9 @@ export default function ClientAvailablePage() {
   const [perPage, setPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
   const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedManager, setSelectedManager] = useState<(typeof displayManagers)[number] | null>(null);
+  const [viewManager, setViewManager] = useState<(typeof displayManagers)[number] | null>(null);
   const [investmentPassword, setInvestmentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -98,6 +100,16 @@ export default function ClientAvailablePage() {
     setSelectedManager(null);
     setInvestmentPassword('');
     setConfirmPassword('');
+  };
+
+  const openViewModal = (manager: (typeof displayManagers)[number]) => {
+    setViewManager(manager);
+    setIsViewModalOpen(true);
+  };
+
+  const closeViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewManager(null);
   };
 
   const handleCreateInvestorAccount = (e: React.FormEvent<HTMLFormElement>) => {
@@ -225,6 +237,68 @@ export default function ClientAvailablePage() {
                 </div>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {isViewModalOpen && viewManager && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
+          <div className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-blue-500/30 bg-[#07152c] shadow-2xl shadow-blue-950/40">
+            <div className="relative overflow-hidden bg-gradient-to-br from-blue-900 via-slate-900 to-[#0f1c42] px-6 py-5 sm:px-8">
+              <button
+                type="button"
+                onClick={closeViewModal}
+                className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
+                aria-label="Close manager view"
+              >
+                <X size={18} />
+              </button>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-20 w-20 items-center justify-center rounded-[28px] bg-blue-500/15 border border-blue-500/30 text-white shadow-lg shadow-blue-500/10">
+                    <UserCheck size={28} />
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-200/80">Manager Details</p>
+                    <h2 className="text-3xl font-black text-white tracking-tight">{viewManager.name}</h2>
+                    <p className="text-sm text-slate-300 mt-1">ID: <span className="font-mono text-blue-200">{viewManager.loginId}</span></p>
+                  </div>
+                </div>
+                
+              </div>
+            </div>
+
+            <div className="space-y-4 p-6 sm:p-8 bg-[#07172f]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { label: 'Balance', value: viewManager.balance, accent: 'bg-blue-500/10 text-blue-200' },
+                  { label: 'Equity', value: viewManager.equity, accent: 'bg-sky-500/10 text-sky-200' },
+                  { label: 'Profit Share', value: viewManager.share, accent: 'bg-violet-500/10 text-violet-200' },
+                  { label: 'Growth', value: viewManager.growth, accent: 'bg-emerald-500/10 text-emerald-200' },
+                  { label: 'Risk Level', value: viewManager.risk, accent: 'bg-cyan-500/10 text-cyan-200' },
+                  { label: 'Age', value: viewManager.age, accent: 'bg-blue-500/10 text-blue-200' },
+                ].map((item) => (
+                  <div key={item.label} className={`rounded-3xl border border-blue-500/10 bg-white/5 p-4 ${item.accent}`}>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-slate-400">{item.label}</p>
+                    <p className="mt-3 text-lg font-black text-white">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-[28px] border border-blue-500/10 bg-gradient-to-br from-blue-950/80 via-blue-900/70 to-slate-950/80 p-6 shadow-lg shadow-blue-900/30">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300/80">Manager Summary</p>
+                    <p className="mt-3 text-sm text-slate-300 leading-relaxed">
+                      This manager offers a strong blue-horizon strategy with stable balance and equity performance. Use the Invest action to start funding this manager directly.
+                    </p>
+                  </div>
+                  <div className="rounded-3xl bg-blue-500/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
+                    View Mode
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -374,14 +448,14 @@ export default function ClientAvailablePage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {[
                       {
-                        label: 'AUM Balance',
+                        label: 'Balance',
                         value: highlightedManager.balance,
                         icon: <DollarSign size={14} />,
                         color: 'text-emerald-400',
                         bg: 'bg-emerald-500/10 border-emerald-500/20',
                       },
                       {
-                        label: 'Total Profit',
+                        label: 'Profit Share',
                         value: highlightedManager.profit,
                         icon: <TrendingUp size={14} />,
                         color: 'text-blue-400',
@@ -418,22 +492,7 @@ export default function ClientAvailablePage() {
                   </div>
 
                   {/* Action buttons */}
-                  {isAssigned && (
-                    <div className="flex flex-wrap gap-3 pt-1">
-                      <button
-                        id="btn-send-message"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-sm font-bold transition-all shadow-md hover:shadow-emerald-500/30 hover:-translate-y-0.5 active:translate-y-0"
-                      >
-                        <MessageSquare size={15} /> Send Message
-                      </button>
-                      <button
-                        id="btn-schedule-session"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700 transition-all hover:-translate-y-0.5 active:translate-y-0"
-                      >
-                        <Calendar size={15} /> Schedule Session
-                      </button>
-                    </div>
-                  )}
+                  
                 </div>
               </div>
             </div>
@@ -566,7 +625,13 @@ export default function ClientAvailablePage() {
 
                           <td className="px-5 py-4 whitespace-nowrap">
                             <div className="flex items-center justify-center gap-3">
-                              <button className="px-5 py-1.5 rounded-full border border-blue-700 bg-blue-900/30 text-blue-100 hover:bg-blue-800/80 text-xs font-semibold transition-colors shadow-sm">View</button>
+                              <button
+                                type="button"
+                                onClick={() => openViewModal(mgr)}
+                                className="px-5 py-1.5 rounded-full border border-blue-700 bg-blue-900/30 text-blue-100 hover:bg-blue-800/80 text-xs font-semibold transition-colors shadow-sm"
+                              >
+                                View
+                              </button>
                               <button onClick={() => openInvestModal(mgr)} className="px-5 py-1.5 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 text-xs font-bold transition-colors shadow-md shadow-yellow-500/20">Invest</button>
                             </div>
                           </td>
