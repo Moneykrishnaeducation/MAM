@@ -43,7 +43,9 @@ const platforms = [
   },
 ];
 
-
+// Each card is active for 2s in an 8s cycle, one at a time
+// delays: card1=0s, card2=-6s, card3=-4s, card4=-2s
+const borderDelays = ['0s', '-6s', '-4s', '-2s'];
 
 export default function ClientPlatformPage() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
@@ -68,10 +70,6 @@ export default function ClientPlatformPage() {
           0% { background-position: -200% center; }
           100% { background-position: 200% center; }
         }
-        @keyframes orbit {
-          from { transform: rotate(0deg) translateX(80px) rotate(0deg); }
-          to   { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
-        }
         @keyframes beam {
           0%, 100% { opacity: 0.3; transform: scaleX(0.8); }
           50% { opacity: 1; transform: scaleX(1); }
@@ -80,10 +78,25 @@ export default function ClientPlatformPage() {
           from { opacity: 0; transform: translateY(24px); }
           to   { opacity: 1; transform: translateY(0); }
         }
-        .float-anim { animation: float 4s ease-in-out infinite; }
-        .float-anim-slow { animation: float 6s ease-in-out infinite; }
-        .float-anim-2 { animation: float 5s ease-in-out infinite; animation-delay: 1s; }
-        .float-anim-3 { animation: float 4.5s ease-in-out infinite; animation-delay: 2s; }
+
+        /* ── Running border animations ── */
+        /* Conic-gradient spinner — completes 1 full rotation in 2s */
+        @keyframes border-rotate {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        /* Each card is "on" for the first 25% (2s) of an 8s cycle, off the rest */
+        @keyframes border-blink {
+          0%     { opacity: 1; }
+          24.99% { opacity: 1; }
+          25%    { opacity: 0; }
+          100%   { opacity: 0; }
+        }
+
+        .float-anim       { animation: float 4s ease-in-out infinite; }
+        .float-anim-slow  { animation: float 6s ease-in-out infinite; }
+        .float-anim-2     { animation: float 5s ease-in-out infinite; animation-delay: 1s; }
+        .float-anim-3     { animation: float 4.5s ease-in-out infinite; animation-delay: 2s; }
         .shimmer-text {
           background: linear-gradient(90deg, #93c5fd 0%, #ffffff 40%, #60a5fa 60%, #93c5fd 100%);
           background-size: 200% auto;
@@ -92,10 +105,8 @@ export default function ClientPlatformPage() {
           background-clip: text;
           animation: shimmer 4s linear infinite;
         }
-        .card-fade { animation: fadeSlideUp 0.5s ease forwards; }
-        .beam-line { animation: beam 3s ease-in-out infinite; }
-        .orbit-dot { animation: orbit 8s linear infinite; }
-        .orbit-dot-2 { animation: orbit 12s linear infinite reverse; }
+        .card-fade  { animation: fadeSlideUp 0.5s ease forwards; }
+        .beam-line  { animation: beam 3s ease-in-out infinite; }
         .pulse-ring::after {
           content: '';
           position: absolute;
@@ -103,6 +114,34 @@ export default function ClientPlatformPage() {
           border-radius: 9999px;
           border: 2px solid rgba(59,130,246,0.5);
           animation: pulse-ring 2s ease-out infinite;
+        }
+
+        /* The spinning conic-gradient element */
+        .border-spinner {
+          position: absolute;
+          width: 250%;
+          height: 250%;
+          top: -75%;
+          left: -75%;
+          animation: border-rotate 2s linear infinite;
+          background: conic-gradient(
+            from 0deg,
+            transparent 0deg,
+            transparent 280deg,
+            #1e40af   300deg,
+            #3b82f6   330deg,
+            #93c5fd   348deg,
+            #ffffff   356deg,
+            transparent 360deg
+          );
+        }
+
+        /* Wrapper that clips spinner to the border strip */
+        .border-ring-layer {
+          position: absolute;
+          inset: 0;
+          border-radius: inherit;
+          overflow: hidden;
         }
       `}</style>
 
@@ -121,9 +160,6 @@ export default function ClientPlatformPage() {
 
           {/* ── Page Header ── */}
           <div className="relative max-w-3xl" style={{ animation: 'fadeSlideUp 0.6s ease forwards' }}>
-            {/* Badge */}
-
-
             <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-4">
               <span className="text-white">Trading </span>
               <span className="shimmer-text">Platforms</span>
@@ -150,131 +186,178 @@ export default function ClientPlatformPage() {
                   key={p.id}
                   onMouseEnter={() => setHoveredCard(p.id)}
                   onMouseLeave={() => setHoveredCard(null)}
-                  className="card-fade group relative flex flex-col rounded-3xl overflow-hidden cursor-pointer transition-all duration-500"
+                  className="card-fade group relative flex flex-col cursor-pointer"
                   style={{
                     animationDelay: `${idx * 0.1}s`,
+                    borderRadius: '1.5rem',
+                    padding: '1.5px',
                     transform: isHovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
                     transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)',
-                    background: isHovered
-                      ? 'linear-gradient(135deg, rgba(37,99,235,0.25) 0%, rgba(29,78,216,0.15) 50%, rgba(17,24,39,0.4) 100%)'
-                      : 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-                    border: isHovered ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(255,255,255,0.08)',
                     boxShadow: isHovered
-                      ? '0 20px 60px -15px rgba(59,130,246,0.4), inset 0 1px 0 rgba(255,255,255,0.1)'
+                      ? '0 20px 60px -15px rgba(59,130,246,0.4)'
                       : '0 4px 20px -4px rgba(0,0,0,0.3)',
                   }}
                 >
-                  {/* Top shimmer line */}
+                  {/* ── Always-visible dim border ── */}
                   <div
-                    className="absolute top-0 left-0 right-0 h-px transition-opacity duration-500"
                     style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.8), transparent)',
-                      opacity: isHovered ? 1 : 0,
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: '1.5rem',
+                      border: '1.5px solid rgba(255,255,255,0.08)',
+                      pointerEvents: 'none',
                     }}
                   />
 
-                  {/* Glow blob */}
+                  {/* ── Running border (sequential, no hover needed) ── */}
                   <div
-                    className="absolute -top-8 -right-8 w-40 h-40 rounded-full blur-3xl transition-all duration-700 pointer-events-none"
+                    className="border-ring-layer"
                     style={{
-                      background: 'radial-gradient(circle, rgba(59,130,246,0.3), transparent)',
-                      opacity: isHovered ? 1 : 0.2,
-                      transform: isHovered ? 'scale(1.4)' : 'scale(1)',
+                      animation: `border-blink 8s ${borderDelays[idx]} infinite`,
+                      opacity: 0,
                     }}
-                  />
+                  >
+                    <div className="border-spinner" />
+                  </div>
 
-                  {/* Recommended badge */}
-                  {p.recommended && (
-                    <div className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
-                      style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.35)', color: '#fbbf24' }}>
-                      <Star size={9} fill="currentColor" /> Recommended
-                    </div>
+                  {/* ── Hover border glow ── */}
+                  {isHovered && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        inset: 0,
+                        borderRadius: '1.5rem',
+                        border: '1.5px solid rgba(59,130,246,0.55)',
+                        pointerEvents: 'none',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1)',
+                      }}
+                    />
                   )}
 
-                  <div className="relative z-10 flex flex-col flex-1 p-7">
-                    {/* Animated icon container */}
-                    <div className="relative mb-7 w-fit">
-                      {/* Orbit ring */}
+                  {/* ── Card content surface ── */}
+                  <div
+                    className="relative flex flex-col flex-1 overflow-hidden"
+                    style={{
+                      borderRadius: 'calc(1.5rem - 1.5px)',
+                      background: isHovered
+                        ? 'linear-gradient(135deg, #162d6e 0%, #0f2460 50%, #0e2250 100%)'
+                        : 'linear-gradient(135deg, #112058 0%, #0e2250 100%)',
+                      transition: 'background 0.4s ease',
+                    }}
+                  >
+                    {/* Top shimmer line on hover */}
+                    <div
+                      className="absolute top-0 left-0 right-0 h-px transition-opacity duration-500"
+                      style={{
+                        background: 'linear-gradient(90deg, transparent, rgba(59,130,246,0.8), transparent)',
+                        opacity: isHovered ? 1 : 0,
+                      }}
+                    />
+
+                    {/* Glow blob */}
+                    <div
+                      className="absolute -top-8 -right-8 w-40 h-40 rounded-full blur-3xl pointer-events-none transition-all duration-700"
+                      style={{
+                        background: 'radial-gradient(circle, rgba(59,130,246,0.3), transparent)',
+                        opacity: isHovered ? 1 : 0.15,
+                        transform: isHovered ? 'scale(1.4)' : 'scale(1)',
+                      }}
+                    />
+
+                    {/* Recommended badge */}
+                    {p.recommended && (
                       <div
-                        className="absolute inset-0 rounded-2xl transition-opacity duration-500"
-                        style={{
-                          boxShadow: isHovered ? '0 0 0 8px rgba(59,130,246,0.08), 0 0 0 16px rgba(59,130,246,0.04)' : 'none',
-                        }}
-                      />
-                      <div
-                        className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${isHovered ? 'float-anim' : ''}`}
+                        className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
+                        style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.35)', color: '#fbbf24' }}
+                      >
+                        <Star size={9} fill="currentColor" /> Recommended
+                      </div>
+                    )}
+
+                    <div className="relative z-10 flex flex-col flex-1 p-7">
+                      {/* Icon */}
+                      <div className="relative mb-7 w-fit">
+                        <div
+                          className="absolute inset-0 rounded-2xl transition-all duration-500"
+                          style={{
+                            boxShadow: isHovered ? '0 0 0 8px rgba(59,130,246,0.08), 0 0 0 16px rgba(59,130,246,0.04)' : 'none',
+                          }}
+                        />
+                        <div
+                          className={`w-16 h-16 rounded-2xl flex items-center justify-center transition-all duration-500 ${isHovered ? 'float-anim' : ''}`}
+                          style={{
+                            background: isHovered
+                              ? 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(37,99,235,0.2))'
+                              : 'rgba(59,130,246,0.1)',
+                            border: isHovered ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(59,130,246,0.2)',
+                            boxShadow: isHovered ? '0 8px 24px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                          }}
+                        >
+                          <Icon
+                            size={28}
+                            strokeWidth={1.5}
+                            className="transition-colors duration-300"
+                            style={{ color: isHovered ? '#93c5fd' : '#60a5fa' }}
+                          />
+                        </div>
+                        {isHovered && (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-400 pulse-ring relative" />
+                        )}
+                      </div>
+
+                      {/* Labels */}
+                      <div className="mb-3">
+                        <h3 className="text-lg font-extrabold text-white leading-tight tracking-tight">{p.label}</h3>
+                        <p
+                          className="text-xs font-semibold mt-0.5 transition-colors duration-300"
+                          style={{ color: isHovered ? '#93c5fd' : '#64748b' }}
+                        >
+                          {p.sublabel}
+                        </p>
+                      </div>
+
+                      {/* Description */}
+                      <p
+                        className="text-sm leading-relaxed flex-1 mb-7 transition-colors duration-300"
+                        style={{ color: isHovered ? '#bfdbfe' : '#94a3b8' }}
+                      >
+                        {p.description}
+                      </p>
+
+                      {/* CTA Button */}
+                      <button
+                        id={`btn-platform-${p.id}`}
+                        className="relative w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden"
                         style={{
                           background: isHovered
-                            ? 'linear-gradient(135deg, rgba(59,130,246,0.3), rgba(37,99,235,0.2))'
-                            : 'rgba(59,130,246,0.1)',
-                          border: isHovered ? '1px solid rgba(59,130,246,0.5)' : '1px solid rgba(59,130,246,0.2)',
-                          boxShadow: isHovered ? '0 8px 24px rgba(59,130,246,0.3), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                            ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
+                            : 'rgba(37,99,235,0.2)',
+                          border: '1px solid rgba(59,130,246,0.4)',
+                          color: isHovered ? '#fff' : '#93c5fd',
+                          boxShadow: isHovered ? '0 8px 24px rgba(37,99,235,0.4)' : 'none',
                         }}
                       >
-                        <Icon
-                          size={28}
-                          strokeWidth={1.5}
-                          className="transition-colors duration-300"
-                          style={{ color: isHovered ? '#93c5fd' : '#60a5fa' }}
+                        <span
+                          className="absolute inset-0 transition-opacity duration-500"
+                          style={{
+                            background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+                            opacity: isHovered ? 1 : 0,
+                          }}
                         />
-                      </div>
-                      {/* Pulse dot */}
-                      {isHovered && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-blue-400 pulse-ring relative" />
-                      )}
+                        <Download size={14} strokeWidth={2.5} className="relative z-10" />
+                        <span className="relative z-10">{p.buttonLabel}</span>
+                        <ArrowRight
+                          size={13}
+                          className="relative z-10 transition-transform duration-300"
+                          style={{ transform: isHovered ? 'translateX(3px)' : 'translateX(0)' }}
+                        />
+                      </button>
                     </div>
-
-                    {/* Labels */}
-                    <div className="mb-3">
-                      <h3 className="text-lg font-extrabold text-white leading-tight tracking-tight">{p.label}</h3>
-                      <p className="text-xs font-semibold mt-0.5 transition-colors duration-300"
-                        style={{ color: isHovered ? '#93c5fd' : '#64748b' }}>
-                        {p.sublabel}
-                      </p>
-                    </div>
-
-                    {/* Description */}
-                    <p className="text-sm leading-relaxed flex-1 mb-7 transition-colors duration-300"
-                      style={{ color: isHovered ? '#bfdbfe' : '#94a3b8' }}>
-                      {p.description}
-                    </p>
-
-                    {/* CTA Button */}
-                    <button
-                      id={`btn-platform-${p.id}`}
-                      className="group/btn relative w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden"
-                      style={{
-                        background: isHovered
-                          ? 'linear-gradient(135deg, #2563eb, #1d4ed8)'
-                          : 'rgba(37,99,235,0.2)',
-                        border: '1px solid rgba(59,130,246,0.4)',
-                        color: isHovered ? '#fff' : '#93c5fd',
-                        boxShadow: isHovered ? '0 8px 24px rgba(37,99,235,0.4)' : 'none',
-                      }}
-                    >
-                      {/* Button shimmer on hover */}
-                      <span
-                        className="absolute inset-0 transition-opacity duration-500"
-                        style={{
-                          background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
-                          opacity: isHovered ? 1 : 0,
-                        }}
-                      />
-                      <Download size={14} strokeWidth={2.5} className="relative z-10" />
-                      <span className="relative z-10">{p.buttonLabel}</span>
-                      <ArrowRight
-                        size={13}
-                        className="relative z-10 transition-transform duration-300"
-                        style={{ transform: isHovered ? 'translateX(3px)' : 'translateX(0)' }}
-                      />
-                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
-
-
 
         </div>
       </main>
