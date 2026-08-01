@@ -46,24 +46,24 @@ export default function AdminProfilePage() {
       <AdminSidebar />
 
       <main className="flex-1 flex flex-col min-w-0 relative overflow-y-auto">
-        {/* Decorative background glows */}
+        {/* Decorative background glows - Royal Blue and Rich Gold */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
-        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-amber-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
         <AdminHeader />
 
         <div className="p-6 md:p-8 z-10 flex-1">
-          {/* Toast Notification */}
+          {/* Toast Notification (Gold theme) */}
           {showToast && (
-            <div className="fixed bottom-6 right-6 bg-blue-600 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center gap-2 border border-blue-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="fixed bottom-6 right-6 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-300 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
               <span>Admin credentials saved successfully!</span>
             </div>
           )}
 
           <div className="mb-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-              <Sparkles size={13} className="animate-pulse" /> Core Controls
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-2">
+              <Sparkles size={13} className="animate-pulse text-amber-400" /> Core Controls
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Profile</h1>
             <p className="text-slate-400 text-sm mt-1">Manage administrative details, credentials, and review activity audit logs.</p>
@@ -80,16 +80,16 @@ export default function AdminProfilePage() {
                     <img 
                       src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80" 
                       alt="Admin Avatar" 
-                      className="w-28 h-28 rounded-3xl object-cover border-4 border-blue-500/40 shadow-xl transition-all duration-300 group-hover:scale-105"
+                      className="w-28 h-28 rounded-3xl object-cover border-4 border-amber-500/40 shadow-xl transition-all duration-300 group-hover:scale-105"
                     />
-                    <button className="absolute bottom-1 right-1 bg-blue-500 hover:bg-blue-400 text-white p-2 rounded-xl border-4 border-slate-900 shadow-md transition-colors" title="Change Avatar">
+                    <button className="absolute bottom-1 right-1 bg-amber-500 hover:bg-amber-400 text-slate-950 p-2 rounded-xl border-4 border-slate-900 shadow-md transition-colors" title="Change Avatar">
                       <Upload size={14} />
                     </button>
                   </div>
 
                   <h3 className="text-xl font-bold text-white mb-0.5">Admin Control</h3>
-                  <p className="text-blue-400 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4 inline-flex items-center gap-1">
-                    <Shield size={11} className="text-blue-400" /> Root Administrator
+                  <p className="text-amber-400 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-4 inline-flex items-center gap-1">
+                    <Shield size={11} className="text-amber-400" /> Root Administrator
                   </p>
 
                   <div className="w-full space-y-3 pt-4 border-t border-slate-800/80 text-left text-xs">
@@ -153,7 +153,7 @@ export default function AdminProfilePage() {
                     onClick={() => setActiveTab('personal')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'personal' 
-                        ? 'border-blue-500 text-blue-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -163,7 +163,7 @@ export default function AdminProfilePage() {
                     onClick={() => setActiveTab('security')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'security' 
-                        ? 'border-blue-500 text-blue-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -173,7 +173,7 @@ export default function AdminProfilePage() {
                     onClick={() => setActiveTab('privileges')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'privileges' 
-                        ? 'border-blue-500 text-blue-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -183,7 +183,7 @@ export default function AdminProfilePage() {
                     onClick={() => setActiveTab('logs')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'logs' 
-                        ? 'border-blue-500 text-blue-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -224,7 +224,7 @@ export default function AdminProfilePage() {
                         </div>
                       </div>
                     </div>
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
+                    <button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-900/30">
                       Update Personal Info
                     </button>
                   </form>
@@ -265,7 +265,7 @@ export default function AdminProfilePage() {
                       </button>
                     </div>
 
-                    <button type="submit" className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
+                    <button type="submit" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-blue-900/30">
                       Apply Root Auth Upgrades
                     </button>
                   </form>
@@ -310,7 +310,7 @@ export default function AdminProfilePage() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-xs font-bold text-slate-100">Superuser Audit Trail</h4>
-                      <button className="text-[10px] text-blue-400 hover:underline">Download system log dump (.csv)</button>
+                      <button className="text-[10px] text-amber-400 hover:underline">Download system log dump (.csv)</button>
                     </div>
 
                     <div className="border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800">
