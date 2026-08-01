@@ -10,7 +10,7 @@ class AdminUser(models.Model):
     name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True, index=True)
     password_hash = fields.CharField(max_length=255, null=True)
-    role = fields.CharField(max_length=100, default="Operations Manager")
+    role = fields.CharField(max_length=100, default="Admin")
     department = fields.CharField(max_length=100, default="Operations")
     permissions = fields.JSONField(default=list)
     status = fields.CharField(max_length=50, default="Active")
@@ -34,7 +34,7 @@ class ClientUser(models.Model):
     name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True, index=True)
     phone = fields.CharField(max_length=50, null=True)
-    role = fields.CharField(max_length=50, default="Client User")
+    role = fields.CharField(max_length=50, default="Client")
     status = fields.CharField(max_length=50, default="Active")
     verified = fields.BooleanField(default=True)
     country = fields.CharField(max_length=100, default="United States")
@@ -115,9 +115,10 @@ class ActivityLog(models.Model):
     """System activity log entry."""
 
     id = fields.IntField(primary_key=True)
-    action = fields.CharField(max_length=255)
     user_email = fields.CharField(max_length=255)
-    ip_address = fields.CharField(max_length=50, default="127.0.0.1")
+    action = fields.CharField(max_length=255)
+    details = fields.TextField(null=True)
+    ip_address = fields.CharField(max_length=50)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:

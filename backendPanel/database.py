@@ -21,7 +21,6 @@ def get_tortoise_config() -> dict[str, Any]:
             "models": {
                 "models": [
                     "adminPanel.models",
-                    "aerich.models",
                 ],
                 "default_connection": "default",
             },
