@@ -2,12 +2,42 @@ import React, { useState, useEffect, useRef } from "react";
 import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
 import { useTheme } from 'next-themes';
 
-const toAbsoluteUrl = (url) => {
+type TicketMessage = {
+  id: string;
+  content?: string;
+  sender_name?: string;
+  sender?: { username?: string };
+  created_at?: string | null;
+  createdAt?: string | null;
+  file?: string | null;
+  file_url?: string | null;
+};
+
+type TicketAttachment = {
+  id: string;
+  file?: string | null;
+  file_url?: string | null;
+};
+
+interface Ticket {
+  id: string;
+  subject: string;
+  status: string;
+  created_at: string;
+  created_by: string;
+  description: string;
+  messages: TicketMessage[];
+  attachments: TicketAttachment[];
+  _normalizedMessages?: TicketMessage[];
+  _normalizedAttachments?: TicketAttachment[];
+}
+
+const toAbsoluteUrl = (url: string | null | undefined): string | null => {
   if (!url) return null;
   return url.startsWith('http') ? url : url;
 };
 
-const dummyTickets = [
+const dummyTickets: Ticket[] = [
   {
     id: '1001',
     subject: 'Deposit confirmation not reflected',
@@ -69,7 +99,7 @@ const dummyTickets = [
   },
 ];
 
-const normalizeMessages = (messages = []) =>
+const normalizeMessages = (messages: TicketMessage[] = []) =>
   (Array.isArray(messages) ? messages : []).map((message, index) => ({
     ...message,
     file: toAbsoluteUrl(message?.file || message?.file_url || null),
@@ -79,7 +109,7 @@ const normalizeMessages = (messages = []) =>
     id: message?.id || `message-${index}`,
   }));
 
-const getMessagePreview = (message) => {
+const getMessagePreview = (message?: TicketMessage | null) => {
   if (!message) return '';
   const text = typeof message.content === 'string' ? message.content.trim() : '';
   if (text) return text;
@@ -90,7 +120,7 @@ const getMessagePreview = (message) => {
   return 'No content';
 };
 
-const getTicketPreview = (ticket) => {
+const getTicketPreview = (ticket?: Ticket | null) => {
   if (!ticket) return 'No description provided.';
   const description = typeof ticket.description === 'string' ? ticket.description.trim() : '';
   if (description) return description;
@@ -99,15 +129,17 @@ const getTicketPreview = (ticket) => {
   const latestMessage = messages[messages.length - 1];
   if (latestMessage) return getMessagePreview(latestMessage);
 
-  if (ticket.file || ticket.file_url) {
-    const fileName = (ticket.file || ticket.file_url).split('/').pop() || 'Attachment';
+  const ticketWithExtras = ticket as Ticket & { file?: string | null; file_url?: string | null };
+  const file = ticketWithExtras.file || ticketWithExtras.file_url;
+  if (file) {
+    const fileName = file.split('/').pop() || 'Attachment';
     return `[Attachment] ${fileName}`;
   }
 
   return 'No description provided.';
 };
 
-const ReplySection = ({ onSendMessage, inputClass, goldButtonClass, softTextClass }) => {
+const ReplySection = ({ onSendMessage, inputClass, goldButtonClass, softTextClass }: { onSendMessage: (message: string) => void, inputClass: string, goldButtonClass: string, softTextClass: string }) => {
   const [localMessage, setLocalMessage] = useState("");
   return (
     <div>
@@ -143,23 +175,23 @@ const Tickets = () => {
   const { theme } = useTheme();
   const isDarkMode = theme === "dark";
 
-  const [activePage, setActivePage] = useState("view");
-  const [userId, setUserId] = useState("");
-  const [tickets, setTickets] = useState([]);
-  const [selectedStatus, setSelectedStatus] = useState("all");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
+  const [activePage, setActivePage] = useState<string>("view");
+  const [userId, setUserId] = useState<string>("");
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
+  const [filters, setFilters] = useState<{ status: string; dateRange: string }>({
     status: "",
     dateRange: "",
   });
-  const [searchTerm, setSearchTerm] = useState("");
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [showViewModal, setShowViewModal] = useState(false);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const fileInputRef = useRef(null);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [showViewModal, setShowViewModal] = useState<boolean>(false);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   const panelClass = isDarkMode
     ? "border-slate-800 bg-slate-900"
@@ -195,7 +227,7 @@ const Tickets = () => {
     fetchTickets("all");
     setUserId('USR-001');
   }, []);
-  const [filteredTickets, setFilteredTickets] = useState([]);
+  const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
 
   // Apply filters and search term to tickets
   useEffect(() => {
@@ -244,19 +276,19 @@ const Tickets = () => {
     setShowFilters(false);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+    const formData = new FormData(e.currentTarget);
     const subject = formData.get('subject');
     const description = formData.get('description');
 
-    const newTicket = {
+    const newTicket: Ticket = {
       id: `${Date.now()}`,
-      subject,
+      subject: typeof subject === 'string' ? subject : '',
       status: 'open',
       created_at: new Date().toISOString(),
       created_by: userId || 'USR-001',
-      description,
+      description: typeof description === 'string' ? description : '',
       messages: [],
       attachments: [],
     };
@@ -267,17 +299,17 @@ const Tickets = () => {
     fetchTickets('open');
   };
 
-  const options = {
+  const options: Record<"status" | "dateRange", string[]> = {
     status: ["All", "Open", "Pending", "Closed"],
     dateRange: ["This Week", "This Month", "Last 3 Months"],
   };
 
-  const handleSelect = (key, value) => {
+  const handleSelect = (key: "status" | "dateRange", value: string) => {
     setFilters({ ...filters, [key]: value });
     setOpenDropdown(null);
   };
 
-  const handleSendMessage = async (content) => {
+  const handleSendMessage = async (content: string) => {
     if (!content || !content.trim()) return;
     if (!selectedTicket) return;
 
@@ -297,7 +329,7 @@ const Tickets = () => {
     alert("Message sent successfully!");
   };
 
-  const openTicketDetail = async (ticketId) => {
+  const openTicketDetail = async (ticketId: string) => {
     const ticket = dummyTickets.find((item) => item.id === ticketId);
     if (!ticket) {
       alert('Ticket not found.');
@@ -321,7 +353,7 @@ const Tickets = () => {
 
 
 
-  const Modal = ({ title, onClose, children }) => (
+  const Modal = ({ title, onClose, children }: { title: string, onClose: () => void, children: React.ReactNode }) => (
     <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[100] p-4">
       <div className={`${panelClass} rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border`}>
         <div className={`flex items-center justify-between p-6 border-b ${borderMutedClass}`}>
@@ -424,7 +456,7 @@ const Tickets = () => {
               <tbody className={isDarkMode ? "divide-y divide-white/5" : "divide-y divide-[#153d9f]"}>
                 {loading ? (
                   <tr>
-                    <td colSpan="6" className="p-20 text-center">
+                    <td colSpan={6} className="p-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4"></div>
                         <p className={`font-bold ${softTextClass}`}>Fetching tickets...</p>
@@ -433,7 +465,7 @@ const Tickets = () => {
                   </tr>
                 ) : filteredTickets.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="p-20 text-center">
+                    <td colSpan={6} className="p-20 text-center">
                       <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? "bg-gray-800" : "bg-[#0b226a]"}`}>
                         <Search className={isDarkMode ? "text-gray-400" : "text-[#8db5ff]"} size={32} />
                       </div>
@@ -556,7 +588,7 @@ const Tickets = () => {
                 </label>
                 <div
                   className={`border-2 border-dashed rounded-[2rem] text-center py-10 cursor-pointer transition-all duration-300 ${isDarkMode ? "border-white/10 hover:border-royal/50 hover:bg-white/5" : "border-[#214fbf] bg-[#081d5f] hover:border-[#3aa0ff] hover:bg-[#0b226a]"}`}
-                  onClick={() => fileInputRef.current.click()}
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   <div className="w-16 h-16 bg-[#0b226a] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#2450b7]">
                     <Plus className="text-[#f0b91f]" size={32} />
@@ -573,7 +605,7 @@ const Tickets = () => {
                     ref={fileInputRef}
                     hidden
                     multiple
-                    onChange={e => setSelectedFiles(Array.from(e.target.files))}
+                    onChange={(e) => setSelectedFiles(Array.from(e.target.files ?? []))}
                   />
                   {selectedFiles.length > 0 && (
                     <div className="mt-6 flex flex-wrap justify-center gap-2 px-4">
@@ -608,7 +640,7 @@ const Tickets = () => {
       {showFilters && (
         <Modal title="Filter Tickets" onClose={() => setShowFilters(false)}>
           <div className="space-y-6">
-            {["status", "dateRange"].map((key) => (
+            {(["status", "dateRange"] as const).map((key) => (
               <div key={key} className="relative">
                 <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
                   {key === "dateRange" ? "Date Range" : key}
@@ -619,7 +651,7 @@ const Tickets = () => {
                   onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
                   className={`w-full flex justify-between items-center p-4 rounded-2xl border font-bold transition-all ${isDarkMode ? "bg-white/10 border-white/10 text-white" : "border-[#214fbf] bg-[#081d5f] text-[#dbe8ff]"}`}
                 >
-                  <span className="capitalize">{filters[key] || "Select"}</span>
+                  <span className="capitalize">{filters[key as keyof typeof filters] || "Select"}</span>
                   <ChevronDown
                     size={18}
                     className={`transition-transform duration-300 ${openDropdown === key ? "rotate-180 text-[#f0b91f]" : "text-[#8db5ff]"}`}
@@ -628,7 +660,7 @@ const Tickets = () => {
 
                 {openDropdown === key && (
                   <div className={`absolute z-20 w-full mt-2 rounded-2xl shadow-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${isDarkMode ? "bg-navy border-white/10" : "border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)]"}`}>
-                    {options[key].map((opt) => (
+                    {options[key].map((opt: string) => (
                       <div
                         key={opt}
                         onClick={() => handleSelect(key, opt)}
@@ -723,7 +755,7 @@ const Tickets = () => {
                   {selectedTicket._normalizedMessages.map((message) => {
                     const isSelf = String(message.sender) === String(selectedTicket.created_by);
                     const date = message.created_at ? new Date(message.created_at) : null;
-                    const timeString = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+                    const timeString = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' } as Intl.DateTimeFormatOptions) : "";
                     
                     return (
                       <div
@@ -794,20 +826,21 @@ const Tickets = () => {
                 <div className="flex flex-wrap gap-3">
                   {selectedTicket._normalizedAttachments.map((a) => {
                     const fileUrl = a?.file || null;
-                    const isImage = fileUrl && /\.(jpg|jpeg|png|gif)$/i.test(fileUrl);
+                    const safeFileUrl = fileUrl ?? undefined;
+                    const isImage = safeFileUrl && /\.(jpg|jpeg|png|gif)$/i.test(safeFileUrl);
                     return (
                       <div key={a.id} className="group relative">
                         {isImage ? (
-                          <a href={fileUrl} target="_blank" rel="noreferrer" className={`block w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${isDarkMode ? "border-white/10" : "border-[#2450b7] hover:border-[#3aa0ff]"}`}>
-                            <img src={fileUrl} alt="Attachment" className="w-full h-full object-cover" />
+                          <a href={safeFileUrl} target="_blank" rel="noreferrer" className={`block w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${isDarkMode ? "border-white/10" : "border-[#2450b7] hover:border-[#3aa0ff]"}`}>
+                            <img src={safeFileUrl} alt="Attachment" className="w-full h-full object-cover" />
                           </a>
                         ) : (
-                          <a href={fileUrl} target="_blank" rel="noreferrer" className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl border-2 transition-all ${isDarkMode ? "border-white/10 bg-white/5" : "border-[#2450b7] bg-[#0b226a] hover:border-[#3aa0ff]"}`}>
+                          <a href={safeFileUrl} target="_blank" rel="noreferrer" className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl border-2 transition-all ${isDarkMode ? "border-white/10 bg-white/5" : "border-[#2450b7] bg-[#0b226a] hover:border-[#3aa0ff]"}`}>
                             <Plus className={`mb-1 ${isDarkMode ? "text-royal" : "text-[#f0b91f]"}`} size={20} />
                             <span className="text-[10px] font-bold text-center px-2 truncate w-full">File</span>
                           </a>
                         )}
-                        <a href={fileUrl} download className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)]">
+                        <a href={safeFileUrl} download className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)]">
                           <Plus size={14} className="rotate-45" />
                         </a>
                       </div>
