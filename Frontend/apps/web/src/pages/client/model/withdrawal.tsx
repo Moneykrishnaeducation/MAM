@@ -7,6 +7,8 @@ import {
   Sparkles, ArrowRight, Info, DollarSign, Loader2, X 
 } from 'lucide-react';
 
+const GOLD = "#C9A227";
+
 const ModalWrapper = ({
   title,
   onClose,
@@ -43,9 +45,9 @@ const ModalWrapper = ({
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 20 }}
         className={`relative w-full max-w-[640px] max-h-[calc(100vh-3rem)] overflow-hidden rounded-[32px] border bg-white shadow-2xl ${panelClassName}`}
-        style={{ backgroundColor: isDarkMode ? '#020617' : '#ffffff' } as React.CSSProperties}
+        style={{ backgroundColor: isDarkMode ? '#0a1435' : '#ffffff' } as React.CSSProperties}
       >
-        <div className={`relative border-b px-5 py-4 ${isDarkMode ? 'border-white/10 bg-slate-950 text-white' : 'border-slate-200 bg-slate-50 text-slate-900'}`}>
+        <div className={`relative border-b px-5 py-4 ${isDarkMode ? 'border-blue-900/30 bg-[#0a1435] text-white' : 'border-slate-200 bg-slate-50 text-slate-900'}`}>
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-900 text-white">
               {HeaderIcon ? <HeaderIcon size={24} /> : null}
@@ -53,9 +55,12 @@ const ModalWrapper = ({
             <h2 className="text-xl font-black">{title}</h2>
           </div>
           <button
-            type="button"
             onClick={onClose}
-            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white/90 text-slate-700 shadow-sm transition hover:bg-slate-100"
+            className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border transition ${
+              isDarkMode 
+                ? 'border-blue-900/30 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white' 
+                : 'border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100 shadow-sm'
+            }`}
           >
             <X size={18} />
           </button>
@@ -112,8 +117,8 @@ export default function WithdrawalModal({
     }, 2000);
   };
 
-  // Note: Ensure `GOLD` and `sharedUtils` are defined or imported above.
-  const GOLD = "#C9A227";
+  // Note: Ensure `ACCENT` and `sharedUtils` are defined or imported above.
+  const ACCENT = "#2563EB";
   const sharedUtils = {
     formatCurrency: (val: number) => `$${val.toFixed(2)}`
   };
@@ -138,7 +143,7 @@ export default function WithdrawalModal({
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full backdrop-blur-xl border border-white/10">
-                  <Wallet size={14} style={{ color: GOLD }} />
+                  <Wallet size={14} style={{ color: ACCENT }} />
                   <span className="text-[10px] font-black uppercase tracking-wider text-blue-100">Treasury Balance</span>
                 </div>
                 <div className="flex items-center gap-1 opacity-50">
@@ -161,7 +166,7 @@ export default function WithdrawalModal({
                 </div>
                 <div className="text-right">
                     <div className="flex items-center gap-1.5 justify-end">
-                      <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse shadow-[0_0_8px_#4ade80]" />
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse shadow-[0_0_8px_#60a5fa]" />
                       <span className="text-[9px] font-black uppercase tracking-widest">Active</span>
                     </div>
                     <span className="text-[8px] text-blue-200 block font-black uppercase tracking-widest opacity-40">Network Validated</span>
@@ -178,9 +183,9 @@ export default function WithdrawalModal({
               }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="absolute -top-20 -right-20 w-80 h-80 rounded-full blur-3xl pointer-events-none"
-              style={{ background: GOLD } as any}
+              style={{ background: ACCENT } as any}
             />
-            <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#1A3A8C]/40 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-16 -left-16 w-52 h-52 bg-[#2563eb]/30 rounded-full blur-3xl pointer-events-none" />
           </motion.div>
         </AnimatedSection>
 
@@ -354,7 +359,7 @@ export default function WithdrawalModal({
                   </div>
 
                   {/* Decorative Background for Vault */}
-                  <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: GOLD }} />
+                  <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: ACCENT }} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -369,9 +374,9 @@ export default function WithdrawalModal({
                 Withdrawal Amount
               </label>
               {withdrawalInfo && (
-                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1A3A8C]/5 border border-[#1A3A8C]/10 backdrop-blur-md">
-                    <Info size={10} className="text-[#1A3A8C]" />
-                    <span className="text-[9px] font-black text-[#1A3A8C] uppercase tracking-tighter">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-900/10 border border-blue-700/20 backdrop-blur-md">
+                    <Info size={10} className="text-blue-400" />
+                    <span className="text-[9px] font-black text-blue-200 uppercase tracking-tighter">
                     Min: {sharedUtils.formatCurrency(withdrawalInfo.minimum_withdrawal || 10)}
                     </span>
                 </div>
