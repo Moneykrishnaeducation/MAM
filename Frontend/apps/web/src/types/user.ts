@@ -102,4 +102,5 @@ export interface CreateUserFormData {
   country: string;
   balance: string;
   leverage: string;
+  password?: string;
 }

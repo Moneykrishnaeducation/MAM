@@ -21,7 +21,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'Super Admin' | 'Operations Manager' | 'Finance Manager' | 'Support Admin';
+  role: 'superadmin' | 'admin' | 'viewer';
   department: string;
   permissions: string[];
   status: 'Active' | 'Suspended';
@@ -37,7 +37,7 @@ export default function AdminUsersManagementPage() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'Operations Manager' as AdminUser['role'],
+    role: 'admin' as AdminUser['role'],
     department: 'Operations',
     permissions: ['User Approvals', 'View Reports'],
     password: '',
@@ -93,7 +93,7 @@ export default function AdminUsersManagementPage() {
       setFormData({
         name: '',
         email: '',
-        role: 'Operations Manager',
+        role: 'admin',
         department: 'Operations',
         permissions: ['User Approvals', 'View Reports'],
         password: '',
@@ -184,7 +184,7 @@ export default function AdminUsersManagementPage() {
               <div>
                 <div className="text-slate-400 text-xs font-medium">Super Admins</div>
                 <div className="text-3xl font-black text-emerald-400 mt-1">
-                  {adminUsers.filter(u => u.role === 'Super Admin').length} Superusers
+                  {adminUsers.filter(u => u.role === 'superadmin').length} Superusers
                 </div>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -247,7 +247,7 @@ export default function AdminUsersManagementPage() {
                         </div>
                       </td>
                       <td className="py-4">
-                        <div className="font-bold text-slate-200">{adm.role}</div>
+                        <div className="font-bold text-slate-200 capitalize">{adm.role}</div>
                         <div className="text-[11px] text-slate-400">{adm.department}</div>
                       </td>
                       <td className="py-4">
@@ -280,7 +280,7 @@ export default function AdminUsersManagementPage() {
                             <Power size={14} />
                           </button>
 
-                          {adm.role !== 'Super Admin' && (
+                          {adm.role !== 'superadmin' && (
                             <button
                               onClick={() => handleRevokeAdmin(adm.id, adm.name)}
                               className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-700"
@@ -332,6 +332,19 @@ export default function AdminUsersManagementPage() {
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
                 />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value as AdminUser['role'] })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
+                >
+                  <option value="superadmin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="viewer">Viewer</option>
+                </select>
               </div>
 
               <div>

@@ -153,7 +153,7 @@ async def create_admin_user(request):
 
     name = body.get("name", "").strip()
     email = body.get("email", "").strip()
-    role = body.get("role", "Operations Manager").strip()
+    role = body.get("role", "admin").strip()
     department = body.get("department", "Operations").strip()
     permissions = body.get("permissions", [])
     password = body.get("password", "").strip()
@@ -218,6 +218,7 @@ async def create_client_user(request):
     phone = body.get("phone", "").strip()
     role = body.get("role", "Client User").strip()
     country = body.get("country", "United States").strip()
+    password = body.get("password", "").strip()
     avatar = body.get(
         "avatar",
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80",
@@ -236,6 +237,8 @@ async def create_client_user(request):
     while await ClientUser.filter(user_code=user_code).exists():
         user_code = _generate_user_code("USR")
 
+    password_hash = hash_client_password(password) if password else None
+
     user = await ClientUser.create(
         user_code=user_code,
         name=name,
@@ -246,6 +249,7 @@ async def create_client_user(request):
         status="Active",
         verified=False,
         avatar=avatar,
+        password_hash=password_hash,
     )
 
     return JsonResponse(

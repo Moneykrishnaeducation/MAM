@@ -14,16 +14,17 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
   const [country, setCountry] = useState('United States');
   const [balance, setBalance] = useState('10000');
   const [leverage, setLeverage] = useState('1:100');
+  const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !email) return;
-    onSubmit({ name, email, phone, role, country, balance, leverage });
+    if (!name || !email || !password) return;
+    onSubmit({ name, email, phone, role, country, balance, leverage, password });
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-1">
           <label className="text-slate-450 font-bold uppercase">Name</label>
           <input 
@@ -47,6 +48,17 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
           />
         </div>
         <div className="space-y-1">
+          <label className="text-slate-450 font-bold uppercase">Password</label>
+          <input 
+            type="password" 
+            required 
+            value={password} 
+            onChange={e => setPassword(e.target.value)} 
+            placeholder="••••••••" 
+            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+          />
+        </div>
+        <div className="space-y-1">
           <label className="text-slate-450 font-bold uppercase">Phone</label>
           <input 
             type="text" 
@@ -55,18 +67,6 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             placeholder="+1 555-0199" 
             className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
-        </div>
-        <div className="space-y-1">
-          <label className="text-slate-450 font-bold uppercase">Role</label>
-          <select 
-            value={role} 
-            onChange={e => setRole(e.target.value)} 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none"
-          >
-            <option value="Client">Client</option>
-            <option value="MAM Manager">MAM Manager</option>
-            <option value="Super Admin">Super Admin</option>
-          </select>
         </div>
         <div className="space-y-1">
           <label className="text-slate-450 font-bold uppercase">Country</label>
@@ -78,26 +78,7 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
-        <div className="space-y-1">
-          <label className="text-slate-450 font-bold uppercase">Initial Balance ($)</label>
-          <input 
-            type="number" 
-            value={balance} 
-            onChange={e => setBalance(e.target.value)} 
-            placeholder="10000" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none font-mono" 
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-slate-450 font-bold uppercase">Leverage</label>
-          <input 
-            type="text" 
-            value={leverage} 
-            onChange={e => setLeverage(e.target.value)} 
-            placeholder="1:100" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none font-mono" 
-          />
-        </div>
+
       </div>
 
       <div className="pt-4 border-t border-slate-800 flex justify-end gap-2.5">

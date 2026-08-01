@@ -25,7 +25,7 @@ async def get_admin_users(skip: int = 0, limit: int = 100) -> list[AdminUser]:
 async def create_admin_user(
     name: str,
     email: str,
-    role: str = "Operations Manager",
+    role: str = "admin",
     department: str = "Operations",
     permissions: list[str] | None = None,
 ) -> AdminUser:

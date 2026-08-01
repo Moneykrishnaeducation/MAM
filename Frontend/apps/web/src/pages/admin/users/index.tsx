@@ -1504,8 +1504,8 @@ export default function AdminUsersPage() {
           name: formData.name,
           email: formData.email,
           phone: formData.phone || '',
-          role: formData.role || 'Client User',
           country: formData.country || 'United States',
+          password: formData.password,
         }),
       });
       const data = await res.json();
