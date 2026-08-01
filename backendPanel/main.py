@@ -1,4 +1,7 @@
+"""Main application entry point for backendPanel."""
+
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -10,7 +13,7 @@ load_dotenv()
 _cors_origin = os.getenv("CORS_ORIGIN")
 
 if not settings.configured:
-    from app.settings import BASE_DIR, get_settings
+    from backendPanel.settings import BASE_DIR, get_settings
 
     _app_settings = get_settings()
     settings.configure(
@@ -27,6 +30,9 @@ if not settings.configured:
             "django.contrib.auth",
             "django.contrib.staticfiles",
             "corsheaders",
+            "backendPanel",
+            "adminPanel",
+            "clientPanel",
         ],
         MIDDLEWARE=[
             "corsheaders.middleware.CorsMiddleware",
@@ -37,16 +43,13 @@ if not settings.configured:
     )
     django.setup()
 
-from pathlib import Path
-
+from django.core.wsgi import get_wsgi_application
 from django.http import FileResponse, JsonResponse
 from django.urls import path, re_path
 from django.views.static import serve
 from ninja import NinjaAPI
-from strawberry.django.views import GraphQLView
 
-from app.graphql_schema import schema as graphql_schema
-from app.settings import BASE_DIR, get_settings
+from backendPanel.settings import BASE_DIR, get_settings
 
 
 def serve_frontend_page(request, route=""):
@@ -78,7 +81,7 @@ def serve_frontend_page(request, route=""):
             if target_path.is_file():
                 return FileResponse(open(target_path, "rb"), content_type="text/html")
 
-    return JsonResponse({"message": "Welcome to MAM!"})
+    return JsonResponse({"message": "Welcome to MAM Backend!"})
 
 
 def serve_next_data(request, path=""):
@@ -135,7 +138,7 @@ def health(request):
     return JsonResponse({"status": "healthy"})
 
 
-ninja_api = NinjaAPI(title="MAM API")
+ninja_api = NinjaAPI(title="MAM Backend API")
 
 
 @ninja_api.get("/status")
@@ -144,10 +147,23 @@ def api_status(request):
     return {"status": "ok", "framework": "django-ninja"}
 
 
+# Import adminPanel & clientPanel routers dynamically
+try:
+    from adminPanel.views import router as admin_router
+    ninja_api.add_router("/admin", admin_router)
+except ImportError:
+    pass
+
+try:
+    from clientPanel.views import router as client_router
+    ninja_api.add_router("/client", client_router)
+except ImportError:
+    pass
+
+
 urlpatterns = [
     path("health", health),
     path("api/", ninja_api.urls),
-    path("graphql", GraphQLView.as_view(schema=graphql_schema)),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
     re_path(r"^_next/(?P<path>.*)$", serve_next_static),
     re_path(
@@ -158,8 +174,6 @@ urlpatterns = [
     path("", serve_frontend_page),
     re_path(r"^(?P<route>.*)$", serve_frontend_page),
 ]
-
-from django.core.wsgi import get_wsgi_application
 
 application = get_wsgi_application()
 

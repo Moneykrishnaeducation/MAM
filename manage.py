@@ -7,8 +7,8 @@ from django.core.management import execute_from_command_line
 
 def main():
     """Run administrative tasks."""
-    # Importing app.main initializes Django settings and URLconf
-    import app.main  # noqa: F401
+    # Importing backendPanel.main initializes Django settings and URLconf
+    import backendPanel.main  # noqa: F401
 
     execute_from_command_line(sys.argv)
 

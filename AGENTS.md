@@ -21,16 +21,17 @@ This file provides context about the project for AI assistants.
 MAM/
 ├── pyproject.toml   # Project config
 ├── manage.py        # Django management script
-├── src/
-│   └── app/         # Application code
+├── backendPanel/    # Core server, settings, main WSGI/ASGI entrypoint, static files
+├── adminPanel/      # Admin user management, managers, investors, MAM accounts, requests
+├── clientPanel/     # Client profile, trading account details, investments, transactions
 ├── tests/           # Test suite
-├── migrations/      # Aerich database migrations
+└── migrations/      # Aerich database migrations
 ```
 
 ## Common Commands
 
 - `uv sync --extra dev` - Install dependencies
-- `uv run python -m app.main` - Run application
+- `uv run python -m backendPanel.main` - Run application
 - `uv run python manage.py migrate` - Run Django database migrations
 - `uv run aerich init-db` - Initialize Aerich database migrations
 - `uv run aerich migrate` - Generate Aerich database migration

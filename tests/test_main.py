@@ -3,7 +3,7 @@
 import pytest
 from django.test import Client
 
-import app.main  # noqa: F401  (configures Django settings and the URLconf on import)
+import backendPanel.main  # noqa: F401  (configures Django settings and the URLconf on import)
 
 
 @pytest.fixture

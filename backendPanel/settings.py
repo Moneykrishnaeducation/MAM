@@ -1,4 +1,4 @@
-"""Application settings using pydantic-settings."""
+"""Application settings using pydantic-settings in backendPanel."""
 
 from functools import lru_cache
 from pathlib import Path
@@ -7,8 +7,8 @@ from typing import Any
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Base directory relative to current settings file
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+# Base directory relative to project root
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
 
     # Application settings
-    app_name: str = "MAM"
+    app_name: str = "MAM Backend"
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
@@ -31,7 +31,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api"
     api_version: str = "v1"
 
-    # Static files settings (configured from current/base directory)
+    # Static files settings (configured from base directory)
     static_url: str = "/static/"
     static_root: Path = Field(
         default_factory=lambda: BASE_DIR / "staticfiles",
@@ -39,11 +39,13 @@ class Settings(BaseSettings):
     )
     staticfiles_dirs: list[Path] = Field(
         default_factory=lambda: [
-            d for d in [
+            d
+            for d in [
                 BASE_DIR / "static",
                 BASE_DIR / "Frontend" / "apps" / "web" / "out",
                 BASE_DIR / "Frontend" / "apps" / "web" / "public",
-            ] if d.exists()
+            ]
+            if d.exists()
         ],
         alias="STATICFILES_DIRS",
     )

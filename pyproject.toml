@@ -49,7 +49,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/app"]
+packages = ["backendPanel", "adminPanel", "clientPanel"]
 
 [tool.ruff]
 target-version = "py311"
@@ -71,8 +71,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/env.py" = ["E402"]
-"src/app/main.py" = ["I001", "E402"]
-"src/app/users.py" = ["B008"]
+"backendPanel/main.py" = ["I001", "E402"]
+"adminPanel/users.py" = ["B008"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -85,6 +85,6 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 
 [tool.tortoise]
-tortoise_orm = "app.database.TORTOISE_ORM"
+tortoise_orm = "backendPanel.database.TORTOISE_ORM"
 location = "./migrations"
 src_folder = "./."
