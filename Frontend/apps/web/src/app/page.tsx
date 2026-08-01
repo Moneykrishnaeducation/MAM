@@ -899,11 +899,11 @@ export default function TradingHero() {
               </div>
 
               {/* Selected Asset Live TradingView Mini Chart Widget (TRANSPARENT BACKGROUND) */}
-              {currentAsset && (
+              {/* {currentAsset && (
                 <div className="space-y-2 animate-in fade-in duration-300">
                   <TradingViewMiniChart tvSymbol={currentAsset.tvSymbol} />
                 </div>
-              )}
+              )} */}
             </div>
 
             {/* Feature Highlights Pill Grid */}
