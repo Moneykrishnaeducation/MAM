@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { Download, Monitor, Smartphone, Star, Apple, ArrowRight } from 'lucide-react';
 
@@ -9,8 +9,8 @@ const platforms = [
     sublabel: 'Professional Trading',
     description: 'Get the full VT-Index experience on your desktop with advanced charting and features.',
     icon: Monitor,
-    recommended: true,
     buttonLabel: 'Get Terminal',
+    url: 'https://download.mql5.com/cdn/web/vtindex.llc/mt5/vtindex5setup.exe',
   },
   {
     id: 'macos',
@@ -18,8 +18,8 @@ const platforms = [
     sublabel: 'Optimized for Mac',
     description: 'Native experience for Mac users, providing seamless performance and security.',
     icon: Apple,
-    recommended: false,
     buttonLabel: 'Get Terminal',
+    url: 'https://www.metatrader5.com/en/download',
   },
   {
     id: 'android',
@@ -27,8 +27,8 @@ const platforms = [
     sublabel: 'Trade Anywhere',
     description: 'Stay connected to the markets 24/7 with our highly-rated Android application.',
     icon: Smartphone,
-    recommended: false,
     buttonLabel: 'Get Terminal',
+    url: 'https://download.terminal.free/cdn/web/metaquotes.software.corp/mt5/metatrader5.apk?utm_source=www.metatrader5.com&utm_campaign=install.metaquotes',
   },
   {
     id: 'iphone',
@@ -36,10 +36,26 @@ const platforms = [
     sublabel: 'Mobile Excellence',
     description: 'The power of professional trading in your pocket. Fast, secure, and intuitive.',
     icon: Apple,
-    recommended: false,
     buttonLabel: 'Get Terminal',
+    url: 'https://apps.apple.com/app/metatrader-5/id413251709',
   },
 ];
+
+/** Detect the user's platform from navigator and return the matching platform id. */
+function detectPlatformId(): string {
+  if (typeof navigator === 'undefined') return 'windows';
+  const ua = navigator.userAgent;
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform ?? '';
+
+  // iOS: iPads and iPhones
+  if (/iP(hone|od|ad)/i.test(ua) || /iPhone|iPad/i.test(platform)) return 'iphone';
+  // Android
+  if (/Android/i.test(ua)) return 'android';
+  // macOS / Mac
+  if (/Mac/i.test(platform) || /Macintosh|MacIntel|MacPPC|Mac68K/i.test(ua)) return 'macos';
+  // Windows (default for desktops)
+  return 'windows';
+}
 
 // Each card is active for 2s in an 8s cycle, one at a time
 // delays: card1=0s, card2=-6s, card3=-4s, card4=-2s
@@ -47,6 +63,11 @@ const borderDelays = ['0s', '-6s', '-4s', '-2s'];
 
 export default function ClientPlatformPage() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
+  const [recommendedId, setRecommendedId] = useState<string>('windows');
+
+  useEffect(() => {
+    setRecommendedId(detectPlatformId());
+  }, []);
 
   return (
     <>
@@ -260,7 +281,7 @@ export default function ClientPlatformPage() {
                     />
 
                     {/* Recommended badge */}
-                    {p.recommended && (
+                    {p.id === recommendedId && (
                       <div
                         className="absolute top-4 right-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest"
                         style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.35)', color: '#fbbf24' }}
@@ -320,8 +341,11 @@ export default function ClientPlatformPage() {
                       </p>
 
                       {/* CTA Button */}
-                      <button
+                      <a
                         id={`btn-platform-${p.id}`}
+                        href={p.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="relative w-full flex items-center justify-center gap-2 py-3 px-5 rounded-xl text-sm font-bold transition-all duration-300 overflow-hidden"
                         style={{
                           background: isHovered
@@ -346,7 +370,7 @@ export default function ClientPlatformPage() {
                           className="relative z-10 transition-transform duration-300"
                           style={{ transform: isHovered ? 'translateX(3px)' : 'translateX(0)' }}
                         />
-                      </button>
+                      </a>
                     </div>
                   </div>
                 </div>
