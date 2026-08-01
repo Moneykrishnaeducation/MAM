@@ -13,11 +13,13 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (isClientRoute) {
     return (
-      <div className="flex min-h-[10vh] bg-[#070d19] text-slate-100 font-sans antialiased overflow-hidden">
+      <div className="flex h-screen w-screen overflow-hidden bg-[#070d19] text-slate-100 font-sans antialiased">
         <ClientSidebar />
-        <div className="flex-1 flex flex-col min-w-0 relative overflow-y-auto z-10">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
           <ClientHeader />
-          <Component {...pageProps} />
+          <main className="flex-1 overflow-y-auto relative">
+            <Component {...pageProps} />
+          </main>
         </div>
       </div>
     );
@@ -25,11 +27,13 @@ export default function App({ Component, pageProps }: AppProps) {
 
   if (isAdminRoute) {
     return (
-      <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+      <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
         <AdminSidebar />
-        <div className="flex-1 flex flex-col min-w-0 relative overflow-y-auto">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
           <AdminHeader />
-          <Component {...pageProps} />
+          <main className="flex-1 overflow-y-auto relative">
+            <Component {...pageProps} />
+          </main>
         </div>
       </div>
     );
