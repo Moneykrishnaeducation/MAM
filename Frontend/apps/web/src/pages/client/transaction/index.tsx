@@ -1,138 +1,142 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import { ArrowRightLeft, Search, Download, ArrowUpRight, ArrowDownRight, Clock, Filter } from 'lucide-react';
 import ClientSidebar from '@/components/Client/sidebar';
 import ClientHeader from '@/components/Client/header';
+import { 
+  Clock, 
+  ArrowDownCircle, 
+  RefreshCw, 
+  ArrowRightLeft, 
+  Search, 
+  RotateCw, 
+  Calendar, 
+  User, 
+  Users, 
+  CircleDollarSign, 
+  FileText, 
+  Flag,
+  FileSearch,
+  ChevronLeft,
+  ChevronRight
+} from 'lucide-react';
 
-export default function ClientTransactionPage() {
-  const [search, setSearch] = useState('');
+export default function TransactionHistory() {
+  const [activeTab, setActiveTab] = useState('PENDING');
 
-  const transactions = [
-    { id: 'TRX-10928', type: 'Deposit', amount: '+$5,000.00', date: 'Today, 09:30 AM', status: 'Completed', method: 'Bank Transfer' },
-    { id: 'TRX-10927', type: 'Investment', amount: '-$2,500.00', date: 'Yesterday, 14:15 PM', status: 'Completed', method: 'Internal Wallet' },
-    { id: 'TRX-10901', type: 'Withdrawal', amount: '-$800.00', date: '12 Jul 2026', status: 'Pending', method: 'Crypto (USDT)' },
-    { id: 'TRX-10884', type: 'Profit Share', amount: '+$340.50', date: '10 Jul 2026', status: 'Completed', method: 'System' },
-    { id: 'TRX-10850', type: 'Deposit', amount: '+$10,000.00', date: '01 Jul 2026', status: 'Completed', method: 'Credit Card' },
+  const tabs = [
+    { id: 'PENDING', label: 'PENDING', icon: Clock },
+    { id: 'DEPOSIT', label: 'DEPOSIT', icon: ArrowDownCircle },
+    { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: RefreshCw },
+    { id: 'INTERNAL_TRANSFER', label: 'INTERNAL TRANSFER', icon: ArrowRightLeft },
   ];
 
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100 bg-[#060e24]">
+    <div className="flex min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: '#0e2250' }}>
       <Head>
-        <title>Transactions | Client Portal</title>
+        <title>Transaction History | Client Portal</title>
       </Head>
       <ClientSidebar />
       <main className="flex-1 flex flex-col min-w-0">
         <ClientHeader />
         
-        <div className="p-6 md:p-8 max-w-6xl mx-auto w-full">
-          {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <h1 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-                <ArrowRightLeft className="text-blue-500" size={32} />
-                Transaction History
-              </h1>
-              <p className="text-blue-300/70 mt-2 text-sm">
-                View all your deposits, withdrawals, and internal transfers.
-              </p>
-            </div>
-            
-            <button className="bg-[#0e2152] hover:bg-blue-800 border border-blue-800/80 text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-colors shadow flex items-center justify-center gap-2">
-              <Download size={16} />
-              Export Statement
+        <div className="p-6 md:p-8 flex flex-col flex-1">
+      {/* Top Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+        {/* Tabs */}
+        <div className="flex bg-[#0e1736] rounded-full p-1.5 border border-[#1b2b5a] shadow-lg">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold transition-all duration-300 tracking-wider ${
+                  isActive 
+                    ? 'bg-[#EAB308] text-[#0A1128] shadow-[0_0_15px_rgba(234,179,8,0.2)]' 
+                    : 'text-[#8a9cc3] hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon size={16} className={isActive ? 'text-[#0A1128]' : 'text-[#4965a3]'} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Search and Refresh */}
+        <div className="flex gap-4 items-center">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4965a3]" size={18} />
+            <input 
+              type="text" 
+              placeholder="Search history..." 
+              className="w-[320px] bg-[#0e1736] border border-[#1b2b5a] rounded-full py-2.5 pl-12 pr-4 text-sm text-blue-100 placeholder-[#4965a3] focus:outline-none focus:border-blue-600 transition-colors"
+            />
+          </div>
+          <button className="bg-[#0e1736] border border-[#1b2b5a] w-[42px] h-[42px] flex items-center justify-center rounded-2xl hover:bg-white/5 transition-colors group shadow-lg">
+            <RotateCw size={18} className="text-[#EAB308] group-hover:rotate-180 transition-transform duration-500" />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Table Area */}
+      <div className="bg-[#0e1736] rounded-2xl border border-[#1b2b5a] overflow-hidden shadow-2xl flex flex-col flex-1">
+        {/* Header */}
+        <div className="grid grid-cols-6 bg-[#162963] border-b border-[#1b2b5a] text-[11px] font-bold text-white/90 tracking-widest">
+          <div className="px-5 py-4 flex items-center gap-2 border-r border-[#1b2b5a]/50">
+            <Calendar size={14} className="text-[#6484c9]" /> DATE & TIME
+          </div>
+          <div className="px-5 py-4 flex items-center gap-2 border-r border-[#1b2b5a]/50">
+            <User size={14} className="text-[#6484c9]" /> BENEFICIARY
+          </div>
+          <div className="px-5 py-4 flex items-center gap-2 border-r border-[#1b2b5a]/50">
+            <Users size={14} className="text-[#6484c9]" /> ACCOUNT(S)
+          </div>
+          <div className="px-5 py-4 flex items-center gap-2 border-r border-[#1b2b5a]/50">
+            <CircleDollarSign size={14} className="text-[#6484c9]" /> AMOUNT
+          </div>
+          <div className="px-5 py-4 flex items-center gap-2 border-r border-[#1b2b5a]/50">
+            <FileText size={14} className="text-[#6484c9]" /> REFERENCE
+          </div>
+          <div className="px-5 py-4 flex items-center gap-2">
+            <Flag size={14} className="text-[#6484c9]" /> STATUS
+          </div>
+        </div>
+
+        {/* Content Area (Empty State) */}
+        <div className="flex-1 flex flex-col items-center justify-center p-12 min-h-[400px]">
+          <div className="mb-6 opacity-90">
+            <FileText size={80} className="text-[#6484c9] drop-shadow-md" strokeWidth={1.5} />
+          </div>
+          <h2 className="text-[28px] font-black mb-3 tracking-tight text-white drop-shadow-sm">NO RECORDS FOUND</h2>
+          <p className="text-[#6484c9] text-base mb-8">Try adjusting your search or refreshing the data.</p>
+          <div className="flex gap-4">
+            <button className="px-8 py-3 rounded-full border-2 border-[#1b2b5a] bg-transparent hover:bg-[#1b2b5a]/30 text-[#EAB308] font-bold text-xs tracking-widest transition-all duration-300">
+              REFRESH
+            </button>
+            <button className="px-8 py-3 rounded-full border-2 border-[#1b2b5a] bg-transparent hover:bg-[#1b2b5a]/30 text-white font-bold text-xs tracking-widest transition-all duration-300">
+              CLEAR SEARCH
             </button>
           </div>
+        </div>
 
-          <div className="bg-[#0b1736] border border-blue-900/50 rounded-3xl overflow-hidden shadow-2xl">
-            {/* Toolbar */}
-            <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-900/60">
-              <div className="flex flex-wrap gap-2">
-                <button className="px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg shadow-md">All Time</button>
-                <button className="px-4 py-2 bg-[#0e2152] text-blue-300 hover:text-white hover:bg-blue-800 text-xs font-bold rounded-lg transition-colors border border-blue-900/40">This Month</button>
-                <button className="px-4 py-2 bg-[#0e2152] text-blue-300 hover:text-white hover:bg-blue-800 text-xs font-bold rounded-lg transition-colors border border-blue-900/40">Last Month</button>
-              </div>
-              
-              <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search size={16} className="text-blue-400" />
-                  </div>
-                  <input 
-                    type="text" 
-                    placeholder="Search transactions..." 
-                    className="w-full bg-[#0e2152]/50 border border-blue-800/80 text-blue-100 rounded-full py-2 pl-9 pr-4 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm placeholder:text-blue-400/70"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
-                <button className="w-10 h-10 rounded-full bg-[#0e2152] border border-blue-800/80 text-blue-300 flex items-center justify-center hover:text-white hover:bg-blue-800 transition-colors shrink-0">
-                  <Filter size={16} />
-                </button>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm text-blue-200">
-                <thead className="bg-[#0e2152]">
-                  <tr className="border-b border-blue-900/40">
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest">Transaction</th>
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest">ID</th>
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest">Method</th>
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest text-right">Amount</th>
-                    <th className="px-6 py-4 font-bold text-blue-300 text-xs uppercase tracking-widest text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-blue-900/40">
-                  {transactions.map((trx, idx) => (
-                    <tr key={trx.id} className={`group transition-colors hover:bg-[#11255e] ${idx % 2 === 0 ? 'bg-[#0b1736]' : 'bg-[#0e2152]/30'}`}>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${
-                            trx.amount.startsWith('+') ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
-                          }`}>
-                            {trx.amount.startsWith('+') ? <ArrowDownRight size={16} strokeWidth={2.5} /> : <ArrowUpRight size={16} strokeWidth={2.5} />}
-                          </div>
-                          <span className="font-bold text-white">{trx.type}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="font-mono text-xs text-slate-400">{trx.id}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap font-medium">
-                        {trx.method}
-                      </td>
-                      <td className="px-6 py-4 text-blue-300 font-medium text-xs whitespace-nowrap">
-                        {trx.date}
-                      </td>
-                      <td className={`px-6 py-4 text-right font-bold whitespace-nowrap ${
-                        trx.amount.startsWith('+') ? 'text-emerald-400' : 'text-white'
-                      }`}>
-                        {trx.amount}
-                      </td>
-                      <td className="px-6 py-4 text-right whitespace-nowrap">
-                        {trx.status === 'Completed' ? (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
-                            Completed
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-bold uppercase tracking-wider">
-                            <Clock size={10} /> Pending
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {/* Footer */}
-            <div className="p-4 border-t border-blue-900/60 flex items-center justify-center text-xs font-semibold text-blue-400 bg-[#0b1736]">
-              End of transaction history
-            </div>
+        {/* Footer */}
+        <div className="bg-[#0e1736] border-t border-[#1b2b5a] p-4 flex justify-between items-center px-6">
+          <span className="text-[#3a4f82] text-xs font-bold tracking-[0.2em]">NO RECORDS</span>
+          <div className="flex gap-2">
+            <button className="w-9 h-9 rounded-full border border-[#1b2b5a] flex items-center justify-center text-[#3a4f82] bg-transparent hover:text-[#6484c9] hover:border-[#3a4f82] transition-colors">
+              <ChevronLeft size={16} />
+            </button>
+            <button className="w-9 h-9 rounded-full bg-[#EAB308] text-[#0b1229] flex items-center justify-center font-black text-sm shadow-[0_0_12px_rgba(234,179,8,0.3)]">
+              1
+            </button>
+            <button className="w-9 h-9 rounded-full border border-[#1b2b5a] flex items-center justify-center text-[#3a4f82] bg-transparent hover:text-[#6484c9] hover:border-[#3a4f82] transition-colors">
+              <ChevronRight size={16} />
+            </button>
           </div>
+        </div>
+      </div>
         </div>
       </main>
     </div>
