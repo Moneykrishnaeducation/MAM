@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { 
   Users, 
   GraduationCap, 
@@ -24,8 +25,8 @@ export default function AdminDashboard() {
   }, []);
 
   const stats = [
-    { title: 'Total Students', value: '12,450', change: '+12%', isPositive: true, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-    { title: 'Active Courses', value: '45', change: '+3 new', isPositive: true, icon: GraduationCap, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
+    { title: 'Total Users', value: '12,450', change: '+12%', isPositive: true, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
+    { title: 'Admin Users', value: '45', change: '+3 new', isPositive: true, icon: GraduationCap, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
     { title: 'Total Revenue', value: '$84,500', change: '+8.4%', isPositive: true, icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
     { title: 'System Uptime', value: '99.9%', change: 'Optimal', isPositive: true, icon: Activity, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
   ];
@@ -176,20 +177,20 @@ export default function AdminDashboard() {
                 <p className="text-xs text-slate-400 mb-5">Frequently performed platform operations</p>
                 
                 <div className="grid grid-cols-2 gap-3">
-                  <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-blue-600/15 hover:border-blue-500/40 hover:text-blue-400 transition-all duration-200 group">
+                  <Link href="/admin/activity" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-blue-600/15 hover:border-blue-500/40 hover:text-blue-400 transition-all duration-200 group">
                     <UserPlus size={22} className="mb-2 text-slate-400 group-hover:text-blue-400 transition-colors" />
-                    <span className="text-xs font-semibold">Add Student</span>
-                  </button>
+                    <span className="text-xs font-semibold">Add User</span>
+                  </Link>
 
-                  <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-purple-600/15 hover:border-purple-500/40 hover:text-purple-400 transition-all duration-200 group">
+                  <Link href="/admin/admin-users" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-purple-600/15 hover:border-purple-500/40 hover:text-purple-400 transition-all duration-200 group">
                     <PlusCircle size={22} className="mb-2 text-slate-400 group-hover:text-purple-400 transition-colors" />
-                    <span className="text-xs font-semibold">Create Course</span>
-                  </button>
+                    <span className="text-xs font-semibold">Create Admin User</span>
+                  </Link>
 
-                  <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-emerald-600/15 hover:border-emerald-500/40 hover:text-emerald-400 transition-all duration-200 group">
+                  <Link href="/admin/activity" className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-emerald-600/15 hover:border-emerald-500/40 hover:text-emerald-400 transition-all duration-200 group">
                     <FileText size={22} className="mb-2 text-slate-400 group-hover:text-emerald-400 transition-colors" />
-                    <span className="text-xs font-semibold">View Reports</span>
-                  </button>
+                    <span className="text-xs font-semibold">View Logs</span>
+                  </Link>
 
                   <button className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-800/50 border border-slate-700/60 text-slate-200 hover:bg-amber-600/15 hover:border-amber-500/40 hover:text-amber-400 transition-all duration-200 group">
                     <Settings size={22} className="mb-2 text-slate-400 group-hover:text-amber-400 transition-colors" />
