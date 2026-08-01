@@ -15,7 +15,7 @@ export default function App({ Component, pageProps }: AppProps) {
     return (
       <div className="flex h-screen w-screen overflow-hidden bg-[#0e2250] text-slate-100 font-sans antialiased">
         <ClientSidebar />
-        <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
+        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
           <ClientHeader />
           <main className="flex-1 overflow-y-auto relative">
             <Component {...pageProps} />
