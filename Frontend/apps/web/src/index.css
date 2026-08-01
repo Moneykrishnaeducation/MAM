@@ -126,3 +126,59 @@
     @apply font-sans;
   }
 }
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-float {
+  animation: float-y 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 8s ease-in-out infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 2.5s infinite;
+}
+
+.bg-grid-pattern {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #fef08a 0%, #d4af37 40%, #fcf6ba 70%, #aa771c 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bg-gold-metallic {
+  background: linear-gradient(135deg, #b38728 0%, #fbf5b7 30%, #d4af37 60%, #aa771c 100%);
+}
+
+.bg-gold-metallic:hover {
+  background: linear-gradient(135deg, #c5a059 0%, #fcf6ba 30%, #e6c687 60%, #b38728 100%);
+}
+
+.shadow-gold-glow {
+  box-shadow: 0 0 25px rgba(212, 175, 55, 0.35);
+}
+
+.border-gold-glow {
+  border-color: rgba(212, 175, 55, 0.4);
+}
+
+
