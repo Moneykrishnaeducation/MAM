@@ -14,7 +14,8 @@ import {
   Activity,
   LifeBuoy,
   ArrowRightLeft,
-  FileText
+  FileText,
+  TrendingUp
 } from 'lucide-react';
 
 export default function ClientSidebar() {
@@ -48,6 +49,15 @@ export default function ClientSidebar() {
     >
       <div>
         {/* Brand Header */}
+        <div className="flex items-center gap-2.5 px-2.5 mb-8">
+          <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-600 text-slate-950 font-black">
+            <TrendingUp size={18} />
+          </div>
+          <div>
+            <h2 className="text-sm font-black tracking-wider text-slate-100 leading-tight">MONEYKRISHNA</h2>
+            <p className="text-[10px] text-emerald-400 font-bold tracking-wide">MAM PORTAL</p>
+          </div>
+        </div>
 
         {/* Navigation */}
         <nav className="space-y-1.5">

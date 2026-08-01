@@ -14,7 +14,10 @@ import {
   Mail,
   ShieldCheck,
   UserPlus,
-  LogOut
+  LogOut,
+  Search,
+  Bell,
+  Sparkles
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -37,13 +40,40 @@ export default function AdminSidebar() {
     <aside className="hidden md:flex flex-col w-64 min-h-screen bg-slate-900/90 backdrop-blur-xl border-r border-slate-800 p-5 z-20 sticky top-0 h-screen justify-between">
       <div>
         {/* Brand Header */}
-        <div className="flex items-center gap-3 px-2 mb-8">
+        <div className="flex items-center gap-3 px-2 mb-6">
           <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black py-2 px-3.5 rounded-2xl text-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] tracking-wider">
             MAM
           </div>
           <div>
             <h2 className="text-lg font-bold text-slate-100 leading-tight">Admin Portal</h2>
             <p className="text-xs text-blue-400 font-medium">Money Krishna Edu</p>
+          </div>
+        </div>
+
+        {/* Search & Status (Header elements inside Sidebar) */}
+        <div className="px-2 mb-6 space-y-3">
+          {/* Search Input */}
+          <div className="flex items-center gap-2 bg-slate-800/60 px-3.5 py-2 rounded-xl border border-slate-700/50 focus-within:border-blue-500/80 transition-all">
+            <Search size={15} className="text-slate-400 shrink-0" />
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              className="bg-transparent border-none text-slate-100 outline-none w-full text-xs placeholder-slate-500 font-sans"
+            />
+          </div>
+          
+          {/* Status & Notifications Row */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
+              <Sparkles size={11} className="animate-pulse" />
+              <span>MT5: Optimal</span>
+            </div>
+            
+            <button className="flex items-center gap-1 text-[10px] font-bold text-slate-300 hover:text-white bg-slate-800/70 border border-slate-700/60 hover:border-slate-600 px-2 py-1 rounded-lg relative cursor-pointer">
+              <Bell size={11} />
+              <span>Alerts</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-slate-900" />
+            </button>
           </div>
         </div>
 
