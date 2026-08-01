@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Search, Bell, Shield, Sparkles, Menu, X } from 'lucide-react';
 
 export default function AdminHeader() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (window.innerWidth < 768) {
@@ -19,6 +20,33 @@ export default function AdminHeader() {
     window.addEventListener('toggle-admin-sidebar', handleToggle);
     return () => window.removeEventListener('toggle-admin-sidebar', handleToggle);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
+        setNotificationsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setNotificationsOpen(false);
+      }
+    };
+
+    if (notificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [notificationsOpen]);
 
   const toggleSidebar = () => {
     window.dispatchEvent(new Event('toggle-admin-sidebar'));
@@ -63,7 +91,7 @@ export default function AdminHeader() {
         </div>
 
         {/* Notifications Dropdown */}
-        <div className="relative">
+        <div className="relative" ref={notificationsRef}>
           <button 
             onClick={() => setNotificationsOpen(!notificationsOpen)}
             className="bg-white border border-slate-200 text-slate-500 cursor-pointer relative transition-all duration-200 p-2.5 rounded-xl hover:text-slate-850 hover:bg-slate-50 hover:border-slate-300 shadow-sm"

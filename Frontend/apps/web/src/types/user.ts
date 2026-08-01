@@ -20,13 +20,43 @@ export interface TradingAccount {
   equity: string;
   leverage: string;
   activeTrades: number;
+  /** 'manager' | 'investor' — indicates source table */
+  accountRole?: 'manager' | 'investor';
+  server?: string;
+  currency?: string;
+  marginFree?: string;
+  status?: string;
 }
 
-export interface BankCryptoDetails {
-  bankName: string;
-  accountMask: string;
-  cryptoWallet: string;
+export interface KycDocument {
+  id: string;
+  type: 'address_proof' | 'id_proof';
+  label: string;
+  status: 'pending' | 'approved' | 'rejected' | 'uploaded' | 'missing';
+  fileUrl?: string;
+  fileName?: string;
+  uploadedAt?: string;
+  note?: string;
 }
+
+export interface BankDetails {
+  paymentType: 'bank';
+  accountHolder: string;
+  accountNumber: string;
+  bankName: string;
+  ifscSwift: string;
+  branch?: string;
+  country?: string;
+}
+
+export interface CryptoDetails {
+  paymentType: 'crypto';
+  cryptoAddress: string;
+  network: string;
+  coinType?: string;
+}
+
+export type PaymentDetails = BankDetails | CryptoDetails;
 
 export interface UserData {
   id: string;
@@ -39,8 +69,27 @@ export interface UserData {
   joined: string;
   country: string;
   avatar: string;
+  /** Extended profile fields from ClientProfile model */
+  tier?: string;
+  kycStatus?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  /** Trading accounts list (manager + investor combined) */
+  tradingAccounts?: TradingAccount[];
+  /** Legacy single account — kept for backward compat */
   tradingAccount: TradingAccount;
-  bankCrypto: BankCryptoDetails;
+  /** KYC documents */
+  documents?: KycDocument[];
+  /** Bank OR Crypto payment details */
+  paymentDetails?: PaymentDetails;
+  /** Legacy combined field — kept for backward compat */
+  bankCrypto: {
+    bankName: string;
+    accountMask: string;
+    cryptoWallet: string;
+  };
   transactions: UserTransaction[];
   tickets: UserTicket[];
 }

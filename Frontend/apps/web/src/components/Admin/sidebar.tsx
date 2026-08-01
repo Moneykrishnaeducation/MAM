@@ -17,7 +17,8 @@ import {
   LogOut,
   Search,
   Bell,
-  Sparkles
+  Sparkles,
+  Repeat
 } from 'lucide-react';
 
 export default function AdminSidebar() {
@@ -45,6 +46,7 @@ export default function AdminSidebar() {
     { href: '/admin/investors', label: 'Investors', icon: Landmark },
     { href: '/admin/mails', label: 'Mails', icon: Mail, badge: '3' },
     { href: '/admin/activity', label: 'Activity', icon: Activity },
+    { href: '/admin/transactions', label: 'Transactions', icon: Repeat },
     { href: '/admin/admin-users', label: 'Admin Users', icon: ShieldCheck },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
   ];
