@@ -10,7 +10,7 @@ load_dotenv()
 _cors_origin = os.getenv("CORS_ORIGIN")
 
 if not settings.configured:
-    from app.settings import get_settings
+    from app.settings import BASE_DIR, get_settings
 
     _app_settings = get_settings()
     settings.configure(
@@ -19,9 +19,13 @@ if not settings.configured:
         SECRET_KEY=os.getenv("SECRET_KEY", "change-me-in-production"),
         ALLOWED_HOSTS=["*"],
         DATABASES=_app_settings.databases,
+        STATIC_URL=_app_settings.static_url,
+        STATIC_ROOT=str(_app_settings.static_root),
+        STATICFILES_DIRS=[str(d) for d in _app_settings.staticfiles_dirs],
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
             "django.contrib.auth",
+            "django.contrib.staticfiles",
             "corsheaders",
         ],
         MIDDLEWARE=[
@@ -33,16 +37,47 @@ if not settings.configured:
     )
     django.setup()
 
-from django.http import JsonResponse
-from django.urls import path
+from pathlib import Path
+
+from django.http import FileResponse, JsonResponse
+from django.urls import path, re_path
+from django.views.static import serve
 from ninja import NinjaAPI
 from strawberry.django.views import GraphQLView
 
 from app.graphql_schema import schema as graphql_schema
+from app.settings import BASE_DIR, get_settings
 
 
-def root(request):
-    """Root endpoint."""
+def serve_frontend_page(request, route=""):
+    """Serve exported static HTML frontend pages or fallback to SPA index.html."""
+    _app_settings = get_settings()
+    search_dirs = [
+        *_app_settings.staticfiles_dirs,
+        _app_settings.static_root,
+        BASE_DIR / "Frontend" / "apps" / "web" / "out",
+    ]
+
+    clean_route = route.strip("/")
+    candidates = []
+    if clean_route:
+        candidates.extend([
+            f"{clean_route}.html",
+            f"{clean_route}/index.html",
+            clean_route,
+        ])
+    else:
+        candidates.append("index.html")
+
+    candidates.append("index.html")
+
+    for d in search_dirs:
+        base_path = Path(d)
+        for c in candidates:
+            target_path = base_path / c
+            if target_path.is_file():
+                return FileResponse(open(target_path, "rb"), content_type="text/html")
+
     return JsonResponse({"message": "Welcome to MAM!"})
 
 
@@ -61,10 +96,27 @@ def api_status(request):
 
 
 urlpatterns = [
-    path("", root),
     path("health", health),
     path("api/", ninja_api.urls),
     path("graphql", GraphQLView.as_view(schema=graphql_schema)),
+    re_path(
+        r"^_next/(?P<path>.*)$",
+        serve,
+        {
+            "document_root": str(
+                Path(settings.STATIC_ROOT) / "_next"
+                if (Path(settings.STATIC_ROOT) / "_next").exists()
+                else BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next"
+            )
+        },
+    ),
+    re_path(
+        r"^static/(?P<path>.*)$",
+        serve,
+        {"document_root": str(settings.STATIC_ROOT)},
+    ),
+    path("", serve_frontend_page),
+    re_path(r"^(?P<route>.*)$", serve_frontend_page),
 ]
 
 from django.core.wsgi import get_wsgi_application

@@ -16,7 +16,11 @@ def test_root(client):
     """Test root endpoint."""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to MAM!"}
+    if response.headers.get("content-type", "").startswith("text/html"):
+        content = b"".join(response.streaming_content)
+        assert len(content) > 0
+    else:
+        assert response.json() == {"message": "Welcome to MAM!"}
 
 
 def test_health(client):
@@ -24,3 +28,10 @@ def test_health(client):
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json() == {"status": "healthy"}
+
+
+def test_frontend_page_routes(client):
+    """Test frontend page routing (e.g. /admin/dashboard, /client/dashboard)."""
+    for route in ["/admin/dashboard", "/client/dashboard", "/admin"]:
+        response = client.get(route)
+        assert response.status_code == 200
