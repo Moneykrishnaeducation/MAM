@@ -117,14 +117,14 @@ export default function AccountOpenModal({
                     <span className={`text-[9px] md:text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>Master Password</span>
                     <button type="button" onClick={() => setShowMasterPwd(!showMasterPwd)} className="text-[#EAB308] text-[9px] md:text-xs font-black uppercase hover:underline">{showMasterPwd ? 'Hide' : 'Show'}</button>
                   </label>
-                  <input type={showMasterPwd ? "text" : "password"} id="master_password" value={form.master_password} onChange={handleChange} className={`w-full px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl border-none font-mono text-xs md:text-sm ${isDarkMode ? 'bg-[#0a1128] text-blue-400' : 'bg-white text-black'} shadow-inner`} />
+                  <input type={showMasterPwd ? "text" : "password"} id="master_password" value={form.master_password} onChange={handleChange} className={`w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border ${isDarkMode ? 'bg-[#1e293b] border-blue-500/30 text-blue-400' : 'bg-white border-black/20 text-black'} outline-none focus:ring-2 ring-blue-500/20 transition-all font-mono text-xs md:text-sm`} />
                 </div>
                 <div className="space-y-2">
                   <label className="flex justify-between items-center">
                     <span className={`text-[9px] md:text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-black'}`}>Investor Password</span>
                     <button type="button" onClick={() => setShowInvestorPwd(!showInvestorPwd)} className="text-[#EAB308] text-[9px] md:text-xs font-black uppercase hover:underline">{showInvestorPwd ? 'Hide' : 'Show'}</button>
                   </label>
-                  <input type={showInvestorPwd ? "text" : "password"} id="investor_password" value={form.investor_password} onChange={handleChange} className={`w-full px-4 py-2 md:py-2.5 rounded-lg md:rounded-xl border-none font-mono text-xs md:text-sm ${isDarkMode ? 'bg-[#0a1128] text-blue-400' : 'bg-white text-black'} shadow-inner`} />
+                  <input type={showInvestorPwd ? "text" : "password"} id="investor_password" value={form.investor_password} onChange={handleChange} className={`w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border ${isDarkMode ? 'bg-[#1e293b] border-blue-500/30 text-blue-400' : 'bg-white border-black/20 text-black'} outline-none focus:ring-2 ring-blue-500/20 transition-all font-mono text-xs md:text-sm`} />
                 </div>
               </div>
             </div>
