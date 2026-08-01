@@ -36,8 +36,19 @@ export default function AdminUsersPage() {
   const [activeModalType, setActiveModalType] = useState<UserModalType>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Load state from single mockData.json
+  // Load state from single mockData.json with live backend API override
   const [users, setUsers] = useState<UserData[]>(getAdminUsers() as UserData[]);
+
+  React.useEffect(() => {
+    fetch('/api/admin/users')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.users && Array.isArray(data.users)) {
+          setUsers(data.users);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -58,39 +69,30 @@ export default function AdminUsersPage() {
     setActiveModalType(null);
   };
 
-  const handleCreateUserSubmit = (formData: CreateUserFormData) => {
-    const nextId = `USR-0${users.length + 1}`;
-    const newUser: UserData = {
-      id: nextId,
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone || '+1 555-0199',
-      role: formData.role || 'Client',
-      status: 'Active',
-      verified: false,
-      joined: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      country: formData.country || 'United States',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-      tradingAccount: {
-        accNumber: `ACC-${Math.floor(100000 + Math.random() * 900000)}`,
-        type: 'Live',
-        balance: `$${parseFloat(formData.balance || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        equity: `$${parseFloat(formData.balance || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-        leverage: formData.leverage || '1:100',
-        activeTrades: 0
-      },
-      bankCrypto: {
-        bankName: 'MAM Clearing Bank',
-        accountMask: '•••• 8912',
-        cryptoWallet: '0x992...283'
-      },
-      transactions: [],
-      tickets: []
-    };
-
-    setUsers(prev => [newUser, ...prev]);
-    closeModal();
-    showToast(`User ${newUser.name} created successfully!`);
+  const handleCreateUserSubmit = async (formData: CreateUserFormData) => {
+    try {
+      const res = await fetch('/api/admin/users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone || '',
+          role: formData.role || 'Client User',
+          country: formData.country || 'United States',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to create user');
+        return;
+      }
+      setUsers(prev => [data.user, ...prev]);
+      closeModal();
+      showToast(`User ${data.user.name} created successfully!`);
+    } catch {
+      showToast('Network error — could not create user');
+    }
   };
 
   const toggleUserActiveStatus = (userId: string) => {
@@ -284,7 +286,7 @@ export default function AdminUsersPage() {
                                     <ArrowUpRight size={15} className="text-teal-400" /> <span>Transactions</span>
                                   </button>
                                   <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 hover:text-blue-300 border border-slate-800 hover:border-blue-500/40 text-xs font-semibold transition-all">
-                                    <Ticket size={15} className="text-indigo-400" /> <span>Tickets ({u.tickets.length})</span>
+                                    <Ticket size={15} className="text-indigo-400" /> <span>Tickets ({u.tickets?.length || 0})</span>
                                   </button>
                                   <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-xs font-bold transition-all">
                                     <PlusCircle size={15} /> <span>Add Account</span>
@@ -419,7 +421,7 @@ export default function AdminUsersPage() {
 
                   {activeModalType === 'transactions' && (
                     <div className="space-y-2 text-xs">
-                      {activeModalUser.transactions.map(tx => (
+                      {(activeModalUser.transactions || []).map(tx => (
                         <div key={tx.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
                           <div><span className="font-mono text-blue-400 font-bold">{tx.id}</span> - {tx.type}</div>
                           <span className="font-bold text-emerald-400">{tx.amount}</span>
@@ -430,7 +432,7 @@ export default function AdminUsersPage() {
 
                   {activeModalType === 'tickets' && (
                     <div className="space-y-2 text-xs">
-                      {activeModalUser.tickets.length === 0 ? <p className="text-slate-400">No tickets found.</p> : activeModalUser.tickets.map(t => (
+                      {(!activeModalUser.tickets || activeModalUser.tickets.length === 0) ? <p className="text-slate-400">No tickets found.</p> : activeModalUser.tickets.map(t => (
                         <div key={t.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
                           <div><span className="font-mono text-blue-400 font-bold">{t.id}</span> - {t.subject}</div>
                           <span className="text-blue-400 font-bold">{t.status}</span>

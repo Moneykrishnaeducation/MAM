@@ -32,10 +32,10 @@ class TestAdminPanelModels:
     async def test_create_admin_user(self):
         """Test creating an admin user."""
         admin = await admin_crud.create_admin_user(
-            username="admin_test", email="admin@example.com", role="Super Admin"
+            name="Admin Test", email="admin@example.com", role="Super Admin"
         )
         assert admin.id is not None
-        assert admin.username == "admin_test"
+        assert admin.name == "Admin Test"
         assert admin.email == "admin@example.com"
         assert admin.role == "Super Admin"
 

@@ -10,9 +10,12 @@ from backendPanel.settings import get_settings
 def get_tortoise_config() -> dict[str, Any]:
     """Get Tortoise ORM configuration dictionary."""
     settings = get_settings()
+    db_url = settings.database_url
+    if db_url.startswith("postgresql://"):
+        db_url = db_url.replace("postgresql://", "postgres://", 1)
     return {
         "connections": {
-            "default": settings.database_url,
+            "default": db_url,
         },
         "apps": {
             "models": {
@@ -28,6 +31,13 @@ def get_tortoise_config() -> dict[str, Any]:
 
 
 TORTOISE_ORM = get_tortoise_config()
+
+
+async def ensure_db_initialized() -> None:
+    """Ensure Tortoise ORM is initialized before executing database queries."""
+    if not Tortoise._inited:
+        await Tortoise.init(config=TORTOISE_ORM)
+        await Tortoise.generate_schemas(safe=True)
 
 
 async def init_db() -> None:

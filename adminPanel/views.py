@@ -1,68 +1,257 @@
-"""API views for adminPanel."""
+"""Plain async view functions for adminPanel — no router decorators."""
 
-from ninja import Router
+import json
+import random
+import string
 
-router = Router(tags=["admin"])
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
+
+from adminPanel.models import (
+    ActivityLog,
+    AdminUser,
+    ClientUser,
+    Investor,
+    Manager,
+    PendingRequest,
+)
+from backendPanel.database import ensure_db_initialized
+
+# ── GET views ──────────────────────────────────────────────────────────────────
+
+async def list_admin_system_users(request):
+    """List system admin users directly from database."""
+    await ensure_db_initialized()
+    admin_users = await AdminUser.all()
+    results = [
+        {
+            "id": f"ADM-{user.id:03d}",
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "department": user.department,
+            "permissions": user.permissions or [],
+            "status": user.status,
+            "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
+            "avatar": user.avatar,
+        }
+        for user in admin_users
+    ]
+    return JsonResponse({"status": "ok", "admin_users": results})
 
 
-@router.get("/requests")
-def list_pending_requests(request):
-    """List pending admin requests."""
-    return {
+async def list_client_users(request):
+    """List client users directly from database."""
+    await ensure_db_initialized()
+    client_users = await ClientUser.all()
+    results = [
+        {
+            "id": user.user_code or f"USR-{user.id:03d}",
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "status": user.status,
+            "verified": user.verified,
+            "country": user.country,
+            "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+            "avatar": user.avatar,
+            "tradingAccount": None,
+            "bankCrypto": None,
+            "transactions": [],
+            "tickets": [],
+        }
+        for user in client_users
+    ]
+    return JsonResponse({"status": "ok", "users": results})
+
+
+async def list_pending_requests(request):
+    """List pending admin requests directly from database."""
+    await ensure_db_initialized()
+    requests = await PendingRequest.all()
+    results = [
+        {
+            "id": r.id,
+            "type": r.request_type,
+            "client": r.client_name,
+            "amount": r.amount,
+            "status": r.status,
+        }
+        for r in requests
+    ]
+    return JsonResponse({"status": "ok", "requests": results})
+
+
+async def list_managers(request):
+    """List MAM managers directly from database."""
+    await ensure_db_initialized()
+    managers = await Manager.all()
+    results = [
+        {
+            "id": m.id,
+            "name": m.name,
+            "email": m.email,
+            "strategy": m.strategy,
+            "aum": m.total_aum,
+            "performance_fee": f"{m.performance_fee}%",
+            "status": m.status,
+        }
+        for m in managers
+    ]
+    return JsonResponse({"status": "ok", "managers": results})
+
+
+async def list_investors(request):
+    """List investors directly from database."""
+    await ensure_db_initialized()
+    investors = await Investor.all()
+    results = [
+        {
+            "id": i.id,
+            "name": i.name,
+            "email": i.email,
+            "equity": i.equity,
+            "allocated_mam": i.allocated_mam,
+            "status": i.status,
+        }
+        for i in investors
+    ]
+    return JsonResponse({"status": "ok", "investors": results})
+
+
+async def list_activity_logs(request):
+    """List system activity logs directly from database."""
+    await ensure_db_initialized()
+    logs = await ActivityLog.all().order_by("-created_at")
+    results = [
+        {
+            "id": log.id,
+            "action": log.action,
+            "user": log.user_email,
+            "ip_address": log.ip_address,
+            "time": log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else None,
+        }
+        for log in logs
+    ]
+    return JsonResponse({"status": "ok", "activities": results})
+
+
+# ── POST views ─────────────────────────────────────────────────────────────────
+
+def _generate_user_code(prefix: str, length: int = 6) -> str:
+    """Generate a random user code like USR-A83F2C."""
+    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
+    return f"{prefix}-{suffix}"
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def create_admin_user(request):
+    """Create a new system admin user."""
+    await ensure_db_initialized()
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    name = body.get("name", "").strip()
+    email = body.get("email", "").strip()
+    role = body.get("role", "Operations Manager").strip()
+    department = body.get("department", "Operations").strip()
+    permissions = body.get("permissions", [])
+    avatar = body.get("avatar", "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80")
+
+    if not name or not email:
+        return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
+
+    if await AdminUser.filter(email=email).exists():
+        return JsonResponse({"status": "error", "message": "An admin user with this email already exists"}, status=409)
+
+    user = await AdminUser.create(
+        name=name,
+        email=email,
+        role=role,
+        department=department,
+        permissions=permissions,
+        status="Active",
+        avatar=avatar,
+    )
+
+    return JsonResponse({
         "status": "ok",
-        "requests": [
-            {"id": 1, "type": "Deposit Approval", "client": "Alex Rivera", "amount": 5000.0, "status": "Pending"},
-            {"id": 2, "type": "Account Allocation", "client": "Sarah Jenkins", "amount": 12500.0, "status": "Pending"},
-            {"id": 3, "type": "MAM Allocation", "client": "Marcus Vance", "amount": 50000.0, "status": "Pending"},
-            {"id": 4, "type": "Withdrawal Request", "client": "Elena Rostova", "amount": 2500.0, "status": "Pending"},
-            {"id": 5, "type": "KYC Verification", "client": "David Chen", "amount": 0.0, "status": "Pending"},
-        ],
-    }
+        "message": f"Admin user '{name}' created successfully",
+        "admin_user": {
+            "id": f"ADM-{user.id:03d}",
+            "name": user.name,
+            "email": user.email,
+            "role": user.role,
+            "department": user.department,
+            "permissions": user.permissions or [],
+            "status": user.status,
+            "lastLogin": None,
+            "avatar": user.avatar,
+        },
+    }, status=201)
 
 
-@router.get("/users")
-def list_users(request):
-    """List system users."""
-    return {
+@csrf_exempt
+@require_http_methods(["POST"])
+async def create_client_user(request):
+    """Create a new client user."""
+    await ensure_db_initialized()
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    name = body.get("name", "").strip()
+    email = body.get("email", "").strip()
+    phone = body.get("phone", "").strip()
+    role = body.get("role", "Client User").strip()
+    country = body.get("country", "United States").strip()
+    avatar = body.get("avatar", "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80")
+
+    if not name or not email:
+        return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
+
+    if await ClientUser.filter(email=email).exists():
+        return JsonResponse({"status": "error", "message": "A client user with this email already exists"}, status=409)
+
+    user_code = _generate_user_code("USR")
+    while await ClientUser.filter(user_code=user_code).exists():
+        user_code = _generate_user_code("USR")
+
+    user = await ClientUser.create(
+        user_code=user_code,
+        name=name,
+        email=email,
+        phone=phone or None,
+        role=role,
+        country=country,
+        status="Active",
+        verified=False,
+        avatar=avatar,
+    )
+
+    return JsonResponse({
         "status": "ok",
-        "users": [
-            {"id": 1, "name": "Senior Trader", "email": "senior.trader@vtindex.com", "role": "Trader"},
-            {"id": 2, "name": "Risk Analyst", "email": "risk.analyst@vtindex.com", "role": "Analyst"},
-        ],
-    }
-
-
-@router.get("/managers")
-def list_managers(request):
-    """List MAM managers."""
-    return {
-        "status": "ok",
-        "managers": [
-            {"id": 1, "name": "Alpha Quant Capital", "strategy": "High-Freq Grid", "aum": 2500000.0, "performance_fee": "20%"},
-            {"id": 2, "name": "Apex Momentum Fund", "strategy": "Macro Trend", "aum": 4100000.0, "performance_fee": "15%"},
-        ],
-    }
-
-
-@router.get("/investors")
-def list_investors(request):
-    """List investors."""
-    return {
-        "status": "ok",
-        "investors": [
-            {"id": 1, "name": "Alex Rivera", "email": "alex.rivera@example.com", "equity": 45800.5, "status": "Active"},
-            {"id": 2, "name": "Sarah Jenkins", "email": "sarah.j@example.com", "equity": 128400.0, "status": "Active"},
-        ],
-    }
-
-
-@router.get("/activity")
-def list_activity_logs(request):
-    """List system activity logs."""
-    return {
-        "status": "ok",
-        "activities": [
-            {"id": 1, "action": "HSM Session Verification", "user": "system.admin@vtindex.com", "time": "Just now"},
-            {"id": 2, "action": "Equinix NY4 Latency Check (8ms)", "user": "system", "time": "2 mins ago"},
-        ],
-    }
+        "message": f"Client user '{name}' created successfully",
+        "user": {
+            "id": user.user_code,
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "role": user.role,
+            "status": user.status,
+            "verified": user.verified,
+            "country": user.country,
+            "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+            "avatar": user.avatar,
+            "tradingAccount": None,
+            "bankCrypto": None,
+            "transactions": [],
+            "tickets": [],
+        },
+    }, status=201)

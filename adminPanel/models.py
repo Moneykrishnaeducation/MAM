@@ -1,16 +1,21 @@
-"""Models for adminPanel & central database models: Admin Users, Managers, Investors, MAM Accounts, Pending Requests, Activity Logs, Client Profiles & Accounts."""
+"""Models for adminPanel: Admin Users, Client Users, Managers, Investors, MAM Accounts, Pending Requests, Activity Logs, Client Profiles & Accounts."""
 
 from tortoise import fields, models
 
 
 class AdminUser(models.Model):
-    """Admin User model for system administrators."""
+    """Admin System User model for admin-users management."""
 
     id = fields.IntField(primary_key=True)
-    username = fields.CharField(max_length=150, unique=True, index=True)
+    name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True, index=True)
-    role = fields.CharField(max_length=50, default="Super Admin")
-    is_active = fields.BooleanField(default=True)
+    password_hash = fields.CharField(max_length=255, null=True)
+    role = fields.CharField(max_length=100, default="Operations Manager")
+    department = fields.CharField(max_length=100, default="Operations")
+    permissions = fields.JSONField(default=list)
+    status = fields.CharField(max_length=50, default="Active")
+    avatar = fields.CharField(max_length=500, null=True)
+    last_login = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
@@ -18,7 +23,31 @@ class AdminUser(models.Model):
         table = "admin_users"
 
     def __repr__(self) -> str:
-        return f"<AdminUser(id={self.id}, username={self.username})>"
+        return f"<AdminUser(id={self.id}, name={self.name}, email={self.email})>"
+
+
+class ClientUser(models.Model):
+    """Client User model for frontend client users management."""
+
+    id = fields.IntField(primary_key=True)
+    user_code = fields.CharField(max_length=50, unique=True, index=True, null=True)
+    name = fields.CharField(max_length=255)
+    email = fields.CharField(max_length=255, unique=True, index=True)
+    phone = fields.CharField(max_length=50, null=True)
+    role = fields.CharField(max_length=50, default="Client User")
+    status = fields.CharField(max_length=50, default="Active")
+    verified = fields.BooleanField(default=True)
+    country = fields.CharField(max_length=100, default="United States")
+    avatar = fields.CharField(max_length=500, null=True)
+    joined = fields.DatetimeField(auto_now_add=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "client_users"
+
+    def __repr__(self) -> str:
+        return f"<ClientUser(id={self.id}, name={self.name}, email={self.email})>"
 
 
 class Manager(models.Model):

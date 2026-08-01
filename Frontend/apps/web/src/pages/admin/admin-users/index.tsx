@@ -43,45 +43,63 @@ export default function AdminUsersManagementPage() {
     password: '',
   });
 
-  // Load from single mockData.json
+  // Load from single mockData.json with live backend API override
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>(getAdminSystemUsers() as AdminUser[]);
+
+  React.useEffect(() => {
+    fetch('/api/admin/admin-users')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.admin_users && Array.isArray(data.admin_users)) {
+          setAdminUsers(data.admin_users);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  const handleCreateAdmin = (e: React.FormEvent) => {
+  const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.email) {
       alert('Please fill out the name and email address.');
       return;
     }
 
-    const newAdmin: AdminUser = {
-      id: `ADM-00${adminUsers.length + 1}`,
-      name: formData.name,
-      email: formData.email,
-      role: formData.role,
-      department: formData.department,
-      permissions: formData.permissions,
-      status: 'Active',
-      lastLogin: 'Never',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
-    };
-
-    setAdminUsers([newAdmin, ...adminUsers]);
-    setIsModalOpen(false);
-    showToast(`New Admin User "${formData.name}" created successfully!`);
-    
-    setFormData({
-      name: '',
-      email: '',
-      role: 'Operations Manager',
-      department: 'Operations',
-      permissions: ['User Approvals', 'View Reports'],
-      password: '',
-    });
+    try {
+      const res = await fetch('/api/admin/admin-users/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          department: formData.department,
+          permissions: formData.permissions,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.message || 'Failed to create admin user');
+        return;
+      }
+      setAdminUsers(prev => [data.admin_user, ...prev]);
+      setIsModalOpen(false);
+      showToast(`New Admin User "${formData.name}" created successfully!`);
+      setFormData({
+        name: '',
+        email: '',
+        role: 'Operations Manager',
+        department: 'Operations',
+        permissions: ['User Approvals', 'View Reports'],
+        password: '',
+      });
+    } catch {
+      showToast('Network error — could not create admin user');
+    }
   };
 
   const toggleAdminStatus = (id: string, currentName: string, currentStatus: string) => {
