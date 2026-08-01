@@ -33,11 +33,19 @@ MAM/
 ## Common Commands
 
 - `uv sync --extra dev` - Install dependencies
-- `uv run python -m backendPanel.main` - Run application (uvicorn ASGI server, auto-creates database schemas on startup via `Tortoise.generate_schemas(safe=True)`)
+- `uv run python -m backendPanel.main` - Run application (uvicorn ASGI server, auto-creates database schemas and syncs modified table columns on startup via `auto_sync_db_schema()`)
 - `uv run uvicorn backendPanel.asgi:application --reload` - Run with uvicorn directly
 - `uv run pytest` - Run tests
 - `uv run ruff check .` - Run linter
 - `uv run ruff format .` - Format code
+
+## Database Schema Management & Model Modifications
+
+- **Automatic Table & Column Synchronization**:
+  - The application automatically synchronizes Python model classes (`adminPanel/models.py`) with PostgreSQL during startup in `backendPanel/asgi.py`.
+  - **New Tables**: Automatically created via `Tortoise.generate_schemas(safe=True)`.
+  - **Modified Tables / Added Fields**: Automatically synchronized via `auto_sync_db_schema()`, which executes `ALTER TABLE "..." ADD COLUMN IF NOT EXISTS "..."` for any new fields or columns added to model classes.
+  - **No Manual Migration Commands Required**: Simply edit your Tortoise ORM model classes in `adminPanel/models.py`, save, and start the server (`uv run python -m backendPanel.main`). The database schema updates automatically on startup!
 
 ## Maintenance
 

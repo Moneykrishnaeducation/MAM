@@ -2,7 +2,13 @@
 
 from django.http import JsonResponse
 
-from adminPanel.models import ActivityLog, ClientAccount, ClientTicket, ClientTransaction, MyInvestment
+from adminPanel.models import (
+    ActivityLog,
+    ClientAccount,
+    ClientTicket,
+    ClientTransaction,
+    MyInvestment,
+)
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 

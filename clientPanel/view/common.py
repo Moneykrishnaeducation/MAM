@@ -11,7 +11,6 @@ from django.http import JsonResponse
 
 from adminPanel.models import ClientProfile
 
-
 CLIENT_LOGIN_KEY = "client-panel-login-key"
 CLIENT_LOGIN_MAX_AGE = 60 * 60 * 24 * 7
 CLIENT_PASSWORD_HASH_ITERATIONS = 120000

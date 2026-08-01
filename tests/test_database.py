@@ -7,12 +7,21 @@ from django.conf import settings
 from tortoise import Tortoise
 
 from adminPanel import crud as admin_crud
-from adminPanel.models import ActivityLog, ClientProfile, ClientTicket, ClientTransaction, ClientUser, Investor, Manager, MyInvestment
+from adminPanel.models import (
+    ActivityLog,
+    ClientProfile,
+    ClientTicket,
+    ClientTransaction,
+    ClientUser,
+    Investor,
+    Manager,
+    MyInvestment,
+)
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
 from clientPanel.view.common import create_client_login_token
-from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.dashboard import get_client_dashboard
+from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import reset_client_password
@@ -223,6 +232,7 @@ class TestClientPanelModels:
             balance=125000.0,
             equity=131250.0,
         )
+        assert account.id is not None
         await MyInvestment.create(
             client_profile=profile,
             strategy_name="Growth Blend",

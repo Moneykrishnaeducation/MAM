@@ -140,3 +140,18 @@ MAM/
   uv run ruff format .
   uv run pytest
   ```
+
+---
+
+## Database Schema Management & Model Modifications
+
+The application automatically synchronizes Python model definitions in `adminPanel/models.py` with PostgreSQL on server startup (`backendPanel/asgi.py`):
+
+1. **New Tables**: Automatically created on startup via `Tortoise.generate_schemas(safe=True)`.
+2. **Modifying Existing Models / Adding Fields**:
+   - Automatically detected and synchronized via `auto_sync_db_schema()`.
+   - On startup, the server compares all model fields against PostgreSQL and executes `ALTER TABLE "..." ADD COLUMN IF NOT EXISTS "..."` for any new or modified fields.
+3. **Developer Workflow**:
+   - Simply add or edit fields in `adminPanel/models.py` and save the file.
+   - Run or restart the server (`uv run python -m backendPanel.main`).
+   - The PostgreSQL database schema updates automatically with no manual migration CLI commands required!

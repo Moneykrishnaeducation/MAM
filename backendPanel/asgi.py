@@ -1,5 +1,6 @@
 """ASGI entry point for backendPanel with Tortoise ORM lifespan management."""
 
+import logging
 import os
 
 import django
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+logger = logging.getLogger("uvicorn.error")
 _cors_origin = os.getenv("CORS_ORIGIN")
 
 if not settings.configured:
@@ -40,7 +42,7 @@ if not settings.configured:
 from django.core.asgi import get_asgi_application  # noqa: E402
 from tortoise.context import TortoiseContext, set_global_context  # noqa: E402
 
-from backendPanel.database import TORTOISE_ORM  # noqa: E402
+from backendPanel.database import TORTOISE_ORM, auto_sync_db_schema  # noqa: E402
 
 _django_asgi = get_asgi_application()
 
@@ -63,7 +65,9 @@ async def application(scope, receive, send):
                 message = await receive()
                 if message["type"] == "lifespan.startup":
                     await ctx.init(config=TORTOISE_ORM)
+                    logger.info("[STARTUP] Checking database schema & auto-syncing model modifications...")
                     await ctx.generate_schemas(safe=True)
+                    await auto_sync_db_schema()
                     set_global_context(ctx)
                     _global_tortoise_ctx = ctx
                     await send({"type": "lifespan.startup.complete"})
