@@ -23,36 +23,9 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { getAdminUsers } from '@/lib/mockDataLoader';
-
-export interface UserData {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-  status: 'Active' | 'Suspended';
-  verified: boolean;
-  joined: string;
-  country: string;
-  avatar: string;
-  tradingAccount: {
-    accNumber: string;
-    type: string;
-    balance: string;
-    equity: string;
-    leverage: string;
-    activeTrades: number;
-  };
-  bankCrypto: {
-    bankName: string;
-    accountMask: string;
-    cryptoWallet: string;
-  };
-  transactions: Array<{ id: string; type: 'Deposit' | 'Withdrawal'; amount: string; status: 'Completed' | 'Pending'; date: string }>;
-  tickets: Array<{ id: string; subject: string; status: 'Open' | 'Closed' | 'In Progress'; date: string }>;
-}
-
-export type ModalType = 'verifi' | 'trading' | 'profile' | 'bank_crypto' | 'transactions' | 'tickets' | 'add_account' | 'delete_user' | 'account_active' | null;
+import CreateUserModalForm from '@/components/Admin/CreateUserModalForm';
+import { type CreateUserFormData, type UserData } from '@/types/user';
+import { type UserModalType } from '@/types/userModal';
 
 export default function AdminUsersPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -60,7 +33,7 @@ export default function AdminUsersPage() {
   
   // Modal State
   const [activeModalUser, setActiveModalUser] = useState<UserData | null>(null);
-  const [activeModalType, setActiveModalType] = useState<ModalType>(null);
+  const [activeModalType, setActiveModalType] = useState<UserModalType>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Load state from single mockData.json
@@ -75,7 +48,7 @@ export default function AdminUsersPage() {
     setExpandedRowId(prev => prev === userId ? null : userId);
   };
 
-  const openSubRowModal = (user: UserData, type: ModalType) => {
+  const openSubRowModal = (user: UserData | null, type: UserModalType) => {
     setActiveModalUser(user);
     setActiveModalType(type);
   };
@@ -83,6 +56,41 @@ export default function AdminUsersPage() {
   const closeModal = () => {
     setActiveModalUser(null);
     setActiveModalType(null);
+  };
+
+  const handleCreateUserSubmit = (formData: CreateUserFormData) => {
+    const nextId = `USR-0${users.length + 1}`;
+    const newUser: UserData = {
+      id: nextId,
+      name: formData.name,
+      email: formData.email,
+      phone: formData.phone || '+1 555-0199',
+      role: formData.role || 'Client',
+      status: 'Active',
+      verified: false,
+      joined: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      country: formData.country || 'United States',
+      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80',
+      tradingAccount: {
+        accNumber: `ACC-${Math.floor(100000 + Math.random() * 900000)}`,
+        type: 'Live',
+        balance: `$${parseFloat(formData.balance || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        equity: `$${parseFloat(formData.balance || '0').toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+        leverage: formData.leverage || '1:100',
+        activeTrades: 0
+      },
+      bankCrypto: {
+        bankName: 'MAM Clearing Bank',
+        accountMask: '•••• 8912',
+        cryptoWallet: '0x992...283'
+      },
+      transactions: [],
+      tickets: []
+    };
+
+    setUsers(prev => [newUser, ...prev]);
+    closeModal();
+    showToast(`User ${newUser.name} created successfully!`);
   };
 
   const toggleUserActiveStatus = (userId: string) => {
@@ -150,7 +158,7 @@ export default function AdminUsersPage() {
               </p>
             </div>
             <button 
-              onClick={() => showToast('User registration modal opened')}
+              onClick={() => openSubRowModal(null, 'create_user')}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
             >
               <Plus size={16} /> Add New User
@@ -301,154 +309,177 @@ export default function AdminUsersPage() {
           </div>
         </div>
 
-      {activeModalUser && activeModalType && (
+      {activeModalType && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto">
             <div className="p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={activeModalUser.avatar} alt={activeModalUser.name} className="w-11 h-11 rounded-xl object-cover ring-2 ring-blue-500/40" />
-                <div>
-                  <h3 className="font-bold text-white text-base">{activeModalUser.name}</h3>
-                  <p className="text-xs text-slate-400">{activeModalUser.id} • {activeModalUser.email}</p>
+              {activeModalUser ? (
+                <div className="flex items-center gap-3">
+                  <img src={activeModalUser.avatar} alt={activeModalUser.name} className="w-11 h-11 rounded-xl object-cover ring-2 ring-blue-500/40" />
+                  <div>
+                    <h3 className="font-bold text-white text-base">{activeModalUser.name}</h3>
+                    <p className="text-xs text-slate-400">{activeModalUser.id} • {activeModalUser.email}</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <PlusCircle size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Add New User</h3>
+                    <p className="text-xs text-slate-400">Create a new client profile & trading account</p>
+                  </div>
+                </div>
+              )}
               <button onClick={closeModal} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-6">
-              {activeModalType === 'verifi' && (
-                <div className="space-y-4 text-xs">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h4 className="font-bold text-white text-sm flex items-center gap-2">
-                      <ShieldCheck size={18} className="text-blue-400" /> Identity Verification & KYC
-                    </h4>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <div className="text-slate-400 mb-1">Passport / ID</div>
-                      <div className="font-bold text-emerald-400 flex items-center gap-1.5"><CheckCircle2 size={14} /> Approved</div>
+              {activeModalType === 'create_user' && (
+                <CreateUserModalForm onSubmit={handleCreateUserSubmit} onCancel={closeModal} />
+              )}
+
+              {activeModalUser && (
+                <>
+                  {activeModalType === 'verifi' && (
+                    <div className="space-y-4 text-xs">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h4 className="font-bold text-white text-sm flex items-center gap-2">
+                          <ShieldCheck size={18} className="text-blue-400" /> Identity Verification & KYC
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                          <div className="text-slate-400 mb-1">Passport / ID</div>
+                          <div className="font-bold text-emerald-400 flex items-center gap-1.5"><CheckCircle2 size={14} /> Approved</div>
+                        </div>
+                        <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                          <div className="text-slate-400 mb-1">Proof of Address</div>
+                          <div className="font-bold text-emerald-400 flex items-center gap-1.5"><CheckCircle2 size={14} /> Confirmed</div>
+                        </div>
+                      </div>
+                      <div className="pt-4 border-t border-slate-800 flex justify-end">
+                        <button onClick={() => toggleVerification(activeModalUser.id)} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold">
+                          {activeModalUser.verified ? 'Revoke Verification' : 'Approve Verification'}
+                        </button>
+                      </div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <div className="text-slate-400 mb-1">Proof of Address</div>
-                      <div className="font-bold text-emerald-400 flex items-center gap-1.5"><CheckCircle2 size={14} /> Confirmed</div>
+                  )}
+
+                  {activeModalType === 'trading' && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Account Number</div>
+                        <div className="font-bold text-blue-400">{activeModalUser.tradingAccount.accNumber}</div>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Balance</div>
+                        <div className="font-bold text-emerald-400">{activeModalUser.tradingAccount.balance}</div>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Equity</div>
+                        <div className="font-bold text-blue-400">{activeModalUser.tradingAccount.equity}</div>
+                      </div>
+                      <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Leverage</div>
+                        <div className="font-bold text-purple-400">{activeModalUser.tradingAccount.leverage}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className="pt-4 border-t border-slate-800 flex justify-end">
-                    <button onClick={() => toggleVerification(activeModalUser.id)} className="px-4 py-2 rounded-xl bg-blue-600 text-white font-bold">
-                      {activeModalUser.verified ? 'Revoke Verification' : 'Approve Verification'}
-                    </button>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {activeModalType === 'trading' && (
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Account Number</div>
-                    <div className="font-bold text-blue-400">{activeModalUser.tradingAccount.accNumber}</div>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Balance</div>
-                    <div className="font-bold text-emerald-400">{activeModalUser.tradingAccount.balance}</div>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Equity</div>
-                    <div className="font-bold text-blue-400">{activeModalUser.tradingAccount.equity}</div>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Leverage</div>
-                    <div className="font-bold text-purple-400">{activeModalUser.tradingAccount.leverage}</div>
-                  </div>
-                </div>
-              )}
-
-              {activeModalType === 'profile' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Phone</div>
-                    <div className="font-bold text-white">{activeModalUser.phone}</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Country</div>
-                    <div className="font-bold text-white">{activeModalUser.country}</div>
-                  </div>
-                </div>
-              )}
-
-              {activeModalType === 'bank_crypto' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Bank Name</div>
-                    <div className="font-bold text-white">{activeModalUser.bankCrypto.bankName}</div>
-                    <div className="text-slate-400">{activeModalUser.bankCrypto.accountMask}</div>
-                  </div>
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                    <div className="text-slate-400 mb-1">Crypto Wallet</div>
-                    <div className="font-bold text-emerald-400 font-mono">{activeModalUser.bankCrypto.cryptoWallet}</div>
-                  </div>
-                </div>
-              )}
-
-              {activeModalType === 'transactions' && (
-                <div className="space-y-2 text-xs">
-                  {activeModalUser.transactions.map(tx => (
-                    <div key={tx.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                      <div><span className="font-mono text-blue-400 font-bold">{tx.id}</span> - {tx.type}</div>
-                      <span className="font-bold text-emerald-400">{tx.amount}</span>
+                  {activeModalType === 'profile' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Phone</div>
+                        <div className="font-bold text-white">{activeModalUser.phone}</div>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Country</div>
+                        <div className="font-bold text-white">{activeModalUser.country}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
 
-              {activeModalType === 'tickets' && (
-                <div className="space-y-2 text-xs">
-                  {activeModalUser.tickets.length === 0 ? <p className="text-slate-400">No tickets found.</p> : activeModalUser.tickets.map(t => (
-                    <div key={t.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
-                      <div><span className="font-mono text-blue-400 font-bold">{t.id}</span> - {t.subject}</div>
-                      <span className="text-blue-400 font-bold">{t.status}</span>
+                  {activeModalType === 'bank_crypto' && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Bank Name</div>
+                        <div className="font-bold text-white">{activeModalUser.bankCrypto.bankName}</div>
+                        <div className="text-slate-400">{activeModalUser.bankCrypto.accountMask}</div>
+                      </div>
+                      <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+                        <div className="text-slate-400 mb-1">Crypto Wallet</div>
+                        <div className="font-bold text-emerald-400 font-mono">{activeModalUser.bankCrypto.cryptoWallet}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  )}
 
-              {activeModalType === 'add_account' && (
-                <div className="space-y-3 text-xs">
-                  <p className="text-slate-300">Create new sub-account for {activeModalUser.name}:</p>
-                  <button onClick={() => handleAddAccountSubmit(activeModalUser.name)} className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">
-                    Initialize Account
-                  </button>
-                </div>
-              )}
+                  {activeModalType === 'transactions' && (
+                    <div className="space-y-2 text-xs">
+                      {activeModalUser.transactions.map(tx => (
+                        <div key={tx.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                          <div><span className="font-mono text-blue-400 font-bold">{tx.id}</span> - {tx.type}</div>
+                          <span className="font-bold text-emerald-400">{tx.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-              {activeModalType === 'account_active' && (
-                <div className="space-y-3 text-xs">
-                  <p className="text-slate-300">Status for {activeModalUser.name}: <strong>{activeModalUser.status}</strong></p>
-                  <button onClick={() => { toggleUserActiveStatus(activeModalUser.id); closeModal(); }} className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">
-                    Toggle Status
-                  </button>
-                </div>
-              )}
+                  {activeModalType === 'tickets' && (
+                    <div className="space-y-2 text-xs">
+                      {activeModalUser.tickets.length === 0 ? <p className="text-slate-400">No tickets found.</p> : activeModalUser.tickets.map(t => (
+                        <div key={t.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                          <div><span className="font-mono text-blue-400 font-bold">{t.id}</span> - {t.subject}</div>
+                          <span className="text-blue-400 font-bold">{t.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-              {activeModalType === 'delete_user' && (
-                <div className="space-y-3 text-xs">
-                  <p className="text-red-400 font-bold">Delete user {activeModalUser.name}?</p>
-                  <button onClick={() => handleDeleteUser(activeModalUser.id, activeModalUser.name)} className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold">
-                    Confirm Delete
-                  </button>
-                </div>
+                  {activeModalType === 'add_account' && (
+                    <div className="space-y-3 text-xs">
+                      <p className="text-slate-300">Create new sub-account for {activeModalUser.name}:</p>
+                      <button onClick={() => handleAddAccountSubmit(activeModalUser.name)} className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">
+                        Initialize Account
+                      </button>
+                    </div>
+                  )}
+
+                  {activeModalType === 'account_active' && (
+                    <div className="space-y-3 text-xs">
+                      <p className="text-slate-300">Status for {activeModalUser.name}: <strong>{activeModalUser.status}</strong></p>
+                      <button onClick={() => { toggleUserActiveStatus(activeModalUser.id); closeModal(); }} className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold">
+                        Toggle Status
+                      </button>
+                    </div>
+                  )}
+
+                  {activeModalType === 'delete_user' && (
+                    <div className="space-y-3 text-xs">
+                      <p className="text-red-400 font-bold">Delete user {activeModalUser.name}?</p>
+                      <button onClick={() => handleDeleteUser(activeModalUser.id, activeModalUser.name)} className="px-4 py-2 rounded-xl bg-red-600 text-white font-bold">
+                        Confirm Delete
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
-              <button onClick={closeModal} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 font-bold text-xs">
-                Close
-              </button>
-            </div>
+            {activeModalType !== 'create_user' && (
+              <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
+                <button onClick={closeModal} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 font-bold text-xs">
+                  Close
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
     </>
   );
 }
+

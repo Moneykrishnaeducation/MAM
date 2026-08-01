@@ -411,21 +411,12 @@ function LoginCard({
       <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 via-[#d4af37] to-[#b38728] rounded-3xl blur-xl opacity-40 group-hover:opacity-65 transition duration-1000 group-hover:duration-200 animate-pulse-glow" />
 
       {/* Main Glass Card */}
-      <div className="relative bg-slate-950/85 backdrop-blur-2xl border border-[#d4af37]/35 hover:border-[#d4af37]/60 rounded-3xl p-6 sm:p-8 shadow-[0_0_60px_rgba(0,0,0,0.95)] transition-all duration-300">
+      <div className="relative bg-slate-950/85 backdrop-blur-2xl border border-[#d4af37]/35 hover:border-[#d4af37]/60 rounded-3xl p-6 sm:px-8 shadow-[0_0_60px_rgba(0,0,0,0.95)] transition-all duration-300">
         {/* Top Card Header with Logo */}
         <div className="text-center mb-6">
-          <div className="flex justify-center mb-3">
-            <img
-              src="https://vtindex.com/img/logo/index.png"
-              alt="VTIndex Logo"
-              className="h-11 w-auto object-contain drop-shadow-[0_0_20px_rgba(212,175,55,0.5)]"
-            />
-          </div>
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[11px] font-bold mb-2">
             <Sparkles className="w-3.5 h-3.5 text-[#d4af37]" /> HSM SECURED TERMINAL
           </div>
-          <h2 className="text-2xl font-black text-slate-100 tracking-tight">Access Terminal</h2>
-          <p className="text-xs text-slate-400 mt-1">Provide authorized credentials to enter high-frequency grid</p>
         </div>
 
         {/* Tab Switcher (PASSWORD & QUICK DEMO ONLY) */}
@@ -515,52 +506,12 @@ function LoginCard({
               </div>
             </div>
 
-            {/* Optional 2FA Code Toggle */}
-            {enable2FA && (
-              <div className="pt-1 animate-in fade-in duration-200">
-                <label htmlFor="two-factor-input" className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  2FA Authenticator Token
-                </label>
-                <div className="relative">
-                  <Fingerprint className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
-                  <input
-                    id="two-factor-input"
-                    type="text"
-                    maxLength={6}
-                    placeholder="000 000"
-                    value={twoFactorCode}
-                    onChange={(e) => setTwoFactorCode(e.target.value)}
-                    className="w-full bg-slate-900/90 border border-[#d4af37]/35 rounded-xl pl-10 pr-4 py-2.5 text-xs font-mono tracking-widest text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/25 transition"
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-slate-700 bg-slate-900 text-[#d4af37] focus:ring-[#d4af37]/30 accent-[#d4af37]"
-                />
-                Keep session active for 30 days
-              </label>
-
-              <button
-                type="button"
-                onClick={() => setEnable2FA(!enable2FA)}
-                className="text-[11px] text-[#e6c687] hover:text-[#d4af37] underline"
-              >
-                {enable2FA ? "- Hide 2FA" : "+ Add 2FA token"}
-              </button>
-            </div>
 
             {/* Metallic Gold CTA Submit Button */}
             <button
               type="submit"
               disabled={submitting}
-              className="relative w-full overflow-hidden bg-gold-metallic text-slate-950 font-black text-xs py-3.5 px-4 rounded-xl shadow-gold-glow flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-70 group cursor-pointer"
+              className="relative w-full overflow-hidden mt-4 bg-gold-metallic text-slate-950 font-black text-xs py-3.5 px-4 rounded-xl shadow-gold-glow flex items-center justify-center gap-2 transition-all duration-200 disabled:opacity-70 group cursor-pointer"
             >
               <span className="relative z-10 flex items-center gap-2 tracking-wider">
                 {submitting ? (
@@ -579,7 +530,7 @@ function LoginCard({
             </button>
 
             {/* Google Workspace SSO Quick Button below divider */}
-            <div className="pt-2">
+            <div className="">
               <div className="relative text-center my-3">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800" /></div>
                 <span className="relative bg-slate-950/90 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Or enterprise identity</span>
@@ -792,7 +743,7 @@ export default function TradingHero() {
         <header className="border-b border-[#d4af37]/25 bg-slate-950/60 backdrop-blur-md px-6 lg:px-16 py-3 lg:py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center">
             <img
-              src="https://vtindex.com/img/logo/index.png"
+              src="/Vt.png"
               alt="VTIndex Logo"
               className="h-8 sm:h-10 w-auto object-contain drop-shadow-[0_0_18px_rgba(212,175,55,0.5)] transition-transform hover:scale-[1.02]"
             />
