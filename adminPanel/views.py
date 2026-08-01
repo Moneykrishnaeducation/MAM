@@ -16,13 +16,11 @@ from adminPanel.models import (
     Manager,
     PendingRequest,
 )
-from backendPanel.database import ensure_db_initialized
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
 async def list_admin_system_users(request):
     """List system admin users directly from database."""
-    await ensure_db_initialized()
     admin_users = await AdminUser.all()
     results = [
         {
@@ -43,7 +41,6 @@ async def list_admin_system_users(request):
 
 async def list_client_users(request):
     """List client users directly from database."""
-    await ensure_db_initialized()
     client_users = await ClientUser.all()
     results = [
         {
@@ -69,7 +66,6 @@ async def list_client_users(request):
 
 async def list_pending_requests(request):
     """List pending admin requests directly from database."""
-    await ensure_db_initialized()
     requests = await PendingRequest.all()
     results = [
         {
@@ -86,7 +82,6 @@ async def list_pending_requests(request):
 
 async def list_managers(request):
     """List MAM managers directly from database."""
-    await ensure_db_initialized()
     managers = await Manager.all()
     results = [
         {
@@ -105,7 +100,6 @@ async def list_managers(request):
 
 async def list_investors(request):
     """List investors directly from database."""
-    await ensure_db_initialized()
     investors = await Investor.all()
     results = [
         {
@@ -123,7 +117,6 @@ async def list_investors(request):
 
 async def list_activity_logs(request):
     """List system activity logs directly from database."""
-    await ensure_db_initialized()
     logs = await ActivityLog.all().order_by("-created_at")
     results = [
         {
@@ -150,7 +143,6 @@ def _generate_user_code(prefix: str, length: int = 6) -> str:
 @require_http_methods(["POST"])
 async def create_admin_user(request):
     """Create a new system admin user."""
-    await ensure_db_initialized()
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -161,13 +153,19 @@ async def create_admin_user(request):
     role = body.get("role", "Operations Manager").strip()
     department = body.get("department", "Operations").strip()
     permissions = body.get("permissions", [])
-    avatar = body.get("avatar", "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80")
+    avatar = body.get(
+        "avatar",
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80",
+    )
 
     if not name or not email:
         return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
 
     if await AdminUser.filter(email=email).exists():
-        return JsonResponse({"status": "error", "message": "An admin user with this email already exists"}, status=409)
+        return JsonResponse(
+            {"status": "error", "message": "An admin user with this email already exists"},
+            status=409,
+        )
 
     user = await AdminUser.create(
         name=name,
@@ -179,28 +177,30 @@ async def create_admin_user(request):
         avatar=avatar,
     )
 
-    return JsonResponse({
-        "status": "ok",
-        "message": f"Admin user '{name}' created successfully",
-        "admin_user": {
-            "id": f"ADM-{user.id:03d}",
-            "name": user.name,
-            "email": user.email,
-            "role": user.role,
-            "department": user.department,
-            "permissions": user.permissions or [],
-            "status": user.status,
-            "lastLogin": None,
-            "avatar": user.avatar,
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Admin user '{name}' created successfully",
+            "admin_user": {
+                "id": f"ADM-{user.id:03d}",
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "department": user.department,
+                "permissions": user.permissions or [],
+                "status": user.status,
+                "lastLogin": None,
+                "avatar": user.avatar,
+            },
         },
-    }, status=201)
+        status=201,
+    )
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
 async def create_client_user(request):
     """Create a new client user."""
-    await ensure_db_initialized()
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
@@ -211,13 +211,19 @@ async def create_client_user(request):
     phone = body.get("phone", "").strip()
     role = body.get("role", "Client User").strip()
     country = body.get("country", "United States").strip()
-    avatar = body.get("avatar", "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80")
+    avatar = body.get(
+        "avatar",
+        "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80",
+    )
 
     if not name or not email:
         return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
 
     if await ClientUser.filter(email=email).exists():
-        return JsonResponse({"status": "error", "message": "A client user with this email already exists"}, status=409)
+        return JsonResponse(
+            {"status": "error", "message": "A client user with this email already exists"},
+            status=409,
+        )
 
     user_code = _generate_user_code("USR")
     while await ClientUser.filter(user_code=user_code).exists():
@@ -235,23 +241,26 @@ async def create_client_user(request):
         avatar=avatar,
     )
 
-    return JsonResponse({
-        "status": "ok",
-        "message": f"Client user '{name}' created successfully",
-        "user": {
-            "id": user.user_code,
-            "name": user.name,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role,
-            "status": user.status,
-            "verified": user.verified,
-            "country": user.country,
-            "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
-            "avatar": user.avatar,
-            "tradingAccount": None,
-            "bankCrypto": None,
-            "transactions": [],
-            "tickets": [],
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Client user '{name}' created successfully",
+            "user": {
+                "id": user.user_code,
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "role": user.role,
+                "status": user.status,
+                "verified": user.verified,
+                "country": user.country,
+                "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+                "avatar": user.avatar,
+                "tradingAccount": None,
+                "bankCrypto": None,
+                "transactions": [],
+                "tickets": [],
+            },
         },
-    }, status=201)
+        status=201,
+    )

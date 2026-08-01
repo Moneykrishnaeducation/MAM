@@ -1,4 +1,4 @@
-"""Main application entry point for backendPanel."""
+"""Main application entry point for backendPanel — runs uvicorn ASGI server."""
 
 import os
 
@@ -34,7 +34,6 @@ if not settings.configured:
             "clientPanel",
         ],
         MIDDLEWARE=[
-            "corsheaders.middleware.CorsMiddleware",
             "django.middleware.common.CommonMiddleware",
         ],
         CORS_ALLOW_ALL_ORIGINS=not _cors_origin,
@@ -42,19 +41,19 @@ if not settings.configured:
     )
     django.setup()
 
-from django.core.wsgi import get_wsgi_application  # noqa: E402
-
-application = get_wsgi_application()
-
 
 if __name__ == "__main__":
-    import sys
-    from django.core.management import execute_from_command_line
+    import uvicorn
 
-    if len(sys.argv) == 1:
-        sys.argv = [
-            "manage.py",
-            "runserver",
-            f"{os.getenv('HOST', '0.0.0.0')}:{os.getenv('PORT', '8000')}",
-        ]
-    execute_from_command_line(sys.argv)
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("DEBUG", "true").lower() == "true"
+
+    uvicorn.run(
+        "backendPanel.asgi:application",
+        host=host,
+        port=port,
+        reload=debug,
+        log_level="info",
+        lifespan="on",
+    )

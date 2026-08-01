@@ -20,7 +20,6 @@ def get_tortoise_config() -> dict[str, Any]:
         "apps": {
             "models": {
                 "models": [
-                    "backendPanel.models",
                     "adminPanel.models",
                     "aerich.models",
                 ],

@@ -9,12 +9,10 @@ from adminPanel.models import (
     ClientTransaction,
     MyInvestment,
 )
-from backendPanel.database import ensure_db_initialized
 
 
 async def get_client_profile(request):
     """Load profile for a client user directly from database."""
-    await ensure_db_initialized()
     user_id = int(request.GET.get("user_id", 0))
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:
@@ -35,7 +33,6 @@ async def get_client_profile(request):
 
 async def get_client_account(request):
     """Load trading account details for a client user directly from database."""
-    await ensure_db_initialized()
     user_id = int(request.GET.get("user_id", 0))
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:
@@ -61,7 +58,6 @@ async def get_client_account(request):
 
 async def get_client_investments(request):
     """Load allocated investments for a client user directly from database."""
-    await ensure_db_initialized()
     user_id = int(request.GET.get("user_id", 0))
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:
@@ -84,7 +80,6 @@ async def get_client_investments(request):
 
 async def get_client_transactions(request):
     """Load transactions for a client user directly from database."""
-    await ensure_db_initialized()
     user_id = int(request.GET.get("user_id", 0))
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:
@@ -106,7 +101,6 @@ async def get_client_transactions(request):
 
 async def get_client_tickets(request):
     """Load support tickets for a client user directly from database."""
-    await ensure_db_initialized()
     user_id = int(request.GET.get("user_id", 0))
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:

@@ -31,7 +31,8 @@ MAM/
 ## Common Commands
 
 - `uv sync --extra dev` - Install dependencies
-- `uv run python -m backendPanel.main` - Run application
+- `uv run python -m backendPanel.main` - Run application (uvicorn ASGI server)
+- `uv run uvicorn backendPanel.asgi:application --reload` - Run with uvicorn directly
 - `uv run python manage.py migrate` - Run Django database migrations
 - `uv run aerich init-db` - Initialize Aerich database migrations
 - `uv run aerich migrate` - Generate Aerich database migration
