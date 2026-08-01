@@ -20,6 +20,7 @@ export default function ClientSidebar() {
 
   const currentPath = usePathname();
   const [isOpen, setIsOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (window.innerWidth < 768) {
@@ -31,6 +32,15 @@ export default function ClientSidebar() {
     const handleToggle = () => setIsOpen(prev => !prev);
     window.addEventListener('toggle-client-sidebar', handleToggle);
     return () => window.removeEventListener('toggle-client-sidebar', handleToggle);
+  }, []);
+
+  useEffect(() => {
+    const handleModalToggle = (e: Event) => {
+      const detail = (e as CustomEvent<{ isOpen: boolean }>).detail;
+      setIsModalOpen(detail.isOpen);
+    };
+    window.addEventListener('client-invest-modal-toggle', handleModalToggle);
+    return () => window.removeEventListener('client-invest-modal-toggle', handleModalToggle);
   }, []);
 
   const navItems = [
@@ -61,6 +71,7 @@ export default function ClientSidebar() {
             ? 'w-64 p-5 translate-x-0 opacity-100' 
             : 'w-0 p-0 overflow-hidden opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:p-0 border-none'
           }
+          ${isModalOpen ? 'blur-sm brightness-50 pointer-events-none' : ''}
         `} 
         style={{ backgroundColor: '#eef4fc' }}
       >
