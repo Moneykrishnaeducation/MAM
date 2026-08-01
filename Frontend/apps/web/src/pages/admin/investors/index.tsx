@@ -37,7 +37,32 @@ export default function AdminInvestorsPage() {
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
 
   // Load state from single mockData.json
-  const [investors, setInvestors] = useState<InvestorData[]>(getAdminInvestors() as InvestorData[]);
+  const [investors, setInvestors] = useState<InvestorData[]>([]);
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/admin/investors');
+        const data = await res.json();
+        if (data && data.investors && Array.isArray(data.investors)) {
+          const mapped = data.investors.map((i: any) => ({
+            id: `INV-${i.id}`,
+            name: i.name,
+            email: i.email,
+            managerName: i.allocated_mam || 'Not Assigned',
+            managerUserId: 'MGR-00',
+            accountId: `ACC-${i.id}08`,
+            invested: `$${(i.equity || 0).toLocaleString()}`,
+            profit: '+$0',
+          }));
+          if (mapped.length > 0) {
+            setInvestors(mapped);
+          }
+        }
+      } catch {}
+    };
+    loadData();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

@@ -11,14 +11,32 @@ const activityTabs = [
 export default function AdminActivityPage() {
   const [activeTab, setActiveTab] = useState<'admin' | 'client' | 'error'>('admin');
 
-  const logs = [
-    { id: 1, action: 'Admin Login', target: 'Super Admin', time: '4m ago', category: 'admin', detail: 'Authentication event', icon: Activity, color: 'text-amber-400' },
-    { id: 2, action: 'User Permissions Updated', target: 'Alex Rivera (USR-001)', time: '12m ago', category: 'admin', detail: 'Role changed to MAM Manager', icon: ShieldCheck, color: 'text-blue-400' },
-    { id: 3, action: 'Client Withdrawal Pending', target: 'Jordan Miles (USR-007)', time: '23m ago', category: 'client', detail: 'Requested withdrawal review', icon: User, color: 'text-emerald-400' },
-    { id: 4, action: 'Client Deposit Completed', target: 'Sofia Grant (USR-014)', time: '37m ago', category: 'client', detail: 'USD deposit processed', icon: Users, color: 'text-sky-400' },
-    { id: 5, action: 'Database Migration Failed', target: 'Aerich Migration v1.4', time: '58m ago', category: 'error', detail: 'Schema migration error', icon: Database, color: 'text-purple-400' },
-    { id: 6, action: 'API Rate Limit Exceeded', target: 'POST /api/trade', time: '1h ago', category: 'error', detail: 'Throttling triggered', icon: AlertTriangle, color: 'text-red-400' },
-  ];
+  const [logs, setLogs] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/admin/activity');
+        const data = await res.json();
+        if (data && data.activities && Array.isArray(data.activities)) {
+          const mapped = data.activities.map((a: any) => ({
+            id: a.id,
+            action: a.action,
+            target: a.user || 'System',
+            time: a.time || 'recently',
+            category: a.action?.toLowerCase().includes('client') ? 'client' : a.action?.toLowerCase().includes('error') ? 'error' : 'admin',
+            detail: `IP: ${a.ip_address || 'N/A'}`,
+            icon: a.action?.toLowerCase().includes('error') ? AlertTriangle : a.action?.toLowerCase().includes('client') ? User : ShieldCheck,
+            color: a.action?.toLowerCase().includes('error') ? 'text-red-400' : a.action?.toLowerCase().includes('client') ? 'text-emerald-400' : 'text-blue-400',
+          }));
+          if (mapped.length > 0) {
+            setLogs(mapped);
+          }
+        }
+      } catch {}
+    };
+    loadData();
+  }, []);
 
   const filteredLogs = logs.filter((log) => log.category === activeTab);
 

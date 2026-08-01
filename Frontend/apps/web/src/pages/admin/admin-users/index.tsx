@@ -44,17 +44,19 @@ export default function AdminUsersManagementPage() {
   });
 
   // Load from single mockData.json with live backend API override
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(getAdminSystemUsers() as AdminUser[]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
 
   React.useEffect(() => {
-    fetch('/api/admin/admin-users')
-      .then((res) => res.json())
-      .then((data) => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/admin/admin-users');
+        const data = await res.json();
         if (data && data.admin_users && Array.isArray(data.admin_users)) {
           setAdminUsers(data.admin_users);
         }
-      })
-      .catch(() => {});
+      } catch {}
+    };
+    loadData();
   }, []);
 
   const showToast = (msg: string) => {

@@ -40,7 +40,34 @@ export default function AdminManagersPage() {
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
 
   // Load state from single mockData.json
-  const [managers, setManagers] = useState<ManagerData[]>(getAdminManagers() as ManagerData[]);
+  const [managers, setManagers] = useState<ManagerData[]>([]);
+
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/admin/managers');
+        const data = await res.json();
+        if (data && data.managers && Array.isArray(data.managers)) {
+          const mapped = data.managers.map((m: any) => ({
+            id: `MGR-${m.id}`,
+            name: m.name,
+            email: m.email,
+            accountId: `ACC-${m.id}09`,
+            balance: `$${(m.aum || 0).toLocaleString()}`,
+            profit: `+${m.strategy ? '12.4%' : '0.0%'}`,
+            share: m.performance_fee || '20%',
+            risk: m.strategy?.toLowerCase().includes('high') ? 'High' : m.strategy?.toLowerCase().includes('low') ? 'Low' : 'Medium',
+            investorsCount: 0,
+            investorsList: [],
+          }));
+          if (mapped.length > 0) {
+            setManagers(mapped);
+          }
+        }
+      } catch {}
+    };
+    loadData();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

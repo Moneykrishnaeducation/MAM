@@ -91,180 +91,55 @@ export default function AdminPendingRequestsPage() {
   // Selected Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<SelectedRequestUnion>(null);
 
+  React.useEffect(() => {
+    const loadData = async () => {
+      try {
+        const res = await fetch('/api/admin/requests');
+        const data = await res.json();
+        if (data && data.requests && Array.isArray(data.requests)) {
+          const mappedDeps = data.requests
+            .filter((r: any) => r.type?.toLowerCase() === 'deposit')
+            .map((r: any) => ({
+              id: `DEP-${r.id}`,
+              requesterName: r.client,
+              requesterEmail: `${r.client.toLowerCase().replace(/\s+/g, '')}@moneykrishna.com`,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.client)}&background=1e3a5f&color=7dd3fc`,
+              amount: r.amount || '$0.00',
+              method: 'Bank Wire Transfer' as const,
+              referenceNo: `REF-${r.id}`,
+              date: 'Just now',
+              status: r.status as any,
+            }));
+          if (mappedDeps.length > 0) setDeposits(mappedDeps);
+
+          const mappedWiths = data.requests
+            .filter((r: any) => r.type?.toLowerCase() === 'withdraw')
+            .map((r: any) => ({
+              id: `WTH-${r.id}`,
+              requesterName: r.client,
+              requesterEmail: `${r.client.toLowerCase().replace(/\s+/g, '')}@moneykrishna.com`,
+              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.client)}&background=1e3a5f&color=7dd3fc`,
+              amount: r.amount || '$0.00',
+              availableBalance: '$10,000.00',
+              payoutDestination: 'Bank Account Masked',
+              method: 'Bank Transfer' as const,
+              date: 'Just now',
+              status: r.status as any,
+            }));
+          if (mappedWiths.length > 0) setWithdrawals(mappedWiths);
+        }
+      } catch {}
+    };
+    loadData();
+  }, []);
+
   // State for all 6 request categories
-  const [deposits, setDeposits] = useState<DepositRequest[]>([
-    {
-      id: 'DEP-7001',
-      requesterName: 'Alex Rivera',
-      requesterEmail: 'alex.rivera@example.com',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
-      amount: '$10,000.00',
-      method: 'Bank Wire Transfer',
-      referenceNo: 'WIRE-9941824',
-      date: '10m ago',
-      priority: 'High',
-      status: 'Pending',
-    },
-    {
-      id: 'DEP-7002',
-      requesterName: 'Elena Rostova',
-      requesterEmail: 'elena.r@example.com',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80',
-      amount: '$5,500.00',
-      method: 'USDT-TRC20',
-      referenceNo: 'TX-HASH-0x9a8f...3a1c',
-      date: '45m ago',
-      priority: 'Normal',
-      status: 'Pending',
-    },
-    {
-      id: 'DEP-7003',
-      requesterName: 'Michael Chen',
-      requesterEmail: 'm.chen@example.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-      amount: '$2,500.00',
-      method: 'Credit Card',
-      referenceNo: 'PAY-881204',
-      date: '2h ago',
-      priority: 'Normal',
-      status: 'Pending',
-    },
-  ]);
-
-  const [withdrawals, setWithdrawals] = useState<WithdrawRequest[]>([
-    {
-      id: 'WTH-8001',
-      requesterName: 'Sarah Jenkins',
-      requesterEmail: 'sarah.j@example.com',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-      amount: '$3,500.00',
-      availableBalance: '$8,400.00',
-      payoutDestination: 'Barclays Bank UK (**** 9102)',
-      method: 'Bank Transfer',
-      date: '20m ago',
-      priority: 'High',
-      status: 'Pending',
-    },
-    {
-      id: 'WTH-8002',
-      requesterName: 'Alex Rivera',
-      requesterEmail: 'alex.rivera@example.com',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
-      amount: '$1,200.00',
-      availableBalance: '$14,250.00',
-      payoutDestination: '0x71C...39aB (USDT-TRC20)',
-      method: 'Crypto USDT',
-      date: '1h ago',
-      priority: 'Normal',
-      status: 'Pending',
-    },
-  ]);
-
-  const [documents, setDocuments] = useState<DocumentRequest[]>([
-    {
-      id: 'DOC-5001',
-      requesterName: 'Michael Chen',
-      requesterEmail: 'm.chen@example.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-      documentType: 'Passport',
-      docNumber: 'P-9918234-SG',
-      fileName: 'passport_michael_chen.pdf',
-      date: '30m ago',
-      priority: 'High',
-      status: 'Pending',
-    },
-    {
-      id: 'DOC-5002',
-      requesterName: 'Sarah Jenkins',
-      requesterEmail: 'sarah.j@example.com',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-      documentType: 'Utility Bill',
-      docNumber: 'UTIL-2026-UK',
-      fileName: 'electric_bill_july.pdf',
-      date: '3h ago',
-      priority: 'Normal',
-      status: 'Pending',
-    },
-  ]);
-
-  const [profiles, setProfiles] = useState<ProfileRequest[]>([
-    {
-      id: 'PRF-3001',
-      requesterName: 'Elena Rostova',
-      requesterEmail: 'elena.r@example.com',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80',
-      fieldToUpdate: 'Phone Number',
-      currentValue: '+49 151 1111111',
-      requestedValue: '+49 151 2345678',
-      reason: 'Changed SIM card provider in Germany.',
-      date: '4h ago',
-      status: 'Pending',
-    },
-    {
-      id: 'PRF-3002',
-      requesterName: 'Alex Rivera',
-      requesterEmail: 'alex.rivera@example.com',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
-      fieldToUpdate: 'Residential Address',
-      currentValue: '123 Wall Street, NY',
-      requestedValue: '450 Park Avenue, NY 10022',
-      reason: 'Relocated address.',
-      date: '6h ago',
-      status: 'Pending',
-    },
-  ]);
-
-  const [banks, setBanks] = useState<BankRequest[]>([
-    {
-      id: 'BNK-2001',
-      requesterName: 'Michael Chen',
-      requesterEmail: 'm.chen@example.com',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80',
-      bankName: 'DBS Bank Singapore',
-      accountHolder: 'Michael Chen',
-      accountNumber: '**** 1104',
-      swiftCode: 'DBSSSGSG',
-      date: '2h ago',
-      status: 'Pending',
-    },
-    {
-      id: 'BNK-2002',
-      requesterName: 'Elena Rostova',
-      requesterEmail: 'elena.r@example.com',
-      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80',
-      bankName: 'Deutsche Bank Germany',
-      accountHolder: 'Elena Rostova',
-      accountNumber: '**** 7712',
-      swiftCode: 'DEUTDEDB',
-      date: '5h ago',
-      status: 'Pending',
-    },
-  ]);
-
-  const [cryptos, setCryptos] = useState<CryptoRequest[]>([
-    {
-      id: 'CRP-1001',
-      requesterName: 'Alex Rivera',
-      requesterEmail: 'alex.rivera@example.com',
-      avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80',
-      network: 'USDT-TRC20',
-      walletAddress: '0x71C8a91b...39aB',
-      label: 'Primary Cold Wallet',
-      date: '1h ago',
-      status: 'Pending',
-    },
-    {
-      id: 'CRP-1002',
-      requesterName: 'Sarah Jenkins',
-      requesterEmail: 'sarah.j@example.com',
-      avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80',
-      network: 'USDT-ERC20',
-      walletAddress: '0x32A4f910...89eF',
-      label: 'Secondary Vault',
-      date: '4h ago',
-      status: 'Pending',
-    },
-  ]);
+  const [deposits, setDeposits] = useState<DepositRequest[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawRequest[]>([]);
+  const [documents, setDocuments] = useState<DocumentRequest[]>([]);
+  const [profiles, setProfiles] = useState<ProfileRequest[]>([]);
+  const [banks, setBanks] = useState<BankRequest[]>([]);
+  const [cryptos, setCryptos] = useState<CryptoRequest[]>([]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
