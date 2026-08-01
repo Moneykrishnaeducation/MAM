@@ -1,629 +1,838 @@
-import React, { useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
-import Head from 'next/head';
-import {
-  LifeBuoy, Plus, Search, MessageSquare,
-  Clock, CheckCircle2, AlertCircle, ChevronRight, X,
-  ChevronLeft, Tag, FileText, Send
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from "react";
+import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
+import { useTheme } from 'next-themes';
 
-const mockTickets: SupportTicket[] = [
-  { id: 'TKT-8921', subject: 'Withdrawal delay inquiry',    status: 'Open',     priority: 'High',   date: 'Today, 10:42 AM' },
-  { id: 'TKT-8910', subject: 'How to allocate more funds?', status: 'Closed',   priority: 'Low',    date: '2 days ago' },
-  { id: 'TKT-8842', subject: 'Platform login issue',        status: 'Closed',   priority: 'Medium', date: 'Last week' },
-  { id: 'TKT-8835', subject: 'Verification request status', status: 'Pending',  priority: 'Medium', date: '2 weeks ago' },
-  { id: 'TKT-8821', subject: 'MT5 Terminal network issue',   status: 'Closed',   priority: 'High',   date: 'Last month' },
-  { id: 'TKT-8812', subject: 'USDT deposit address update', status: 'Open',     priority: 'High',   date: 'Last month' },
-  { id: 'TKT-8799', subject: 'Performance fee split query', status: 'Pending',  priority: 'Low',    date: 'Jun 14, 2026' },
-  { id: 'TKT-8785', subject: 'Leverage limit inquiry',        status: 'Open',     priority: 'Medium', date: 'May 28, 2026' },
-  { id: 'TKT-8772', subject: 'Tax report statement request',status: 'Closed',   priority: 'Low',    date: 'May 10, 2026' },
-  { id: 'TKT-8760', subject: 'Password recovery assistance',status: 'Closed',   priority: 'Low',    date: 'Apr 02, 2026' },
-];
-
-const FILTERS = ['All', 'Open', 'Pending', 'Closed'] as const;
-type Filter = typeof FILTERS[number];
-
-type TicketStatus = 'Open' | 'Pending' | 'Closed';
-type TicketPriority = 'High' | 'Medium' | 'Low';
-
-interface SupportTicket {
-  id: string;
-  subject: string;
-  status: TicketStatus;
-  priority: TicketPriority;
-  date: string;
-  category?: string;
-  description?: string;
-}
-
-const CREATE_TICKET_CATEGORIES = [
-  'Account Access',
-  'Deposits & Withdrawals',
-  'Trading Platform',
-  'Verification',
-  'General Question',
-  'Other',
-];
-
-type CreateTicketFormState = {
-  subject: string;
-  category: string;
-  priority: TicketPriority;
-  description: string;
+const toAbsoluteUrl = (url) => {
+  if (!url) return null;
+  return url.startsWith('http') ? url : url;
 };
 
-export default function ClientTicketsPage() {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<Filter>('All');
-  const [perPage, setPerPage] = useState(5);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [tickets, setTickets] = useState<SupportTicket[]>(mockTickets);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [ticketForm, setTicketForm] = useState<CreateTicketFormState>({
-    subject: '',
-    category: CREATE_TICKET_CATEGORIES[0],
-    priority: 'Medium',
-    description: '',
+const dummyTickets = [
+  {
+    id: '1001',
+    subject: 'Deposit confirmation not reflected',
+    status: 'open',
+    created_at: '2026-07-31T10:00:00Z',
+    created_by: 'USR-001',
+    description: 'I completed a deposit but it is not showing in my account balance yet.',
+    messages: [
+      {
+        id: 'm1',
+        content: 'Hello, we are reviewing your deposit and will update shortly.',
+        sender_name: 'Support Agent',
+        created_at: '2026-07-31T10:15:00Z',
+      },
+      {
+        id: 'm2',
+        content: 'Thank you for the update. Please let me know when it is complete.',
+        sender_name: 'User',
+        created_at: '2026-07-31T10:20:00Z',
+      },
+    ],
+    attachments: [
+      { id: 'a1', file: 'https://via.placeholder.com/300x220.png?text=Deposit+Proof' },
+    ],
+  },
+  {
+    id: '1002',
+    subject: 'Withdrawal request status',
+    status: 'pending',
+    created_at: '2026-07-29T13:25:00Z',
+    created_by: 'USR-001',
+    description: 'I submitted a withdrawal request and want to know when it will be processed.',
+    messages: [
+      {
+        id: 'm3',
+        content: 'Your withdrawal is pending review and should complete within 24 hours.',
+        sender_name: 'Support Agent',
+        created_at: '2026-07-29T13:45:00Z',
+      },
+    ],
+    attachments: [],
+  },
+  {
+    id: '1003',
+    subject: 'Account login issue',
+    status: 'closed',
+    created_at: '2026-07-21T08:10:00Z',
+    created_by: 'USR-001',
+    description: 'I am unable to log in with my account credentials.',
+    messages: [
+      {
+        id: 'm4',
+        content: 'We have reset your password and sent the new credentials to your email.',
+        sender_name: 'Support Agent',
+        created_at: '2026-07-21T08:45:00Z',
+      },
+    ],
+    attachments: [],
+  },
+];
+
+const normalizeMessages = (messages = []) =>
+  (Array.isArray(messages) ? messages : []).map((message, index) => ({
+    ...message,
+    file: toAbsoluteUrl(message?.file || message?.file_url || null),
+    content: message?.content ?? '',
+    sender_name: message?.sender_name || message?.sender?.username || 'System',
+    created_at: message?.created_at || message?.createdAt || null,
+    id: message?.id || `message-${index}`,
+  }));
+
+const getMessagePreview = (message) => {
+  if (!message) return '';
+  const text = typeof message.content === 'string' ? message.content.trim() : '';
+  if (text) return text;
+  if (message.file) {
+    const fileName = message.file.split('/').pop() || 'Attachment';
+    return `[Attachment] ${fileName}`;
+  }
+  return 'No content';
+};
+
+const getTicketPreview = (ticket) => {
+  if (!ticket) return 'No description provided.';
+  const description = typeof ticket.description === 'string' ? ticket.description.trim() : '';
+  if (description) return description;
+
+  const messages = Array.isArray(ticket.messages) ? ticket.messages : [];
+  const latestMessage = messages[messages.length - 1];
+  if (latestMessage) return getMessagePreview(latestMessage);
+
+  if (ticket.file || ticket.file_url) {
+    const fileName = (ticket.file || ticket.file_url).split('/').pop() || 'Attachment';
+    return `[Attachment] ${fileName}`;
+  }
+
+  return 'No description provided.';
+};
+
+const ReplySection = ({ onSendMessage, inputClass, goldButtonClass, softTextClass }) => {
+  const [localMessage, setLocalMessage] = useState("");
+  return (
+    <div>
+      <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+        Reply to Ticket
+      </label>
+      <textarea
+        value={localMessage}
+        onChange={(e) => {
+          setLocalMessage(e.target.value);
+        }}
+        placeholder="Type your message here..."
+        rows={3}
+        className={`w-full p-4 rounded-2xl border outline-none transition-all font-medium mb-4 focus:border-[#3aa0ff] ${inputClass}`}
+      />
+      <button
+        onClick={() => {
+          if (localMessage.trim()) {
+            onSendMessage(localMessage);
+            setLocalMessage("");
+          }
+        }}
+        disabled={!localMessage.trim()}
+        className={`w-full py-4 rounded-2xl font-black hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 ${goldButtonClass}`}
+      >
+        Send Message
+      </button>
+    </div>
+  );
+};
+
+const Tickets = () => {
+  const { theme } = useTheme();
+  const isDarkMode = theme === "dark";
+
+  const [activePage, setActivePage] = useState("view");
+  const [userId, setUserId] = useState("");
+  const [tickets, setTickets] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState("all");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    status: "",
+    dateRange: "",
   });
+  const [searchTerm, setSearchTerm] = useState("");
+  const [openDropdown, setOpenDropdown] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const fileInputRef = useRef(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
-  const filtered = useMemo(() => {
-    return tickets.filter((t) => {
-      const matchesFilter = filter === 'All' || t.status === filter;
-      const matchesSearch =
-        t.subject.toLowerCase().includes(search.toLowerCase()) ||
-        t.id.toLowerCase().includes(search.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [search, filter, tickets]);
+  const panelClass = isDarkMode
+    ? "border-slate-800 bg-slate-900"
+    : "border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]";
+  const inputClass = isDarkMode
+    ? "bg-white/10 border-white/10 text-white placeholder:text-gray-500"
+    : "border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7]";
+  const softTextClass = isDarkMode ? "text-gray-400" : "text-[#8fb8ff]";
+  const headingTextClass = isDarkMode ? "text-white" : "text-white";
+  const borderMutedClass = isDarkMode ? "border-white/10" : "border-[#1745b3]";
+  const goldButtonClass =
+    "bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]";
 
-  // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedTickets = useMemo(() => {
-    return filtered.slice((safePage - 1) * perPage, safePage * perPage);
-  }, [filtered, safePage, perPage]);
+  
 
-  const handlePerPageChange = (val: number) => {
-    setPerPage(val);
-    setCurrentPage(1);
+  const fetchTickets = async (status = "all") => {
+    setLoading(true);
+    setError("");
+    try {
+      const ticketsList = status && status.toLowerCase() !== "all"
+        ? dummyTickets.filter((ticket) => ticket.status.toLowerCase() === status.toLowerCase())
+        : dummyTickets;
+      setTickets(ticketsList);
+      setSelectedStatus(status);
+    } catch {
+      setError("Failed to load tickets. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleSearchChange = (val: string) => {
-    setSearch(val);
-    setCurrentPage(1);
+  useEffect(() => {
+    fetchTickets("all");
+    setUserId('USR-001');
+  }, []);
+  const [filteredTickets, setFilteredTickets] = useState([]);
+
+  // Apply filters and search term to tickets
+  useEffect(() => {
+    let result = [...tickets];
+
+    // Filter by search term (Ticket ID)
+    if (searchTerm.trim()) {
+      result = result.filter(ticket =>
+        ticket.id && ticket.id.toString().toLowerCase().includes(searchTerm.trim().toLowerCase())
+      );
+    }
+
+    // Filter by status
+    if (filters.status && filters.status.toLowerCase() !== "all") {
+      result = result.filter(ticket =>
+        ticket.status && ticket.status.toLowerCase() === filters.status.toLowerCase()
+      );
+    }
+
+
+    // Filter by date range
+    if (filters.dateRange) {
+      const now = new Date();
+      result = result.filter(ticket => {
+        if (!ticket.created_at) return true;
+        const created = new Date(ticket.created_at);
+        if (filters.dateRange === "This Week") {
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          return created >= startOfWeek;
+        } else if (filters.dateRange === "This Month") {
+          return created.getMonth() === now.getMonth() && created.getFullYear() === now.getFullYear();
+        } else if (filters.dateRange === "Last 3 Months") {
+          const threeMonthsAgo = new Date(now);
+          threeMonthsAgo.setMonth(now.getMonth() - 3);
+          return created >= threeMonthsAgo;
+        }
+        return true;
+      });
+    }
+
+    setFilteredTickets(result);
+  }, [tickets, searchTerm, filters]);
+
+  const applyFilters = () => {
+    setShowFilters(false);
   };
 
-  const handleFilterChange = (val: Filter) => {
-    setFilter(val);
-    setCurrentPage(1);
-  };
-
-  const openCreateTicketModal = () => {
-    setTicketForm({
-      subject: '',
-      category: CREATE_TICKET_CATEGORIES[0],
-      priority: 'Medium',
-      description: '',
-    });
-    setIsCreateModalOpen(true);
-  };
-
-  const closeCreateTicketModal = () => {
-    setIsCreateModalOpen(false);
-  };
-
-  const handleCreateTicket = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    const formData = new FormData(e.target);
+    const subject = formData.get('subject');
+    const description = formData.get('description');
 
-    const now = new Date();
-    const createdTicket: SupportTicket = {
-      id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
-      subject: ticketForm.subject.trim(),
-      status: 'Open',
-      priority: ticketForm.priority,
-      category: ticketForm.category,
-      description: ticketForm.description.trim(),
-      date: now.toLocaleString(undefined, {
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-      }),
+    const newTicket = {
+      id: `${Date.now()}`,
+      subject,
+      status: 'open',
+      created_at: new Date().toISOString(),
+      created_by: userId || 'USR-001',
+      description,
+      messages: [],
+      attachments: [],
     };
 
-    setTickets((prev) => [createdTicket, ...prev]);
-    setIsCreateModalOpen(false);
-    setFilter('All');
-    setSearch('');
-    setCurrentPage(1);
+    setTickets((prev) => [newTicket, ...prev]);
+    alert("Ticket submitted successfully!");
+    setActivePage("view");
+    fetchTickets('open');
   };
 
-  return (
-    <>
-      <Head>
-        <title>Support Tickets | Client Portal</title>
-      </Head>
+  const options = {
+    status: ["All", "Open", "Pending", "Closed"],
+    dateRange: ["This Week", "This Month", "Last 3 Months"],
+  };
 
-      <style>{`
-        @keyframes float {
-          0%, 100% { transform: translateY(0px); }
-          50%       { transform: translateY(-10px); }
-        }
-        @keyframes shimmer {
-          0%   { background-position: -200% center; }
-          100% { background-position:  200% center; }
-        }
-        @keyframes beam {
-          0%, 100% { opacity: 0.3; transform: scaleX(0.8); }
-          50%       { opacity: 1;   transform: scaleX(1); }
-        }
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
-        }
+  const handleSelect = (key, value) => {
+    setFilters({ ...filters, [key]: value });
+    setOpenDropdown(null);
+  };
 
-        .float-slow { animation: float 6s ease-in-out infinite; }
-        .float-mid  { animation: float 5s ease-in-out infinite 1s; }
-        .float-fast { animation: float 4s ease-in-out infinite 2s; }
+  const handleSendMessage = async (content) => {
+    if (!content || !content.trim()) return;
+    if (!selectedTicket) return;
 
-        .shimmer-text {
-          background: linear-gradient(90deg, #93c5fd 0%, #ffffff 40%, #60a5fa 60%, #93c5fd 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: shimmer 4s linear infinite;
-        }
-        .beam-line { animation: beam 3s ease-in-out infinite; }
-        .page-enter { animation: fadeSlideUp 0.6s ease forwards; }
-      `}</style>
+    const newMessage = {
+      id: `msg-${Date.now()}`,
+      content,
+      sender_name: 'You',
+      created_at: new Date().toISOString(),
+    };
 
-      <div className="relative p-6 md:p-10 space-y-8 overflow-hidden">
+    setSelectedTicket((prev) => {
+      if (!prev) return prev;
+      const updatedMessages = [...(prev._normalizedMessages || prev.messages || []), newMessage];
+      return { ...prev, _normalizedMessages: updatedMessages, messages: updatedMessages };
+    });
 
-        {/* ── Ambient orbs ── */}
-        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-slow" />
-          <div className="absolute top-1/2 -right-40 w-[380px] h-[380px] rounded-full bg-indigo-500/8 blur-[100px] float-mid" />
-          <div className="absolute bottom-10 left-1/3 w-[320px] h-[320px] rounded-full bg-blue-800/8 blur-[90px] float-fast" />
-        </div>
+    alert("Message sent successfully!");
+  };
 
-        {/* ── Page Header ── */}
-        <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 page-enter">
-          <div>
-            <h1 className="text-4xl md:text-5xl font-black tracking-tight leading-tight mb-3">
-              <span className="text-white">Support </span>
-              <span className="shimmer-text">Tickets</span>
-            </h1>
-            <p className="text-blue-200/60 text-sm leading-relaxed max-w-md">
-              Need help? Open a ticket or review your past support requests below.
-            </p>
-            <div className="mt-5 flex items-center gap-3">
-              <div className="h-px w-24 bg-gradient-to-r from-blue-500/80 to-transparent beam-line rounded-full" />
-              <div className="h-px w-12 bg-gradient-to-r from-blue-400/50 to-transparent beam-line rounded-full" style={{ animationDelay: '0.5s' }} />
-              <div className="h-px w-6 bg-gradient-to-r from-blue-300/30 to-transparent rounded-full" />
-            </div>
-          </div>
+  const openTicketDetail = async (ticketId) => {
+    const ticket = dummyTickets.find((item) => item.id === ticketId);
+    if (!ticket) {
+      alert('Ticket not found.');
+      return;
+    }
 
-          {/* New Ticket button */}
-          <button
-            id="btn-new-ticket"
-            onClick={openCreateTicketModal}
-            className="relative flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
-            style={{
-              background: 'linear-gradient(135deg, #059669, #047857)',
-              boxShadow: '0 8px 24px rgba(5,150,105,0.35)',
-              color: '#fff',
-            }}
-          >
-            <span className="absolute inset-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)' }} />
-            <Plus size={16} strokeWidth={2.5} className="relative z-10" />
-            <span className="relative z-10">New Ticket</span>
+    const normalizedMessages = normalizeMessages(ticket.messages || []);
+    const attachments = (ticket.attachments || []).map((a) => ({
+      id: a.id,
+      file: toAbsoluteUrl(a.file),
+    }));
+
+    setSelectedTicket({
+      ...ticket,
+      _normalizedMessages: normalizedMessages,
+      _normalizedAttachments: attachments,
+      messages: normalizedMessages,
+    });
+    setShowViewModal(true);
+  };
+
+
+
+  const Modal = ({ title, onClose, children }) => (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+      <div className={`${panelClass} rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden border`}>
+        <div className={`flex items-center justify-between p-6 border-b ${borderMutedClass}`}>
+          <h3 className={`text-xl font-bold ${headingTextClass}`}>
+            {title}
+          </h3>
+          <button onClick={onClose} className={`p-2 rounded-full transition-colors ${isDarkMode ? "text-gray-400 hover:bg-white/5 hover:text-white" : "border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]"}`}>
+            <X size={20} />
           </button>
         </div>
+        <div className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
 
-        {/* ── Filter Tabs & Search Row (Outside the table) ── */}
-        {isCreateModalOpen && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-            <div className="w-full max-w-2xl rounded-3xl overflow-hidden border border-blue-900/40 bg-[#0c1636] shadow-2xl my-auto">
-              <div className="flex items-start justify-between gap-4 p-6 border-b border-blue-900/30 bg-[#0f1b42]">
-                <div>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-bold tracking-wider uppercase mb-3">
-                    <LifeBuoy size={12} /> Create Ticket
-                  </div>
-                  <h2 className="text-2xl font-black text-white tracking-tight">Open a new support request</h2>
-                  <p className="text-sm text-blue-200/60 mt-1">
-                    Share the issue and we'll route it to the right support queue.
-                  </p>
-                </div>
-                <button
-                  onClick={closeCreateTicketModal}
-                  className="p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
-                  aria-label="Close create ticket modal"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateTicket} className="p-6 space-y-5">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="space-y-2">
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <MessageSquare size={13} className="text-blue-400" /> Subject
-                    </span>
-                    <input
-                      type="text"
-                      value={ticketForm.subject}
-                      onChange={(e) => setTicketForm((prev) => ({ ...prev, subject: e.target.value }))}
-                      placeholder="Short summary of the issue"
-                      required
-                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-                    />
-                  </label>
-
-                  <label className="space-y-2">
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <Tag size={13} className="text-emerald-400" /> Category
-                    </span>
-                    <select
-                      value={ticketForm.category}
-                      onChange={(e) => setTicketForm((prev) => ({ ...prev, category: e.target.value }))}
-                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-                    >
-                      {CREATE_TICKET_CATEGORIES.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <label className="space-y-2">
-                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <AlertCircle size={13} className="text-amber-400" /> Priority
-                    </span>
-                    <select
-                      value={ticketForm.priority}
-                      onChange={(e) => setTicketForm((prev) => ({ ...prev, priority: e.target.value as TicketPriority }))}
-                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-                    >
-                      <option value="High">High</option>
-                      <option value="Medium">Medium</option>
-                      <option value="Low">Low</option>
-                    </select>
-                  </label>
-
-                  <div className="rounded-2xl border border-blue-900/30 bg-white/5 px-4 py-3">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-                      <FileText size={13} className="text-sky-400" /> What happens next
-                    </div>
-                    <p className="text-sm text-slate-300 leading-relaxed">
-                      We'll create the ticket as <span className="text-emerald-300 font-semibold">Open</span> and send it to the support team.
-                    </p>
-                  </div>
-                </div>
-
-                <label className="space-y-2 block">
-                  <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                    <FileText size={13} className="text-blue-400" /> Description
-                  </span>
-                  <textarea
-                    rows={5}
-                    value={ticketForm.description}
-                    onChange={(e) => setTicketForm((prev) => ({ ...prev, description: e.target.value }))}
-                    placeholder="Describe the issue in detail, including any error messages or account numbers if relevant."
-                    required
-                    className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
-                  />
-                </label>
-
-                <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-blue-900/25">
-                  <p className="text-xs text-slate-500">
-                    Tip: include screenshots or timestamps in the description for faster triage.
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={closeCreateTicketModal}
-                      className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 text-sm font-black shadow-lg shadow-emerald-500/20 hover:opacity-95 transition-opacity"
-                    >
-                      <Send size={15} /> Submit Ticket
-                    </button>
-                  </div>
-                </div>
-              </form>
-            </div>
-          </div>, document.body
-        )}
-
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 page-enter relative z-20">
-          {/* Filter tabs */}
-          <div className="flex bg-[#0b1736] p-1.5 rounded-2xl border border-blue-900/60 shadow-lg">
-            {FILTERS.map((f) => {
-              const count = f === 'All' ? tickets.length : tickets.filter(t => t.status === f).length;
-              const active = filter === f;
-              return (
-                <button
-                  key={f}
-                  onClick={() => handleFilterChange(f)}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 tracking-wider"
-                  style={{
-                    background: active ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'transparent',
-                    color: active ? '#fff' : '#64748b',
-                    boxShadow: active ? '0 4px 15px rgba(37,99,235,0.3)' : 'none',
-                  }}
-                >
-                  {f} <span className={`ml-1 text-[10px] ${active ? 'text-blue-200' : 'text-slate-500'}`}>({count})</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Search bar */}
-          <div className="relative">
-            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-400" />
-            <input
-              id="ticket-search"
-              type="text"
-              placeholder="Search tickets by ID or subject..."
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-11 pr-10 py-2.5 rounded-2xl text-xs outline-none transition-all w-64 bg-[#0b1736] border border-blue-900/60 text-slate-100 placeholder-slate-500 shadow-lg focus:border-blue-500"
-            />
-            {search && (
-              <button onClick={() => handleSearchChange('')} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-300">
-                <X size={14} />
-              </button>
-            )}
-          </div>
+  return (
+    <div className={`overflow-x-hidden bg-[radial-gradient(circle_at_bottom,rgba(22,55,157,0.18),transparent_25%),linear-gradient(180deg,#050f35_0%,#081846_100%)] transition-all duration-300 p-4 md:p-8`}>
+      {/* ===================== PAGE HEADER ===================== */}
+      <div className="text-center mb-8">
+        <h1 className={`text-4xl font-black tracking-tighter ${headingTextClass} mb-2`}>
+          Support <span className="text-[#f0b91f]">Tickets</span>
+        </h1>
+        {/* <p className={`text-sm font-bold ${softTextClass}`}>
+          Manage your inquiries and support requests
+        </p> */}
+      </div>
+      
+      {/* Tabs + Controls Row */}
+      <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between mb-8">
+        {/* Left: Status Tabs */}
+        <div className="flex gap-2 p-2 rounded-[2rem] border border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:w-auto">
+          {["all", "open", "pending", "closed"].map((status) => (
+            <button
+              key={status}
+              onClick={() => fetchTickets(status)}
+              className={`flex items-center gap-3 px-6 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex-1 lg:flex-none ${
+                selectedStatus === status
+                  ? "border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]"
+                  : "border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white"
+              }`}
+            >
+              {status === "all" ? "All" : status}
+            </button>
+          ))}
         </div>
 
-        {/* ── Table card ── */}
-        <div
-          className="rounded-3xl overflow-hidden shadow-2xl relative z-10"
-          style={{ background: 'linear-gradient(135deg, #112058 0%, #0e2250 100%)', border: '1px solid rgba(59,130,246,0.15)' }}
-        >
-          {/* Table toolbar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-6 py-4 border-b" style={{ borderColor: 'rgba(59,130,246,0.1)' }}>
-            <div>
-              <h3 className="text-base font-bold text-white">All Support Tickets</h3>
-              <p className="text-xs mt-0.5" style={{ color: '#8a9cc3' }}>
-                Showing{' '}
-                <span className="text-slate-350 font-semibold">
-                  {filtered.length === 0 ? 0 : (safePage - 1) * perPage + 1}
-                  –
-                  {Math.min(safePage * perPage, filtered.length)}
-                </span>{' '}
-                of{' '}
-                <span className="text-slate-350 font-semibold">{filtered.length}</span>{' '}
-                ticket{filtered.length !== 1 ? 's' : ''}
-              </p>
-            </div>
+        {/* Right: Search + Filter + New Ticket */}
+        <div className="flex items-center gap-4 flex-shrink-0 w-full lg:w-auto">
+          <div className="relative flex-1 lg:w-72">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8db5ff]" size={18} />
+            <input
+              type="text"
+              placeholder="Search by Ticket ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`w-full pl-11 pr-4 py-3 rounded-[1.1rem] border outline-none transition-all font-medium focus:border-[#3aa0ff] ${inputClass}`}
+            />
+          </div>
+          <button
+            onClick={() => setShowFilters(true)}
+            className={`p-3 rounded-[1rem] border transition-all ${isDarkMode ? "bg-white/5 border-white/10 text-gray-400 hover:text-white" : "border-[#2450b7] bg-[#0b226a] text-[#f0b91f] hover:bg-[#123283]"}`}
+          >
+            <Filter size={20} />
+          </button>
+          <button
+            onClick={() => setActivePage("create")}
+            className={`px-6 py-3 rounded-[1rem] font-black text-sm hover:scale-105 transition-all flex items-center gap-2 ${goldButtonClass}`}
+          >
+            <Plus size={18} />
+            New Ticket
+          </button>
+        </div>
+      </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Feed
+      {/* ===================== VIEW TICKETS PAGE ===================== */}
+      {activePage === "view" && (
+        <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden`}>
+          
+          {/* Simplified Table Header */}
+          <div className={`p-8 border-b ${borderMutedClass}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <h2 className={`text-xl font-bold ${headingTextClass}`}>Ticket History</h2>
             </div>
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
+            <table className="w-full">
               <thead>
-                <tr className="border-b" style={{ background: 'rgba(59,130,246,0.07)', borderColor: 'rgba(59,130,246,0.1)' }}>
-                  {['Ticket ID', 'Subject', 'Status', 'Priority', 'Last Updated', 'Action'].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left px-5 py-3.5 text-[11px] font-bold uppercase tracking-wider whitespace-nowrap"
-                      style={{ color: '#64748b' }}
-                    >
-                      {h}
+                <tr className={isDarkMode ? "bg-white/5" : "bg-[#0b226a]"}>
+                  {["Date", "Ticket ID", "Subject", "Status", "Description", "Actions"].map((head) => (
+                    <th key={head} className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? "text-gray-400" : "text-[#9ec0ff]"}`}>
+                      {head}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/50">
-                {paginatedTickets.length === 0 ? (
+              <tbody className={isDarkMode ? "divide-y divide-white/5" : "divide-y divide-[#153d9f]"}>
+                {loading ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-14 text-sm" style={{ color: '#334155' }}>
-                      No tickets match your search.
+                    <td colSpan="6" className="p-20 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4"></div>
+                        <p className={`font-bold ${softTextClass}`}>Fetching tickets...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="p-20 text-center">
+                      <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? "bg-gray-800" : "bg-[#0b226a]"}`}>
+                        <Search className={isDarkMode ? "text-gray-400" : "text-[#8db5ff]"} size={32} />
+                      </div>
+                      <p className={`text-lg font-bold ${softTextClass}`}>No tickets found</p>
                     </td>
                   </tr>
                 ) : (
-                  paginatedTickets.map((ticket, idx) => (
-                    <tr
-                      key={ticket.id}
-                      className="group transition-colors"
-                      style={{
-                        borderBottom: '1px solid rgba(59,130,246,0.07)',
-                        background: idx % 2 === 0 ? 'transparent' : 'rgba(59,130,246,0.03)',
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(59,130,246,0.09)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = idx % 2 === 0 ? 'transparent' : 'rgba(59,130,246,0.03)')}
-                    >
-                      {/* Ticket ID */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <span
-                          className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg"
-                          style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.25)', color: '#93c5fd' }}
-                        >
-                          {ticket.id}
-                        </span>
-                      </td>
+                  filteredTickets.map((ticket) => {
+                    const status = (ticket.status || selectedStatus).toLowerCase();
+                    const statusColor = 
+                      status === "open" ? "bg-green-500/10 text-green-500" : 
+                      status === "pending" ? "bg-amber-500/10 text-amber-500" : 
+                      "bg-gray-500/10 text-gray-500";
 
-                      {/* Subject */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.15)' }}
+                    return (
+                      <tr key={ticket.id} className={`group ${isDarkMode ? "hover:bg-white/5" : "text-[#dbe8ff] hover:bg-[#0a205f]"} transition-colors`}>
+                        <td className="px-6 py-5">
+                          <span className={`font-bold ${isDarkMode ? "text-gray-300" : "text-[#dbe8ff]"}`}>
+                            {new Date(ticket.created_at).toLocaleDateString()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`font-mono font-bold px-3 py-1 rounded-lg ${isDarkMode ? "bg-white/5 text-royal-400" : "border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]"}`}>
+                            #{ticket.id}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`font-bold ${isDarkMode ? "text-white" : "text-white"}`}>{ticket.subject}</span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${statusColor}`}>
+                            {status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5">
+                          <p className={`text-sm truncate max-w-xs ${isDarkMode ? "text-gray-400" : "text-[#9ec0ff]"}`}>
+                            {getTicketPreview(ticket)}
+                          </p>
+                        </td>
+                        <td className="px-6 py-5">
+                          <button
+                            onClick={() => openTicketDetail(ticket.id)}
+                            className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all duration-200 ${isDarkMode ? "bg-royal/10 text-royal hover:bg-royal hover:text-white border-royal/20" : "border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c]"}`}
                           >
-                            <MessageSquare size={14} style={{ color: '#3b82f6' }} />
-                          </div>
-                          <span className="font-semibold text-slate-100 text-sm leading-tight">{ticket.subject}</span>
-                        </div>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        {ticket.status === 'Open' && (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider"
-                            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', color: '#fbbf24' }}
-                          >
-                            <Clock size={11} /> Open
-                          </span>
-                        )}
-                        {ticket.status === 'Pending' && (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider"
-                            style={{ background: 'rgba(37,99,235,0.1)', border: '1px solid rgba(37,99,235,0.3)', color: '#60a5fa' }}
-                          >
-                            <Clock size={11} /> Pending
-                          </span>
-                        )}
-                        {ticket.status === 'Closed' && (
-                          <span
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-bold uppercase tracking-wider"
-                            style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#34d399' }}
-                          >
-                            <CheckCircle2 size={11} /> Closed
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Priority */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        {ticket.priority === 'High' && (
-                          <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#f87171' }}>
-                            <AlertCircle size={11} /> High
-                          </span>
-                        )}
-                        {ticket.priority === 'Medium' && (
-                          <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', color: '#fbbf24' }}>
-                            Medium
-                          </span>
-                        )}
-                        {ticket.priority === 'Low' && (
-                          <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-lg"
-                            style={{ background: 'rgba(100,116,139,0.15)', border: '1px solid rgba(100,116,139,0.2)', color: '#94a3b8' }}>
-                            Low
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td className="px-5 py-4 whitespace-nowrap text-xs font-medium" style={{ color: '#475569' }}>
-                        {ticket.date}
-                      </td>
-
-                      {/* Action */}
-                      <td className="px-5 py-4 whitespace-nowrap">
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg hover:bg-blue-500/10 text-slate-400 hover:text-blue-300">
-                          <ChevronRight size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
           </div>
+        </div>
+      )}
 
-          {/* ── Pagination Footer ── */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-blue-900/60 bg-[#0b1736]">
-            {/* Per-page selector */}
-            <div className="flex items-center gap-2 order-2 sm:order-1">
-              <label htmlFor="per-page" className="text-xs text-slate-500 whitespace-nowrap">
-                Rows per page:
-              </label>
-              <select
-                id="per-page"
-                value={perPage}
-                onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                className="bg-[#0e2152] border border-blue-900/50 text-blue-200 text-xs rounded-lg px-2.5 py-1.5 outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/20 transition-all cursor-pointer"
+      {/* ===================== CREATE TICKET PAGE ===================== */}
+      {activePage === "create" && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">
+          <div className={`${panelClass} p-8 rounded-[2.5rem] border`}>
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className={`text-2xl font-black ${headingTextClass}`}>
+                  Raise New <span className="text-[#f0b91f]">Ticket</span>
+                </h2>
+                <p className={`text-sm font-bold ${softTextClass}`}>
+                  Please provide details about your inquiry
+                </p>
+              </div>
+              <button
+                onClick={() => setActivePage("view")}
+                className={`p-2 rounded-full shadow-sm transition-all ${isDarkMode ? "bg-white/5 hover:bg-white/10" : "border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]"}`}
               >
-                {[5, 10, 25, 50, 100, 250, 500].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-              <span className="text-xs text-slate-500">
-                — Page{' '}
-                <span className="text-slate-350 font-semibold">{safePage}</span>
-                {' '}of{' '}
-                <span className="text-slate-350 font-semibold">{totalPages}</span>
-              </span>
+                <X size={20} />
+              </button>
             </div>
 
-            {/* Page buttons */}
-            <div className="flex items-center gap-1.5 order-1 sm:order-2">
-              {/* Prev */}
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                    Account ID
+                  </label>
+                  <div className={`p-4 rounded-2xl border font-bold ${isDarkMode ? "bg-white/5 border-white/10 text-white" : "border-[#214fbf] bg-[#081d5f] text-[#dbe8ff]"}`}>
+                    {userId || "Auto Fetch"}
+                  </div>
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                    Subject <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    name="subject"
+                    type="text"
+                    placeholder="Enter ticket subject"
+                    required
+                    className={`w-full p-4 rounded-2xl border outline-none transition-all font-medium focus:border-[#3aa0ff] ${inputClass}`}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                  Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  name="description"
+                  placeholder="Describe the issue in detail"
+                  required
+                  rows={4}
+                  className={`w-full p-4 rounded-2xl border outline-none transition-all font-medium focus:border-[#3aa0ff] ${inputClass}`}
+                ></textarea>
+              </div>
+
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                  Supporting Documents (Optional)
+                </label>
+                <div
+                  className={`border-2 border-dashed rounded-[2rem] text-center py-10 cursor-pointer transition-all duration-300 ${isDarkMode ? "border-white/10 hover:border-royal/50 hover:bg-white/5" : "border-[#214fbf] bg-[#081d5f] hover:border-[#3aa0ff] hover:bg-[#0b226a]"}`}
+                  onClick={() => fileInputRef.current.click()}
+                >
+                  <div className="w-16 h-16 bg-[#0b226a] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#2450b7]">
+                    <Plus className="text-[#f0b91f]" size={32} />
+                  </div>
+                  <p className={`text-lg font-bold ${headingTextClass}`}>
+                    Click to attach files
+                  </p>
+                  <p className={`text-sm font-medium ${softTextClass}`}>
+                    JPG, PNG, PDF (Max: 1MB per file)
+                  </p>
+                  <input
+                    type="file"
+                    name="documents"
+                    ref={fileInputRef}
+                    hidden
+                    multiple
+                    onChange={e => setSelectedFiles(Array.from(e.target.files))}
+                  />
+                  {selectedFiles.length > 0 && (
+                    <div className="mt-6 flex flex-wrap justify-center gap-2 px-4">
+                      {selectedFiles.map((file, i) => (
+                        <span key={i} className={`px-3 py-1 text-white text-xs font-bold rounded-lg flex items-center gap-2 ${goldButtonClass}`}>
+                          {file.name}
+                          <X size={14} className="cursor-pointer" onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFiles(prev => prev.filter((_, idx) => idx !== i));
+                          }} />
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  type="submit"
+                  className={`px-10 py-4 rounded-2xl font-black hover:scale-105 active:scale-95 transition-all ${goldButtonClass}`}
+                >
+                  Submit Ticket
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ===================== FILTER MODAL ===================== */}
+      {showFilters && (
+        <Modal title="Filter Tickets" onClose={() => setShowFilters(false)}>
+          <div className="space-y-6">
+            {["status", "dateRange"].map((key) => (
+              <div key={key} className="relative">
+                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                  {key === "dateRange" ? "Date Range" : key}
+                </label>
+
+                <button
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === key ? null : key)}
+                  className={`w-full flex justify-between items-center p-4 rounded-2xl border font-bold transition-all ${isDarkMode ? "bg-white/10 border-white/10 text-white" : "border-[#214fbf] bg-[#081d5f] text-[#dbe8ff]"}`}
+                >
+                  <span className="capitalize">{filters[key] || "Select"}</span>
+                  <ChevronDown
+                    size={18}
+                    className={`transition-transform duration-300 ${openDropdown === key ? "rotate-180 text-[#f0b91f]" : "text-[#8db5ff]"}`}
+                  />
+                </button>
+
+                {openDropdown === key && (
+                  <div className={`absolute z-20 w-full mt-2 rounded-2xl shadow-xl border overflow-hidden animate-in fade-in zoom-in-95 duration-200 ${isDarkMode ? "bg-navy border-white/10" : "border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)]"}`}>
+                    {options[key].map((opt) => (
+                      <div
+                        key={opt}
+                        onClick={() => handleSelect(key, opt)}
+                        className={`p-4 cursor-pointer font-bold text-sm transition-colors ${isDarkMode ? "hover:bg-white/5 text-gray-300 hover:text-white" : "text-[#dbe8ff] hover:bg-[#0a205f]"}`}
+                      >
+                        {opt}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+
+            <div className="flex gap-4 pt-4">
               <button
-                id="pagination-prev"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                onClick={() => { setFilters({ status: "", dateRange: "" }); setShowFilters(false); }}
+                className={`flex-1 py-4 rounded-2xl font-black text-sm transition-all ${isDarkMode ? "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white" : "border border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c]"}`}
               >
-                <ChevronLeft size={13} /> Prev
+                Reset Filters
               </button>
-
-              {/* Page number pills */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                const isEllipsis =
-                  totalPages > 5 &&
-                  page !== 1 &&
-                  page !== totalPages &&
-                  Math.abs(page - safePage) > 1;
-                if (isEllipsis) {
-                  if (page === safePage - 2 || page === safePage + 2) {
-                    return (
-                      <span key={page} className="text-slate-600 px-1 text-xs select-none">
-                        …
-                      </span>
-                    );
-                  }
-                  return null;
-                }
-                return (
-                  <button
-                    key={page}
-                    id={`pagination-page-${page}`}
-                    onClick={() => setCurrentPage(page)}
-                    className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all border ${
-                      page === safePage
-                        ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
-
-              {/* Next */}
               <button
-                id="pagination-next"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                onClick={applyFilters}
+                className={`flex-1 py-4 rounded-2xl font-black text-sm hover:scale-105 transition-all ${goldButtonClass}`}
               >
-                Next <ChevronRight size={13} />
+                Apply
               </button>
             </div>
           </div>
-        </div>
+        </Modal>
+      )}
 
-      </div>
-    </>
+      {/* ===================== VIEW MODAL ===================== */}
+      {showViewModal && selectedTicket && (
+        <Modal title="Ticket Details" onClose={() => { setShowViewModal(false); }}>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>
+                  Subject
+                </label>
+                <p className={`font-bold ${headingTextClass}`}>{selectedTicket.subject}</p>
+              </div>
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>
+                  Created At
+                </label>
+                <p className={`font-bold ${headingTextClass}`}>{new Date(selectedTicket.created_at).toLocaleString()}</p>
+              </div>
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>
+                  Status
+                </label>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                  selectedTicket.status === "open" ? "bg-green-500/10 text-green-500" : 
+                  selectedTicket.status === "pending" ? "bg-amber-500/10 text-amber-500" : 
+                  "bg-gray-500/10 text-gray-500"
+                }`}>
+                  {selectedTicket.status}
+                </span>
+              </div>
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>
+                  Ticket ID
+                </label>
+                <p className={`font-mono font-bold ${headingTextClass}`}>#{selectedTicket.id}</p>
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>
+                Description
+              </label>
+              <div className={`p-4 rounded-2xl border ${isDarkMode ? "bg-white/5 border-white/5" : "border-[#214fbf] bg-[#081d5f]"}`}>
+                <p className={`text-sm font-medium whitespace-pre-wrap ${isDarkMode ? "text-gray-300" : "text-[#9ec0ff]"}`}>
+                  {selectedTicket.description || "No description provided."}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                Message History
+              </label>
+              {selectedTicket._normalizedMessages && selectedTicket._normalizedMessages.length > 0 ? (
+                <div 
+                  className="flex flex-col gap-3 p-6 rounded-2xl border border-[#202c33] bg-[#0b141a] max-h-[450px] overflow-y-auto custom-scrollbar"
+                  style={{
+                    backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0)`,
+                    backgroundSize: '24px 24px'
+                  }}
+                >
+                  {selectedTicket._normalizedMessages.map((message) => {
+                    const isSelf = String(message.sender) === String(selectedTicket.created_by);
+                    const date = message.created_at ? new Date(message.created_at) : null;
+                    const timeString = date ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+                    
+                    return (
+                      <div
+                        key={message.id}
+                        className={`flex w-full ${isSelf ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-lg px-3 py-2 shadow-md relative ${
+                            isSelf
+                              ? "bg-[#005c4b] text-[#e9edef] rounded-tr-none"
+                              : "bg-[#202c33] text-[#e9edef] rounded-tl-none"
+                          }`}
+                        >
+                          {!isSelf && (
+                            <span className="text-xs font-bold text-[#53bdeb] block mb-1">
+                              {message.sender_name}
+                            </span>
+                          )}
+                          
+                          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words pr-12">
+                            {getMessagePreview(message)}
+                          </div>
+                          
+                          {message.file && (
+                            <div className="mt-2 bg-[#111b21] hover:bg-[#182229] transition-colors p-2.5 rounded-lg border border-white/5 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <FileText size={18} className="text-[#00a884] shrink-0" />
+                                <span className="text-xs font-semibold truncate text-[#e9edef] max-w-[120px]">
+                                  {message.file.split("/").pop() || "Document"}
+                                </span>
+                              </div>
+                              <a
+                                href={message.file}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-xs font-bold text-[#00a884] hover:text-[#00c298] transition-colors shrink-0"
+                              >
+                                Download
+                              </a>
+                            </div>
+                          )}
+
+                          <div className="absolute bottom-1 right-2 flex items-center gap-1">
+                            <span className="text-[10px] text-[#8696a0] font-medium leading-none">
+                              {timeString}
+                            </span>
+                            {isSelf && (
+                              <span className="text-[#53bdeb] text-xs font-bold leading-none select-none">
+                                ✓✓
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className={`text-sm font-bold ${softTextClass}`}>No messages found for this ticket.</p>
+              )}
+            </div>
+
+            <div>
+              <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
+                Attachments
+              </label>
+              {(selectedTicket._normalizedAttachments && selectedTicket._normalizedAttachments.length > 0) ? (
+                <div className="flex flex-wrap gap-3">
+                  {selectedTicket._normalizedAttachments.map((a) => {
+                    const fileUrl = a?.file || null;
+                    const isImage = fileUrl && /\.(jpg|jpeg|png|gif)$/i.test(fileUrl);
+                    return (
+                      <div key={a.id} className="group relative">
+                        {isImage ? (
+                          <a href={fileUrl} target="_blank" rel="noreferrer" className={`block w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${isDarkMode ? "border-white/10" : "border-[#2450b7] hover:border-[#3aa0ff]"}`}>
+                            <img src={fileUrl} alt="Attachment" className="w-full h-full object-cover" />
+                          </a>
+                        ) : (
+                          <a href={fileUrl} target="_blank" rel="noreferrer" className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl border-2 transition-all ${isDarkMode ? "border-white/10 bg-white/5" : "border-[#2450b7] bg-[#0b226a] hover:border-[#3aa0ff]"}`}>
+                            <Plus className={`mb-1 ${isDarkMode ? "text-royal" : "text-[#f0b91f]"}`} size={20} />
+                            <span className="text-[10px] font-bold text-center px-2 truncate w-full">File</span>
+                          </a>
+                        )}
+                        <a href={fileUrl} download className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)]">
+                          <Plus size={14} className="rotate-45" />
+                        </a>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className={`text-sm font-bold ${softTextClass}`}>No attachments</p>
+              )}
+            </div>
+
+            <div className={`pt-4 border-t ${borderMutedClass}`}>
+              <ReplySection 
+                onSendMessage={handleSendMessage}
+                inputClass={inputClass}
+                goldButtonClass={goldButtonClass}
+                softTextClass={softTextClass}
+              />
+            </div>
+          </div>
+        </Modal>
+      )}
+
+    </div>
   );
-}
+};
+
+export default Tickets;
