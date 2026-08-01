@@ -109,8 +109,8 @@ function InfoRow({ label, value, mono = false }: { label: string; value?: string
    MODAL 1 — Verify / KYC Documents
 ───────────────────────────────────────────────────────────── */
 const DOC_TYPES: { type: KycDocument['type']; label: string }[] = [
-  { type: 'address_proof', label: 'Passport' },
-  { type: 'id_proof', label: 'National ID' }
+  { type: 'address_proof', label: 'Address Proof' },
+  { type: 'id_proof', label: 'ID Proof' }
 ];
 
 function VerifyModal({
