@@ -16,7 +16,7 @@ export default function ClientHeader() {
   };
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 bg-slate-900 border-b border-slate-800 sticky top-0 z-30 w-full shadow-md">
+    <header className="h-16 flex items-center justify-between px-6 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-b border-blue-800/50 sticky top-0 z-30 w-full shadow-md shadow-blue-900/20">
       {/* Left: Sidebar Toggle */}
       <div>
         <button 

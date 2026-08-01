@@ -1,92 +1,139 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
-import { UserCheck, Mail, Phone, Calendar, MessageSquare, Clock } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import ClientSidebar from '@/components/Client/sidebar';
 import ClientHeader from '@/components/Client/header';
-import { getClientData } from '@/lib/mockDataLoader';
+import { getAdminManagers } from '@/lib/mockDataLoader';
 
 export default function ClientManagerPage() {
-  const clientData = getClientData();
-  const managerInfo = clientData.assignedManager;
+  const [search, setSearch] = useState('');
+
+  const rawManagers = getAdminManagers();
+  
+  // Filter and map raw manager data to our UI structure
+  const managers = rawManagers
+    .filter(mgr => 
+      mgr.name.toLowerCase().includes(search.toLowerCase()) || 
+      mgr.accountId.toLowerCase().includes(search.toLowerCase())
+    )
+    .map((mgr, i) => ({
+      name: mgr.name,
+      id: mgr.accountId,
+      balance: mgr.balance,
+      equity: mgr.balance, // Using balance as equity for mock
+      profitShare: mgr.share,
+      age: `${420 + (i * 45)} days`, // Deterministic age mocking to avoid hydration mismatch
+      growth: mgr.profit
+    }));
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <div className="flex min-h-screen font-sans antialiased text-slate-100" style={{ backgroundColor: '#0e2250' }}>
       <Head>
-        <title>My Manager | Client Portal</title>
+        <title>Explore Top MAM Managers | Client Portal</title>
       </Head>
       <ClientSidebar />
       <main className="flex-1 flex flex-col min-w-0">
         <ClientHeader />
+        
         <div className="p-6 md:p-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold mb-2">
-                <UserCheck size={13} /> Data from mockData.json
+          <div className="bg-[#0b183f] border border-blue-900/60 rounded-2xl overflow-hidden shadow-2xl relative">
+            
+            {/* Header */}
+            <div className="p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-blue-900/60">
+              <div className="flex items-center gap-3">
+                <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
+                <h1 className="text-xl font-bold text-white tracking-wide">Explore Top MAM Managers</h1>
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-white">Assigned Relationship Manager</h1>
-              <p className="text-slate-400 text-sm mt-1">Direct communication line with your dedicated financial & learning manager.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col items-center text-center">
-              <div className="relative mb-4">
-                <img src={managerInfo.avatar} alt={managerInfo.name} className="w-24 h-24 rounded-full object-cover ring-4 ring-emerald-500/40 shadow-lg" />
-                <span className="absolute bottom-1 right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-slate-900"></span>
-              </div>
-              <h2 className="text-xl font-bold text-white mb-1">{managerInfo.name}</h2>
-              <span className="text-xs text-emerald-400 font-semibold px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-4">
-                {managerInfo.role}
-              </span>
-              <p className="text-xs text-slate-400 mb-6">{managerInfo.experience}</p>
-
-              <div className="w-full space-y-2 text-xs">
-                <button className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-2.5 rounded-xl transition-all shadow-md">
-                  <MessageSquare size={16} /> Send Direct Message
-                </button>
-                <button className="w-full flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-2.5 rounded-xl transition-all border border-slate-700">
-                  <Calendar size={16} /> Schedule 1-on-1 Session
-                </button>
-              </div>
-            </div>
-
-            <div className="lg:col-span-2 space-y-6">
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-                <h3 className="text-base font-bold text-white mb-2">Manager Contact & Credentials</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                  <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-800 flex items-center gap-3">
-                    <Mail size={18} className="text-emerald-400 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-slate-400 text-[11px]">Email Address</div>
-                      <div className="text-slate-200 font-semibold truncate">{managerInfo.email}</div>
-                    </div>
-                  </div>
-                  <div className="p-3.5 rounded-2xl bg-slate-800/40 border border-slate-800 flex items-center gap-3">
-                    <Phone size={18} className="text-emerald-400 shrink-0" />
-                    <div>
-                      <div className="text-slate-400 text-[11px]">Direct Phone</div>
-                      <div className="text-slate-200 font-semibold">{managerInfo.phone}</div>
-                    </div>
-                  </div>
+              
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search size={16} className="text-blue-400" />
                 </div>
-              </div>
-
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
-                <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-                  <Clock size={18} className="text-emerald-400" /> Scheduled Advisory Session
-                </h3>
-                <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">Upcoming Consultation</div>
-                    <div className="text-sm font-bold text-slate-100">Q3 Portfolio & Course Strategy Sync</div>
-                    <div className="text-xs text-slate-400 mt-1">{managerInfo.nextMeeting} (Google Meet)</div>
-                  </div>
-                  <span className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 text-xs font-bold shadow-md">
-                    Confirmed
-                  </span>
-                </div>
+                <input 
+                  type="text" 
+                  placeholder="Search managers..." 
+                  className="bg-transparent border border-blue-800/80 text-blue-100 rounded-full py-2 pl-9 pr-4 w-64 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm placeholder:text-blue-400/70"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
               </div>
             </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto relative">
+              <table className="w-full text-left text-sm text-blue-200">
+                <thead className="bg-[#0e2152] text-blue-300 text-xs font-bold uppercase tracking-widest border-b border-blue-900/40">
+                  <tr>
+                    <th className="px-6 py-4">MANAGER NAME</th>
+                    <th className="px-6 py-4">LOGIN ID</th>
+                    <th className="px-6 py-4">BALANCE</th>
+                    <th className="px-6 py-4">EQUITY</th>
+                    <th className="px-6 py-4">PROFIT SHARE</th>
+                    <th className="px-6 py-4">AGE</th>
+                    <th className="px-6 py-4">GROWTH</th>
+                    <th className="px-6 py-4 text-center">ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-blue-900/40">
+                  {managers.map((mgr, idx) => (
+                    <tr key={idx} className="hover:bg-[#11255e] transition-colors bg-[#0b183f]">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-slate-800 font-bold shrink-0 shadow-sm">
+                            (
+                          </div>
+                          <span className="font-bold text-white">{mgr.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-4 py-1.5 rounded-lg border border-blue-800 bg-blue-900/30 text-blue-100 font-semibold text-xs tracking-wider">
+                          {mgr.id}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-white tracking-wide">{mgr.balance}</td>
+                      <td className="px-6 py-4 font-bold text-white tracking-wide">{mgr.equity}</td>
+                      <td className="px-6 py-4 font-bold text-white tracking-wide">{mgr.profitShare}</td>
+                      <td className="px-6 py-4 font-bold text-white">
+                        <div className="flex flex-col">
+                          <span>{mgr.age.split(' ')[0]}</span>
+                          <span className="text-xs text-blue-400 font-semibold mt-0.5">{mgr.age.split(' ')[1]}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-emerald-400 font-bold tracking-wide">{mgr.growth}</td>
+                      <td className="px-6 py-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-3">
+                          <button className="px-5 py-1.5 rounded-full border border-blue-700 bg-blue-900/30 text-blue-100 hover:bg-blue-800/80 text-xs font-semibold transition-colors shadow-sm">
+                            View
+                          </button>
+                          <button className="px-5 py-1.5 rounded-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 text-xs font-bold transition-colors shadow-md shadow-yellow-500/20">
+                            Invest
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+
+            </div>
+
+            {/* Footer Pagination */}
+            <div className="p-5 border-t border-blue-900/60 flex items-center justify-between text-xs font-bold text-blue-400 uppercase tracking-widest bg-[#0b183f]">
+              <div>
+                SHOWING 1 TO 10 OF 21
+              </div>
+              <div className="flex items-center gap-4">
+                <button className="w-8 h-8 rounded-full border border-blue-800 flex items-center justify-center hover:bg-blue-800/50 transition-colors text-blue-300">
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-white capitalize font-semibold tracking-normal text-sm">Page 1</span>
+                <button className="w-8 h-8 rounded-full border border-blue-800 flex items-center justify-center hover:bg-blue-800/50 transition-colors text-yellow-500 border-yellow-500/30">
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       </main>

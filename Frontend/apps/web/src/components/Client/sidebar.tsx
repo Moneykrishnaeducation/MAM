@@ -26,6 +26,7 @@ export default function ClientSidebar() {
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
     { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
     { href: '/client/available', label: 'Available', icon: Compass },
+    
   ];
 
   return (
@@ -64,18 +65,7 @@ export default function ClientSidebar() {
         </nav>
 
         {/* Learning Streak / Investment Widget */}
-        <div className="mt-8 mx-1 p-4 rounded-2xl bg-gradient-to-b from-slate-800/80 to-slate-800/40 border border-slate-700/60">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Flame size={16} className="text-amber-500 fill-amber-500/30" /> Daily Streak
-            </span>
-            <span className="text-xs font-bold text-amber-400">7 Days 🔥</span>
-          </div>
-          <p className="text-[11px] text-slate-400 mb-3">Your portfolio grew +4.2% this week!</p>
-          <div className="w-full bg-slate-700/60 rounded-full h-2 overflow-hidden">
-            <div className="bg-gradient-to-r from-amber-500 to-emerald-400 h-full rounded-full w-4/5 transition-all duration-500"></div>
-          </div>
-        </div>
+        
       </div>
 
       {/* Client User Card at bottom */}
