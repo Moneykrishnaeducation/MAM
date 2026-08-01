@@ -26,7 +26,7 @@ import { motion, AnimatePresence } from "framer-motion";
 const useTheme = () => ({ isDarkMode: true });
 
 const sharedUtils = {
-  showToast: (msg, type) => console.log(`[${type}] ${msg}`)
+  showToast: (msg: string, type: string) => console.log(`[${type}] ${msg}`)
 };
 
 const NAVY = "#0B1F4B";
@@ -44,7 +44,7 @@ const TEXT_MID = "#4A5A7A";
 const TEXT_SOFT = "#8A9BC0";
 const BORDER_COLOR = "rgba(26,58,140,0.12)";
 
-const StatusOverlay = ({ type, isDarkMode }) => {
+const StatusOverlay = ({ type, isDarkMode }: { type: string; isDarkMode: boolean }) => {
   const isPending = type === 'pending';
   
   return (
@@ -118,9 +118,22 @@ export default function DepositModal({
   selectedDepositAccount = "MAM-84930",
   usdtAmount = "",
   setUsdtAmount,
+}: {
+  showDepositModal: boolean;
+  setShowDepositModal: (show: boolean) => void;
+  activeTab?: string;
+  setActiveTab: (tab: string) => void;
+  cheeseAmount?: string;
+  setCheeseAmount: (amount: string) => void;
+  currency?: string;
+  setCurrency: (currency: string) => void;
+  convertedAmount?: any;
+  selectedDepositAccount?: string;
+  usdtAmount?: string;
+  setUsdtAmount: (amount: string) => void;
 }) {
   const { isDarkMode } = useTheme();
-  const [proofFile, setProofFile] = useState(null);
+  const [proofFile, setProofFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [usdInrRate, setUsdInrRate] = useState(83);
   const [loadingRate, setLoadingRate] = useState(false);
@@ -139,7 +152,7 @@ export default function DepositModal({
     }
   }, [showDepositModal]);
 
-  const handleManualDepositSubmit = async (e) => {
+  const handleManualDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDepositAccount || !cheeseAmount || !proofFile) {
       sharedUtils.showToast("Please fill in all required fields.", "error");
@@ -157,7 +170,7 @@ export default function DepositModal({
     }, 3000);
   };
 
-  const handleCheesePaySubmit = async (e) => {
+  const handleCheesePaySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDepositAccount || !cheeseAmount) return;
     
@@ -173,7 +186,7 @@ export default function DepositModal({
     }, 2000);
   };
 
-  const handleUsdtSubmit = async (e) => {
+  const handleUsdtSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDepositAccount || !usdtAmount) return;
 
@@ -407,7 +420,7 @@ export default function DepositModal({
                               </div>
                             </>
                           )}
-                          <input type="file" className="hidden" onChange={(e) => setProofFile(e.target.files[0])} accept="image/*,.pdf" />
+                          <input type="file" className="hidden" onChange={(e) => { if (e.target.files && e.target.files[0]) setProofFile(e.target.files[0]); }} accept="image/*,.pdf" />
                         </label>
                       </div>
                     </div>
