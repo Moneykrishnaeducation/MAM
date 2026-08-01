@@ -1,4 +1,4 @@
-"""URL routing for adminPanel — all endpoints defined here via path()."""
+"""URL routing for adminPanel - all endpoints defined here via path()."""
 
 from django.urls import path
 
@@ -12,18 +12,18 @@ from adminPanel.views import (
     list_managers,
     list_pending_requests,
 )
+from adminPanel.view.mam_accounts import create_mam_account
 
 app_name = "adminPanel"
 
 urlpatterns = [
-    # GET — list endpoints
     path("admin-users", list_admin_system_users, name="admin-users"),
     path("users", list_client_users, name="users"),
     path("requests", list_pending_requests, name="requests"),
     path("managers", list_managers, name="managers"),
     path("investors", list_investors, name="investors"),
     path("activity", list_activity_logs, name="activity"),
-    # POST — create endpoints
     path("admin-users/create", create_admin_user, name="create-admin-user"),
     path("users/create", create_client_user, name="create-client-user"),
+    path("mam-accounts/create", create_mam_account, name="create-mam-account"),
 ]

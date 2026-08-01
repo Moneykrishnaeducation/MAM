@@ -16,6 +16,7 @@ from adminPanel.models import (
     Manager,
     PendingRequest,
 )
+from adminPanel.view.mam_accounts import create_mam_account
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 

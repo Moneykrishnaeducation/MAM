@@ -16,7 +16,9 @@ from adminPanel.models import (
     Investor,
     Manager,
     MyInvestment,
+    MamAccount,
 )
+from adminPanel.view.mam_accounts import create_mam_account
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
 from clientPanel.view.common import create_client_login_token
@@ -73,6 +75,39 @@ class TestAdminPanelModels:
         )
         assert investor.id is not None
         assert investor.equity == 50000.0
+
+    async def test_create_mam_account(self):
+        """Test creating a MAM account as an admin request."""
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "master_strategy": "Balanced Growth",
+                        "broker": "Equinix Direct",
+                        "total_balance": 150000.0,
+                        "leverage": "1:500",
+                        "status": "Operational",
+                    }
+                ).encode(),
+                "user": type("User", (), {"is_authenticated": True, "is_staff": True})(),
+            },
+        )()
+
+        response = await create_mam_account(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 201
+        assert payload["status"] == "ok"
+        assert payload["mam_account"]["master_strategy"] == "Balanced Growth"
+        assert payload["mam_account"]["account_number"].startswith("MAM-")
+
+        saved = await MamAccount.get(master_strategy="Balanced Growth")
+        assert saved.total_balance == 150000.0
 
 
 class TestClientPanelModels:

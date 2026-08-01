@@ -24,6 +24,7 @@ MAM/
 ├── backendPanel/    # Core server, settings, main WSGI/ASGI entrypoint, static files
 │   └── permissions.py # Role-based request permission helpers
 ├── adminPanel/      # Admin user management, managers, investors, MAM accounts, requests
+│   └── view/        # Admin-specific view modules such as MAM account creation
 ├── clientPanel/     # Client profile, trading account details, investments, transactions
 │   └── view/        # Client-specific view modules such as login, profile, account
 ├── tests/           # Test suite
