@@ -1,12 +1,13 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import {
   LifeBuoy, Plus, Search, MessageSquare,
   Clock, CheckCircle2, AlertCircle, ChevronRight, X,
-  ChevronLeft
+  ChevronLeft, Tag, FileText, Send
 } from 'lucide-react';
 
-const mockTickets = [
+const mockTickets: SupportTicket[] = [
   { id: 'TKT-8921', subject: 'Withdrawal delay inquiry',    status: 'Open',     priority: 'High',   date: 'Today, 10:42 AM' },
   { id: 'TKT-8910', subject: 'How to allocate more funds?', status: 'Closed',   priority: 'Low',    date: '2 days ago' },
   { id: 'TKT-8842', subject: 'Platform login issue',        status: 'Closed',   priority: 'Medium', date: 'Last week' },
@@ -22,21 +23,58 @@ const mockTickets = [
 const FILTERS = ['All', 'Open', 'Pending', 'Closed'] as const;
 type Filter = typeof FILTERS[number];
 
+type TicketStatus = 'Open' | 'Pending' | 'Closed';
+type TicketPriority = 'High' | 'Medium' | 'Low';
+
+interface SupportTicket {
+  id: string;
+  subject: string;
+  status: TicketStatus;
+  priority: TicketPriority;
+  date: string;
+  category?: string;
+  description?: string;
+}
+
+const CREATE_TICKET_CATEGORIES = [
+  'Account Access',
+  'Deposits & Withdrawals',
+  'Trading Platform',
+  'Verification',
+  'General Question',
+  'Other',
+];
+
+type CreateTicketFormState = {
+  subject: string;
+  category: string;
+  priority: TicketPriority;
+  description: string;
+};
+
 export default function ClientTicketsPage() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('All');
   const [perPage, setPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
+  const [tickets, setTickets] = useState<SupportTicket[]>(mockTickets);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [ticketForm, setTicketForm] = useState<CreateTicketFormState>({
+    subject: '',
+    category: CREATE_TICKET_CATEGORIES[0],
+    priority: 'Medium',
+    description: '',
+  });
 
   const filtered = useMemo(() => {
-    return mockTickets.filter((t) => {
+    return tickets.filter((t) => {
       const matchesFilter = filter === 'All' || t.status === filter;
       const matchesSearch =
         t.subject.toLowerCase().includes(search.toLowerCase()) ||
         t.id.toLowerCase().includes(search.toLowerCase());
       return matchesFilter && matchesSearch;
     });
-  }, [search, filter]);
+  }, [search, filter, tickets]);
 
   // Pagination calculations
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -57,6 +95,47 @@ export default function ClientTicketsPage() {
 
   const handleFilterChange = (val: Filter) => {
     setFilter(val);
+    setCurrentPage(1);
+  };
+
+  const openCreateTicketModal = () => {
+    setTicketForm({
+      subject: '',
+      category: CREATE_TICKET_CATEGORIES[0],
+      priority: 'Medium',
+      description: '',
+    });
+    setIsCreateModalOpen(true);
+  };
+
+  const closeCreateTicketModal = () => {
+    setIsCreateModalOpen(false);
+  };
+
+  const handleCreateTicket = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    const now = new Date();
+    const createdTicket: SupportTicket = {
+      id: `TKT-${Math.floor(1000 + Math.random() * 9000)}`,
+      subject: ticketForm.subject.trim(),
+      status: 'Open',
+      priority: ticketForm.priority,
+      category: ticketForm.category,
+      description: ticketForm.description.trim(),
+      date: now.toLocaleString(undefined, {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      }),
+    };
+
+    setTickets((prev) => [createdTicket, ...prev]);
+    setIsCreateModalOpen(false);
+    setFilter('All');
+    setSearch('');
     setCurrentPage(1);
   };
 
@@ -129,6 +208,7 @@ export default function ClientTicketsPage() {
           {/* New Ticket button */}
           <button
             id="btn-new-ticket"
+            onClick={openCreateTicketModal}
             className="relative flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold overflow-hidden transition-all duration-300 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
             style={{
               background: 'linear-gradient(135deg, #059669, #047857)',
@@ -143,11 +223,132 @@ export default function ClientTicketsPage() {
         </div>
 
         {/* ── Filter Tabs & Search Row (Outside the table) ── */}
+        {isCreateModalOpen && typeof document !== 'undefined' && createPortal(
+          <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+            <div className="w-full max-w-2xl rounded-3xl overflow-hidden border border-blue-900/40 bg-[#0c1636] shadow-2xl my-auto">
+              <div className="flex items-start justify-between gap-4 p-6 border-b border-blue-900/30 bg-[#0f1b42]">
+                <div>
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-[11px] font-bold tracking-wider uppercase mb-3">
+                    <LifeBuoy size={12} /> Create Ticket
+                  </div>
+                  <h2 className="text-2xl font-black text-white tracking-tight">Open a new support request</h2>
+                  <p className="text-sm text-blue-200/60 mt-1">
+                    Share the issue and we'll route it to the right support queue.
+                  </p>
+                </div>
+                <button
+                  onClick={closeCreateTicketModal}
+                  className="p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                  aria-label="Close create ticket modal"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateTicket} className="p-6 space-y-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="space-y-2">
+                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <MessageSquare size={13} className="text-blue-400" /> Subject
+                    </span>
+                    <input
+                      type="text"
+                      value={ticketForm.subject}
+                      onChange={(e) => setTicketForm((prev) => ({ ...prev, subject: e.target.value }))}
+                      placeholder="Short summary of the issue"
+                      required
+                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                    />
+                  </label>
+
+                  <label className="space-y-2">
+                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <Tag size={13} className="text-emerald-400" /> Category
+                    </span>
+                    <select
+                      value={ticketForm.category}
+                      onChange={(e) => setTicketForm((prev) => ({ ...prev, category: e.target.value }))}
+                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                    >
+                      {CREATE_TICKET_CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <label className="space-y-2">
+                    <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <AlertCircle size={13} className="text-amber-400" /> Priority
+                    </span>
+                    <select
+                      value={ticketForm.priority}
+                      onChange={(e) => setTicketForm((prev) => ({ ...prev, priority: e.target.value as TicketPriority }))}
+                      className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                    >
+                      <option value="High">High</option>
+                      <option value="Medium">Medium</option>
+                      <option value="Low">Low</option>
+                    </select>
+                  </label>
+
+                  <div className="rounded-2xl border border-blue-900/30 bg-white/5 px-4 py-3">
+                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      <FileText size={13} className="text-sky-400" /> What happens next
+                    </div>
+                    <p className="text-sm text-slate-300 leading-relaxed">
+                      We'll create the ticket as <span className="text-emerald-300 font-semibold">Open</span> and send it to the support team.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="space-y-2 block">
+                  <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <FileText size={13} className="text-blue-400" /> Description
+                  </span>
+                  <textarea
+                    rows={5}
+                    value={ticketForm.description}
+                    onChange={(e) => setTicketForm((prev) => ({ ...prev, description: e.target.value }))}
+                    placeholder="Describe the issue in detail, including any error messages or account numbers if relevant."
+                    required
+                    className="w-full rounded-2xl bg-[#0a1330] border border-blue-900/40 px-4 py-3 text-sm text-slate-100 placeholder-slate-500 outline-none resize-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/15"
+                  />
+                </label>
+
+                <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-blue-900/25">
+                  <p className="text-xs text-slate-500">
+                    Tip: include screenshots or timestamps in the description for faster triage.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={closeCreateTicketModal}
+                      className="px-5 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 text-sm font-black shadow-lg shadow-emerald-500/20 hover:opacity-95 transition-opacity"
+                    >
+                      <Send size={15} /> Submit Ticket
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>, document.body
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 page-enter relative z-20">
           {/* Filter tabs */}
           <div className="flex bg-[#0b1736] p-1.5 rounded-2xl border border-blue-900/60 shadow-lg">
             {FILTERS.map((f) => {
-              const count = f === 'All' ? mockTickets.length : mockTickets.filter(t => t.status === f).length;
+              const count = f === 'All' ? tickets.length : tickets.filter(t => t.status === f).length;
               const active = filter === f;
               return (
                 <button
