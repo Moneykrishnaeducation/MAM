@@ -118,7 +118,7 @@ export default function AdminDashboard() {
             <div className="lg:col-span-2 bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Recent Student Enrollments</h2>
+                  <h2 className="text-lg font-bold text-slate-100">Recent User Enrollments</h2>
                   <p className="text-xs text-slate-400">Latest course signups across all modules</p>
                 </div>
                 <button className="flex items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-xl border border-blue-500/20">
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                 <table className="w-full text-left text-xs">
                   <thead>
                     <tr className="text-slate-400 border-b border-slate-800">
-                      <th className="pb-3 font-semibold">Student</th>
+                      <th className="pb-3 font-semibold">User</th>
                       <th className="pb-3 font-semibold">Course</th>
                       <th className="pb-3 font-semibold">Time</th>
                       <th className="pb-3 font-semibold text-right">Status</th>
