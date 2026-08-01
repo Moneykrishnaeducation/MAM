@@ -1,4 +1,4 @@
-"""API views for clientPanel: Profile, Trading Accounts, My Investments, Transactions, Tickets."""
+"""Client panel API endpoints: load client user data using central adminPanel models."""
 
 from ninja import Router
 
@@ -6,12 +6,12 @@ router = Router(tags=["client"])
 
 
 @router.get("/profile")
-def get_profile(request):
-    """Get client profile data."""
+def get_client_profile(request, user_id: int = 101):
+    """Load profile for specific client user only."""
     return {
         "status": "ok",
         "profile": {
-            "user_id": 101,
+            "user_id": user_id,
             "full_name": "Alex Rivera",
             "email": "alex.rivera@example.com",
             "phone": "+1 (555) 019-2834",
@@ -23,11 +23,12 @@ def get_profile(request):
 
 
 @router.get("/account")
-def get_account_details(request):
-    """Get client trading account details."""
+def get_client_account_details(request, user_id: int = 101):
+    """Load trading account details for specific client user only."""
     return {
         "status": "ok",
         "account": {
+            "user_id": user_id,
             "account_number": "MT5-8849201",
             "server": "VTIndex-Live01",
             "balance": 45800.50,
@@ -41,10 +42,11 @@ def get_account_details(request):
 
 
 @router.get("/my-investments")
-def list_my_investments(request):
-    """List client allocated investments."""
+def get_client_investments(request, user_id: int = 101):
+    """Load allocated investments for specific client user only."""
     return {
         "status": "ok",
+        "user_id": user_id,
         "investments": [
             {
                 "id": 1,
@@ -69,10 +71,11 @@ def list_my_investments(request):
 
 
 @router.get("/transactions")
-def list_transactions(request):
-    """List client deposit and withdrawal transactions."""
+def get_client_transactions(request, user_id: int = 101):
+    """Load deposit & withdrawal transactions for specific client user only."""
     return {
         "status": "ok",
+        "user_id": user_id,
         "transactions": [
             {"id": 1, "type": "Deposit", "amount": 10000.0, "method": "Wire Transfer", "status": "Completed", "date": "2026-07-28"},
             {"id": 2, "type": "Deposit", "amount": 30000.0, "method": "USDT TRC20", "status": "Completed", "date": "2026-07-15"},
@@ -82,10 +85,11 @@ def list_transactions(request):
 
 
 @router.get("/tickets")
-def list_tickets(request):
-    """List client support tickets."""
+def get_client_tickets(request, user_id: int = 101):
+    """Load support tickets for specific client user only."""
     return {
         "status": "ok",
+        "user_id": user_id,
         "tickets": [
             {"id": 101, "subject": "Request leverage change to 1:500", "priority": "Normal", "status": "Closed", "date": "2026-07-20"},
             {"id": 102, "subject": "API Webhook endpoint query", "priority": "High", "status": "Open", "date": "2026-07-31"},

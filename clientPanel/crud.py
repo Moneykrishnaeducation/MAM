@@ -1,6 +1,6 @@
-"""CRUD operations for clientPanel models."""
+"""Client-specific data loader functions using central adminPanel models."""
 
-from clientPanel.models import (
+from adminPanel.models import (
     ClientAccount,
     ClientProfile,
     ClientTicket,
@@ -9,9 +9,41 @@ from clientPanel.models import (
 )
 
 
-async def get_client_profile(user_id: int) -> ClientProfile | None:
-    """Get client profile by user ID."""
+async def get_client_profile_by_user_id(user_id: int) -> ClientProfile | None:
+    """Load profile for a specific client user only."""
     return await ClientProfile.filter(user_id=user_id).first()
+
+
+async def get_client_accounts_by_user_id(user_id: int) -> list[ClientAccount]:
+    """Load MT5 trading account details for a specific client user only."""
+    profile = await get_client_profile_by_user_id(user_id)
+    if profile is None:
+        return []
+    return await ClientAccount.filter(client_profile_id=profile.id).all()
+
+
+async def get_client_investments_by_user_id(user_id: int) -> list[MyInvestment]:
+    """Load allocated investments for a specific client user only."""
+    profile = await get_client_profile_by_user_id(user_id)
+    if profile is None:
+        return []
+    return await MyInvestment.filter(client_profile_id=profile.id).all()
+
+
+async def get_client_transactions_by_user_id(user_id: int) -> list[ClientTransaction]:
+    """Load deposit & withdrawal transactions for a specific client user only."""
+    profile = await get_client_profile_by_user_id(user_id)
+    if profile is None:
+        return []
+    return await ClientTransaction.filter(client_profile_id=profile.id).all()
+
+
+async def get_client_tickets_by_user_id(user_id: int) -> list[ClientTicket]:
+    """Load support tickets for a specific client user only."""
+    profile = await get_client_profile_by_user_id(user_id)
+    if profile is None:
+        return []
+    return await ClientTicket.filter(client_profile_id=profile.id).all()
 
 
 async def create_client_profile(
@@ -21,23 +53,3 @@ async def create_client_profile(
     return await ClientProfile.create(
         user_id=user_id, full_name=full_name, email=email, phone=phone
     )
-
-
-async def get_client_accounts(profile_id: int) -> list[ClientAccount]:
-    """Get client trading accounts."""
-    return await ClientAccount.filter(client_profile_id=profile_id).all()
-
-
-async def get_client_investments(profile_id: int) -> list[MyInvestment]:
-    """Get client investments."""
-    return await MyInvestment.filter(client_profile_id=profile_id).all()
-
-
-async def get_client_transactions(profile_id: int) -> list[ClientTransaction]:
-    """Get client transactions."""
-    return await ClientTransaction.filter(client_profile_id=profile_id).all()
-
-
-async def get_client_tickets(profile_id: int) -> list[ClientTicket]:
-    """Get client support tickets."""
-    return await ClientTicket.filter(client_profile_id=profile_id).all()

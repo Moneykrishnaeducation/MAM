@@ -19,7 +19,6 @@ def get_tortoise_config() -> dict[str, Any]:
                 "models": [
                     "backendPanel.models",
                     "adminPanel.models",
-                    "clientPanel.models",
                     "aerich.models",
                 ],
                 "default_connection": "default",
