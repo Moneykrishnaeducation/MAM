@@ -7,7 +7,12 @@ import {
   Wallet, 
   Compass, 
   Flame,
-  LogOut
+  Shield,
+  LogOut,
+  Activity,
+  LifeBuoy,
+  ArrowRightLeft,
+  FileText
 } from 'lucide-react';
 
 export default function ClientSidebar() {
@@ -26,11 +31,10 @@ export default function ClientSidebar() {
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
     { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
     { href: '/client/available', label: 'Available', icon: Compass },
-    { href: '/client/platform', label: 'Platform', icon: Flame },
-    { href: '/client/tickets', label: 'Tickets', icon: Flame },
-    { href: '/client/transactions', label: 'Transactions', icon: Flame },
-    { href: '/client/policies', label: 'Policies', icon: Flame },
-    
+    { href: '/client/platform', label: 'Platform', icon: Activity },
+    { href: '/client/tickets', label: 'Tickets', icon: LifeBuoy },
+    { href: '/client/transaction', label: 'Transactions', icon: ArrowRightLeft },
+    { href: '/client/privacy', label: 'Policies', icon: Shield  },
   ];
 
   return (
