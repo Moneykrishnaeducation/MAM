@@ -4,9 +4,6 @@ import {
   LifeBuoy, Plus, Search, MessageSquare,
   Clock, CheckCircle2, AlertCircle, ChevronRight, X,
 } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
-
 const mockTickets = [
   { id: 'TKT-8921', subject: 'Withdrawal delay inquiry',    status: 'Open',     priority: 'High',   date: 'Today, 10:42 AM' },
   { id: 'TKT-8910', subject: 'How to allocate more funds?', status: 'Resolved', priority: 'Low',    date: '2 days ago' },
@@ -29,7 +26,7 @@ export default function ClientTicketsPage() {
   });
 
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>Support Tickets | Client Portal</title>
       </Head>
@@ -67,10 +64,6 @@ export default function ClientTicketsPage() {
         .beam-line { animation: beam 3s ease-in-out infinite; }
         .page-enter { animation: fadeSlideUp 0.6s ease forwards; }
       `}</style>
-
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <ClientHeader />
 
         <div className="relative p-6 md:p-10 space-y-8 overflow-hidden">
 
@@ -306,7 +299,6 @@ export default function ClientTicketsPage() {
           </div>
 
         </div>
-      </main>
-    </div>
+    </>
   );
 }

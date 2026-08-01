@@ -1,18 +1,13 @@
 import React from 'react';
 import Head from 'next/head';
 import { Settings, Shield, Bell, Key, Database, Save } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 
 export default function AdminSettingsPage() {
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Settings | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
@@ -76,7 +71,6 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

@@ -17,8 +17,6 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 import { getClientData, getAdminManagers } from '@/lib/mockDataLoader';
 
 const riskBadge = (risk: string) => {
@@ -79,13 +77,10 @@ export default function ClientManagerPage() {
     highlightedManager?.email === managerInfo.email;
 
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100 bg-[#060e24]">
+    <>
       <Head>
         <title>My Manager | Client Portal</title>
       </Head>
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <ClientHeader />
         <div className="p-6 md:p-8 space-y-8">
           {/* ── Page Header ── */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -574,7 +569,6 @@ export default function ClientManagerPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

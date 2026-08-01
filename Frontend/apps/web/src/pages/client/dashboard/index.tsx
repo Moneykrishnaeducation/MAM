@@ -13,8 +13,6 @@ import {
   CheckCircle2,
   UserCheck
 } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 import { getClientData } from '@/lib/mockDataLoader';
 
 export default function ClientDashboardPage() {
@@ -29,13 +27,10 @@ export default function ClientDashboardPage() {
   };
 
   return (
-    <div className="flex min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>Student Dashboard | Client Portal</title>
       </Head>
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <ClientHeader />
         
         <div className="p-6 md:p-8">
           {/* Action Buttons */}
@@ -139,7 +134,6 @@ export default function ClientDashboardPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

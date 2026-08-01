@@ -22,8 +22,6 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 import { getAdminUsers } from '@/lib/mockDataLoader';
 
 export interface UserData {
@@ -135,13 +133,10 @@ export default function AdminUsersPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Users Directory | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
 
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -305,7 +300,6 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
-      </main>
 
       {activeModalUser && activeModalType && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -455,6 +449,6 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

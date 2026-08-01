@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 import { getAdminManagers } from '@/lib/mockDataLoader';
 
 export default function ClientManagerPage() {
@@ -27,13 +25,10 @@ export default function ClientManagerPage() {
     }));
 
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>Explore Top MAM Managers | Client Portal</title>
       </Head>
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <ClientHeader />
         
         <div className="p-6 md:p-8">
           <div className="bg-[#0b183f] border border-blue-900/60 rounded-2xl overflow-hidden shadow-2xl relative">
@@ -136,7 +131,6 @@ export default function ClientManagerPage() {
 
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

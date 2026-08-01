@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 import { 
   Star, 
   FileText, 
@@ -41,7 +39,7 @@ export default function PrivacyPage() {
   ];
 
   return (
-    <div className="flex min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden relative" style={{ backgroundColor: '#0e2250' }}>
+    <>
       {/* Dynamic Background Effects */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-blue-900/20 blur-[120px]"></div>
@@ -53,11 +51,6 @@ export default function PrivacyPage() {
         <title>Benefits & Policies | Client Portal</title>
       </Head>
       
-      <div className="z-10 flex w-full">
-        <ClientSidebar />
-        
-        <main className="flex-1 flex flex-col min-w-0 z-10">
-          <ClientHeader />
           
           <div className="p-6 md:p-12 flex flex-col items-center flex-1 w-full max-w-7xl mx-auto">
             
@@ -205,8 +198,6 @@ export default function PrivacyPage() {
             )}
 
           </div>
-        </main>
-      </div>
-    </div>
+    </>
   );
 }

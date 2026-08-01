@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 import { 
   Clock, 
   ArrowDownCircle, 
@@ -31,13 +29,10 @@ export default function TransactionHistory() {
   ];
 
   return (
-    <div className="flex min-h-screen text-slate-100 font-sans antialiased overflow-x-hidden" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>Transaction History | Client Portal</title>
       </Head>
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <ClientHeader />
         
         <div className="p-6 md:p-8 flex flex-col flex-1">
       {/* Top Bar */}
@@ -138,7 +133,6 @@ export default function TransactionHistory() {
         </div>
       </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

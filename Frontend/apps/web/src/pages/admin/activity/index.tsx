@@ -1,9 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
 import { Activity, Clock, ShieldCheck, User, Database } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
-
 export default function AdminActivityPage() {
   const logs = [
     { id: 1, action: 'User Permissions Updated', target: 'Alex Rivera (USR-001)', time: '5m ago', type: 'Security', icon: ShieldCheck, color: 'text-blue-400' },
@@ -13,13 +10,10 @@ export default function AdminActivityPage() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Audit Logs & Activity | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
@@ -56,7 +50,6 @@ export default function AdminActivityPage() {
             })}
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

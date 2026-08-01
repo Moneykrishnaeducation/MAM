@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { Download, Monitor, Smartphone, Star, Apple, ArrowRight } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 
 const platforms = [
   {
@@ -51,7 +49,7 @@ export default function ClientPlatformPage() {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>Trading Platforms | Client Portal</title>
       </Head>
@@ -145,9 +143,6 @@ export default function ClientPlatformPage() {
         }
       `}</style>
 
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <ClientHeader />
 
         <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
 
@@ -360,7 +355,6 @@ export default function ClientPlatformPage() {
           </div>
 
         </div>
-      </main>
-    </div>
+    </>
   );
 }

@@ -15,9 +15,6 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
-
 export default function AdminDashboard() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'metrics'>('overview');
@@ -41,20 +38,15 @@ export default function AdminDashboard() {
   ];
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased overflow-x-hidden">
+    <>
       <Head>
         <title>Admin Dashboard | Money Krishna Education</title>
         <meta name="description" content="MAM Education Admin Management Portal" />
       </Head>
 
-      <AdminSidebar />
-
-      <main className="flex-1 flex flex-col min-w-0 relative overflow-y-auto">
         {/* Background glow effects */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
         <div className="absolute bottom-0 left-1/3 w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0"></div>
-
-        <AdminHeader />
 
         <div className={`p-6 md:p-8 z-10 transition-all duration-500 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           {/* Header Banner */}
@@ -238,7 +230,6 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

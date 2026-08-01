@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { Mail, Search, Send, Star, Inbox, Trash2 } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 
 export default function AdminMailsPage() {
   const [selectedMail, setSelectedMail] = useState<number>(1);
@@ -16,13 +14,10 @@ export default function AdminMailsPage() {
   const currentMail = mails.find(m => m.id === selectedMail) || mails[0];
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Mails & Messages | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
         <div className="p-6 md:p-8 flex-1 flex flex-col">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
             <div>
@@ -98,7 +93,6 @@ export default function AdminMailsPage() {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

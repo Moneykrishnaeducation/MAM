@@ -13,8 +13,6 @@ import {
   Users, 
   CheckCircle2
 } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
 import { getAdminManagers } from '@/lib/mockDataLoader';
 
@@ -80,13 +78,10 @@ export default function AdminManagersPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Managers Directory | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
 
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -216,7 +211,6 @@ export default function AdminManagersPage() {
             </div>
           </div>
         </div>
-      </main>
 
       <FinancialActionModal
         isOpen={isModalOpen}
@@ -225,6 +219,6 @@ export default function AdminManagersPage() {
         modalType={modalType}
         onConfirmAction={handleConfirmAction}
       />
-    </div>
+    </>
   );
 }

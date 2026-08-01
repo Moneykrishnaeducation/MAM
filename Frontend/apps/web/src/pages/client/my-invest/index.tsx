@@ -1,18 +1,13 @@
 import React from 'react';
 import Head from 'next/head';
 import { Wallet, TrendingUp, ShieldCheck, Search } from 'lucide-react';
-import ClientSidebar from '@/components/Client/sidebar';
-import ClientHeader from '@/components/Client/header';
 
 export default function ClientMyInvestPage() {
   return (
-    <div className="flex min-h-screen font-sans antialiased text-slate-100" style={{ backgroundColor: '#0e2250' }}>
+    <>
       <Head>
         <title>My Investments | Client Portal</title>
       </Head>
-      <ClientSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <ClientHeader />
         
         <div className="p-6 md:p-8 space-y-6">
           
@@ -92,7 +87,6 @@ export default function ClientMyInvestPage() {
 
           </div>
         </div>
-      </main>
-    </div>
+    </>
   );
 }

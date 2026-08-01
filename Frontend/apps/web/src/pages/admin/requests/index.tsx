@@ -21,8 +21,6 @@ import {
   FileCheck,
   CreditCard
 } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 
 export type RequestTab = 'deposit' | 'withdraw' | 'documents' | 'profile' | 'bank' | 'crypto';
 
@@ -323,13 +321,10 @@ export default function AdminPendingRequestsPage() {
   const totalPending = pendingDeposits + pendingWithdrawals + pendingDocs + pendingProfiles + pendingBanks + pendingCryptos;
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Pending Requests | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
 
         <div className="p-6 md:p-8">
           {/* Header Banner */}
@@ -809,7 +804,6 @@ export default function AdminPendingRequestsPage() {
           )}
 
         </div>
-      </main>
 
       {/* POPUP MODAL FOR REQUEST DETAIL VIEW & APPROVE / REJECT ACTIONS */}
       {selectedDetail && (
@@ -1038,6 +1032,6 @@ export default function AdminPendingRequestsPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }

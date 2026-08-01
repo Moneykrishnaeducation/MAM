@@ -15,8 +15,6 @@ import {
   Power,
   AlertCircle
 } from 'lucide-react';
-import AdminSidebar from '@/components/Admin/sidebar';
-import AdminHeader from '@/components/Admin/header';
 import { getAdminSystemUsers } from '@/lib/mockDataLoader';
 
 export interface AdminUser {
@@ -121,13 +119,10 @@ export default function AdminUsersManagementPage() {
   );
 
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
+    <>
       <Head>
         <title>Admin Users Management | Admin Portal</title>
       </Head>
-      <AdminSidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        <AdminHeader />
 
         <div className="p-6 md:p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
@@ -284,7 +279,6 @@ export default function AdminUsersManagementPage() {
             </div>
           </div>
         </div>
-      </main>
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -329,6 +323,6 @@ export default function AdminUsersManagementPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
