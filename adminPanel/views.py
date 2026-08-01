@@ -132,6 +132,8 @@ async def list_activity_logs(request):
     return JsonResponse({"status": "ok", "activities": results})
 
 
+from clientPanel.view.common import hash_client_password
+
 # ── POST views ─────────────────────────────────────────────────────────────────
 
 def _generate_user_code(prefix: str, length: int = 6) -> str:
@@ -154,6 +156,7 @@ async def create_admin_user(request):
     role = body.get("role", "Operations Manager").strip()
     department = body.get("department", "Operations").strip()
     permissions = body.get("permissions", [])
+    password = body.get("password", "").strip()
     avatar = body.get(
         "avatar",
         "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80",
@@ -168,6 +171,8 @@ async def create_admin_user(request):
             status=409,
         )
 
+    password_hash = hash_client_password(password) if password else None
+
     user = await AdminUser.create(
         name=name,
         email=email,
@@ -176,6 +181,7 @@ async def create_admin_user(request):
         permissions=permissions,
         status="Active",
         avatar=avatar,
+        password_hash=password_hash,
     )
 
     return JsonResponse(

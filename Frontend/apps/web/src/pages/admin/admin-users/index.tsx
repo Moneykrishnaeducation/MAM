@@ -79,6 +79,7 @@ export default function AdminUsersManagementPage() {
           role: formData.role,
           department: formData.department,
           permissions: formData.permissions,
+          password: formData.password,
         }),
       });
       const data = await res.json();
@@ -329,6 +330,18 @@ export default function AdminUsersManagementPage() {
                   placeholder="jane.doe@moneykrishna.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-slate-300 font-semibold mb-1">Password</label>
+                <input 
+                  type="password" 
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
                 />
               </div>
