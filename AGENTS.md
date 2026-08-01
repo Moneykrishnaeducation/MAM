@@ -22,6 +22,7 @@ MAM/
 ├── pyproject.toml   # Project config
 ├── manage.py        # Django management script
 ├── backendPanel/    # Core server, settings, main WSGI/ASGI entrypoint, static files
+│   └── permissions.py # Role-based request permission helpers
 ├── adminPanel/      # Admin user management, managers, investors, MAM accounts, requests
 ├── clientPanel/     # Client profile, trading account details, investments, transactions
 │   └── view/        # Client-specific view modules such as login, profile, account

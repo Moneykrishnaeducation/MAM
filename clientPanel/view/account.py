@@ -3,9 +3,11 @@
 from django.http import JsonResponse
 
 from adminPanel.models import ClientAccount
+from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
 
 
+@permission_required(IsClient)
 async def get_client_account(request):
     """Load trading account details for a client user directly from database."""
     profile, error = await _get_client_profile_for_request(request)

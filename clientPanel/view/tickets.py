@@ -3,9 +3,11 @@
 from django.http import JsonResponse
 
 from adminPanel.models import ClientTicket
+from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 
 
+@permission_required(IsClient)
 async def get_client_tickets(request):
     """Load support tickets for a client user directly from database."""
     profile, error = await _get_client_profile_for_request(request)
