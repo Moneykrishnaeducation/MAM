@@ -81,6 +81,55 @@ def serve_frontend_page(request, route=""):
     return JsonResponse({"message": "Welcome to MAM!"})
 
 
+def serve_next_data(request, path=""):
+    """Handle Next.js client-side Link prefetch data requests (/_next/data/...)."""
+    _app_settings = get_settings()
+    search_dirs = [
+        *_app_settings.staticfiles_dirs,
+        _app_settings.static_root,
+        BASE_DIR / "Frontend" / "apps" / "web" / "out",
+    ]
+    for d in search_dirs:
+        target_path = Path(d) / "_next" / "data" / path
+        if target_path.is_file():
+            return FileResponse(open(target_path, "rb"), content_type="application/json")
+        target_path_direct = Path(d) / path
+        if target_path_direct.is_file():
+            return FileResponse(open(target_path_direct, "rb"), content_type="application/json")
+
+    return JsonResponse({})
+
+
+def serve_next_static(request, path=""):
+    """Serve Next.js static JS/CSS asset bundles with aggressive browser caching."""
+    _app_settings = get_settings()
+    search_dirs = [
+        Path(settings.STATIC_ROOT) / "_next",
+        BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next",
+        *_app_settings.staticfiles_dirs,
+    ]
+    for d in search_dirs:
+        target_path = Path(d) / path
+        if target_path.is_file():
+            res = FileResponse(open(target_path, "rb"))
+            if path.endswith(".css"):
+                res["Content-Type"] = "text/css"
+            elif path.endswith(".js"):
+                res["Content-Type"] = "application/javascript"
+            res["Cache-Control"] = "public, max-age=31536000, immutable"
+            return res
+
+    return serve(
+        request,
+        path,
+        document_root=str(
+            Path(settings.STATIC_ROOT) / "_next"
+            if (Path(settings.STATIC_ROOT) / "_next").exists()
+            else BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next"
+        ),
+    )
+
+
 def health(request):
     """Health check endpoint."""
     return JsonResponse({"status": "healthy"})
@@ -99,17 +148,8 @@ urlpatterns = [
     path("health", health),
     path("api/", ninja_api.urls),
     path("graphql", GraphQLView.as_view(schema=graphql_schema)),
-    re_path(
-        r"^_next/(?P<path>.*)$",
-        serve,
-        {
-            "document_root": str(
-                Path(settings.STATIC_ROOT) / "_next"
-                if (Path(settings.STATIC_ROOT) / "_next").exists()
-                else BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next"
-            )
-        },
-    ),
+    re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
+    re_path(r"^_next/(?P<path>.*)$", serve_next_static),
     re_path(
         r"^static/(?P<path>.*)$",
         serve,

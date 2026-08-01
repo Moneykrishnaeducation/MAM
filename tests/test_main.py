@@ -35,3 +35,9 @@ def test_frontend_page_routes(client):
     for route in ["/admin/dashboard", "/client/dashboard", "/admin"]:
         response = client.get(route)
         assert response.status_code == 200
+
+
+def test_next_data_prefetch(client):
+    """Test Next.js client data prefetch route /_next/data/..."""
+    response = client.get("/_next/data/EimcpMK7ildAT_aG98852/admin/mails.json")
+    assert response.status_code == 200
