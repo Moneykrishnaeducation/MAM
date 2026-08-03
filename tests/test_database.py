@@ -691,6 +691,38 @@ class TestClientPanelModels:
         assert profile_payload["status"] == "ok"
         assert profile_payload["profile"]["email"] == "alex.login@example.com"
 
+    async def test_client_login_backfills_missing_profile(self):
+        """Test that client login creates a missing profile when needed."""
+        user = await ClientUser.create(
+            user_code="USR-LOGIN2",
+            name="Jamie Stone",
+            email="jamie.login@example.com",
+            country="Canada",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {"email": "jamie.login@example.com", "access_code": "USR-LOGIN2"}
+                ).encode(),
+            },
+        )()
+
+        response = await login_client(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        profile = await ClientProfile.get(user_id=user.id)
+        assert profile.full_name == "Jamie Stone"
+        assert profile.email == "jamie.login@example.com"
+        assert profile.country == "Canada"
+
     async def test_admin_login_and_dashboard_token_lookup(self):
         """Test admin login response and bearer-token access to the admin dashboard."""
         admin_user = await ClientUser.create(

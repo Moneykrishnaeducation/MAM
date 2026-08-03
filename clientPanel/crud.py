@@ -47,9 +47,17 @@ async def get_client_tickets_by_user_id(user_id: int) -> list[ClientTicket]:
 
 
 async def create_client_profile(
-    user_id: int, full_name: str, email: str, phone: str | None = None
+    user_id: int,
+    full_name: str,
+    email: str,
+    phone: str | None = None,
+    country: str = "United States",
 ) -> ClientProfile:
     """Create a new client profile."""
     return await ClientProfile.create(
-        user_id=user_id, full_name=full_name, email=email, phone=phone
+        user_id=user_id,
+        full_name=full_name,
+        email=email,
+        phone=phone,
+        country=country,
     )

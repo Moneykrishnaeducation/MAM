@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientProfile, ClientUser
+from clientPanel.crud import create_client_profile
 from clientPanel.view.common import (
     ADMIN_LOGIN_COOKIE_NAME,
     ADMIN_LOGIN_MAX_AGE,
@@ -120,7 +121,13 @@ async def login_client(request):
 
     profile = await ClientProfile.filter(user_id=user.id).first()
     if profile is None:
-        return _error("Client profile not found", status=404)
+        profile = await create_client_profile(
+            user.id,
+            user.name,
+            user.email,
+            phone=user.phone,
+            country=user.country,
+        )
 
     token = create_client_login_token(user.id, user.email)
 

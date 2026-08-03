@@ -17,6 +17,7 @@ from adminPanel.models import (
 )
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import hash_client_password
+from clientPanel.crud import create_client_profile
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
@@ -253,6 +254,14 @@ async def create_client_user(request):
         verified=False,
         avatar=avatar,
         password_hash=password_hash,
+    )
+
+    await create_client_profile(
+        user.id,
+        user.name,
+        user.email,
+        phone=phone or None,
+        country=country,
     )
 
     return JsonResponse(
