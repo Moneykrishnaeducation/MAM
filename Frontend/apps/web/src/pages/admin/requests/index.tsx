@@ -184,6 +184,24 @@ export default function AdminPendingRequestsPage() {
 
   const totalPending = pendingDeposits + pendingWithdrawals + pendingDocs + pendingProfiles + pendingBanks + pendingCryptos;
 
+  const totalDepositAmount = deposits
+    .filter(d => d.status === 'Pending')
+    .reduce((sum, d) => {
+      const num = parseFloat(d.amount.replace(/[^0-9.-]+/g,""));
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+
+  const totalWithdrawAmount = withdrawals
+    .filter(w => w.status === 'Pending')
+    .reduce((sum, w) => {
+      const num = parseFloat(w.amount.replace(/[^0-9.-]+/g,""));
+      return sum + (isNaN(num) ? 0 : num);
+    }, 0);
+
+  const formatVal = (val: number) => {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+  };
+
   return (
     <>
       <Head>
@@ -240,7 +258,7 @@ export default function AdminPendingRequestsPage() {
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-xs font-medium">Pending Deposits</div>
-                <div className="text-3xl font-black text-emerald-400 mt-1">$18,000.00</div>
+                <div className="text-3xl font-black text-emerald-400 mt-1">{formatVal(totalDepositAmount)}</div>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <ArrowDownCircle size={24} />
@@ -250,7 +268,7 @@ export default function AdminPendingRequestsPage() {
             <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-xs font-medium">Pending Withdrawals</div>
-                <div className="text-3xl font-black text-blue-400 mt-1">$4,700.00</div>
+                <div className="text-3xl font-black text-blue-400 mt-1">{formatVal(totalWithdrawAmount)}</div>
               </div>
               <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 <ArrowUpCircle size={24} />
