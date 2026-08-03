@@ -21,11 +21,15 @@ import {
 import AccountOpenModal from '../model/accountopen';
 import WithdrawalModal from '../model/withdrawal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { fetchClientAccount, fetchClientDashboard, fetchClientProfile } from '@/lib/apiClient';
 
 const WHITE_COL = '#FFFFFF';
 const NAVY = '#0B1F4B';
 const TEXT_SOFT = '#8A9BC0';
+
+type ClientRequestContext = {
+  token?: string;
+  userId?: string;
+};
 
 type DashboardCardPayload = {
   key: string;
@@ -85,6 +89,103 @@ type ClientAccountPayload = {
   currency: string;
   status: string;
 };
+
+function getClientRequestContext(): ClientRequestContext {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return {
+    token: localStorage.getItem('token') || localStorage.getItem('auth_token') || undefined,
+    userId:
+      searchParams.get('user_id') ||
+      localStorage.getItem('client_user_id') ||
+      localStorage.getItem('user_id') ||
+      undefined,
+  };
+}
+
+function appendUserId(endpoint: string, userId?: string): string {
+  if (!userId) {
+    return endpoint;
+  }
+
+  const [path, queryString = ''] = endpoint.split('?');
+  const searchParams = new URLSearchParams(queryString);
+
+  if (!searchParams.has('user_id')) {
+    searchParams.set('user_id', userId);
+  }
+
+  const nextQuery = searchParams.toString();
+  return nextQuery ? `${path}?${nextQuery}` : path;
+}
+
+async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const { token, userId } = getClientRequestContext();
+  const endpointWithUserId = appendUserId(endpoint, userId);
+
+  const request = async (includeToken: boolean) =>
+    fetch(endpointWithUserId, {
+      ...options,
+      headers: (() => {
+        const headers = new Headers(options.headers || {});
+        headers.set('Accept', 'application/json');
+        if (options.body && !headers.has('Content-Type')) {
+          headers.set('Content-Type', 'application/json');
+        }
+        if (includeToken && token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return headers;
+      })(),
+    });
+
+  try {
+    let response = await request(Boolean(token));
+
+    if (!response.ok && token && userId) {
+      response = await fetch(appendUserId(endpoint, userId), {
+        ...options,
+        headers: (() => {
+          const headers = new Headers(options.headers || {});
+          headers.set('Accept', 'application/json');
+          if (options.body && !headers.has('Content-Type')) {
+            headers.set('Content-Type', 'application/json');
+          }
+          return headers;
+        })(),
+      });
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchClientDashboard() {
+  return fetchClientEndpoint<{ dashboard?: ClientDashboardPayload }>('/api/client/dashboard');
+}
+
+async function fetchClientProfile() {
+  return fetchClientEndpoint<{ profile?: ClientProfilePayload }>('/api/client/profile');
+}
+
+async function fetchClientAccount() {
+  return fetchClientEndpoint<{ account?: ClientAccountPayload }>('/api/client/account');
+}
 
 const formatDashboardTime = (value?: string | null) => {
   if (!value) {

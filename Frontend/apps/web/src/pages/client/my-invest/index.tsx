@@ -3,7 +3,11 @@ import Head from 'next/head';
 import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
-import { fetchClientInvestments } from '@/lib/apiClient';
+
+type ClientRequestContext = {
+  token?: string;
+  userId?: string;
+};
 
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
@@ -28,6 +32,109 @@ type ClientInvestment = {
   returnPct: number;
   status: string;
 };
+
+type ClientInvestmentApi = {
+  id: number | string;
+  strategy?: string | null;
+  strategy_name?: string | null;
+  manager?: string | null;
+  manager_name?: string | null;
+  allocated?: number | string | null;
+  allocated_amount?: number | string | null;
+  current_value?: number | string | null;
+  return_pct?: number | string | null;
+  status?: string | null;
+};
+
+function getClientRequestContext(): ClientRequestContext {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return {
+    token: localStorage.getItem('token') || localStorage.getItem('auth_token') || undefined,
+    userId:
+      searchParams.get('user_id') ||
+      localStorage.getItem('client_user_id') ||
+      localStorage.getItem('user_id') ||
+      undefined,
+  };
+}
+
+function appendUserId(endpoint: string, userId?: string): string {
+  if (!userId) {
+    return endpoint;
+  }
+
+  const [path, queryString = ''] = endpoint.split('?');
+  const searchParams = new URLSearchParams(queryString);
+
+  if (!searchParams.has('user_id')) {
+    searchParams.set('user_id', userId);
+  }
+
+  const nextQuery = searchParams.toString();
+  return nextQuery ? `${path}?${nextQuery}` : path;
+}
+
+async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const { token, userId } = getClientRequestContext();
+  const endpointWithUserId = appendUserId(endpoint, userId);
+
+  const request = async (includeToken: boolean) =>
+    fetch(endpointWithUserId, {
+      ...options,
+      headers: (() => {
+        const headers = new Headers(options.headers || {});
+        headers.set('Accept', 'application/json');
+        if (options.body && !headers.has('Content-Type')) {
+          headers.set('Content-Type', 'application/json');
+        }
+        if (includeToken && token) {
+          headers.set('Authorization', `Bearer ${token}`);
+        }
+        return headers;
+      })(),
+    });
+
+  try {
+    let response = await request(Boolean(token));
+
+    if (!response.ok && token && userId) {
+      response = await fetch(appendUserId(endpoint, userId), {
+        ...options,
+        headers: (() => {
+          const headers = new Headers(options.headers || {});
+          headers.set('Accept', 'application/json');
+          if (options.body && !headers.has('Content-Type')) {
+            headers.set('Content-Type', 'application/json');
+          }
+          return headers;
+        })(),
+      });
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchClientInvestments() {
+  const data = await fetchClientEndpoint<{ investments?: ClientInvestmentApi[]; user_id?: string }>('/api/client/my-investments');
+  return data?.investments || null;
+}
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') {

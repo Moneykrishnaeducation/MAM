@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
 import { useTheme } from 'next-themes';
-import { fetchClientTickets } from '@/lib/apiClient';
 
 type TicketMessage = {
   id: string;
@@ -23,14 +22,22 @@ type TicketAttachment = {
 type ClientTicketApi = {
   id: number | string;
   subject?: string | null;
+  category?: string | null;
   priority?: string | null;
   status?: string | null;
   date?: string | null;
+  created_at?: string | null;
+  description?: string | null;
 };
+
+type TicketStatusFilter = "all" | "open" | "pending" | "closed";
+
+const ticketStatusTabs: TicketStatusFilter[] = ["all", "open", "pending", "closed"];
 
 interface Ticket {
   id: string;
   subject: string;
+  category: string;
   priority: string;
   status: string;
   created_at: string;
@@ -40,6 +47,121 @@ interface Ticket {
   attachments: TicketAttachment[];
   _normalizedMessages?: TicketMessage[];
   _normalizedAttachments?: TicketAttachment[];
+}
+
+type ClientRequestContext = {
+  token?: string;
+  userId?: string;
+};
+
+function getClientRequestContext(): ClientRequestContext {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return {
+    token: localStorage.getItem("token") || localStorage.getItem("auth_token") || undefined,
+    userId:
+      searchParams.get("user_id") ||
+      localStorage.getItem("client_user_id") ||
+      localStorage.getItem("user_id") ||
+      undefined,
+  };
+}
+
+function appendUserId(endpoint: string, userId?: string): string {
+  if (!userId) {
+    return endpoint;
+  }
+
+  const [path, queryString = ""] = endpoint.split("?");
+  const searchParams = new URLSearchParams(queryString);
+
+  if (!searchParams.has("user_id")) {
+    searchParams.set("user_id", userId);
+  }
+
+  const nextQuery = searchParams.toString();
+  return nextQuery ? `${path}?${nextQuery}` : path;
+}
+
+async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const { token, userId } = getClientRequestContext();
+  const endpointWithUserId = appendUserId(endpoint, userId);
+
+  const request = async (includeToken: boolean) =>
+    fetch(endpointWithUserId, {
+      ...options,
+      headers: (() => {
+        const headers = new Headers(options.headers || {});
+        headers.set("Accept", "application/json");
+        if (options.body && !headers.has("Content-Type")) {
+          headers.set("Content-Type", "application/json");
+        }
+        if (includeToken && token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+        return headers;
+      })(),
+    });
+
+  try {
+    let response = await request(Boolean(token));
+
+    if (!response.ok && token && userId) {
+      response = await fetch(appendUserId(endpoint, userId), {
+        ...options,
+        headers: (() => {
+          const headers = new Headers(options.headers || {});
+          headers.set("Accept", "application/json");
+          if (options.body && !headers.has("Content-Type")) {
+            headers.set("Content-Type", "application/json");
+          }
+          return headers;
+        })(),
+      });
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data as T;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchClientTickets(status: TicketStatusFilter = "all") {
+  return fetchClientEndpoint<{ tickets?: ClientTicketApi[]; user_id?: string; status_filter?: string }>(
+    `/api/client/tickets?status=${encodeURIComponent(status)}`,
+  );
+}
+
+async function fetchClientTicketDetail(ticketId: string | number) {
+  return fetchClientEndpoint<{ ticket?: ClientTicketApi; user_id?: string }>(`/api/client/tickets/${ticketId}`);
+}
+
+async function createClientTicket(payload: {
+  subject: string;
+  description: string;
+  category?: string;
+  priority?: string;
+}) {
+  return fetchClientEndpoint<{ ticket?: ClientTicketApi; user_id?: string; message?: string }>(
+    "/api/client/tickets/create",
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 }
 
 const toAbsoluteUrl = (url: string | null | undefined): string | null => {
@@ -52,21 +174,25 @@ const toIsoDateTime = (value: string | null | undefined): string => {
     return new Date().toISOString();
   }
 
-  const parsed = value.includes('T') ? new Date(value) : new Date(`${value}T00:00:00Z`);
+  const normalizedValue = value.includes("T") ? value : value.includes(" ") ? value.replace(" ", "T") : `${value}T00:00:00`;
+  const parsed = new Date(normalizedValue);
   return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
 };
 
 const normalizeTicket = (ticket: ClientTicketApi, index: number, createdBy: string): Ticket => {
+  const status = normalizeTicketStatus(ticket.status);
   const priority = String(ticket.priority || 'Normal');
+  const category = String(ticket.category || 'General Question');
 
   return {
     id: String(ticket.id ?? `ticket-${index}`),
     subject: String(ticket.subject || 'Untitled ticket'),
+    category,
     priority,
-    status: String(ticket.status || 'open'),
-    created_at: toIsoDateTime(ticket.date),
+    status,
+    created_at: toIsoDateTime(ticket.date || ticket.created_at),
     created_by: createdBy,
-    description: `${priority} priority ticket loaded from the live endpoint.`,
+    description: String(ticket.description || `${priority} priority ticket loaded from the live endpoint.`),
     messages: [],
     attachments: [],
   };
@@ -115,6 +241,24 @@ const getTicketPreview = (ticket?: Ticket | null) => {
   return 'No description provided.';
 };
 
+const normalizeTicketStatus = (status?: string | null): string => {
+  const value = String(status || "Open").trim().toLowerCase();
+
+  if (["open", "new", "active"].includes(value)) {
+    return "Open";
+  }
+
+  if (["pending", "in progress", "inprogress", "processing"].includes(value)) {
+    return "Pending";
+  }
+
+  if (["closed", "resolved", "completed", "done"].includes(value)) {
+    return "Closed";
+  }
+
+  return String(status || "Open").trim() || "Open";
+};
+
 const ReplySection = ({ onSendMessage, inputClass, goldButtonClass, softTextClass }: { onSendMessage: (message: string) => void, inputClass: string, goldButtonClass: string, softTextClass: string }) => {
   const [localMessage, setLocalMessage] = useState("");
   return (
@@ -154,7 +298,7 @@ const Tickets = () => {
   const [activePage, setActivePage] = useState<string>("view");
   const [userId, setUserId] = useState<string>("");
   const [tickets, setTickets] = useState<Ticket[]>([]);
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<TicketStatusFilter>("all");
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
   const [showFilters, setShowFilters] = useState<boolean>(false);
@@ -166,8 +310,15 @@ const Tickets = () => {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const [showViewModal, setShowViewModal] = useState<boolean>(false);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [ticketDetailLoading, setTicketDetailLoading] = useState<boolean>(false);
+  const [ticketDetailError, setTicketDetailError] = useState<string>("");
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState<boolean>(false);
+  const [submitTicketError, setSubmitTicketError] = useState<string>("");
+  const [ticketCategory, setTicketCategory] = useState<string>("General Question");
+  const [ticketPriority, setTicketPriority] = useState<string>("Normal");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const requestIdRef = useRef(0);
 
   const panelClass = isDarkMode
     ? "border-slate-800 bg-slate-900"
@@ -183,36 +334,65 @@ const Tickets = () => {
 
   
 
-  const fetchTickets = async (status = "all") => {
+  const fetchTickets = async (status: TicketStatusFilter = "all") => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
     setLoading(true);
     setError("");
+    const nextStatus = status.toLowerCase() as TicketStatusFilter;
+    setSelectedStatus(nextStatus);
+    setFilters((prev) => ({
+      ...prev,
+      status: nextStatus === "all" ? "" : nextStatus,
+    }));
+
     try {
-      const response = await fetchClientTickets();
+      const response = await fetchClientTickets(nextStatus);
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
+      if (!response) {
+        setTickets([]);
+        setUserId("");
+        setError("Failed to load tickets. Please try again.");
+        return;
+      }
+
       const createdBy = String(response?.user_id || userId || '');
       const liveTickets = Array.isArray(response?.tickets)
         ? response.tickets.map((ticket: ClientTicketApi, index: number) => normalizeTicket(ticket, index, createdBy))
         : [];
 
       setTickets(liveTickets);
-      setSelectedStatus(status.toLowerCase());
-      setFilters((prev) => ({
-        ...prev,
-        status: status === "all" ? "" : status,
-      }));
       setUserId(createdBy);
       if (liveTickets.length === 0) {
         setError("No live tickets are available.");
       }
     } catch {
+      if (requestId !== requestIdRef.current) {
+        return;
+      }
+
       setError("Failed to load tickets. Please try again.");
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchTickets("all");
+    void fetchTickets("all");
   }, []);
+
+  useEffect(
+    () => () => {
+      requestIdRef.current += 1;
+    },
+    [],
+  );
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
 
   // Apply filters and search term to tickets
@@ -239,7 +419,7 @@ const Tickets = () => {
     const activeStatusFilter = (filters.status || selectedStatus).trim().toLowerCase();
     if (activeStatusFilter && activeStatusFilter !== "all") {
       result = result.filter(ticket =>
-        ticket.status && ticket.status.toLowerCase() === activeStatusFilter
+        normalizeTicketStatus(ticket.status).toLowerCase() === activeStatusFilter
       );
     }
 
@@ -272,29 +452,54 @@ const Tickets = () => {
     setShowFilters(false);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const subject = formData.get('subject');
-    const description = formData.get('description');
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const subject = String(formData.get("subject") || "").trim();
+    const description = String(formData.get("description") || "").trim();
 
-    const newTicket: Ticket = {
-      id: `${Date.now()}`,
-      subject: typeof subject === 'string' ? subject : '',
-      priority: 'Normal',
-      status: 'open',
-      created_at: new Date().toISOString(),
-      created_by: userId || '',
-      description: typeof description === 'string' ? description : '',
-      messages: [],
-      attachments: [],
-    };
+    if (!subject) {
+      setSubmitTicketError("Please enter a ticket subject.");
+      return;
+    }
 
-    setTickets((prev) => [newTicket, ...prev]);
-    alert("Ticket submitted successfully!");
-    setActivePage("view");
-    setSelectedStatus('open');
-    setFilters((prev) => ({ ...prev, status: 'open' }));
+    if (!description) {
+      setSubmitTicketError("Please enter a ticket description.");
+      return;
+    }
+
+    setIsSubmittingTicket(true);
+    setSubmitTicketError("");
+
+    try {
+      const response = await createClientTicket({
+        subject,
+        description,
+        category: ticketCategory,
+        priority: ticketPriority,
+      });
+
+      if (!response?.ticket) {
+        setSubmitTicketError("Ticket could not be created. Please try again.");
+        return;
+      }
+
+      const createdBy = String(response.user_id || userId || "");
+      const createdTicket = normalizeTicket(response.ticket as ClientTicketApi, 0, createdBy);
+
+      setUserId(createdBy);
+      setTickets((prev) => [createdTicket, ...prev.filter((ticket) => ticket.id !== createdTicket.id)]);
+      setSelectedFiles([]);
+      form.reset();
+      setActivePage("view");
+      setSelectedStatus("open");
+      setFilters((prev) => ({ ...prev, status: "open" }));
+    } catch {
+      setSubmitTicketError("Failed to submit ticket. Please try again.");
+    } finally {
+      setIsSubmittingTicket(false);
+    }
   };
 
   const options: Record<"status" | "dateRange", string[]> = {
@@ -303,9 +508,10 @@ const Tickets = () => {
   };
 
   const handleSelect = (key: "status" | "dateRange", value: string) => {
-    setFilters({ ...filters, [key]: value });
     if (key === 'status') {
-      setSelectedStatus(value.toLowerCase());
+      void fetchTickets(value.toLowerCase() as TicketStatusFilter);
+    } else {
+      setFilters((prev) => ({ ...prev, [key]: value }));
     }
     setOpenDropdown(null);
   };
@@ -338,6 +544,9 @@ const Tickets = () => {
       return;
     }
 
+    setTicketDetailError("");
+    setTicketDetailLoading(true);
+
     const normalizedMessages = normalizeMessages(ticket.messages || []);
     const attachments = (ticket.attachments || []).map((a) => ({
       id: a.id,
@@ -351,6 +560,34 @@ const Tickets = () => {
       messages: normalizedMessages,
     });
     setShowViewModal(true);
+
+    try {
+      const response = await fetchClientTicketDetail(ticketId);
+      if (!response?.ticket) {
+        setTicketDetailError("Unable to refresh ticket details from the server.");
+        return;
+      }
+
+      const refreshedTicket = normalizeTicket(response.ticket as ClientTicketApi, 0, ticket.created_by || userId || "");
+      setSelectedTicket((prev) => {
+        if (!prev) {
+          return refreshedTicket;
+        }
+
+        return {
+          ...prev,
+          ...refreshedTicket,
+          messages: prev.messages,
+          attachments: prev.attachments,
+          _normalizedMessages: prev._normalizedMessages,
+          _normalizedAttachments: prev._normalizedAttachments,
+        };
+      });
+    } catch {
+      setTicketDetailError("Unable to refresh ticket details from the server.");
+    } finally {
+      setTicketDetailLoading(false);
+    }
   };
 
 
@@ -389,7 +626,7 @@ const Tickets = () => {
       <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between mb-8">
         {/* Left: Status Tabs */}
         <div className="flex gap-2 p-2 rounded-[2rem] border border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:w-auto">
-          {["all", "open", "pending", "closed"].map((status) => (
+          {ticketStatusTabs.map((status) => (
             <button
               key={status}
               onClick={() => fetchTickets(status)}
@@ -444,6 +681,12 @@ const Tickets = () => {
             </div>
           </div>
 
+          {error && (
+            <div className="mx-8 mt-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-bold text-amber-100">
+              {error}
+            </div>
+          )}
+
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -476,7 +719,7 @@ const Tickets = () => {
                   </tr>
                 ) : (
                   filteredTickets.map((ticket) => {
-                    const status = (ticket.status || selectedStatus).toLowerCase();
+                  const status = normalizeTicketStatus(ticket.status).toLowerCase();
                     const statusColor = 
                       status === "open" ? "bg-green-500/10 text-green-500" : 
                       status === "pending" ? "bg-amber-500/10 text-amber-500" : 
@@ -547,6 +790,12 @@ const Tickets = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {submitTicketError && (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+                  {submitTicketError}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
@@ -628,9 +877,10 @@ const Tickets = () => {
               <div className="flex justify-end pt-4">
                 <button
                   type="submit"
-                  className={`px-10 py-4 rounded-2xl font-black hover:scale-105 active:scale-95 transition-all ${goldButtonClass}`}
+                  disabled={isSubmittingTicket}
+                  className={`px-10 py-4 rounded-2xl font-black hover:scale-105 active:scale-95 transition-all disabled:opacity-60 disabled:hover:scale-100 ${goldButtonClass}`}
                 >
-                  Submit Ticket
+                  {isSubmittingTicket ? "Submitting..." : "Submit Ticket"}
                 </button>
               </div>
             </form>
@@ -698,6 +948,18 @@ const Tickets = () => {
       {showViewModal && selectedTicket && (
         <Modal title="Ticket Details" onClose={() => { setShowViewModal(false); }}>
           <div className="space-y-6">
+            {ticketDetailLoading && (
+              <div className="rounded-2xl border border-[#2450b7]/40 bg-[#0b226a]/70 px-4 py-3 text-sm font-bold text-[#dbe8ff]">
+                Refreshing ticket details from the server...
+              </div>
+            )}
+
+            {ticketDetailError && (
+              <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+                {ticketDetailError}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <label className={`block text-xs font-black uppercase tracking-widest mb-1 ${softTextClass}`}>

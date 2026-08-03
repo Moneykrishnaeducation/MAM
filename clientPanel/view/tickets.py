@@ -11,13 +11,45 @@ from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
 
 
+def _normalize_ticket_status(raw_status: str | None) -> str | None:
+    value = str(raw_status or "").strip().lower()
+    if value in {"", "all", "*"}:
+        return None
+    if value in {"open", "pending", "closed"}:
+        return value
+    return None
+
+
+def _canonical_ticket_status(status: str | None) -> str:
+    value = str(status or "").strip().lower()
+    if value in {"open", "new", "active"}:
+        return "Open"
+    if value in {"pending", "in progress", "inprogress", "processing"}:
+        return "Pending"
+    if value in {"closed", "resolved", "completed", "done"}:
+        return "Closed"
+    return str(status or "Open").strip() or "Open"
+
+
+def _ticket_matches_status(ticket_status: str | None, requested_status: str | None) -> bool:
+    if requested_status is None:
+        return True
+
+    value = str(ticket_status or "").strip().lower()
+    if requested_status == "open":
+        return value in {"open", "new", "active"}
+    if requested_status == "pending":
+        return value in {"pending", "in progress", "inprogress", "processing"}
+    return value in {"closed", "resolved", "completed", "done"}
+
+
 def _serialize_ticket(ticket: ClientTicket) -> dict:
     return {
         "id": ticket.id,
         "subject": ticket.subject,
         "category": ticket.category,
         "priority": ticket.priority,
-        "status": ticket.status,
+        "status": _canonical_ticket_status(ticket.status),
         "description": ticket.description,
         "created_at": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
     }
@@ -31,12 +63,21 @@ async def get_client_tickets(request):
     if error:
         return error
 
-    tickets = await ClientTicket.filter(client_profile_id=profile.id).order_by("-created_at").all()
+    requested_status = _normalize_ticket_status(request.GET.get("status") or request.GET.get("tab"))
+    tickets = (
+        await ClientTicket.filter(client_profile_id=profile.id)
+        .order_by("-created_at")
+        .all()
+    )
+    filtered_tickets = [
+        ticket for ticket in tickets if _ticket_matches_status(ticket.status, requested_status)
+    ]
     return JsonResponse(
         {
             "status": "ok",
             "user_id": profile.user_id,
-            "tickets": [_serialize_ticket(ticket) for ticket in tickets],
+            "status_filter": requested_status or "all",
+            "tickets": [_serialize_ticket(ticket) for ticket in filtered_tickets],
         }
     )
 

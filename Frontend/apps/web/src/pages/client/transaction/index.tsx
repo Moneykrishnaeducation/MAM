@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import {
   ArrowDownCircle,
@@ -12,7 +12,6 @@ import {
   RotateCw,
   Search,
 } from 'lucide-react';
-import { fetchClientTransactions } from '@/lib/apiClient';
 
 type ClientTransaction = {
   id: number | string;
@@ -28,6 +27,29 @@ const tabs = [
   { id: 'DEPOSIT', label: 'DEPOSIT', icon: ArrowDownCircle },
   { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: ArrowUpCircle },
 ] as const;
+
+type TransactionTabId = (typeof tabs)[number]['id'];
+
+type TransactionCounts = Record<TransactionTabId, number>;
+
+type TransactionSummary = {
+  totalTransactions: number;
+  pendingCount: number;
+  totalVolume: number;
+};
+
+type TransactionApiResponse = {
+  status?: string;
+  user_id?: number;
+  tab?: string;
+  counts?: Partial<TransactionCounts>;
+  summary?: {
+    total_transactions?: number;
+    pending_count?: number;
+    total_volume?: number;
+  };
+  transactions?: any[];
+};
 
 const toNumber = (value: unknown): number => {
   if (typeof value === 'number') {
@@ -75,8 +97,6 @@ const normalizeTransaction = (transaction: any): ClientTransaction => ({
   date: transaction.date ? String(transaction.date) : null,
 });
 
-const isPendingStatus = (status: string) => ['pending', 'processing'].includes(status.toLowerCase());
-
 const getStatusStyles = (status: string) => {
   switch (status.toLowerCase()) {
     case 'pending':
@@ -114,26 +134,116 @@ const getTypeIcon = (type: string) => {
   }
 };
 
+const createEmptyTransactionCounts = (): TransactionCounts => ({
+  PENDING: 0,
+  DEPOSIT: 0,
+  WITHDRAWAL: 0,
+});
+
+const createEmptyTransactionSummary = (): TransactionSummary => ({
+  totalTransactions: 0,
+  pendingCount: 0,
+  totalVolume: 0,
+});
+
+const getClientRequestContext = (): { token?: string; userId?: string } => {
+  if (typeof window === 'undefined') {
+    return {};
+  }
+
+  const searchParams = new URLSearchParams(window.location.search);
+
+  return {
+    token: localStorage.getItem('token') || localStorage.getItem('auth_token') || undefined,
+    userId:
+      searchParams.get('user_id') ||
+      localStorage.getItem('client_user_id') ||
+      localStorage.getItem('user_id') ||
+      undefined,
+  };
+};
+
+const buildTransactionsEndpoint = (tab: TransactionTabId) => {
+  const { userId } = getClientRequestContext();
+  const searchParams = new URLSearchParams();
+
+  searchParams.set('tab', tab.toLowerCase());
+
+  if (userId) {
+    searchParams.set('user_id', userId);
+  }
+
+  const queryString = searchParams.toString();
+  return queryString ? `/api/client/transactions?${queryString}` : '/api/client/transactions';
+};
+
+const fetchTransactionsForTab = async (tab: TransactionTabId): Promise<TransactionApiResponse | null> => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const { token } = getClientRequestContext();
+  const endpoint = buildTransactionsEndpoint(tab);
+
+  const request = async (includeToken: boolean) =>
+    fetch(endpoint, {
+      headers: {
+        Accept: 'application/json',
+        ...(includeToken && token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+  try {
+    let response = await request(Boolean(token));
+
+    if (!response.ok && token) {
+      response = await fetch(endpoint, {
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+    }
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as TransactionApiResponse;
+  } catch {
+    return null;
+  }
+};
+
 export default function TransactionHistory() {
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]['id']>('PENDING');
+  const [activeTab, setActiveTab] = useState<TransactionTabId>('PENDING');
   const [searchTerm, setSearchTerm] = useState('');
   const [transactions, setTransactions] = useState<ClientTransaction[]>([]);
+  const [tabCounts, setTabCounts] = useState<TransactionCounts>(createEmptyTransactionCounts);
+  const [summary, setSummary] = useState<TransactionSummary>(createEmptyTransactionSummary);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const requestIdRef = useRef(0);
 
-  const loadTransactions = async (isActive: () => boolean = () => true) => {
+  const loadTransactions = useCallback(async (tab: TransactionTabId) => {
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetchClientTransactions();
-      if (!isActive()) {
+      const response = await fetchTransactionsForTab(tab);
+      if (requestId !== requestIdRef.current) {
         return;
       }
 
-      const normalized = Array.isArray(response)
-        ? response.map(normalizeTransaction).sort((a, b) => {
+      if (!response) {
+        throw new Error('Unable to load live transactions right now.');
+      }
+
+      const normalized = Array.isArray(response.transactions)
+        ? response.transactions.map(normalizeTransaction).sort((a, b) => {
             const aTime = a.date ? new Date(a.date).getTime() : 0;
             const bTime = b.date ? new Date(b.date).getTime() : 0;
 
@@ -146,56 +256,49 @@ export default function TransactionHistory() {
         : [];
 
       setTransactions(normalized);
-      setError(normalized.length > 0 ? null : 'No live transactions are available.');
+      setTabCounts({
+        PENDING: response.counts?.PENDING ?? 0,
+        DEPOSIT: response.counts?.DEPOSIT ?? 0,
+        WITHDRAWAL: response.counts?.WITHDRAWAL ?? 0,
+      });
+      setSummary({
+        totalTransactions: response.summary?.total_transactions ?? 0,
+        pendingCount: response.summary?.pending_count ?? 0,
+        totalVolume: toNumber(response.summary?.total_volume ?? 0),
+      });
       setLastUpdated(new Date());
     } catch {
-      if (!isActive()) {
+      if (requestId !== requestIdRef.current) {
         return;
       }
 
       setTransactions([]);
+      setTabCounts(createEmptyTransactionCounts());
+      setSummary(createEmptyTransactionSummary());
       setError('Unable to load live transactions right now.');
     } finally {
-      if (isActive()) {
+      if (requestId === requestIdRef.current) {
         setLoading(false);
       }
     }
-  };
-
-  useEffect(() => {
-    let active = true;
-    void loadTransactions(() => active);
-
-    return () => {
-      active = false;
-    };
   }, []);
 
-  const pendingCount = useMemo(
-    () => transactions.filter((transaction) => isPendingStatus(transaction.status)).length,
-    [transactions],
-  );
+  useEffect(() => {
+    void loadTransactions(activeTab);
+  }, [activeTab, loadTransactions]);
 
-  const depositCount = useMemo(
-    () => transactions.filter((transaction) => transaction.type.toLowerCase() === 'deposit').length,
-    [transactions],
-  );
-
-  const withdrawalCount = useMemo(
-    () => transactions.filter((transaction) => transaction.type.toLowerCase() === 'withdrawal').length,
-    [transactions],
-  );
-
-  const totalVolume = useMemo(
-    () => transactions.reduce((sum, transaction) => sum + transaction.amount, 0),
-    [transactions],
+  useEffect(
+    () => () => {
+      requestIdRef.current += 1;
+    },
+    [],
   );
 
   const summaryCards = useMemo(
     () => [
       {
         title: 'Total Transactions',
-        value: String(transactions.length),
+        value: String(summary.totalTransactions),
         subtitle: 'Live records loaded',
         icon: FileText,
         accentClassName:
@@ -207,7 +310,7 @@ export default function TransactionHistory() {
       },
       {
         title: 'Pending',
-        value: String(pendingCount),
+        value: String(summary.pendingCount),
         subtitle: 'Needs attention',
         icon: Clock,
         accentClassName:
@@ -219,7 +322,7 @@ export default function TransactionHistory() {
       },
       {
         title: 'Total Volume',
-        value: formatMoney(totalVolume),
+        value: formatMoney(summary.totalVolume),
         subtitle: 'All transactions',
         icon: CircleDollarSign,
         accentClassName:
@@ -230,37 +333,16 @@ export default function TransactionHistory() {
         subtitleClassName: 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70',
       },
     ],
-    [pendingCount, totalVolume, transactions.length],
-  );
-
-  const tabCounts = useMemo(
-    () => ({
-      PENDING: pendingCount,
-      DEPOSIT: depositCount,
-      WITHDRAWAL: withdrawalCount,
-    }),
-    [depositCount, pendingCount, withdrawalCount],
+    [summary],
   );
 
   const selectedTransactions = useMemo(() => {
-    const tabFiltered = transactions.filter((transaction) => {
-      if (activeTab === 'PENDING') {
-        return isPendingStatus(transaction.status);
-      }
-
-      if (activeTab === 'DEPOSIT') {
-        return transaction.type.toLowerCase() === 'deposit';
-      }
-
-      return transaction.type.toLowerCase() === 'withdrawal';
-    });
-
     const query = searchTerm.trim().toLowerCase();
     if (!query) {
-      return tabFiltered;
+      return transactions;
     }
 
-    return tabFiltered.filter((transaction) =>
+    return transactions.filter((transaction) =>
       [
         String(transaction.id),
         transaction.type,
@@ -274,7 +356,7 @@ export default function TransactionHistory() {
         .toLowerCase()
         .includes(query),
     );
-  }, [activeTab, searchTerm, transactions]);
+  }, [searchTerm, transactions]);
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(undefined, {
@@ -289,15 +371,15 @@ export default function TransactionHistory() {
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label || 'PENDING';
 
   const handleRefresh = () => {
-    void loadTransactions();
+    void loadTransactions(activeTab);
   };
 
-  const hasError = Boolean(error && !loading);
+  const hasError = Boolean(error);
   const emptyMessage = hasError
     ? error || 'Unable to load live transactions.'
     : searchTerm.trim()
       ? 'No transactions match your search.'
-      : 'No live transactions are available.';
+      : 'No live transactions are available for this tab.';
 
   return (
     <>
