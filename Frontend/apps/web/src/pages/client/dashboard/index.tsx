@@ -475,7 +475,7 @@ export default function ClientDashboardPage() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
             <button
               onClick={() => setShowAccountOpenModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-blue-700/20 flex items-center gap-2.5"
+              className="bg-[#C9A227] hover:bg-[#b89d20] text-slate-950 font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-[#a3851d]/20 flex items-center gap-2.5"
             >
               <UserCheck size={18} />
               Open MAM Account
@@ -489,7 +489,7 @@ export default function ClientDashboardPage() {
             </button>
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="bg-[#0f3b73] hover:bg-[#0c3464] text-white font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2.5"
+              className="bg-[#C9A227] hover:bg-[#b89d20] text-slate-950 font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2.5"
             >
               <ArrowUpRight size={18} />
               Withdrawal
