@@ -96,22 +96,32 @@ def ensure_connected(func):
         return func(self, *args, **kwargs)
     return wrapper
 
-_manager_instance = None
-_current_server_setting = None
+_real_manager_instance = None
+_demo_manager_instance = None
+_current_real_setting = None
+_current_demo_setting = None
 _manager_lock = threading.Lock()  
 
 def reset_manager_instance():
-    global _manager_instance, _current_server_setting
+    global _real_manager_instance, _demo_manager_instance, _current_real_setting, _current_demo_setting
     with _manager_lock:
-        if _manager_instance:
+        if _real_manager_instance:
             try:
-                _manager_instance.connected = False
-                logger.info("MT5 Manager instance reset successfully")
+                _real_manager_instance.connected = False
+                logger.info("Real MT5 Manager instance reset successfully")
             except Exception as e:
-                logger.warning(f"Error while resetting manager instance: {e}")
+                logger.warning(f"Error while resetting real manager instance: {e}")
+        if _demo_manager_instance:
+            try:
+                _demo_manager_instance.connected = False
+                logger.info("Demo MT5 Manager instance reset successfully")
+            except Exception as e:
+                logger.warning(f"Error while resetting demo manager instance: {e}")
        
-        _manager_instance = None
-        _current_server_setting = None
+        _real_manager_instance = None
+        _demo_manager_instance = None
+        _current_real_setting = None
+        _current_demo_setting = None
         cache.delete("mt5_manager_error")
        
         try:
@@ -223,61 +233,69 @@ class MT5ManagerAPI:
             self.connected = False
             raise Exception(error_message)
 
-def get_manager_instance():
-    global _manager_instance, _current_server_setting
+def get_manager_instance(server_type: bool = True):
     if not checkingu():
         return None
 
-    # Skip DB check in simple cases or run in helper thread
     try:
-        return _get_manager_instance_sync()
+        return _get_manager_instance_sync(server_type)
     except Exception as e:
         logger.error(f"Unexpected error in get_manager_instance: {e}")
         raise
 
-def _get_manager_instance_sync():
-    global _manager_instance, _current_server_setting
+def _get_manager_instance_sync(server_type: bool = True):
+    global _real_manager_instance, _demo_manager_instance, _current_real_setting, _current_demo_setting
     with _manager_lock:  
         try:
             async def get_setting():
-                setting = await ServerSetting.filter(server_type=True).order_by("-created_at").first()
-                if not setting:
-                    setting = await ServerSetting.all().order_by("created_at").first()
-                return setting
+                return await ServerSetting.filter(server_type=server_type).order_by("-created_at").first()
 
             latest_setting = run_async(get_setting())
             if not latest_setting:
-                raise Exception("No server settings found")
+                raise Exception(f"No server settings found for server_type={server_type}")
 
-            if _manager_instance is None or _current_server_setting != latest_setting:
-                _manager_instance = MT5ManagerAPI()
+            if server_type:
+                instance = _real_manager_instance
+                current_setting = _current_real_setting
+            else:
+                instance = _demo_manager_instance
+                current_setting = _current_demo_setting
+
+            if instance is None or current_setting != latest_setting:
+                instance = MT5ManagerAPI()
                 try:
-                    _manager_instance.connect(
+                    instance.connect(
                         address=latest_setting.get_decrypted_server_ip(),
                         login=int(latest_setting.real_account_login),
                         password=latest_setting.get_decrypted_real_account_password(),
                         mode=MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL,
                         timeout=120000,
                     )
-                    logger.info(f"Connected to real MT5 server (login={latest_setting.real_account_login})")
-                    _current_server_setting = latest_setting
+                    logger.info(f"Connected to {'real' if server_type else 'demo'} MT5 server (login={latest_setting.real_account_login})")
+                    if server_type:
+                        _real_manager_instance = instance
+                        _current_real_setting = latest_setting
+                    else:
+                        _demo_manager_instance = instance
+                        _current_demo_setting = latest_setting
                 except Exception as e:
                     error_message = f"Failed to connect to MT5 Manager: {str(e)}"
                     logger.error(error_message)
                     raise Exception(error_message)
-            return _manager_instance
+            return instance if server_type else _demo_manager_instance
 
         except Exception as e:
             logger.error(f"Error in get_manager_instance: {str(e)}")
             raise
 
 class MT5ManagerActions:
-    def __init__(self):
+    def __init__(self, server_type: bool = True):
         self.manager = None
         self.connection_error = None
+        self.server_type = server_type
         self._equity_monitors = {}
         try:
-            manager_instance = get_manager_instance()
+            manager_instance = get_manager_instance(server_type)
             if manager_instance:
                 self.manager = manager_instance.manager
             else:
@@ -400,7 +418,7 @@ class MT5ManagerActions:
 
             async def update_groups():
                 for group_name in mt5_groups:
-                    is_demo = "demo" in group_name.lower()
+                    is_demo = "demo" in group_name.lower() or (not self.server_type)
                     await MT5GroupConfig.update_or_create(
                         group_name=group_name,
                         defaults={
@@ -409,7 +427,10 @@ class MT5ManagerActions:
                             "last_sync": timezone.now()
                         }
                     )
-                await MT5GroupConfig.filter(group_name__not_in=mt5_groups).update(is_enabled=False)
+                if self.server_type:
+                    await MT5GroupConfig.filter(is_demo=False, group_name__not_in=mt5_groups).update(is_enabled=False)
+                else:
+                    await MT5GroupConfig.filter(is_demo=True, group_name__not_in=mt5_groups).update(is_enabled=False)
 
             run_async(update_groups())
             return True

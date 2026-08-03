@@ -19,7 +19,12 @@ def clean_data(val):
 @require_http_methods(["GET", "POST"])
 async def server_settings_list_create(request):
     if request.method == "GET":
-        settings = await ServerSetting.all().order_by("-created_at")
+        st_param = request.GET.get("server_type")
+        if st_param is not None:
+            is_real = st_param.lower() in ("true", "1")
+            settings = await ServerSetting.filter(server_type=is_real).order_by("-created_at")
+        else:
+            settings = await ServerSetting.all().order_by("-created_at")
         results = [
             {
                 "id": s.id,
@@ -565,7 +570,20 @@ async def sync_groups_from_mt5(request):
     """Trigger synchronization of MT5 groups into the database."""
     try:
         from adminPanel.mt5.services import MT5ManagerActions
-        mt5_actions = MT5ManagerActions()
+        
+        is_real = True
+        st_param = request.GET.get("server_type")
+        if st_param is not None:
+            is_real = st_param.lower() in ("true", "1")
+        else:
+            try:
+                body = json.loads(request.body) if request.body else {}
+                if "server_type" in body:
+                    is_real = bool(body["server_type"])
+            except Exception:
+                pass
+                
+        mt5_actions = MT5ManagerActions(server_type=is_real)
         
         if mt5_actions.connection_error:
             return JsonResponse({

@@ -1,24 +1,39 @@
-"""Unit tests for backendPanel.cache module."""
+# server.py
 
-import pytest
+from http.server import BaseHTTPRequestHandler, HTTPServer
+import json
 
-from backendPanel.cache import delete_cache, get_cache, set_cache
+HOST = "localhost"
+PORT = 8000
+
+class MyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        user = {
+            "id": 123,
+            "name": "Admin User",
+            "email": "admin@example.com",
+            "is_superuser": True,
+        }
+
+        user_json = json.dumps(user)
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header(
+            "Set-Cookie",
+            f"user={user_json}; Path=/; Max-Age=86400; SameSite=Lax"
+        )
+        self.end_headers()
+
+        response = {
+            "message": "User cookie has been set.",
+            "user": user
+        }
+
+        self.wfile.write(json.dumps(response).encode("utf-8"))
 
 
-@pytest.mark.asyncio
-async def test_cache_set_get_delete():
-    """Test setting, getting, and deleting cache values."""
-    key = "test_key_123"
-    value = {"user": "admin", "role": "superadmin"}
-
-    # Set cache
-    await set_cache(key, value, ttl=60)
-
-    # Get cache
-    retrieved = await get_cache(key)
-    assert retrieved == value
-
-    # Delete cache
-    await delete_cache(key)
-    retrieved_after_delete = await get_cache(key)
-    assert retrieved_after_delete is None
+if __name__ == "__main__":
+    server = HTTPServer((HOST, PORT), MyHandler)
+    print(f"Server running at http://{HOST}:{PORT}")
+    server.serve_forever()

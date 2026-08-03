@@ -9,6 +9,12 @@ from django.views.static import serve
 
 from backendPanel.settings import BASE_DIR, get_settings
 from clientPanel.view.login import login_client
+from adminPanel.views import (
+    get_available_groups,
+    get_current_group_config,
+    save_group_configuration,
+    save_demo_group_configuration
+)
 
 
 def health(request):
@@ -107,6 +113,11 @@ urlpatterns = [
     path("health", health),
     path("api/status", api_status),
     path("api/login", login_client, name="login"),
+    path("api/available-groups/", get_available_groups),
+    path("api/demo-available-groups/", get_available_groups),
+    path("api/current-group-config/", get_current_group_config),
+    path("api/save-group-configuration/", save_group_configuration),
+    path("api/save-demo-group-configuration/", save_demo_group_configuration),
     path("api/admin/", include("adminPanel.urls")),
     path("api/client/", include("clientPanel.urls")),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),

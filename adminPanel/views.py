@@ -277,3 +277,228 @@ async def create_client_user(request):
         status=201,
     )
 
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+async def delete_user(request, user_id):
+    """Delete a user from the system."""
+    try:
+        clean_id = user_id
+        if "ADM-" in user_id or "USR-" in user_id:
+            try:
+                clean_id = int(user_id.split("-")[-1])
+            except ValueError:
+                pass
+        
+        user = await ClientUser.filter(id=clean_id).first()
+        if not user:
+            return JsonResponse({"status": "error", "message": "User not found"}, status=404)
+        
+        await user.delete()
+        return JsonResponse({"status": "ok", "message": "User deleted successfully"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+async def get_available_groups(request):
+    """Retrieve available groups from mt5_group_config table."""
+    try:
+        from adminPanel.models import MT5GroupConfig, TradeGroup
+        
+        is_demo_request = "demo" in request.path.lower()
+        configs = await MT5GroupConfig.filter(is_demo=is_demo_request)
+        
+        groups_list = []
+        for c in configs:
+            groups_list.append({
+                "id": c.group_name,
+                "label": c.group_name,
+                "enabled": c.is_enabled,
+                "alias": c.description or "",
+                "is_default": False,
+                "is_demo_default": False,
+                "is_demo": c.is_demo,
+            })
+            
+        trade_groups = await TradeGroup.all()
+        for tg in trade_groups:
+            for g in groups_list:
+                if g["id"] == tg.name:
+                    g["is_default"] = tg.is_default
+                    g["is_demo_default"] = tg.is_demo_default
+                    g["alias"] = tg.alias or g["alias"]
+                    
+        return JsonResponse({
+            "success": True,
+            "groups": groups_list
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["GET"])
+async def get_current_group_config(request):
+    """Get the current MT5 group default/alias configuration."""
+    try:
+        from adminPanel.models import MT5GroupConfig, TradeGroup
+        
+        configs = await MT5GroupConfig.all()
+        trade_groups = await TradeGroup.all()
+        
+        real_groups = []
+        demo_groups = []
+        default_group = None
+        demo_group = None
+        
+        # Build map of trade groups for quick lookup
+        tg_map = {tg.name: tg for tg in trade_groups}
+        
+        for c in configs:
+            tg = tg_map.get(c.group_name)
+            alias = tg.alias if tg else (c.description or "")
+            
+            group_item = {
+                "id": c.group_name,
+                "name": c.group_name,
+                "alias": alias
+            }
+            
+            if c.is_demo:
+                demo_groups.append(group_item)
+                if tg and tg.is_demo_default:
+                    demo_group = {"id": c.group_name}
+            else:
+                real_groups.append(group_item)
+                if tg and tg.is_default:
+                    default_group = {"id": c.group_name}
+                    
+        # Fallbacks if default is not set
+        if not default_group and real_groups:
+            default_group = {"id": real_groups[0]["id"]}
+        if not demo_group and demo_groups:
+            demo_group = {"id": demo_groups[0]["id"]}
+            
+        return JsonResponse({
+            "success": True,
+            "configuration": {
+                "real_groups": real_groups,
+                "demo_groups": demo_groups,
+                "default_group": default_group,
+                "demo_group": demo_group,
+                "last_updated": None
+            }
+        })
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def save_group_configuration(request):
+    """Save the real group configurations and set defaults."""
+    try:
+        from adminPanel.models import MT5GroupConfig, TradeGroup
+        body = json.loads(request.body)
+        groups_input = body.get("groups", [])
+        
+        # Determine default group id
+        default_id = None
+        for g in groups_input:
+            if g.get("default") is True:
+                default_id = g.get("id")
+                break
+                
+        # Clear previous defaults
+        if default_id:
+            await TradeGroup.filter(type="real").update(is_default=False)
+            
+        for g in groups_input:
+            group_name = g.get("id")
+            enabled = g.get("enabled", True)
+            alias = g.get("alias", "")
+            is_default = (group_name == default_id) if default_id else g.get("default", False)
+            
+            # Update/Create MT5GroupConfig
+            config = await MT5GroupConfig.filter(group_name=group_name).first()
+            if config:
+                config.is_enabled = enabled
+                config.description = alias
+                await config.save()
+                
+            # Update/Create TradeGroup
+            tg = await TradeGroup.filter(name=group_name).first()
+            if tg:
+                tg.alias = alias
+                tg.is_active = enabled
+                tg.is_default = is_default
+                await tg.save()
+            else:
+                await TradeGroup.create(
+                    name=group_name,
+                    alias=alias,
+                    is_active=enabled,
+                    is_default=is_default,
+                    type="real"
+                )
+                
+        return JsonResponse({"success": True})
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+async def save_demo_group_configuration(request):
+    """Save the demo group configurations and set defaults."""
+    try:
+        from adminPanel.models import MT5GroupConfig, TradeGroup
+        body = json.loads(request.body)
+        groups_input = body.get("groups", [])
+        
+        # Determine default group id
+        demo_default_id = None
+        for g in groups_input:
+            if g.get("demo_default") is True:
+                demo_default_id = g.get("id")
+                break
+                
+        # Clear previous defaults
+        if demo_default_id:
+            await TradeGroup.filter(type="demo").update(is_demo_default=False)
+            
+        for g in groups_input:
+            group_name = g.get("id")
+            enabled = g.get("enabled", True)
+            alias = g.get("alias", "")
+            is_demo_default = (group_name == demo_default_id) if demo_default_id else g.get("demo_default", False)
+            
+            # Update/Create MT5GroupConfig
+            config = await MT5GroupConfig.filter(group_name=group_name).first()
+            if config:
+                config.is_enabled = enabled
+                config.description = alias
+                await config.save()
+                
+            # Update/Create TradeGroup
+            tg = await TradeGroup.filter(name=group_name).first()
+            if tg:
+                tg.alias = alias
+                tg.is_active = enabled
+                tg.is_demo_default = is_demo_default
+                await tg.save()
+            else:
+                await TradeGroup.create(
+                    name=group_name,
+                    alias=alias,
+                    is_active=enabled,
+                    is_demo_default=is_demo_default,
+                    type="demo"
+                )
+                
+        return JsonResponse({"success": True, "demo_default_group": demo_default_id})
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+
