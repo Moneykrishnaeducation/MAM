@@ -5,7 +5,6 @@ import {
   Clock, 
   Award, 
   TrendingUp, 
-  PlayCircle, 
   ChevronRight,
   ArrowUpRight,
   UserCheck,
@@ -18,16 +17,103 @@ import {
   Send,
   RefreshCw,
   Globe,
-  Users,
 } from 'lucide-react';
 import AccountOpenModal from '../model/accountopen';
 import WithdrawalModal from '../model/withdrawal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getClientData } from '@/lib/mockDataLoader';
+import { fetchClientAccount, fetchClientDashboard, fetchClientProfile } from '@/lib/apiClient';
 
 const WHITE_COL = '#FFFFFF';
 const NAVY = '#0B1F4B';
 const TEXT_SOFT = '#8A9BC0';
+
+type DashboardCardPayload = {
+  key: string;
+  title: string;
+  value: string;
+  raw_value: number | string;
+  subtitle?: string;
+};
+
+type DashboardActivityPayload = {
+  id: number | string;
+  action: string;
+  details: string;
+  ip_address?: string | null;
+  time?: string | null;
+};
+
+type ClientDashboardPayload = {
+  client: {
+    user_id: number;
+    full_name: string;
+    email: string;
+    country: string;
+    tier: string;
+    kyc_status: string;
+  };
+  cards: DashboardCardPayload[];
+  recent_activity_logs: DashboardActivityPayload[];
+};
+
+type ClientProfilePayload = {
+  user_id: number;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  country: string;
+  tier: string;
+  kyc_status: string;
+};
+
+type ActivityRowView = {
+  id: number | string;
+  time: string;
+  action: string;
+  details: string;
+  ipAddress: string;
+};
+
+type ClientAccountPayload = {
+  user_id: number;
+  account_number: string;
+  server: string;
+  balance: number;
+  equity: number;
+  margin_free: number;
+  leverage: string;
+  currency: string;
+  status: string;
+};
+
+const formatDashboardTime = (value?: string | null) => {
+  if (!value) {
+    return 'N/A';
+  }
+
+  const parsed = new Date(value.replace(' ', 'T'));
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+const dashboardCardIcons: Record<
+  string,
+  React.ComponentType<{ className?: string; size?: number; strokeWidth?: number }>
+> = {
+  balance: Banknote,
+  equity: Award,
+  invested: TrendingUp,
+  activity: RefreshCw,
+};
 
 const StatusOverlay = ({ type, isDarkMode }: { type: 'pending' | 'redirect'; isDarkMode: boolean }) => {
   const isPending = type === 'pending';
@@ -86,48 +172,60 @@ const StatusOverlay = ({ type, isDarkMode }: { type: 'pending' | 'redirect'; isD
 };
 
 export default function ClientDashboardPage() {
-  const clientData = getClientData();
-  const { assignedManager } = clientData;
-
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showAccountOpenModal, setShowAccountOpenModal] = useState(false);
+  const [dashboardData, setDashboardData] = useState<ClientDashboardPayload | null>(null);
+  const [clientProfile, setClientProfile] = useState<ClientProfilePayload | null>(null);
+  const [clientAccount, setClientAccount] = useState<ClientAccountPayload | null>(null);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [cheeseAmount, setCheeseAmount] = useState('');
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
   const [proof, setProof] = useState<File | null>(null);
-  const [rate, setRate] = useState(83);
-  const [convertedAmount, setConvertedAmount] = useState('');
-  const [selectedDepositAccount, setSelectedDepositAccount] = useState('MAM-84930');
   const [submitting, setSubmitting] = useState(false);
 
-  const accounts = [
-    { id: 'MAM-84930', name: 'MAM-84930' },
-    { id: 'MAM-84931', name: 'MAM-84931' },
-    { id: 'MAM-84932', name: 'MAM-84932' },
-  ];
-
   useEffect(() => {
-    if (!showDepositModal) {
-      return undefined;
-    }
+    let isMounted = true;
 
-    const timer = window.setTimeout(() => {
-      setRate(83.5);
-    }, 400);
+    const loadDashboard = async () => {
+      setDashboardLoading(true);
 
-    return () => window.clearTimeout(timer);
-  }, [showDepositModal]);
+      try {
+        const [liveDashboard, liveProfile, liveAccount] = await Promise.all([
+          fetchClientDashboard(),
+          fetchClientProfile(),
+          fetchClientAccount(),
+        ]);
 
-  useEffect(() => {
-    const amount = Number(cheeseAmount);
-    if (!cheeseAmount || Number.isNaN(amount)) {
-      setConvertedAmount('');
-      return;
-    }
+        if (!isMounted) {
+          return;
+        }
 
-    const value = currency === 'USD' ? (amount * rate).toFixed(2) : (amount / rate).toFixed(2);
-    setConvertedAmount(value);
-  }, [cheeseAmount, currency, rate]);
+        setDashboardData(liveDashboard ? (liveDashboard as ClientDashboardPayload) : null);
+        setClientProfile(liveProfile ? (liveProfile as ClientProfilePayload) : null);
+        setClientAccount(liveAccount ? (liveAccount as ClientAccountPayload) : null);
+        setDashboardError(liveDashboard ? null : 'Live dashboard data is unavailable.');
+      } catch {
+        if (isMounted) {
+          setDashboardData(null);
+          setClientProfile(null);
+          setClientAccount(null);
+          setDashboardError('Live dashboard data is unavailable.');
+        }
+      } finally {
+        if (isMounted) {
+          setDashboardLoading(false);
+        }
+      }
+    };
+
+    void loadDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     console.log(`${type.toUpperCase()}: ${message}`);
@@ -136,7 +234,7 @@ export default function ClientDashboardPage() {
   const handleManualDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!selectedDepositAccount || !cheeseAmount || !proof) {
+    if (!clientAccount?.account_number || !cheeseAmount || !proof) {
       showToast('Please fill all required fields.', 'error');
       return;
     }
@@ -151,15 +249,20 @@ export default function ClientDashboardPage() {
     }, 1400);
   };
 
-
   const isDarkMode = false;
 
-  const statIcons: Record<string, any> = {
-    BookOpen: BookOpen,
-    Clock: Clock,
-    Award: Award,
-    TrendingUp: TrendingUp,
-  };
+  const liveClient = clientProfile || dashboardData?.client || null;
+  const depositAccountNumber = clientAccount?.account_number || '';
+  const depositAccountCurrency = clientAccount?.currency || 'USD';
+  const dashboardCards = dashboardData?.cards || [];
+  const dashboardActivityRows: ActivityRowView[] =
+    dashboardData?.recent_activity_logs?.map((log) => ({
+      id: log.id,
+      time: formatDashboardTime(log.time),
+      action: log.action,
+      details: log.details,
+      ipAddress: log.ip_address || 'N/A',
+    })) || [];
 
   return (
     <>
@@ -175,7 +278,7 @@ export default function ClientDashboardPage() {
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-blue-700/20 flex items-center gap-2.5"
             >
               <UserCheck size={18} />
-              Open Mam Account
+              Open MAM Account
             </button>
             <button
               onClick={() => setShowDepositModal(true)}
@@ -193,55 +296,98 @@ export default function ClientDashboardPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: 'MAM Account', value: 'Active', icon: BookOpen },
-              { title: 'MAM Funds Invested', value: '$45,000.00', icon: TrendingUp },
-              { title: 'MAM Balance', value: '$52,400.00', icon: Award },
-              { title: 'Total Account', value: '3', icon: BookOpen },
-              { title: 'Active Nodes', value: '8 Nodes', icon: PlayCircle },
-              { title: 'Available Manager', value: assignedManager.name || '2', icon: UserCheck },
-            ].map((st, idx) => {
-              const IconComp = st.icon;
+          <div className="mb-6 rounded-3xl border border-blue-800/50 bg-[#091634]/85 p-4 shadow-xl shadow-blue-950/20">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-300">
+                  Live Dashboard Snapshot
+                </p>
+                <p className="mt-1 text-sm text-slate-300">
+                  {dashboardLoading
+                    ? 'Fetching your live client dashboard from Django...'
+                    : dashboardError
+                      ? 'Live dashboard data is unavailable right now.'
+                      : liveClient
+                        ? `Loaded for ${liveClient.full_name}.`
+                        : 'No live client profile is loaded.'}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.18em]">
+                {liveClient ? (
+                  <>
+                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-blue-200">
+                      Client: {liveClient.full_name}
+                    </span>
+                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                      {liveClient.tier}
+                    </span>
+                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-amber-200">
+                      {liveClient.kyc_status}
+                    </span>
+                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-cyan-200">
+                      {depositAccountNumber || 'No trading account loaded'}
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
 
-              return (
-                <div key={idx} className="relative overflow-hidden bg-[#0b183f]/80 backdrop-blur-sm border border-blue-800/40 rounded-3xl p-6 shadow-2xl group hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 transition-all duration-300">
-                  <div className="absolute -top-4 -right-4 text-blue-500/10 group-hover:text-blue-500/20 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 pointer-events-none">
-                    <IconComp size={100} strokeWidth={1} />
-                  </div>
-                  
-                  <div className="relative z-10 flex flex-col h-full justify-between gap-4">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-blue-400 shadow-inner group-hover:text-white group-hover:bg-blue-600 transition-all duration-300">
-                        <IconComp size={18} strokeWidth={2.5} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+            {dashboardLoading && !dashboardData ? (
+              <div className="col-span-full rounded-3xl border border-blue-800/40 bg-[#0b183f]/70 p-8 text-center text-slate-300 shadow-2xl">
+                Loading live dashboard metrics...
+              </div>
+            ) : dashboardCards.length > 0 ? (
+              dashboardCards.map((st, idx) => {
+                const IconComp = dashboardCardIcons[st.key] || BookOpen;
+
+                return (
+                  <div key={st.key || idx} className="relative overflow-hidden bg-[#0b183f]/80 backdrop-blur-sm border border-blue-800/40 rounded-3xl p-6 shadow-2xl group hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 transition-all duration-300">
+                    <div className="absolute -top-4 -right-4 text-blue-500/10 group-hover:text-blue-500/20 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 pointer-events-none">
+                      <IconComp size={100} strokeWidth={1} />
+                    </div>
+                    
+                    <div className="relative z-10 flex flex-col h-full justify-between gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-blue-400 shadow-inner group-hover:text-white group-hover:bg-blue-600 transition-all duration-300">
+                          <IconComp size={18} strokeWidth={2.5} />
+                        </div>
+                        <div className="px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/50 text-[10px] uppercase font-bold tracking-widest text-blue-300">
+                          Metric
+                        </div>
                       </div>
-                      <div className="px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/50 text-[10px] uppercase font-bold tracking-widest text-blue-300">
-                        Metric
+                      
+                      <div className="mt-2">
+                        <div className="text-blue-200/80 text-xs font-semibold tracking-wide mb-1">{st.title}</div>
+                        <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">{st.value}</div>
+                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300/60">
+                          {st.subtitle || 'Live metric'}
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="mt-2">
-                      <div className="text-blue-200/80 text-xs font-semibold tracking-wide mb-1">{st.title}</div>
-                      <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">{st.value}</div>
-                    </div>
+                    {/* Hover bottom gradient bar */}
+                    <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
                   </div>
-                  
-                  {/* Hover bottom gradient bar */}
-                  <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              <div className="col-span-full rounded-3xl border border-blue-800/40 bg-[#0b183f]/70 p-8 text-center text-slate-300 shadow-2xl">
+                No live dashboard metrics are available for this client.
+              </div>
+            )}
           </div>
 
           {/* Recent Activity */}
           <div className="mt-10">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-white relative inline-block pb-2">
-                Recent Activity
+                Recent Activity Logs
                 <span className="absolute left-0 bottom-0 w-12 h-1 bg-yellow-500 rounded-full"></span>
               </h2>
               <a href="/client/transaction" className="text-sm text-blue-200 font-semibold flex items-center hover:text-white transition-colors">
-                View More <ChevronRight size={16} className="ml-1" />
+                View Transactions <ChevronRight size={16} className="ml-1" />
               </a>
             </div>
 
@@ -250,28 +396,29 @@ export default function ClientDashboardPage() {
                 <table className="w-full text-left text-sm text-slate-300">
                   <thead className="bg-blue-900/60 text-white font-semibold">
                     <tr>
-                      <th className="px-6 py-4">Date</th>
-                      <th className="px-6 py-4">Description</th>
-                      <th className="px-6 py-4">Type</th>
-                      <th className="px-6 py-4">Amount (USD)</th>
-                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4">Time</th>
+                      <th className="px-6 py-4">Action</th>
+                      <th className="px-6 py-4">Details</th>
+                      <th className="px-6 py-4">IP Address</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-blue-800/40">
-                    <tr className="hover:bg-blue-900/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">13 Jul 2026</td>
-                      <td className="px-6 py-4 font-medium text-white">Test</td>
-                      <td className="px-6 py-4">Deposit into Trading Account</td>
-                      <td className="px-6 py-4 text-emerald-400 font-medium">+$300</td>
-                      <td className="px-6 py-4">approved</td>
-                    </tr>
-                    <tr className="hover:bg-blue-900/30 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">11 Jun 2026</td>
-                      <td className="px-6 py-4 font-medium text-white">Test</td>
-                      <td className="px-6 py-4">Withdrawal from Trading Account</td>
-                      <td className="px-6 py-4 text-emerald-400 font-medium">+$10</td>
-                      <td className="px-6 py-4">approved</td>
-                    </tr>
+                    {dashboardActivityRows.length > 0 ? (
+                      dashboardActivityRows.map((log) => (
+                        <tr key={log.id} className="hover:bg-blue-900/30 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap text-slate-200">{log.time}</td>
+                          <td className="px-6 py-4 font-medium text-white">{log.action}</td>
+                          <td className="px-6 py-4 text-slate-300">{log.details}</td>
+                          <td className="px-6 py-4 text-blue-200 font-mono text-xs">{log.ipAddress}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+                          {dashboardLoading ? 'Loading live activity logs...' : 'No recent activity recorded for this client.'}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -320,7 +467,7 @@ export default function ClientDashboardPage() {
                         <div className="flex items-center gap-2 mt-1">
                           <ShieldCheck className="h-4 w-4 text-green-500" />
                           <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
-                            Account: <span className="font-mono text-[#2155C4]">{selectedDepositAccount || 'Select an account'}</span>
+                            Account: <span className="font-mono text-[#2155C4]">{depositAccountNumber || 'No live account loaded'}</span>
                           </span>
                         </div>
                       </div>
@@ -337,38 +484,33 @@ export default function ClientDashboardPage() {
                   <div className="px-6 sm:px-8 pt-4">
                     <div className="rounded-2xl border border-blue-100 bg-[#F4F7FD] p-4">
                       <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#2155C4]">Manual Deposit</h4>
-                      <p className="mt-1 text-xs text-slate-500">Upload proof to fund your account manually.</p>
+                      <p className="mt-1 text-xs text-slate-500">Upload proof to fund your live account manually.</p>
                     </div>
                   </div>
 
                   <div className="max-h-[60vh] overflow-y-auto p-8 pt-6">
                     <div className="mb-6">
                       <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
-                        Select Trading Account
+                        Trading Account
                       </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
-                          <Users className="h-5 w-5 text-[#2155C4] opacity-60" />
-                        </div>
-                        <select
-                          value={selectedDepositAccount}
-                          onChange={(e) => setSelectedDepositAccount(e.target.value)}
-                          className={`w-full rounded-2xl border bg-transparent py-4 pl-12 pr-6 text-sm font-bold transition-all focus:ring-2 focus:ring-[#2155C4]/20 appearance-none ${
-                            isDarkMode ? 'border-white/10 text-white focus:border-[#2155C4]' : 'border-[rgba(26,58,140,0.12)] text-[#0B1F4B] focus:border-[#2155C4]'
-                          }`}
-                        >
-                          <option value="" className={isDarkMode ? 'bg-[#070b14]' : 'bg-white'}>
-                            -- Choose Account --
-                          </option>
-                          {accounts.map((acc) => (
-                            <option key={acc.id} value={acc.id} className={isDarkMode ? 'bg-[#070b14]' : 'bg-white'}>
-                              {acc.name}
-                            </option>
-                          ))}
-                        </select>
-                        <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none">
-                          <ChevronRight className="h-4 w-4 rotate-90 opacity-40" />
-                        </div>
+                      <div className={`rounded-2xl border px-4 py-4 ${depositAccountNumber ? 'border-[rgba(26,58,140,0.12)] bg-white' : 'border-dashed border-[rgba(26,58,140,0.18)] bg-[#F4F7FD]'}`}>
+                        {depositAccountNumber ? (
+                          <div className="flex items-center justify-between gap-4">
+                            <div>
+                              <p className="text-sm font-black" style={{ color: NAVY }}>
+                                {depositAccountNumber}
+                              </p>
+                              <p className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: TEXT_SOFT }}>
+                                {clientAccount?.server || 'Live account'} · {depositAccountCurrency} · {clientAccount?.status || 'Active'}
+                              </p>
+                            </div>
+                            <Banknote className="h-5 w-5 text-[#2155C4]" />
+                          </div>
+                        ) : (
+                          <p className="text-sm font-semibold text-slate-500">
+                            No live trading account is available. Sign in to load account details.
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -438,19 +580,6 @@ export default function ClientDashboardPage() {
                           </div>
                         </div>
 
-                        {cheeseAmount && convertedAmount && (
-                          <div className="rounded-2xl p-4 bg-blue-50/50 border border-blue-100 flex items-center justify-between">
-                            <div>
-                              <span className="text-[10px] font-black uppercase tracking-widest block mb-1 opacity-50" style={{ color: TEXT_SOFT }}>
-                                Converted ({currency === 'USD' ? 'INR' : 'USD'})
-                              </span>
-                              <span className="text-lg font-black text-[#2155C4]">
-                                {currency === 'USD' ? `₹ ${convertedAmount}` : `$ ${convertedAmount}`}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-
                         <div>
                           <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
                             Upload Transaction Proof
@@ -495,7 +624,7 @@ export default function ClientDashboardPage() {
 
                       <button
                         type="submit"
-                        disabled={submitting || !proof || !cheeseAmount}
+                        disabled={submitting || !proof || !cheeseAmount || !depositAccountNumber}
                         className="w-full group relative overflow-hidden rounded-2xl bg-[#2155C4] py-4.5 font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-[#C9A227]/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                       >
                         <span className="relative z-10 flex items-center justify-center gap-3">
@@ -520,7 +649,7 @@ export default function ClientDashboardPage() {
             <WithdrawalModal
               onClose={() => setShowWithdrawModal(false)}
               isDarkMode={isDarkMode}
-              currentAccount={''}
+              currentAccount={depositAccountNumber}
             />
           )}
 

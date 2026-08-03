@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
 import { useTheme } from 'next-themes';
+import { fetchClientTickets } from '@/lib/apiClient';
 
 type TicketMessage = {
   id: string;
   content?: string;
   sender_name?: string;
-  sender?: { username?: string };
+  sender?: { username?: string } | string;
   created_at?: string | null;
   createdAt?: string | null;
   file?: string | null;
@@ -19,9 +20,18 @@ type TicketAttachment = {
   file_url?: string | null;
 };
 
+type ClientTicketApi = {
+  id: number | string;
+  subject?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  date?: string | null;
+};
+
 interface Ticket {
   id: string;
   subject: string;
+  priority: string;
   status: string;
   created_at: string;
   created_by: string;
@@ -37,74 +47,40 @@ const toAbsoluteUrl = (url: string | null | undefined): string | null => {
   return url.startsWith('http') ? url : url;
 };
 
-const dummyTickets: Ticket[] = [
-  {
-    id: '1001',
-    subject: 'Deposit confirmation not reflected',
-    status: 'open',
-    created_at: '2026-07-31T10:00:00Z',
-    created_by: 'USR-001',
-    description: 'I completed a deposit but it is not showing in my account balance yet.',
-    messages: [
-      {
-        id: 'm1',
-        content: 'Hello, we are reviewing your deposit and will update shortly.',
-        sender_name: 'Support Agent',
-        created_at: '2026-07-31T10:15:00Z',
-      },
-      {
-        id: 'm2',
-        content: 'Thank you for the update. Please let me know when it is complete.',
-        sender_name: 'User',
-        created_at: '2026-07-31T10:20:00Z',
-      },
-    ],
-    attachments: [
-      { id: 'a1', file: 'https://via.placeholder.com/300x220.png?text=Deposit+Proof' },
-    ],
-  },
-  {
-    id: '1002',
-    subject: 'Withdrawal request status',
-    status: 'pending',
-    created_at: '2026-07-29T13:25:00Z',
-    created_by: 'USR-001',
-    description: 'I submitted a withdrawal request and want to know when it will be processed.',
-    messages: [
-      {
-        id: 'm3',
-        content: 'Your withdrawal is pending review and should complete within 24 hours.',
-        sender_name: 'Support Agent',
-        created_at: '2026-07-29T13:45:00Z',
-      },
-    ],
+const toIsoDateTime = (value: string | null | undefined): string => {
+  if (!value) {
+    return new Date().toISOString();
+  }
+
+  const parsed = value.includes('T') ? new Date(value) : new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString();
+};
+
+const normalizeTicket = (ticket: ClientTicketApi, index: number, createdBy: string): Ticket => {
+  const priority = String(ticket.priority || 'Normal');
+
+  return {
+    id: String(ticket.id ?? `ticket-${index}`),
+    subject: String(ticket.subject || 'Untitled ticket'),
+    priority,
+    status: String(ticket.status || 'open'),
+    created_at: toIsoDateTime(ticket.date),
+    created_by: createdBy,
+    description: `${priority} priority ticket loaded from the live endpoint.`,
+    messages: [],
     attachments: [],
-  },
-  {
-    id: '1003',
-    subject: 'Account login issue',
-    status: 'closed',
-    created_at: '2026-07-21T08:10:00Z',
-    created_by: 'USR-001',
-    description: 'I am unable to log in with my account credentials.',
-    messages: [
-      {
-        id: 'm4',
-        content: 'We have reset your password and sent the new credentials to your email.',
-        sender_name: 'Support Agent',
-        created_at: '2026-07-21T08:45:00Z',
-      },
-    ],
-    attachments: [],
-  },
-];
+  };
+};
 
 const normalizeMessages = (messages: TicketMessage[] = []) =>
   (Array.isArray(messages) ? messages : []).map((message, index) => ({
     ...message,
     file: toAbsoluteUrl(message?.file || message?.file_url || null),
     content: message?.content ?? '',
-    sender_name: message?.sender_name || message?.sender?.username || 'System',
+    sender_name:
+      message?.sender_name ||
+      (typeof message?.sender === 'string' ? message.sender : message?.sender?.username) ||
+      'System',
     created_at: message?.created_at || message?.createdAt || null,
     id: message?.id || `message-${index}`,
   }));
@@ -211,11 +187,22 @@ const Tickets = () => {
     setLoading(true);
     setError("");
     try {
-      const ticketsList = status && status.toLowerCase() !== "all"
-        ? dummyTickets.filter((ticket) => ticket.status.toLowerCase() === status.toLowerCase())
-        : dummyTickets;
-      setTickets(ticketsList);
-      setSelectedStatus(status);
+      const response = await fetchClientTickets();
+      const createdBy = String(response?.user_id || userId || '');
+      const liveTickets = Array.isArray(response?.tickets)
+        ? response.tickets.map((ticket: ClientTicketApi, index: number) => normalizeTicket(ticket, index, createdBy))
+        : [];
+
+      setTickets(liveTickets);
+      setSelectedStatus(status.toLowerCase());
+      setFilters((prev) => ({
+        ...prev,
+        status: status === "all" ? "" : status,
+      }));
+      setUserId(createdBy);
+      if (liveTickets.length === 0) {
+        setError("No live tickets are available.");
+      }
     } catch {
       setError("Failed to load tickets. Please try again.");
     } finally {
@@ -225,7 +212,6 @@ const Tickets = () => {
 
   useEffect(() => {
     fetchTickets("all");
-    setUserId('USR-001');
   }, []);
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
 
@@ -233,17 +219,27 @@ const Tickets = () => {
   useEffect(() => {
     let result = [...tickets];
 
-    // Filter by search term (Ticket ID)
+    // Filter by search term
     if (searchTerm.trim()) {
       result = result.filter(ticket =>
-        ticket.id && ticket.id.toString().toLowerCase().includes(searchTerm.trim().toLowerCase())
+        [
+          ticket.id,
+          ticket.subject,
+          ticket.priority,
+          ticket.status,
+          ticket.created_at,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(searchTerm.trim().toLowerCase())
       );
     }
 
     // Filter by status
-    if (filters.status && filters.status.toLowerCase() !== "all") {
+    const activeStatusFilter = (filters.status || selectedStatus).trim().toLowerCase();
+    if (activeStatusFilter && activeStatusFilter !== "all") {
       result = result.filter(ticket =>
-        ticket.status && ticket.status.toLowerCase() === filters.status.toLowerCase()
+        ticket.status && ticket.status.toLowerCase() === activeStatusFilter
       );
     }
 
@@ -285,9 +281,10 @@ const Tickets = () => {
     const newTicket: Ticket = {
       id: `${Date.now()}`,
       subject: typeof subject === 'string' ? subject : '',
+      priority: 'Normal',
       status: 'open',
       created_at: new Date().toISOString(),
-      created_by: userId || 'USR-001',
+      created_by: userId || '',
       description: typeof description === 'string' ? description : '',
       messages: [],
       attachments: [],
@@ -296,7 +293,8 @@ const Tickets = () => {
     setTickets((prev) => [newTicket, ...prev]);
     alert("Ticket submitted successfully!");
     setActivePage("view");
-    fetchTickets('open');
+    setSelectedStatus('open');
+    setFilters((prev) => ({ ...prev, status: 'open' }));
   };
 
   const options: Record<"status" | "dateRange", string[]> = {
@@ -306,6 +304,9 @@ const Tickets = () => {
 
   const handleSelect = (key: "status" | "dateRange", value: string) => {
     setFilters({ ...filters, [key]: value });
+    if (key === 'status') {
+      setSelectedStatus(value.toLowerCase());
+    }
     setOpenDropdown(null);
   };
 
@@ -317,6 +318,7 @@ const Tickets = () => {
       id: `msg-${Date.now()}`,
       content,
       sender_name: 'You',
+      sender: selectedTicket.created_by,
       created_at: new Date().toISOString(),
     };
 
@@ -330,7 +332,7 @@ const Tickets = () => {
   };
 
   const openTicketDetail = async (ticketId: string) => {
-    const ticket = dummyTickets.find((item) => item.id === ticketId);
+    const ticket = tickets.find((item) => item.id === ticketId);
     if (!ticket) {
       alert('Ticket not found.');
       return;

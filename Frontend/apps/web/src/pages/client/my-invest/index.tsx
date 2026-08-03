@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
-import { Wallet, TrendingUp, ShieldCheck, X, Lock, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
+import { fetchClientInvestments } from '@/lib/apiClient';
 
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
@@ -18,9 +19,44 @@ const Modal: React.FC<{ title: string; onClose: () => void; children?: React.Rea
   </div>
 );
 
+type ClientInvestment = {
+  id: number | string;
+  strategy: string;
+  manager: string;
+  allocated: number;
+  currentValue: number;
+  returnPct: number;
+  status: string;
+};
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+};
+
+const formatMoney = (value: number) =>
+  new Intl.NumberFormat(undefined, {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const formatPercent = (value: number) => {
+  const normalized = Number.isFinite(value) ? value : 0;
+  return `${normalized >= 0 ? '+' : ''}${normalized.toFixed(2)}%`;
+};
+
 export default function ClientMyInvestPage() {
   const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
-  const [selectedInvModal, setSelectedInvModal] = useState<any>(null);
+  const [selectedInvModal, setSelectedInvModal] = useState<ClientInvestment | null>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   const [showCoefficientModal, setShowCoefficientModal] = useState<boolean>(false);
@@ -38,8 +74,56 @@ export default function ClientMyInvestPage() {
   const [confirmInvestorPassword, setConfirmInvestorPassword] = useState<string>('');
   const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [investments, setInvestments] = useState<ClientInvestment[]>([]);
+  const [investmentsLoading, setInvestmentsLoading] = useState<boolean>(true);
+  const [investmentsError, setInvestmentsError] = useState<string | null>(null);
 
-  const openDetailsModal = (inv: any) => {
+  useEffect(() => {
+    let active = true;
+
+    const loadInvestments = async () => {
+      setInvestmentsLoading(true);
+
+      try {
+        const response = await fetchClientInvestments();
+        const normalized = Array.isArray(response)
+          ? response.map((investment: any): ClientInvestment => ({
+              id: investment.id,
+              strategy: String(investment.strategy || investment.strategy_name || 'Untitled strategy'),
+              manager: String(investment.manager || investment.manager_name || 'Unassigned'),
+              allocated: toNumber(investment.allocated ?? investment.allocated_amount),
+              currentValue: toNumber(investment.current_value),
+              returnPct: toNumber(investment.return_pct),
+              status: String(investment.status || 'Active'),
+            }))
+          : [];
+
+        if (!active) {
+          return;
+        }
+
+        setInvestments(normalized);
+        setInvestmentsError(normalized.length > 0 ? null : 'No live investments are available.');
+      } catch {
+        if (active) {
+          setInvestments([]);
+          setInvestmentsError('Unable to load live investments right now.');
+        }
+      } finally {
+        if (active) {
+          setInvestmentsLoading(false);
+        }
+      }
+    };
+
+    void loadInvestments();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const openDetailsModal = (inv: ClientInvestment) => {
     setSelectedInvModal(inv);
     setShowDetailsModal(true);
   };
@@ -49,7 +133,7 @@ export default function ClientMyInvestPage() {
     setShowDetailsModal(false);
   };
 
-  const openDepositModal = (inv?: any) => {
+  const openDepositModal = (inv?: ClientInvestment | null) => {
     if (inv) {
       setSelectedInvModal(inv);
     }
@@ -92,15 +176,107 @@ export default function ClientMyInvestPage() {
     setNewInvestorPassword('');
     setConfirmInvestorPassword('');
     setShowPasswordText(false);
-    console.log('Investor password updated for', selectedInvModal?.loginId || 'unknown');
+    console.log('Investor password updated for', selectedInvestmentId || 'unknown');
   };
 
   const handleDeployConfiguration = () => {
     setShowCoefficientModal(false);
     setMultiExecutionEnabled(false);
     setCoefficientMethod('balance');
-    console.log('Deployed coefficient configuration for', selectedInvModal?.loginId || 'unknown');
+    console.log('Deployed coefficient configuration for', selectedInvestmentId || 'unknown');
   };
+
+  const totalInvested = useMemo(
+    () => investments.reduce((sum, inv) => sum + inv.allocated, 0),
+    [investments],
+  );
+
+  const totalCurrentValue = useMemo(
+    () => investments.reduce((sum, inv) => sum + inv.currentValue, 0),
+    [investments],
+  );
+
+  const totalProfit = useMemo(
+    () => totalCurrentValue - totalInvested,
+    [totalCurrentValue, totalInvested],
+  );
+
+  const totalProfitPct = useMemo(
+    () => (totalInvested > 0 ? (totalProfit / totalInvested) * 100 : 0),
+    [totalInvested, totalProfit],
+  );
+
+  const activeInvestments = useMemo(
+    () => investments.filter((investment) => String(investment.status).toLowerCase() === 'active').length,
+    [investments],
+  );
+
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: 'Total Invested',
+        value: formatMoney(totalInvested),
+        suffix: 'USD',
+        icon: Wallet,
+        badge: 'Live',
+        cardClassName:
+          'relative overflow-hidden bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-blue-600/80 transition-all duration-500',
+        glowClassName:
+          'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl group-hover:bg-blue-500/20 transition-all duration-500',
+        iconClassName:
+          'w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.15)] group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all',
+        badgeClassName:
+          'text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider',
+        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        valueClassName: 'text-3xl font-black text-white flex items-baseline gap-1.5',
+        suffixClassName: 'text-sm font-bold text-blue-500',
+      },
+      {
+        title: 'Total Profit',
+        value: formatMoney(totalProfit),
+        suffix: formatPercent(totalProfitPct),
+        icon: TrendingUp,
+        badge: 'Growth',
+        cardClassName:
+          'relative overflow-hidden bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-emerald-700/60 transition-all duration-500',
+        glowClassName:
+          'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl group-hover:bg-emerald-500/20 transition-all duration-500',
+        iconClassName:
+          'w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all',
+        badgeClassName:
+          'text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider',
+        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        valueClassName: 'text-3xl font-black text-white flex items-baseline gap-1.5',
+        suffixClassName: 'text-sm font-bold text-emerald-500',
+      },
+      {
+        title: 'Active Investments',
+        value: String(activeInvestments),
+        suffix: `${investments.length} total`,
+        icon: ShieldCheck,
+        badge: 'Open',
+        cardClassName:
+          'relative overflow-hidden bg-gradient-to-br from-yellow-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-yellow-700/60 transition-all duration-500',
+        glowClassName:
+          'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-yellow-500/10 blur-3xl group-hover:bg-yellow-500/20 transition-all duration-500',
+        iconClassName:
+          'w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.15)] group-hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] transition-all',
+        badgeClassName:
+          'text-blue-300 text-[11px] font-bold px-3 py-1 bg-blue-900/50 rounded-full border border-blue-700/50 uppercase tracking-wider',
+        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        valueClassName: 'text-3xl font-black text-white',
+        suffixClassName: 'text-sm font-bold text-yellow-300',
+      },
+    ],
+    [activeInvestments, investments.length, totalInvested, totalProfit, totalProfitPct],
+  );
+
+  const visibleInvestments = investments;
+  const selectedInvestmentId = selectedInvModal ? String(selectedInvModal.id) : '';
+  const selectedInvestmentProfit = selectedInvModal ? selectedInvModal.currentValue - selectedInvModal.allocated : 0;
+  const visibleCount = visibleInvestments.length;
+  const showingStart = visibleCount > 0 ? 1 : 0;
+  const showingEnd = visibleCount;
 
   return (
     <>
@@ -111,56 +287,28 @@ export default function ClientMyInvestPage() {
           
           {/* Top Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Total Invested */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-blue-600/80 transition-all duration-500">
-              <div className="absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl group-hover:bg-blue-500/20 transition-all duration-500"></div>
-              <div className="flex items-center justify-between mb-5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.15)] group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all">
-                  <Wallet size={22} strokeWidth={2.5} />
-                </div>
-                <div className="text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider">Active</div>
-              </div>
-              <div className="relative z-10">
-                <div className="text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5">Total Invested</div>
-                <div className="text-3xl font-black text-white flex items-baseline gap-1.5">
-                  $0.00 <span className="text-sm font-bold text-blue-500">USD</span>
-                </div>
-              </div>
-            </div>
+            {summaryCards.map((card) => {
+              const Icon = card.icon;
 
-            {/* Total Profit */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-emerald-700/60 transition-all duration-500">
-              <div className="absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl group-hover:bg-emerald-500/20 transition-all duration-500"></div>
-              <div className="flex items-center justify-between mb-5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all">
-                  <TrendingUp size={22} strokeWidth={2.5} />
+              return (
+                <div key={card.title} className={card.cardClassName}>
+                  <div className={card.glowClassName} />
+                  <div className="flex items-center justify-between mb-5 relative z-10">
+                    <div className={card.iconClassName}>
+                      <Icon size={22} strokeWidth={2.5} />
+                    </div>
+                    <div className={card.badgeClassName}>{card.badge}</div>
+                  </div>
+                  <div className="relative z-10">
+                    <div className={card.titleClassName}>{card.title}</div>
+                    <div className={card.valueClassName}>
+                      {card.value}
+                      {card.suffix ? <span className={card.suffixClassName}>{card.suffix}</span> : null}
+                    </div>
+                  </div>
                 </div>
-                <div className="text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider">+0.00%</div>
-              </div>
-              <div className="relative z-10">
-                <div className="text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5">Total Profit</div>
-                <div className="text-3xl font-black text-white flex items-baseline gap-1.5">
-                  $0.00 <span className="text-sm font-bold text-emerald-500">USD</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Active Nodes */}
-            <div className="relative overflow-hidden bg-gradient-to-br from-yellow-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-yellow-700/60 transition-all duration-500">
-              <div className="absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-yellow-500/10 blur-3xl group-hover:bg-yellow-500/20 transition-all duration-500"></div>
-              <div className="flex items-center justify-between mb-5 relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.15)] group-hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] transition-all">
-                  <ShieldCheck size={22} strokeWidth={2.5} />
-                </div>
-                <div className="text-blue-300 text-[11px] font-bold px-3 py-1 bg-blue-900/50 rounded-full border border-blue-700/50 uppercase tracking-wider">Secured</div>
-              </div>
-              <div className="relative z-10">
-                <div className="text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5">Active Nodes</div>
-                <div className="text-3xl font-black text-white">
-                  0
-                </div>
-              </div>
-            </div>
+              );
+            })}
           </div>
 
           {/* Main Table Container */}
@@ -177,12 +325,12 @@ export default function ClientMyInvestPage() {
                 <thead className="bg-[#0f1d4a]">
                   <tr>
                     {[
-                      'ACCOUNT NAME',
-                      'LOGIN ID',
-                      'BALANCE',
-                      'EQUITY',
-                      'PROFIT SHARE',
-                      'TOTAL PROFIT',
+                      'STRATEGY',
+                      'INVESTMENT ID',
+                      'ALLOCATED',
+                      'CURRENT VALUE',
+                      'RETURN %',
+                      'PROFIT',
                       'STATUS',
                       'ACTIONS',
                     ].map((h) => (
@@ -196,102 +344,125 @@ export default function ClientMyInvestPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-900/30">
-                  {[
-                    {
-                      id: '1',
-                      name: 'Devo-Testmam - Investment',
-                      loginId: '2141717315',
-                      balance: '$0.00',
-                      equity: '$0.00',
-                      profitShare: '40%',
-                      totalProfit: '$-2.28',
-                      status: 'ENABLED',
-                    },
-                    {
-                      id: '2',
-                      name: 'Devo-Testmam - Investment #2',
-                      loginId: '2141718765',
-                      balance: '$171.12',
-                      equity: '$171.12',
-                      profitShare: '40%',
-                      totalProfit: '$-128.88',
-                      status: 'ENABLED',
-                    }
-                  ].map((inv) => (
-                    <tr
-                      key={inv.id}
-                      className="transition-colors hover:bg-[#11255e] bg-[#0a1435]"
-                    >
-                      {/* Account Name */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-900 font-extrabold text-sm shadow-sm shrink-0">
-                            {inv.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="font-bold text-white text-[14px]">
-                            {inv.name}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Login ID */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-sm font-bold text-white bg-[#101f4c] px-3 py-1.5 rounded-lg border border-blue-800/50">
-                          {inv.loginId}
-                        </span>
-                      </td>
-
-                      {/* Balance */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-white font-bold text-[14px]">
-                          {inv.balance}
-                        </span>
-                      </td>
-
-                      {/* Equity */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-white font-bold text-[14px]">
-                          {inv.equity}
-                        </span>
-                      </td>
-
-                      {/* Profit Share */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-white font-bold text-[14px]">
-                          {inv.profitShare}
-                        </span>
-                      </td>
-
-                      {/* Total Profit */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="text-white font-bold text-[14px]">
-                          {inv.totalProfit}
-                        </span>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#003822] text-[#00e676] tracking-wide uppercase border border-[#005e3a]">
-                          {inv.status}
-                        </span>
-                      </td>
-
-                      {/* Actions */}
-                      <td className="px-4 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => openDetailsModal(inv)} className="px-4 py-2 rounded-xl font-bold text-xs bg-white/10 text-white hover:bg-white/20 border border-white/20 transition-all">
-                            Details
-                          </button>
-                          <button
-                            onClick={() => openDepositModal(inv)}
-                            className="px-4 py-1.5 rounded-xl bg-gradient-to-b from-[#fcd34d] to-[#d97706] text-amber-950 text-xs font-bold transition hover:opacity-90 shadow-lg shadow-amber-500/20"
-                          >
-                            Deposit
-                          </button>
+                  {investmentsLoading ? (
+                    <tr className="bg-[#0a1435]">
+                      <td colSpan={8} className="px-4 py-16 text-center">
+                        <div className="inline-flex items-center gap-3 rounded-full border border-blue-800/40 bg-[#101f4c] px-5 py-3 text-sm font-bold text-blue-100">
+                          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
+                          Loading live investments...
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  ) : visibleInvestments.length > 0 ? (
+                    visibleInvestments.map((inv) => {
+                      const profit = inv.currentValue - inv.allocated;
+                      const isPositive = profit >= 0;
+                      const isActive = String(inv.status).toLowerCase() === 'active';
+
+                      return (
+                        <tr
+                          key={String(inv.id)}
+                          className="transition-colors hover:bg-[#11255e] bg-[#0a1435]"
+                        >
+                          {/* Strategy */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-900 font-extrabold text-sm shadow-sm shrink-0">
+                                {inv.strategy.charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="font-bold text-white text-[14px]">
+                                  {inv.strategy}
+                                </div>
+                                <div className="text-[11px] text-blue-200/70 mt-0.5">
+                                  Manager: {inv.manager}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Investment ID */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-sm font-bold text-white bg-[#101f4c] px-3 py-1.5 rounded-lg border border-blue-800/50">
+                              #{String(inv.id)}
+                            </span>
+                          </td>
+
+                          {/* Allocated */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-white font-bold text-[14px]">
+                              {formatMoney(inv.allocated)}
+                            </span>
+                          </td>
+
+                          {/* Current Value */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-white font-bold text-[14px]">
+                              {formatMoney(inv.currentValue)}
+                            </span>
+                          </td>
+
+                          {/* Return % */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-white font-bold text-[14px]">
+                              {formatPercent(inv.returnPct)}
+                            </span>
+                          </td>
+
+                          {/* Profit */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className={`text-[14px] font-bold ${isPositive ? 'text-emerald-300' : 'text-rose-300'}`}>
+                              {formatMoney(profit)}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border ${
+                                isActive
+                                  ? 'bg-[#003822] text-[#00e676] border-[#005e3a]'
+                                  : 'bg-[#101f4c] text-blue-200 border-blue-800/50'
+                              }`}
+                            >
+                              {String(inv.status).toUpperCase()}
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => openDetailsModal(inv)}
+                                className="px-4 py-2 rounded-xl font-bold text-xs bg-white/10 text-white hover:bg-white/20 border border-white/20 transition-all"
+                              >
+                                Details
+                              </button>
+                              <button
+                                onClick={() => openDepositModal(inv)}
+                                className="px-4 py-1.5 rounded-xl bg-gradient-to-b from-[#fcd34d] to-[#d97706] text-amber-950 text-xs font-bold transition hover:opacity-90 shadow-lg shadow-amber-500/20"
+                              >
+                                Deposit
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr className="bg-[#0a1435]">
+                      <td colSpan={8} className="px-4 py-16 text-center">
+                        <div className="mx-auto max-w-md rounded-2xl border border-blue-800/40 bg-[#101f4c] px-6 py-5 text-blue-100">
+                          <div className="text-sm font-bold">
+                            {investmentsError || 'No live investments are available.'}
+                          </div>
+                          <div className="mt-1 text-xs text-blue-200/70">
+                            Once the backend returns investment records, they will appear here automatically.
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -299,7 +470,7 @@ export default function ClientMyInvestPage() {
             {/* Pagination Footer */}
             <div className="flex items-center justify-between px-6 py-5 border-t border-blue-900/30 bg-[#0a1435]">
               <div className="text-xs font-bold text-blue-200 uppercase tracking-widest">
-                SHOWING 1 TO 2 OF 2
+                SHOWING {showingStart} TO {showingEnd} OF {visibleCount}
               </div>
 
               <div className="flex items-center gap-4">
@@ -314,15 +485,14 @@ export default function ClientMyInvestPage() {
             </div>
             {/* Details Modal (opened from table) */}
             {showDetailsModal && selectedInvModal && (
-              <Modal title={`${selectedInvModal.loginId} • ${selectedInvModal.name}`} onClose={closeDetailsModal}>
+              <Modal title={`${selectedInvestmentId || 'N/A'} - ${selectedInvModal.strategy}`} onClose={closeDetailsModal}>
                 <div className="space-y-8">
                   {/* Top section: Balance and Stats (No separate container background, just flex layout) */}
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-2">
-                    {/* Left: Balance */}
                     <div className="flex-1">
-                      <div className="text-[11px] font-extrabold text-blue-200 uppercase tracking-widest">Available Balance</div>
+                      <div className="text-[11px] font-extrabold text-blue-200 uppercase tracking-widest">Current Value</div>
                       <div className="text-[40px] font-black text-white mt-1 leading-none tracking-tight">
-                        {selectedInvModal.balance || '$0.00'} <span className="text-lg font-extrabold text-white/70 ml-2">USD</span>
+                        {formatMoney(selectedInvModal.currentValue)} <span className="text-lg font-extrabold text-white/70 ml-2">USD</span>
                       </div>
                       <div className="mt-5 flex items-center gap-3">
                         <button
@@ -340,31 +510,32 @@ export default function ClientMyInvestPage() {
                     {/* Right: Stats Grid */}
                     <div className="flex-none w-full md:w-auto">
                       <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                        <div className="text-sm text-white/60">Total Profit</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{selectedInvModal.totalProfit || '$-2.28'}</div>
-                        
-                        <div className="text-sm text-white/60">Profit Share</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{selectedInvModal.profitShare || '40%'}</div>
-                        
-                        <div className="text-sm text-white/60">Risk Level</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{selectedInvModal.riskLevel || 'medium'}</div>
-                        
-                        <div className="text-sm text-white/60">Leverage</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{selectedInvModal.leverage || '500'}</div>
+                        <div className="text-sm text-white/60">Allocated Amount</div>
+                        <div className="text-[15px] font-extrabold text-white text-right">{formatMoney(selectedInvModal.allocated)}</div>
+
+                        <div className="text-sm text-white/60">Profit</div>
+                        <div className={`text-[15px] font-extrabold text-right ${selectedInvestmentProfit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                          {formatMoney(selectedInvestmentProfit)}
+                        </div>
+
+                        <div className="text-sm text-white/60">Return %</div>
+                        <div className="text-[15px] font-extrabold text-white text-right">{formatPercent(selectedInvModal.returnPct)}</div>
+
+                        <div className="text-sm text-white/60">Status</div>
+                        <div className="text-[15px] font-extrabold text-white text-right">{String(selectedInvModal.status).toUpperCase()}</div>
                       </div>
                     </div>
                   </div>
 
                   {/* Info cards row */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    {/* Account Configuration */}
                     <div className="p-6 rounded-[20px] bg-[#0b1739] border border-blue-900/40">
-                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Account Configuration</h4>
+                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Investment Configuration</h4>
                       <div className="space-y-4 text-sm">
-                        <div className="flex justify-between items-center"><span className="text-white/60">Account ID</span><span className="font-extrabold text-white">{selectedInvModal.loginId}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Master ID</span><span className="font-extrabold text-white">2141715173</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Account Name</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.name}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Status</span><span className="font-extrabold text-white">{selectedInvModal.status || 'ENABLED'}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-white/60">Investment ID</span><span className="font-extrabold text-white">{selectedInvestmentId || 'N/A'}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-white/60">Manager</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.manager}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-white/60">Strategy</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.strategy}</span></div>
+                        <div className="flex justify-between items-center"><span className="text-white/60">Status</span><span className="font-extrabold text-white">{String(selectedInvModal.status).toUpperCase()}</span></div>
                       </div>
                     </div>
 
@@ -451,14 +622,14 @@ export default function ClientMyInvestPage() {
           setCurrency={setCurrency}
           usdtAmount={usdtAmount}
           setUsdtAmount={setUsdtAmount}
-          selectedDepositAccount={selectedInvModal?.loginId || 'MAM-84930'}
+          selectedDepositAccount={selectedInvestmentId}
         />
 
         {showWithdrawModal && (
           <WithdrawalModal
             onClose={() => setShowWithdrawModal(false)}
             isDarkMode={true}
-            currentAccount={selectedInvModal?.loginId || '2141717315'}
+            currentAccount={selectedInvestmentId}
           />
         )}
 
@@ -487,8 +658,8 @@ export default function ClientMyInvestPage() {
                         <ArrowRight size={18} />
                       </div>
                       <div>
-                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Target Account</div>
-                        <div className="text-sm font-bold text-white">ID: {selectedInvModal?.loginId || '2141717315'}</div>
+                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Target Investment</div>
+                        <div className="text-sm font-bold text-white">ID: {selectedInvestmentId || 'N/A'}</div>
                       </div>
                     </div>
                     <span className="rounded-full bg-yellow-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-500">Risk Engine</span>
@@ -571,7 +742,7 @@ export default function ClientMyInvestPage() {
               <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
                 <div>
                   <h3 className="text-xl font-black text-white">Open Positions</h3>
-                  <p className="text-sm text-blue-200">Real-time trading activity for Account #{selectedInvModal?.loginId || '2141717315'}</p>
+                  <p className="text-sm text-blue-200">Real-time trading activity for Investment #{selectedInvestmentId || 'N/A'}</p>
                 </div>
                 <button
                   type="button"
@@ -628,7 +799,7 @@ export default function ClientMyInvestPage() {
               <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
                 <div>
                   <h3 className="text-xl font-black text-white">Manager Trades</h3>
-                  <p className="text-sm text-blue-200">Manager activity for Account #{selectedInvModal?.loginId || '2141717315'}</p>
+                  <p className="text-sm text-blue-200">Manager activity for Investment #{selectedInvestmentId || 'N/A'}</p>
                 </div>
                 <button
                   type="button"
@@ -685,7 +856,7 @@ export default function ClientMyInvestPage() {
               <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-blue-500/20">
                 <div>
                   <h3 className="text-xl font-black text-white">Change Investor Password</h3>
-                  <p className="text-sm text-blue-200 mt-1">Account ID: {selectedInvModal?.loginId || '—'}</p>
+                  <p className="text-sm text-blue-200 mt-1">Investment ID: {selectedInvestmentId || 'N/A'}</p>
                 </div>
                 <button
                   type="button"
