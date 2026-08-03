@@ -13,30 +13,40 @@ import {
   Settings,
   Sliders,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  DollarSign
 } from 'lucide-react';
+
+const iconMap: Record<string, any> = {
+  'Users': Users,
+  'GraduationCap': GraduationCap,
+  'TrendingUp': TrendingUp,
+  'DollarSign': DollarSign,
+  'Activity': Activity
+};
 
 export default function AdminDashboard() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'metrics'>('overview');
+  const [dashboard, setDashboard] = useState<any>(null);
 
   useEffect(() => {
-    setIsLoaded(true);
+    fetch('/api/admin/dashboard')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok') {
+          setDashboard(data.dashboard);
+        }
+        setIsLoaded(true);
+      })
+      .catch(err => {
+        console.error("Failed to load dashboard data:", err);
+        setIsLoaded(true);
+      });
   }, []);
 
-  const stats = [
-    { title: 'Total Users', value: '12,450', change: '+12%', isPositive: true, icon: Users, color: 'text-blue-400', bg: 'bg-blue-500/10 border-blue-500/20' },
-    { title: 'Admin Users', value: '45', change: '+3 new', isPositive: true, icon: GraduationCap, color: 'text-purple-400', bg: 'bg-purple-500/10 border-purple-500/20' },
-    { title: 'Total Revenue', value: '$84,500', change: '+8.4%', isPositive: true, icon: TrendingUp, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/20' },
-    { title: 'System Uptime', value: '99.9%', change: 'Optimal', isPositive: true, icon: Activity, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
-  ];
-
-  const recentEnrollments = [
-    { name: 'Sarah Jenkins', email: 'sarah.j@example.com', course: 'Advanced Financial Analysis', date: '10m ago', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=120&q=80', status: 'Completed' },
-    { name: 'Michael Chen', email: 'm.chen@example.com', course: 'Algorithmic Trading 101', date: '45m ago', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=120&q=80', status: 'Active' },
-    { name: 'Emma Watson', email: 'emma.w@example.com', course: 'Risk Management Essentials', date: '2h ago', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&w=120&q=80', status: 'Active' },
-    { name: 'David Miller', email: 'd.miller@example.com', course: 'Corporate Valuation Methods', date: '4h ago', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80', status: 'Pending' },
-  ];
+  const cards = dashboard?.cards || [];
+  const enrollments = dashboard?.recent_registrations || [];
 
   return (
     <>
@@ -93,23 +103,26 @@ export default function AdminDashboard() {
 
           {/* Key Metrics Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-            {stats.map((stat, index) => (
-              <div 
-                key={index} 
-                className="group relative bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700 hover:shadow-[0_10px_30px_rgba(0,0,0,0.4)] hover:-translate-y-1 overflow-hidden"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`p-3 rounded-2xl border ${stat.bg} ${stat.color} transition-transform duration-300 group-hover:scale-110`}>
-                    <stat.icon size={22} />
+            {cards.map((stat: any, index: number) => {
+              const IconComponent = iconMap[stat.icon] || Users;
+              return (
+                <div 
+                  key={index} 
+                  className="group relative bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700 hover:shadow-[0_10px_30px_rgba(0,0,0,0.4)] hover:-translate-y-1 overflow-hidden"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`p-3 rounded-2xl border ${stat.bg} ${stat.color} transition-transform duration-300 group-hover:scale-110`}>
+                      <IconComponent size={22} />
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {stat.change}
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    {stat.change}
-                  </span>
+                  <h3 className="text-slate-400 text-xs font-medium tracking-wide uppercase">{stat.title}</h3>
+                  <div className="text-3xl font-black text-slate-100 mt-1 tracking-tight">{stat.value}</div>
                 </div>
-                <h3 className="text-slate-400 text-xs font-medium tracking-wide uppercase">{stat.title}</h3>
-                <div className="text-3xl font-black text-slate-100 mt-1 tracking-tight">{stat.value}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Main Dashboard Content */}
@@ -118,8 +131,8 @@ export default function AdminDashboard() {
             <div className="lg:col-span-2 bg-slate-900/70 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl">
               <div className="flex justify-between items-center mb-6">
                 <div>
-                  <h2 className="text-lg font-bold text-slate-100">Recent User Enrollments</h2>
-                  <p className="text-xs text-slate-400">Latest course signups across all modules</p>
+                  <h2 className="text-lg font-bold text-slate-100">Recent User Registrations</h2>
+                  <p className="text-xs text-slate-400">Latest client user profiles registered</p>
                 </div>
                 <button className="flex items-center gap-1 text-xs font-semibold text-blue-400 hover:text-blue-300 transition-colors bg-blue-500/10 px-3 py-1.5 rounded-xl border border-blue-500/20">
                   View All <ChevronRight size={14} />
@@ -131,34 +144,32 @@ export default function AdminDashboard() {
                   <thead>
                     <tr className="text-slate-400 border-b border-slate-800">
                       <th className="pb-3 font-semibold">User</th>
-                      <th className="pb-3 font-semibold">Course</th>
-                      <th className="pb-3 font-semibold">Time</th>
+                      <th className="pb-3 font-semibold">Country</th>
+                      <th className="pb-3 font-semibold">Joined</th>
                       <th className="pb-3 font-semibold text-right">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
-                    {recentEnrollments.map((item, idx) => (
+                    {enrollments.map((item: any, idx: number) => (
                       <tr key={idx} className="hover:bg-slate-800/40 transition-colors group">
                         <td className="py-3.5 pr-4">
                           <div className="flex items-center gap-3">
-                            <img src={item.avatar} alt={item.name} className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-700" />
+                            <img src={item.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=120&q=80'} alt={item.name} className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-700" />
                             <div>
                               <div className="font-semibold text-slate-200 group-hover:text-blue-400 transition-colors">{item.name}</div>
                               <div className="text-[11px] text-slate-400">{item.email}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="py-3.5 font-medium text-slate-300">{item.course}</td>
-                        <td className="py-3.5 text-slate-400">{item.date}</td>
+                        <td className="py-3.5 font-medium text-slate-300">{item.country || 'N/A'}</td>
+                        <td className="py-3.5 text-slate-450">{item.joined || item.date}</td>
                         <td className="py-3.5 text-right">
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
-                            item.status === 'Completed'
+                            item.status === 'Completed' || item.status === 'Active'
                               ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                              : item.status === 'Active'
-                              ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
                               : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           }`}>
-                            {item.status === 'Completed' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
+                            {item.status === 'Completed' || item.status === 'Active' ? <CheckCircle2 size={11} /> : <AlertCircle size={11} />}
                             {item.status}
                           </span>
                         </td>

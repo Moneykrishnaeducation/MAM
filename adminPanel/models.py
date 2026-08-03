@@ -1,6 +1,11 @@
 """Models for adminPanel: Admin Users, Client Users, Managers, Investors, MAM Accounts, Pending Requests, Activity Logs, Client Profiles & Accounts."""
 
+import logging
 from tortoise import fields, models
+
+logger = logging.getLogger(__name__)
+
+
 
 
 class AdminUser(models.Model):
@@ -73,6 +78,7 @@ class Investor(models.Model):
     id = fields.IntField(primary_key=True)
     name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True)
+    account_number = fields.CharField(max_length=100, unique=True, null=True)
     equity = fields.FloatField(default=0.0)
     allocated_mam = fields.CharField(max_length=255, null=True)
     status = fields.CharField(max_length=50, default="Active")
@@ -216,3 +222,67 @@ class ClientTicket(models.Model):
 
     class Meta:
         table = "client_tickets"
+
+
+class ServerSetting(models.Model):
+    id = fields.IntField(primary_key=True)
+    server_ip = fields.CharField(max_length=512)
+    real_account_login = fields.CharField(max_length=100)
+    real_account_password = fields.CharField(max_length=512)
+    server_name_client = fields.CharField(max_length=100)
+    server_type = fields.BooleanField(default=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "mt5_serversetting"
+
+    def __str__(self):
+        return f"{self.server_name_client} ({self.server_ip})"
+
+    def get_decrypted_server_ip(self):
+        return self.server_ip
+
+    def get_decrypted_real_account_password(self):
+        return self.real_account_password
+
+
+class MT5GroupConfig(models.Model):
+    id = fields.IntField(primary_key=True)
+    group_name = fields.CharField(max_length=255, unique=True)
+    is_demo = fields.BooleanField(default=False)
+    is_enabled = fields.BooleanField(default=True)
+    leverage = fields.IntField(default=100)
+    min_deposit = fields.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    description = fields.TextField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+    last_sync = fields.DatetimeField(null=True)
+
+    class Meta:
+        table = "mt5_group_config"
+
+    def __str__(self):
+        return f"{self.group_name} ({'Demo' if self.is_demo else 'Real'})"
+
+
+class TradeGroup(models.Model):
+    id = fields.IntField(primary_key=True)
+    group_id = fields.CharField(max_length=100, unique=True, null=True)
+    name = fields.CharField(max_length=100, unique=True)
+    description = fields.TextField(null=True)
+    alias = fields.CharField(max_length=100, null=True)
+    type = fields.CharField(max_length=10, default="real")
+    is_active = fields.BooleanField(default=True)
+    is_default = fields.BooleanField(default=False)
+    is_demo_default = fields.BooleanField(default=False)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "trade_groups"
+
+    def __str__(self):
+        return f"{self.name} ({self.type})"
+
+

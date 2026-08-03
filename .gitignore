@@ -100,3 +100,5 @@ uv.lock
 .DS_Store
 Thumbs.db
 *.db
+mt5_instances/
+scratch/

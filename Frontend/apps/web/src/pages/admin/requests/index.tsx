@@ -94,41 +94,30 @@ export default function AdminPendingRequestsPage() {
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        const res = await fetch('/api/admin/requests');
-        const data = await res.json();
-        if (data && data.requests && Array.isArray(data.requests)) {
-          const mappedDeps = data.requests
-            .filter((r: any) => r.type?.toLowerCase() === 'deposit')
-            .map((r: any) => ({
-              id: `DEP-${r.id}`,
-              requesterName: r.client,
-              requesterEmail: `${r.client.toLowerCase().replace(/\s+/g, '')}@moneykrishna.com`,
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.client)}&background=1e3a5f&color=7dd3fc`,
-              amount: r.amount || '$0.00',
-              method: 'Bank Wire Transfer' as const,
-              referenceNo: `REF-${r.id}`,
-              date: 'Just now',
-              status: r.status as any,
-            }));
-          if (mappedDeps.length > 0) setDeposits(mappedDeps);
+        const fetchTab = async (endpoint: string) => {
+          const res = await fetch(endpoint);
+          const data = await res.json();
+          return data.status === 'ok' ? data.requests || [] : [];
+        };
 
-          const mappedWiths = data.requests
-            .filter((r: any) => r.type?.toLowerCase() === 'withdraw')
-            .map((r: any) => ({
-              id: `WTH-${r.id}`,
-              requesterName: r.client,
-              requesterEmail: `${r.client.toLowerCase().replace(/\s+/g, '')}@moneykrishna.com`,
-              avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(r.client)}&background=1e3a5f&color=7dd3fc`,
-              amount: r.amount || '$0.00',
-              availableBalance: '$10,000.00',
-              payoutDestination: 'Bank Account Masked',
-              method: 'Bank Transfer' as const,
-              date: 'Just now',
-              status: r.status as any,
-            }));
-          if (mappedWiths.length > 0) setWithdrawals(mappedWiths);
-        }
-      } catch {}
+        const [deps, withs, docs, profs, bnks, cryps] = await Promise.all([
+          fetchTab('/api/admin/requests/deposits'),
+          fetchTab('/api/admin/requests/withdrawals'),
+          fetchTab('/api/admin/requests/documents'),
+          fetchTab('/api/admin/requests/profiles'),
+          fetchTab('/api/admin/requests/banks'),
+          fetchTab('/api/admin/requests/cryptos'),
+        ]);
+
+        setDeposits(deps);
+        setWithdrawals(withs);
+        setDocuments(docs);
+        setProfiles(profs);
+        setBanks(bnks);
+        setCryptos(cryps);
+      } catch (err) {
+        console.error("Failed to load requests data:", err);
+      }
     };
     loadData();
   }, []);

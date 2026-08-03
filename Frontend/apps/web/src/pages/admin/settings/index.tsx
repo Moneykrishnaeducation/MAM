@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { 
   Settings, 
@@ -24,10 +24,11 @@ import {
 
 export default function AdminSettingsPage() {
   // Form values
-  const [brokerName, setBrokerName] = useState('VTIndex-MT5');
-  const [serverAddress, setServerAddress] = useState('185.28.255.35');
-  const [managerLogin, setManagerLogin] = useState('1055');
-  const [backendUrl, setBackendUrl] = useState('http://localhost:8000');
+  const [settingId, setSettingId] = useState<number | null>(null);
+  const [brokerName, setBrokerName] = useState('');
+  const [serverAddress, setServerAddress] = useState('');
+  const [managerLogin, setManagerLogin] = useState('');
+
   const [isMfaEnforced, setIsMfaEnforced] = useState(true);
   const [isSessionTimeout, setIsSessionTimeout] = useState(true);
   const [enrollmentAlerts, setEnrollmentAlerts] = useState(true);
@@ -47,24 +48,115 @@ export default function AdminSettingsPage() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleSaveAll = () => {
+  // Fetch settings on mount
+  useEffect(() => {
+    fetch('/api/admin/server-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'ok' && data.server_settings && data.server_settings.length > 0) {
+          const s = data.server_settings[0]; // Load the latest setting
+          setSettingId(s.id);
+          setBrokerName(s.server_name_client || '');
+          setServerAddress(s.server_ip || '');
+          setManagerLogin(s.real_account_login || '');
+        }
+      })
+      .catch(err => console.error("Error loading server settings:", err));
+  }, []);
+
+  const handleSaveAll = async () => {
     setIsSaving(true);
-    setTimeout(() => {
+    try {
+      const payload: any = {
+        server_ip: serverAddress,
+        real_account_login: managerLogin,
+        server_name_client: brokerName,
+        server_type: true
+      };
+      
+      let url = '/api/admin/server-settings';
+      let method = 'POST';
+      if (settingId) {
+        url = `/api/admin/server-settings/${settingId}`;
+        method = 'PUT';
+      } else {
+        payload.real_account_password = newPassword;
+      }
+      
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        if (data.server_setting && data.server_setting.id) {
+          setSettingId(data.server_setting.id);
+        }
+        setNewPassword('');
+        showToast("MT5 Connection settings saved successfully!");
+      } else {
+        showToast("Error: " + (data.message || "Failed to save settings"));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Error updating configuration!");
+    } finally {
       setIsSaving(false);
-      showToast("Global configuration saved successfully!");
-    }, 1200);
+    }
   };
 
-  const handlePasswordResetSubmit = (e: React.FormEvent) => {
+  const handlePasswordResetSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPassword || newPassword !== confirmPassword) {
       showToast("Error: Passwords must match!");
       return;
     }
-    showToast("Manager password updated successfully!");
-    setNewPassword('');
-    setConfirmPassword('');
-    setShowPasswordReset(false);
+    
+    setIsSaving(true);
+    try {
+      const payload: any = {
+        real_account_password: newPassword
+      };
+      
+      let url = '/api/admin/server-settings';
+      let method = 'POST';
+      if (settingId) {
+        url = `/api/admin/server-settings/${settingId}`;
+        method = 'PUT';
+      } else {
+        payload.server_ip = serverAddress;
+        payload.real_account_login = managerLogin;
+        payload.server_name_client = brokerName;
+      }
+      
+      const res = await fetch(url, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        if (data.server_setting && data.server_setting.id) {
+          setSettingId(data.server_setting.id);
+        }
+        showToast("Manager password updated successfully!");
+        setNewPassword('');
+        setConfirmPassword('');
+        setShowPasswordReset(false);
+      } else {
+        showToast("Error: " + (data.message || "Failed to reset password"));
+      }
+    } catch (err) {
+      console.error(err);
+      showToast("Error updating password!");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Sections navigation configurations
@@ -73,6 +165,7 @@ export default function AdminSettingsPage() {
     { id: 'security', label: 'Security & Access', icon: Shield, desc: 'MFA, session lifetime rules' },
     { id: 'notifications', label: 'Alert Center', icon: Bell, desc: 'System alert & email notifications' },
   ] as const;
+
 
   return (
     <>
@@ -231,20 +324,39 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Manager Password Status</span>
-                    <div className="flex items-center justify-between gap-3 bg-[#070b1a]/50 border border-white/[0.05] rounded-2xl px-4 py-3 h-[46px]">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
-                        <span className="text-slate-300 text-xs font-bold">Password is configured</span>
+                    <span className="block text-xs font-bold uppercase tracking-wider text-slate-400">Manager Password</span>
+                    {settingId ? (
+                      <div className="flex items-center justify-between gap-3 bg-[#070b1a]/50 border border-white/[0.05] rounded-2xl px-4 py-3 h-[46px]">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-pulse" />
+                          <span className="text-slate-300 text-xs font-bold">Password is configured</span>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={() => setShowPasswordReset(true)}
+                          className="text-xs font-extrabold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
+                        >
+                          <RefreshCw size={11} /> Reset Password
+                        </button>
                       </div>
-                      <button 
-                        type="button"
-                        onClick={() => setShowPasswordReset(true)}
-                        className="text-xs font-extrabold text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1"
-                      >
-                        <RefreshCw size={11} /> Reset Password
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="relative">
+                        <input 
+                          type={showPassChar ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          placeholder="Enter password manually"
+                          className="w-full bg-[#070b1a] border border-white/[0.08] hover:border-blue-500/40 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-2xl px-4 py-3 text-slate-200 font-semibold transition-all text-sm outline-none"
+                        />
+                        <button 
+                          type="button"
+                          onClick={() => setShowPassChar(!showPassChar)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                        >
+                          {showPassChar ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
 

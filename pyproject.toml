@@ -35,6 +35,7 @@ dependencies = [
     "python-dotenv>=1.2.2",
     "waitress>=3.0.2",
     "uvicorn[standard]>=0.34.0",
+    "MT5Manager==5.0.4874",
 ]
 
 [project.optional-dependencies]

@@ -23,7 +23,9 @@ from adminPanel.views import (
     list_client_users,
     list_investors,
     list_managers,
+    list_pending_requests,
 )
+from adminPanel.view import mt5_crud
 
 app_name = "adminPanel"
 
@@ -46,4 +48,17 @@ urlpatterns = [
     path("admin-users/create", create_admin_user, name="create-admin-user"),
     path("users/create", create_client_user, name="create-client-user"),
     path("mam-accounts/create", create_mam_account, name="create-mam-account"),
+    # MT5 CRUD Routes
+    path("server-settings", mt5_crud.server_settings_list_create, name="server-settings-list-create"),
+    path("server-settings/<int:pk>", mt5_crud.server_setting_detail_update_delete, name="server-setting-detail"),
+    path("group-configs", mt5_crud.group_configs_list_create, name="group-configs-list-create"),
+    path("group-configs/<int:pk>", mt5_crud.group_config_detail_update_delete, name="group-config-detail"),
+    path("trade-groups", mt5_crud.trade_groups_list_create, name="trade-groups-list-create"),
+    path("trade-groups/<int:pk>", mt5_crud.trade_group_detail_update_delete, name="trade-group-detail"),
+    path("mam-accounts-crud", mt5_crud.mam_accounts_list_create, name="mam-accounts-list-create"),
+    path("mam-accounts-crud/<int:pk>", mt5_crud.mam_account_detail_update_delete, name="mam-account-detail"),
+    path("investors-crud", mt5_crud.investors_list_create, name="investors-list-create"),
+    path("investors-crud/<int:pk>", mt5_crud.investor_detail_update_delete, name="investor-detail"),
+    path("groups/sync", mt5_crud.sync_groups_from_mt5, name="groups-sync"),
 ]
+
