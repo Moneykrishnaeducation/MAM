@@ -21,6 +21,7 @@ from adminPanel.models import (
     PendingRequest,
 )
 from adminPanel.view.client_profile import update_client_profile
+from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
 from adminPanel.view.pending_requests import (
@@ -394,6 +395,108 @@ class TestAdminPanelModels:
         assert refreshed_profile.address == "123 King Street"
         assert refreshed_profile.city == "Toronto"
         assert refreshed_profile.postal_code == "M5H 2N2"
+
+    async def test_admin_client_transactions(self):
+        """Test the admin client transaction history endpoint."""
+        user = await ClientUser.create(
+            user_code="USR-TX100",
+            name="Casey Rivera",
+            email="casey.tx@example.com",
+            phone="+1 555 0200",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Casey Rivera",
+            email="casey.tx@example.com",
+            phone="+1 555 0200",
+            country="United States",
+            tier="VIP Premium",
+            kyc_status="Verified",
+        )
+        await ClientTransaction.create(
+            client_profile=profile,
+            transaction_type="Deposit",
+            amount=2500.0,
+            payment_method="Wire Transfer",
+            status="Completed",
+        )
+        await ClientTransaction.create(
+            client_profile=profile,
+            transaction_type="Withdrawal",
+            amount=700.0,
+            payment_method="Bank Transfer",
+            status="Pending",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        response = await list_client_transactions(request, user_id="USR-TX100")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["user"]["id"] == "USR-TX100"
+        assert payload["summary"]["total_transactions"] == 2
+        assert payload["summary"]["deposit_count"] == 1
+        assert payload["summary"]["withdrawal_count"] == 1
+        assert len(payload["transactions"]) == 2
+
+        filtered_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {"tab": "deposit"},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        filtered_response = await list_client_transactions(filtered_request, user_id="USR-TX100")
+        filtered_payload = json.loads(filtered_response.content)
+
+        assert filtered_response.status_code == 200
+        assert filtered_payload["tab"] == "deposit"
+        assert len(filtered_payload["transactions"]) == 1
+        assert filtered_payload["transactions"][0]["type"] == "Deposit"
+
+        denied_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        denied_response = await list_client_transactions(denied_request, user_id="USR-TX100")
+        denied_payload = json.loads(denied_response.content)
+
+        assert denied_response.status_code == 403
+        assert denied_payload["status"] == "error"
+        assert denied_payload["required_roles"] == ["admin"]
 
 
 class TestClientPanelModels:
