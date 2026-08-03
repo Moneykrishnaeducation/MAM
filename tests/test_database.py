@@ -21,6 +21,7 @@ from adminPanel.models import (
     PendingRequest,
 )
 from adminPanel.view.client_profile import update_client_profile
+from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
@@ -492,6 +493,119 @@ class TestAdminPanelModels:
         )()
 
         denied_response = await list_client_transactions(denied_request, user_id="USR-TX100")
+        denied_payload = json.loads(denied_response.content)
+
+        assert denied_response.status_code == 403
+        assert denied_payload["status"] == "error"
+        assert denied_payload["required_roles"] == ["admin"]
+
+    async def test_admin_client_tickets(self):
+        """Test the admin client ticket history endpoint."""
+        user = await ClientUser.create(
+            user_code="USR-TICKET-ADMIN1",
+            name="Robin Clarke",
+            email="robin.ticket@example.com",
+            phone="+1 555 0300",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Robin Clarke",
+            email="robin.ticket@example.com",
+            phone="+1 555 0300",
+            country="United States",
+            tier="VIP Premium",
+            kyc_status="Verified",
+        )
+        await ClientTicket.create(
+            client_profile=profile,
+            subject="Verification pending",
+            category="KYC",
+            priority="High",
+            status="Open",
+            description="My verification document is still pending.",
+        )
+        await ClientTicket.create(
+            client_profile=profile,
+            subject="Login email update",
+            category="Account",
+            priority="Normal",
+            status="Pending",
+            description="Please update my login email.",
+        )
+        await ClientTicket.create(
+            client_profile=profile,
+            subject="Withdrawn case closed",
+            category="Payments",
+            priority="Low",
+            status="Closed",
+            description="The support case has been resolved.",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        response = await list_client_tickets(request, user_id="USR-TICKET-ADMIN1")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["user"]["id"] == "USR-TICKET-ADMIN1"
+        assert payload["summary"]["total_tickets"] == 3
+        assert payload["summary"]["open_count"] == 1
+        assert payload["summary"]["pending_count"] == 1
+        assert payload["summary"]["closed_count"] == 1
+        assert len(payload["tickets"]) == 3
+
+        filtered_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {"status": "pending"},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        filtered_response = await list_client_tickets(filtered_request, user_id="USR-TICKET-ADMIN1")
+        filtered_payload = json.loads(filtered_response.content)
+
+        assert filtered_response.status_code == 200
+        assert filtered_payload["status_filter"] == "pending"
+        assert len(filtered_payload["tickets"]) == 1
+        assert filtered_payload["tickets"][0]["subject"] == "Login email update"
+
+        denied_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        denied_response = await list_client_tickets(denied_request, user_id="USR-TICKET-ADMIN1")
         denied_payload = json.loads(denied_response.content)
 
         assert denied_response.status_code == 403
