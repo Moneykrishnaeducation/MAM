@@ -49,52 +49,13 @@ interface Ticket {
   _normalizedAttachments?: TicketAttachment[];
 }
 
-type ClientRequestContext = {
-  userId?: string;
-};
-
-function getClientRequestContext(): ClientRequestContext {
-  if (typeof window === "undefined") {
-    return {};
-  }
-
-  const searchParams = new URLSearchParams(window.location.search);
-
-  return {
-    userId:
-      searchParams.get("user_id") ||
-      localStorage.getItem("client_user_id") ||
-      localStorage.getItem("user_id") ||
-      undefined,
-  };
-}
-
-function appendUserId(endpoint: string, userId?: string): string {
-  if (!userId) {
-    return endpoint;
-  }
-
-  const [path, queryString = ""] = endpoint.split("?");
-  const searchParams = new URLSearchParams(queryString);
-
-  if (!searchParams.has("user_id")) {
-    searchParams.set("user_id", userId);
-  }
-
-  const nextQuery = searchParams.toString();
-  return nextQuery ? `${path}?${nextQuery}` : path;
-}
-
 async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const { userId } = getClientRequestContext();
-  const endpointWithUserId = appendUserId(endpoint, userId);
-
   const request = async () =>
-    fetch(endpointWithUserId, {
+    fetch(endpoint, {
       ...options,
       credentials: "include",
       headers: (() => {

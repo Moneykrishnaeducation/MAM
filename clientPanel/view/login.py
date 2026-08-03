@@ -17,6 +17,7 @@ from clientPanel.view.common import (
     _serialize_client_profile,
     create_admin_login_token,
     create_client_login_token,
+    set_auth_cookies,
     verify_client_password,
 )
 
@@ -104,20 +105,22 @@ async def login_client(request):
                 "message": "Admin login successful",
                 "token_type": "Bearer",
                 "token": token,
+                "access_token": token,
+                "jwt_token": token,
+                "refresh_token": token,
                 "role": "Admin",
                 "admin": _serialize_admin_user(user),
             }
         )
-        response.set_cookie(
-            ADMIN_LOGIN_COOKIE_NAME,
-            token,
+        return set_auth_cookies(
+            response,
+            token=token,
+            user_id=user.id,
+            role="Admin",
             max_age=ADMIN_LOGIN_MAX_AGE,
-            httponly=True,
             secure=_request_is_secure(request),
-            samesite="Lax",
-            path="/",
+            legacy_cookie_name=ADMIN_LOGIN_COOKIE_NAME,
         )
-        return response
 
     profile = await ClientProfile.filter(user_id=user.id).first()
     if profile is None:
@@ -137,18 +140,20 @@ async def login_client(request):
             "message": "Client login successful",
             "token_type": "Bearer",
             "token": token,
+            "access_token": token,
+            "jwt_token": token,
+            "refresh_token": token,
             "role": "Client",
             "client": _serialize_client_user(user, profile),
             "profile": _serialize_client_profile(profile),
         }
     )
-    response.set_cookie(
-        CLIENT_LOGIN_COOKIE_NAME,
-        token,
+    return set_auth_cookies(
+        response,
+        token=token,
+        user_id=user.id,
+        role="Client",
         max_age=CLIENT_LOGIN_MAX_AGE,
-        httponly=True,
         secure=_request_is_secure(request),
-        samesite="Lax",
-        path="/",
+        legacy_cookie_name=CLIENT_LOGIN_COOKIE_NAME,
     )
-    return response

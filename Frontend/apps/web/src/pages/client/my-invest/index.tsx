@@ -4,10 +4,6 @@ import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3,
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 
-type ClientRequestContext = {
-  userId?: string;
-};
-
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => (
   <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
     <div className="relative z-[100000] w-full max-w-[1000px] bg-[#0a1435] rounded-xl border border-blue-900/30 shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
@@ -45,48 +41,13 @@ type ClientInvestmentApi = {
   status?: string | null;
 };
 
-function getClientRequestContext(): ClientRequestContext {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-
-  const searchParams = new URLSearchParams(window.location.search);
-
-  return {
-    userId:
-      searchParams.get('user_id') ||
-      localStorage.getItem('client_user_id') ||
-      localStorage.getItem('user_id') ||
-      undefined,
-  };
-}
-
-function appendUserId(endpoint: string, userId?: string): string {
-  if (!userId) {
-    return endpoint;
-  }
-
-  const [path, queryString = ''] = endpoint.split('?');
-  const searchParams = new URLSearchParams(queryString);
-
-  if (!searchParams.has('user_id')) {
-    searchParams.set('user_id', userId);
-  }
-
-  const nextQuery = searchParams.toString();
-  return nextQuery ? `${path}?${nextQuery}` : path;
-}
-
 async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const { userId } = getClientRequestContext();
-  const endpointWithUserId = appendUserId(endpoint, userId);
-
   const request = async () =>
-    fetch(endpointWithUserId, {
+    fetch(endpoint, {
       ...options,
       credentials: 'include',
       headers: (() => {

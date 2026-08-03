@@ -146,31 +146,10 @@ const createEmptyTransactionSummary = (): TransactionSummary => ({
   totalVolume: 0,
 });
 
-const getClientRequestContext = (): { userId?: string } => {
-  if (typeof window === 'undefined') {
-    return {};
-  }
-
-  const searchParams = new URLSearchParams(window.location.search);
-
-  return {
-    userId:
-      searchParams.get('user_id') ||
-      localStorage.getItem('client_user_id') ||
-      localStorage.getItem('user_id') ||
-      undefined,
-  };
-};
-
 const buildTransactionsEndpoint = (tab: TransactionTabId) => {
-  const { userId } = getClientRequestContext();
   const searchParams = new URLSearchParams();
 
   searchParams.set('tab', tab.toLowerCase());
-
-  if (userId) {
-    searchParams.set('user_id', userId);
-  }
 
   const queryString = searchParams.toString();
   return queryString ? `/api/client/transactions?${queryString}` : '/api/client/transactions';

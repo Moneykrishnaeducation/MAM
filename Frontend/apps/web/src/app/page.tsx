@@ -394,14 +394,6 @@ function LoginCard({
 
       const role = String(data?.role || data?.client?.role || data?.admin?.role || "").toLowerCase();
       const isAdmin = role.includes("admin");
-      const userId = data?.admin?.id ?? data?.client?.id ?? data?.profile?.user_id;
-      if (userId !== undefined && userId !== null) {
-        if (isAdmin) {
-          localStorage.setItem("admin_user_id", String(userId));
-        } else {
-          localStorage.setItem("client_user_id", String(userId));
-        }
-      }
 
       toast.success("Access Granted!", {
         description: `Welcome back to VTIndex. Initializing session for ${email}`,
