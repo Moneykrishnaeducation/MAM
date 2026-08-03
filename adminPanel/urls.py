@@ -25,6 +25,8 @@ from adminPanel.views import (
     list_client_users,
     list_investors,
     list_managers,
+    update_admin_user,
+    delete_user,
 )
 
 app_name = "adminPanel"
@@ -39,8 +41,10 @@ urlpatterns = [
     path("requests/banks", list_pending_banks, name="requests-banks"),
     path("requests/cryptos", list_pending_cryptos, name="requests-cryptos"),
     path("admin-users", list_admin_system_users, name="admin-users"),
+    path("admin-users/<str:user_id>/update", update_admin_user, name="update-admin-user"),
     path("users", list_client_users, name="users"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
+    path("users/<str:user_id>/delete", delete_user, name="delete-user"),
     path("users/<str:user_id>/tickets", list_client_tickets, name="client-tickets"),
     path("users/<str:user_id>/transactions", list_client_transactions, name="client-transactions"),
     path("managers", list_managers, name="managers"),

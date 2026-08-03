@@ -1,28 +1,21 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import { 
   ShieldCheck, 
   UserPlus, 
   Search, 
-  CheckCircle2, 
-  X, 
   Shield, 
   Lock, 
-  Mail, 
   User as UserIcon, 
   Trash2, 
   Pencil,
   AlertCircle,
-  Clock,
-  Phone,
-  MapPin,
-  Check,
-  LayoutGrid,
-  Info,
-  Sparkles,
-  ChevronLeft,
-  Save
+  CheckCircle,
+  LayoutGrid
 } from 'lucide-react';
+import GroupConfiguration from '../groups';
+import GroupConfigurationDemo from '../groups-demo';
 
 // Helper to get a cookie value
 function getCookie(name: string): string {
@@ -90,80 +83,8 @@ export interface AdminUserRecord {
   elevated: string;
 }
 
-// ================= BADGE COMPONENT =================
-function Badge({ label, alias, isActive, isDemo }: { label: string; alias?: string; isActive: boolean; isDemo: boolean }) {
-  const baseClass =
-    "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-colors border";
-  const activeClass = isActive
-    ? isDemo
-      ? "bg-sky-500/20 text-sky-400 border-sky-500/30"
-      : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-    : "bg-white/5 text-white/40 border-white/5";
-
-  return (
-    <span className={`${baseClass} ${activeClass}`} title={label}>
-      {alias || label}
-    </span>
-  );
-}
-
-// ================= STAT CARD COMPONENT =================
-function StatCard({ label, value, tone, icon: Icon }: { label: string; value: string | number; tone: string; icon?: any }) {
-  return (
-    <div className={`rounded-2xl border px-6 py-6 transition-all ${tone}`}>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">{label}</div>
-          <div className="mt-2 text-2xl font-black tracking-tighter text-white">{value}</div>
-        </div>
-        {Icon ? (
-          <div className="rounded-xl bg-white/5 p-3">
-            <Icon size={18} className="text-yellow-500" />
-          </div>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-// ================= GROUP CONFIG GUIDE COMPONENT =================
-function GroupConfigurationGuideToggle() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <section className="mt-6">
-      <button
-        type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-[2rem] border px-8 py-6 text-left shadow-xl transition-all border-white/10 bg-slate-900/40"
-      >
-        <span className="flex items-center gap-4 text-lg font-black uppercase tracking-tighter text-white">
-          <Info size={20} className="text-yellow-500" />
-          Group Configuration Guide
-        </span>
-        <span className="text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full border bg-white/5 border-white/10 text-yellow-500">
-          {isOpen ? "Hide Details" : "View Details"}
-        </span>
-      </button>
-
-      {isOpen ? (
-        <div className="mt-4 rounded-[2rem] border px-8 py-8 shadow-2xl animate-in slide-in-from-top-4 duration-300 border-white/5 bg-black/40 text-white/80">
-          <ol className="list-decimal space-y-4 text-sm font-medium leading-relaxed ml-4">
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Alias Field:</strong> Optional display name for identifying groups easily in the CRM.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Default Group:</strong> The primary group assigned to new live trading accounts.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Demo Default Group:</strong> The primary group assigned to new demo trading accounts.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Save Configuration:</strong> Commits all changes to the MT5 gateway.</li>
-          </ol>
-          <div className="mt-6 rounded-2xl border-l-4 border-yellow-500 px-6 py-4 text-xs font-bold uppercase tracking-wide bg-yellow-500/5 text-yellow-500/80">
-            Warning: Changes take effect immediately for all new account registrations.
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
 export default function AdminUsersManagementPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'users' | 'groups' | 'groups-demo'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
@@ -180,6 +101,7 @@ export default function AdminUsersManagementPage() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [selectedUserRow, setSelectedUserRow] = useState<AdminUserRecord | null>(null);
   const [editRoleValue, setEditRoleValue] = useState('admin');
+  const [editPassword, setEditPassword] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -188,6 +110,7 @@ export default function AdminUsersManagementPage() {
     phone: '',
     address: '',
     role: 'Admin',
+    password: '',
   });
 
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
@@ -195,20 +118,6 @@ export default function AdminUsersManagementPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSuperuserUser, setIsSuperuserUser] = useState(false);
-
-  // Group Management States
-  const [groups, setGroups] = useState<any[]>([]);
-  const [selectedDefault, setSelectedDefault] = useState<string | null>(null);
-  const [selectedDemoDefault, setSelectedDemoDefault] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
-  const [showActiveConfig, setShowActiveConfig] = useState(false);
-  const [groupSearch, setGroupSearch] = useState("");
-  const [groupLoading, setGroupLoading] = useState(false);
-
-  // Demo Group States
-  const [demoGroups, setDemoGroups] = useState<any[]>([]);
-  const [demoSelectedDefault, setDemoSelectedDefault] = useState<string | null>(null);
-  const [demoLoading, setDemoLoading] = useState(false);
 
   const showMessage = (title: string, text: string) => {
     setMessageTitle(title);
@@ -234,7 +143,9 @@ export default function AdminUsersManagementPage() {
         return;
       }
       const resJson = await res.json();
-      const items = Array.isArray(resJson.admins)
+      const items = Array.isArray(resJson.admin_users)
+        ? resJson.admin_users
+        : Array.isArray(resJson.admins)
         ? resJson.admins
         : Array.isArray(resJson.data)
         ? resJson.data
@@ -243,10 +154,10 @@ export default function AdminUsersManagementPage() {
       const mapped = items.map((user: any) => ({
         id: user.id,
         userId: user.userId ?? user.id ?? user.pk,
-        name: `${user.first_name || ""} ${user.last_name || ""}`.trim(),
+        name: user.name || `${user.first_name || ""} ${user.last_name || ""}`.trim() || "-",
         email: user.email || "-",
         role: user.role || "-",
-        elevated: user.elevated_date || "-",
+        elevated: user.created_at || user.elevated_date || user.lastLogin || "-",
       }));
 
       setAdminUsers(mapped);
@@ -257,138 +168,10 @@ export default function AdminUsersManagementPage() {
     }
   };
 
-  // Group configuration loading helpers
-  const fetchCurrentGroups = useCallback(async () => {
-    const endpoint = "/api/current-group-config/";
-    try {
-      const res = await fetch(endpoint, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (res.ok) {
-        const resJson = await res.json();
-        if (resJson.success && resJson.configuration) {
-          const config = resJson.configuration;
-          const realGroups = (config.real_groups || []).map((g: any) => ({
-            id: g.id,
-            label: g.name + (g.alias ? ` (${g.alias})` : ""),
-            type: "real",
-            enabled: true,
-            alias: g.alias || "",
-            aliasLocked: false,
-          }));
-
-          setGroups(realGroups);
-          setSelectedDefault(config.default_group?.id || null);
-          setSelectedDemoDefault(config.demo_group?.id || null);
-          setLastUpdated(config.last_updated || new Date().toLocaleString());
-        }
-      }
-    } catch (err) {}
-  }, []);
-
-  const fetchAvailableGroups = useCallback(async () => {
-    const endpoint = "/api/available-groups/?server_type=true";
-    try {
-      const res = await fetch(endpoint, {
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.groups) {
-          setGroups(
-            data.groups
-              .filter((g: any) => !g.is_demo)
-              .map((g: any) => ({
-                id: g.id,
-                label: g.label,
-                type: "real",
-                enabled: g.enabled,
-                alias: g.alias || "",
-                is_default: g.is_default,
-                is_demo_default: g.is_demo_default,
-                aliasLocked: false,
-              }))
-          );
-
-          setSelectedDefault(data.groups.find((g: any) => g.is_default)?.id || null);
-          setSelectedDemoDefault(data.groups.find((g: any) => g.is_demo_default)?.id || null);
-          setLastUpdated(new Date().toLocaleString());
-        }
-      }
-    } catch (err) {}
-  }, []);
-
-  const loadGroupData = useCallback(async () => {
-    setGroupLoading(true);
-    await fetchCurrentGroups();
-    await fetchAvailableGroups();
-    setGroupLoading(false);
-  }, [fetchCurrentGroups, fetchAvailableGroups]);
-
-  // Demo groups loading helpers
-  const fetchDemoGroupsData = useCallback(async () => {
-    setDemoLoading(true);
-    try {
-      const res = await fetch("/api/demo-available-groups/", {
-        headers: { "Content-Type": "application/json" },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const serverGroups = (data.groups || []).map((g: any) => ({
-          id: g.id || g,
-          label: g.label || g.name || g,
-          type: "demo",
-          enabled: g.enabled ?? false,
-          alias: g.alias || "",
-          is_demo_default: g.is_demo_default,
-          aliasLocked: false,
-        }));
-
-        setDemoGroups(serverGroups);
-        const demoDefault = serverGroups.find((g: any) => g.is_demo_default);
-        setDemoSelectedDefault(demoDefault?.id || serverGroups[0]?.id || null);
-      }
-    } catch (err) {
-      try {
-        const res = await fetch("/api/current-group-config/", {
-          headers: { "Content-Type": "application/json" },
-        });
-        if (res.ok) {
-          const resJson = await res.json();
-          if (resJson.success && resJson.configuration) {
-            const config = resJson.configuration;
-            const demoGroupsMapped = (config.demo_groups || []).map((g: any) => ({
-              id: g.id,
-              label: g.name + (g.alias ? ` (${g.alias})` : ""),
-              type: "demo",
-              enabled: true,
-              alias: g.alias || "",
-              aliasLocked: false,
-            }));
-            setDemoGroups(demoGroupsMapped);
-            setDemoSelectedDefault(config.demo_group?.id || null);
-          }
-        }
-      } catch (_) {}
-    } finally {
-      setDemoLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
     setIsSuperuserUser(isSuperuser());
     fetchAdmins();
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'groups') {
-      loadGroupData();
-    } else if (activeTab === 'groups-demo') {
-      fetchDemoGroupsData();
-    }
-  }, [activeTab, loadGroupData, fetchDemoGroupsData]);
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -399,7 +182,7 @@ export default function AdminUsersManagementPage() {
 
     setCreateLoading(true);
     try {
-      const payload = {
+      const payload: any = {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         first_name: formData.firstName,
@@ -409,6 +192,9 @@ export default function AdminUsersManagementPage() {
         phone_number: formData.phone || '',
         address: formData.address || '',
       };
+      if (isSuperuserUser && formData.password) {
+        payload.password = formData.password;
+      }
 
       const res = await fetch('/api/admin/admin-users/create', {
         method: 'POST',
@@ -433,7 +219,7 @@ export default function AdminUsersManagementPage() {
 
       setAdminUsers(prev => [newEntry, ...prev]);
       setIsCreateModalOpen(false);
-      setFormData({ firstName: '', lastName: '', email: '', phone: '', address: '', role: 'Admin' });
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', address: '', role: 'Admin', password: '' });
 
       if (body?.temp_password) {
         showMessage('Created', `Created user successfully.\nTemporary Password: ${body.temp_password}`);
@@ -450,6 +236,7 @@ export default function AdminUsersManagementPage() {
   const handleOpenStatusModal = (user: AdminUserRecord) => {
     setSelectedUserRow(user);
     setEditRoleValue(user.role.toLowerCase() === 'manager' ? 'manager' : 'admin');
+    setEditPassword('');
     setIsRoleModalOpen(true);
   };
 
@@ -457,25 +244,27 @@ export default function AdminUsersManagementPage() {
     if (!selectedUserRow) return;
     try {
       const userId = selectedUserRow.userId;
-      const res = await fetch(`/api/admin/users/${userId}/profile`, {
+      const payload: any = {
+        role: editRoleValue,
+        manager_admin_status: editRoleValue,
+      };
+
+      const res = await fetch(`/api/admin/admin-users/${userId}/update`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: editRoleValue,
-          manager_admin_status: editRoleValue,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(body?.message || `Failed to update user profile: status ${res.status}`);
+        throw new Error(body?.message || `Failed to update admin profile: status ${res.status}`);
       }
 
       setAdminUsers(prev => prev.map(u => u.id === selectedUserRow.id ? { ...u, role: editRoleValue === 'manager' ? 'Manager' : 'Admin' } : u));
       setIsRoleModalOpen(false);
-      showMessage('Success', 'Role updated successfully.');
+      showMessage('Success', 'Profile updated successfully.');
     } catch (err: any) {
-      showMessage('Error updating role', err.message);
+      showMessage('Error updating profile', err.message);
     }
   };
 
@@ -508,94 +297,6 @@ export default function AdminUsersManagementPage() {
     }
   };
 
-  const [syncing, setSyncing] = useState(false);
-
-  const handleSyncFromMT5 = async () => {
-    setSyncing(true);
-    try {
-      const res = await fetch("/api/admin/groups/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      if (res.ok && data.status === "ok") {
-        alert("Groups synchronized directly from MT5 successfully!");
-        await loadGroupData();
-      } else {
-        alert(data.message || "Failed to synchronize groups from MT5");
-      }
-    } catch (err: any) {
-      alert("Error syncing from MT5: " + err.message);
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // Group config action callbacks
-  const handleSaveGroupConfig = async (editableGroups = []) => {
-    const endpoint = "/api/save-group-configuration/";
-
-    if (!selectedDefault) {
-      alert("Please select a Default group for real accounts.");
-      return;
-    }
-
-    try {
-      const payloadGroups = editableGroups.map((g: any) => ({
-        id: g.id,
-        enabled: g.enabled || g.id === selectedDefault,
-        alias: g.alias ?? "",
-        default: g.id === selectedDefault,
-      }));
-
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: payloadGroups }),
-      });
-
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        alert(data.message || "Failed to save group configuration");
-        return;
-      }
-
-      alert("Group configuration saved successfully!");
-      loadGroupData();
-    } catch (err: any) {
-      alert("Error saving configuration: " + err.message);
-    }
-  };
-
-  const handleSaveDemoGroupConfig = async () => {
-    if (!demoSelectedDefault) {
-      alert('Please select a Demo Default group before saving.');
-      return;
-    }
-    const endpoint = "/api/save-demo-group-configuration/";
-    const payloadGroups = demoGroups.map((g) => ({
-      id: g.id,
-      enabled: g.enabled,
-      alias: g.alias ?? '',
-      demo_default: g.id === demoSelectedDefault,
-    }));
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groups: payloadGroups }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        alert(`Demo group configuration saved. Default: ${data.demo_default_group}`);
-      } else {
-        alert(`Save failed: ${data.message}`);
-      }
-    } catch (e) {
-      alert('Failed to save demo configuration.');
-    }
-  };
-
   const filteredAdmins = useMemo(() => {
     return adminUsers.filter(u => {
       const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -605,25 +306,6 @@ export default function AdminUsersManagementPage() {
       return matchesSearch && matchesRole;
     });
   }, [adminUsers, searchTerm, roleFilter]);
-
-  const filteredGroups = useMemo(() => {
-    return groups.filter((group) => {
-      const query = groupSearch.trim().toLowerCase();
-      if (!query) return true;
-      return (
-        String(group.id || "").toLowerCase().includes(query) ||
-        String(group.alias || "").toLowerCase().includes(query) ||
-        String(group.label || "").toLowerCase().includes(query)
-      );
-    });
-  }, [groups, groupSearch]);
-
-  const stats = {
-    total: groups.length,
-    enabled: groups.filter((g) => g.enabled).length,
-    defaultGroup: selectedDefault,
-    demoDefaultGroup: selectedDemoDefault,
-  };
 
   return (
     <>
@@ -772,7 +454,7 @@ export default function AdminUsersManagementPage() {
                       <th className="pb-3 font-semibold">Name & Email</th>
                       <th className="pb-3 font-semibold">Role</th>
                       <th className="pb-3 font-semibold">Elevated Date</th>
-                      <th className="pb-3 text-right font-semibold">Actions</th>
+                      {isSuperuserUser && <th className="pb-3 text-right font-semibold">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -814,25 +496,27 @@ export default function AdminUsersManagementPage() {
                               <div className="font-medium text-slate-200">{date}</div>
                               {time && <div className="text-[10px] text-slate-500 font-mono mt-0.5">{time}</div>}
                             </td>
-                            <td className="py-4 text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <button
-                                  onClick={() => handleOpenStatusModal(user)}
-                                  className="p-1.5 rounded-lg border text-xs bg-slate-850 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500 hover:text-slate-950 transition-all"
-                                  title="Edit User Profile"
-                                >
-                                  <Pencil size={14} />
-                                </button>
+                            {isSuperuserUser && (
+                              <td className="py-4 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button
+                                    onClick={() => handleOpenStatusModal(user)}
+                                    className="p-1.5 rounded-lg border text-xs bg-slate-850 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500 hover:text-slate-950 transition-all"
+                                    title="Edit User Profile"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
 
-                                <button
-                                  onClick={() => handleDeleteClick(user)}
-                                  className="p-1.5 rounded-lg bg-slate-850 hover:bg-red-500/20 text-slate-450 hover:text-red-400 border border-slate-700/50 hover:border-red-500/30 transition-all"
-                                  title="Delete Administrator"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            </td>
+                                  <button
+                                    onClick={() => handleDeleteClick(user)}
+                                    className="p-1.5 rounded-lg bg-slate-850 hover:bg-red-500/20 text-slate-450 hover:text-red-400 border border-slate-700/50 hover:border-red-500/30 transition-all"
+                                    title="Delete Administrator"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
                           </tr>
                         );
                       })
@@ -846,304 +530,12 @@ export default function AdminUsersManagementPage() {
 
         {/* VIEW CONTAINER 2: REAL GROUP CONFIG */}
         {activeTab === 'groups' && (
-          <div className="space-y-8">
-            <header className="overflow-hidden rounded-[28px] border border-white/10 bg-[#111b3d] shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-              <div className="grid gap-4 p-8 md:grid-cols-3 bg-black/20 text-white">
-                <StatCard
-                  label="Total Groups"
-                  value={stats.total}
-                  tone="border-white/5 bg-white/5"
-                  icon={Sparkles}
-                />
-                <StatCard
-                  label="Enabled"
-                  value={stats.enabled}
-                  tone="border-emerald-500/20 bg-emerald-500/5"
-                  icon={ShieldCheck}
-                />
-                <StatCard
-                  label="Default"
-                  value={stats.defaultGroup || "None"}
-                  tone="border-yellow-500/20 bg-yellow-500/5"
-                />
-              </div>
-            </header>
-
-            <section className="rounded-[2.5rem] border p-8 shadow-2xl border-white/5 bg-slate-900/40">
-              <div
-                className="flex cursor-pointer flex-col gap-4 md:flex-row md:items-start md:justify-between group"
-                onClick={() => setShowActiveConfig((prev) => !prev)}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="rounded-2xl bg-yellow-500/10 p-4 text-yellow-500 ring-1 ring-yellow-500/20 transition-transform group-hover:scale-110">
-                    <Info size={24} />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-white">Active Configuration</h2>
-                    <p className="mt-1 text-sm font-medium opacity-60">
-                      Real-time snapshot of the primary group defaults.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 text-white">
-                  <span className={`rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border transition-all ${
-                    showActiveConfig
-                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                      : "bg-white/5 text-white/40 border-white/5"
-                  }`}>
-                    {showActiveConfig ? "Expanded" : "Collapsed"}
-                  </span>
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
-                    Updated: {lastUpdated || "N/A"}
-                  </span>
-                </div>
-              </div>
-
-              {showActiveConfig && (
-                <div className="mt-8 space-y-6 animate-in slide-in-from-top-4 duration-300">
-                  <div className="grid gap-4 md:grid-cols-1">
-                    <div className="rounded-2xl border p-6 border-white/5 bg-black/40">
-                      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Current Real Default</div>
-                      <div className="mt-2 text-3xl font-black tracking-tighter text-white">{selectedDefault || "Not assigned"}</div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border p-6 border-white/5 bg-black/20">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-4 px-1">Available Groups</div>
-                    <div className="flex flex-wrap gap-2">
-                      {groups.map((g) => (
-                        <Badge
-                          key={g.id}
-                          label={g.id + (g.alias ? ` (${g.alias})` : "")}
-                          alias={g.alias}
-                          isActive={g.id === selectedDefault || g.id === selectedDemoDefault}
-                          isDemo={g.type === "demo"}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
-
-            <GroupConfigurationGuideToggle />
-
-            <section className="rounded-[2.5rem] border p-8 shadow-2xl border-white/5 bg-slate-900/40 text-white">
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b pb-8 mb-8 border-white/5">
-                <div>
-                  <h2 className="flex items-center gap-4 text-2xl font-black uppercase tracking-tighter text-white">
-                    <span className="rounded-2xl bg-yellow-500/10 p-4 text-yellow-500 ring-1 ring-yellow-500/20">
-                      <ShieldCheck size={24} />
-                    </span>
-                    Group Options
-                  </h2>
-                  <p className="mt-2 text-sm font-medium opacity-60">
-                    Manage group visibility, alias overrides, and primary environment defaults.
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <div className="relative group">
-                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500 transition-transform group-focus-within:scale-110" />
-                    <input
-                      type="text"
-                      value={groupSearch}
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                      placeholder="Search groups..."
-                      className="w-64 rounded-xl border pl-12 pr-5 py-3 text-sm font-bold outline-none transition-all border-white/5 bg-black/40 text-white placeholder:text-white/20 focus:border-yellow-500/50"
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={syncing}
-                    className="inline-flex items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
-                    onClick={handleSyncFromMT5}
-                  >
-                    {syncing ? "Syncing..." : "Sync from MT5"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-3 rounded-xl bg-yellow-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-yellow-600/20 transition-all hover:bg-yellow-500 active:scale-95"
-                    onClick={() => handleSaveGroupConfig(groups as any)}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-
-              {groupLoading ? (
-                <div className="p-20 text-center">
-                  <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-405">Loading MT5 group parameters...</p>
-                </div>
-              ) : (
-                <div className="max-h-[68vh] overflow-y-auto pr-2">
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {filteredGroups.map((group) => (
-                      <div key={group.id} className="rounded-[2rem] border p-6 transition-all duration-300 shadow-xl bg-slate-900/40 border-white/5 hover:border-yellow-500/30">
-                        <div className="mb-4 rounded-2xl p-4 border flex items-center justify-between gap-2 bg-black/40 border-white/5">
-                          <div className="text-base font-black tracking-tight text-white">{group.id}</div>
-                          <span className="rounded-full bg-yellow-500 px-2.5 py-1 text-[9px] font-black tracking-widest text-black uppercase">MT5</span>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2 mb-6">
-                          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
-                            <input
-                              type="checkbox"
-                              checked={group.enabled}
-                              onChange={() => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, enabled: !g.enabled } : g))}
-                              className="h-4 w-4 cursor-pointer rounded accent-yellow-500"
-                            />
-                            Enabled
-                          </label>
-
-                          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
-                            <input
-                              type="radio"
-                              checked={selectedDefault === group.id}
-                              onChange={() => setSelectedDefault(group.id)}
-                              className="h-4 w-4 cursor-pointer accent-yellow-500"
-                            />
-                            Default
-                          </label>
-
-                          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
-                            <input
-                              type="radio"
-                              checked={selectedDemoDefault === group.id}
-                              onChange={() => setSelectedDemoDefault(group.id)}
-                              className="h-4 w-4 cursor-pointer accent-sky-500"
-                            />
-                            Demo
-                          </label>
-                        </div>
-
-                        <input
-                          type="text"
-                          value={group.alias}
-                          placeholder="Alias"
-                          onChange={(e) => setGroups(prev => prev.map(g => g.id === group.id ? { ...g, alias: e.target.value } : g))}
-                          className="w-full rounded-2xl border px-5 py-3 text-sm font-bold outline-none transition-all border-white/5 bg-black/40 text-white focus:border-yellow-500/50"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          </div>
+          <GroupConfiguration />
         )}
 
         {/* VIEW CONTAINER 3: DEMO GROUP CONFIG */}
         {activeTab === 'groups-demo' && (
-          <div className="space-y-8 text-white">
-            <section className="rounded-[2.5rem] border p-8 shadow-2xl border-white/5 bg-slate-900/40">
-              <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b pb-8 mb-8 border-white/5">
-                <div>
-                  <h2 className="flex items-center gap-4 text-2xl font-black uppercase tracking-tighter text-white">
-                    <span className="rounded-2xl bg-sky-500/10 p-4 text-sky-400 ring-1 ring-sky-500/20">
-                      <Sparkles size={24} />
-                    </span>
-                    Demo Group Options
-                  </h2>
-                  <p className="mt-2 text-sm font-medium opacity-60">
-                    Manage group visibility, alias overrides, and demo environment defaults.
-                  </p>
-                </div>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                  <button
-                    type="button"
-                    disabled={syncing}
-                    className="inline-flex items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
-                    onClick={async () => {
-                      setSyncing(true);
-                      try {
-                        const res = await fetch("/api/admin/groups/sync?server_type=false", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                        });
-                        const data = await res.json();
-                        if (res.ok && data.status === "ok") {
-                          alert("Demo groups synchronized directly from Demo MT5 successfully!");
-                          await fetchDemoGroupsData();
-                        } else {
-                          alert(data.message || "Failed to synchronize demo groups from MT5");
-                        }
-                      } catch (err: any) {
-                        alert("Error syncing demo groups: " + err.message);
-                      } finally {
-                        setSyncing(false);
-                      }
-                    }}
-                  >
-                    {syncing ? "Syncing..." : "Sync from Demo MT5"}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center gap-3 rounded-xl bg-yellow-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-yellow-600/20 transition-all hover:bg-yellow-500 active:scale-95"
-                    onClick={handleSaveDemoGroupConfig}
-                  >
-                    <Save size={16} />
-                    Save Changes
-                  </button>
-                </div>
-              </div>
-
-              {demoLoading ? (
-                <div className="p-20 text-center">
-                  <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Loading demo configs...</p>
-                </div>
-              ) : (
-                <div className="max-h-[68vh] overflow-y-auto pr-2">
-                  <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {demoGroups.map((group) => (
-                      <div key={group.id} className="rounded-[2rem] border p-6 transition-all duration-300 shadow-xl bg-slate-900/40 border-white/5 hover:border-yellow-500/30">
-                        <div className="mb-4 rounded-2xl p-4 border flex items-center justify-between gap-2 bg-black/40 border-white/5">
-                          <div className="text-base font-black tracking-tight text-white">{group.id}</div>
-                          <span className="rounded-full bg-sky-500 px-2.5 py-1 text-[9px] font-black tracking-widest text-white uppercase">MT5</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2 mb-6">
-                          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
-                            <input
-                              type="checkbox"
-                              checked={group.enabled}
-                              onChange={() => setDemoGroups(prev => prev.map(g => g.id === group.id ? { ...g, enabled: !g.enabled } : g))}
-                              className="h-4 w-4 cursor-pointer rounded accent-yellow-500"
-                            />
-                            Enabled
-                          </label>
-
-                          <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
-                            <input
-                              type="radio"
-                              checked={demoSelectedDefault === group.id}
-                              onChange={() => setDemoSelectedDefault(group.id)}
-                              className="h-4 w-4 cursor-pointer accent-sky-500"
-                            />
-                            Demo Default
-                          </label>
-                        </div>
-
-                        <input
-                          type="text"
-                          value={group.alias}
-                          placeholder="Alias"
-                          onChange={(e) => setDemoGroups(prev => prev.map(g => g.id === group.id ? { ...g, alias: e.target.value } : g))}
-                          className="w-full rounded-2xl border px-5 py-3 text-sm font-bold outline-none transition-all border-white/5 bg-black/40 text-white focus:border-yellow-500/50"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
-          </div>
+          <GroupConfigurationDemo />
         )}
       </div>
 
@@ -1198,6 +590,19 @@ export default function AdminUsersManagementPage() {
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
                 />
               </div>
+
+              {isSuperuserUser && (
+                <div>
+                  <label className="block text-slate-400 font-semibold mb-1">Password</label>
+                  <input 
+                    type="password" 
+                    placeholder="Master Password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Phone Number</label>
@@ -1280,14 +685,19 @@ export default function AdminUsersManagementPage() {
             <p className="text-slate-400 mb-4">Select the new administrative access role for {selectedUserRow?.name}.</p>
             
             <div className="space-y-3 mb-6">
-              <select
-                value={editRoleValue}
-                onChange={(e) => setEditRoleValue(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-              >
-                <option value="admin">Admin</option>
-                <option value="manager">Manager</option>
-              </select>
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1 font-mono uppercase tracking-widest text-[9px]">Role</label>
+                <select
+                  value={editRoleValue}
+                  onChange={(e) => setEditRoleValue(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
+                >
+                  <option value="superadmin">Super Admin</option>
+                  <option value="admin">Admin</option>
+                  <option value="viewer">Viewer</option>
+                </select>
+              </div>
+
             </div>
 
             <div className="flex justify-end gap-3">

@@ -15,6 +15,7 @@ from adminPanel.models import (
     Manager,
     PendingRequest,
 )
+from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import hash_client_password
 
 # ── GET views ──────────────────────────────────────────────────────────────────
@@ -33,6 +34,7 @@ async def list_admin_system_users(request):
             "status": user.status,
             "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
             "avatar": user.avatar,
+            "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else None,
         }
         for user in admin_users
     ]
@@ -279,6 +281,7 @@ async def create_client_user(request):
 
 
 @csrf_exempt
+@permission_required(IsAdmin)
 @require_http_methods(["DELETE"])
 async def delete_user(request, user_id):
     """Delete a user from the system."""
@@ -501,4 +504,39 @@ async def save_demo_group_configuration(request):
         return JsonResponse({"success": True, "demo_default_group": demo_default_id})
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
+
+
+@csrf_exempt
+@require_http_methods(["PUT", "POST"])
+async def update_admin_user(request, user_id):
+    """Update an administrator's profile or password."""
+    try:
+        body = json.loads(request.body)
+        
+        clean_id = user_id
+        if "ADM-" in user_id or "USR-" in user_id:
+            try:
+                clean_id = int(user_id.split("-")[-1])
+            except ValueError:
+                pass
+                
+        user = await ClientUser.filter(id=clean_id).first()
+        if not user:
+            return JsonResponse({"status": "error", "message": "Administrator not found"}, status=404)
+            
+        if "role" in body:
+            user.role = body["role"]
+        if "name" in body:
+            user.name = body["name"]
+        if "phone" in body:
+            user.phone = body["phone"]
+        if "address" in body:
+            user.address = body["address"]
+        if "password" in body and body["password"]:
+            user.password_hash = hash_client_password(body["password"])
+            
+        await user.save()
+        return JsonResponse({"status": "ok", "message": "Administrator updated successfully"})
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
