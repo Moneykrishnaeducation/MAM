@@ -25,7 +25,6 @@ const NAVY = '#0B1F4B';
 const TEXT_SOFT = '#8A9BC0';
 
 type ClientRequestContext = {
-  token?: string;
   userId?: string;
 };
 
@@ -105,7 +104,6 @@ function getClientRequestContext(): ClientRequestContext {
   const searchParams = new URLSearchParams(window.location.search);
 
   return {
-    token: localStorage.getItem('token') || localStorage.getItem('auth_token') || undefined,
     userId:
       searchParams.get('user_id') ||
       localStorage.getItem('client_user_id') ||
@@ -135,41 +133,25 @@ async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {
     return null;
   }
 
-  const { token, userId } = getClientRequestContext();
+  const { userId } = getClientRequestContext();
   const endpointWithUserId = appendUserId(endpoint, userId);
 
-  const request = async (includeToken: boolean) =>
+  const request = async () =>
     fetch(endpointWithUserId, {
       ...options,
+      credentials: 'include',
       headers: (() => {
         const headers = new Headers(options.headers || {});
         headers.set('Accept', 'application/json');
         if (options.body && !headers.has('Content-Type')) {
           headers.set('Content-Type', 'application/json');
         }
-        if (includeToken && token) {
-          headers.set('Authorization', `Bearer ${token}`);
-        }
         return headers;
       })(),
     });
 
   try {
-    let response = await request(Boolean(token));
-
-    if (!response.ok && token && userId) {
-      response = await fetch(appendUserId(endpoint, userId), {
-        ...options,
-        headers: (() => {
-          const headers = new Headers(options.headers || {});
-          headers.set('Accept', 'application/json');
-          if (options.body && !headers.has('Content-Type')) {
-            headers.set('Content-Type', 'application/json');
-          }
-          return headers;
-        })(),
-      });
-    }
+    const response = await request();
 
     if (!response.ok) {
       return null;

@@ -12,8 +12,12 @@ from django.http import JsonResponse
 from adminPanel.models import ClientProfile
 
 CLIENT_LOGIN_KEY = "client-panel-login-key"
+CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
 CLIENT_LOGIN_MAX_AGE = 60 * 60 * 24 * 7
 CLIENT_PASSWORD_HASH_ITERATIONS = 120000
+ADMIN_LOGIN_KEY = "admin-panel-login-key"
+ADMIN_LOGIN_COOKIE_NAME = "admin_auth_token"
+ADMIN_LOGIN_MAX_AGE = 60 * 60 * 24 * 7
 
 
 def _error(message: str, status: int = 400, **extra):
@@ -48,8 +52,24 @@ def _extract_bearer_token(request) -> str | None:
     return token.strip()
 
 
+def get_client_request_token(request) -> str | None:
+    """Read the client session token from the HttpOnly cookie or Authorization header."""
+    token = getattr(request, "COOKIES", {}).get(CLIENT_LOGIN_COOKIE_NAME)
+    if token:
+        return token
+    return _extract_bearer_token(request)
+
+
+def get_admin_request_token(request) -> str | None:
+    """Read the admin session token from the HttpOnly cookie or Authorization header."""
+    token = getattr(request, "COOKIES", {}).get(ADMIN_LOGIN_COOKIE_NAME)
+    if token:
+        return token
+    return _extract_bearer_token(request)
+
+
 async def _resolve_client_user_id(request) -> int | None:
-    token = _extract_bearer_token(request)
+    token = get_client_request_token(request)
     if token:
         payload = load_client_login_token(token)
         if payload is None:
@@ -69,7 +89,7 @@ async def _resolve_client_user_id(request) -> int | None:
 async def _get_client_profile_for_request(request):
     user_id = await _resolve_client_user_id(request)
     if user_id is None:
-        return None, _error("user_id query parameter or Bearer token is required", status=400)
+        return None, _error("user_id query parameter or session cookie is required", status=400)
 
     profile = await ClientProfile.filter(user_id=user_id).first()
     if profile is None:
@@ -79,15 +99,34 @@ async def _get_client_profile_for_request(request):
 
 def create_client_login_token(user_id: int, email: str) -> str:
     """Create a short-lived signed token for a client session."""
-    payload = {
-        "user_id": user_id,
-        "email": email,
-        "ts": int(time.time()),
-    }
+    return _create_signed_login_token(
+        key=CLIENT_LOGIN_KEY,
+        payload={
+            "user_id": user_id,
+            "email": email,
+            "ts": int(time.time()),
+        },
+    )
+
+
+def create_admin_login_token(user_id: int, email: str, role: str) -> str:
+    """Create a short-lived signed token for an admin session."""
+    return _create_signed_login_token(
+        key=ADMIN_LOGIN_KEY,
+        payload={
+            "user_id": user_id,
+            "email": email,
+            "role": role,
+            "ts": int(time.time()),
+        },
+    )
+
+
+def _create_signed_login_token(*, key: str, payload: dict) -> str:
     payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
     payload_b64 = base64.urlsafe_b64encode(payload_json).rstrip(b"=").decode("ascii")
     signature = hmac.new(
-        CLIENT_LOGIN_KEY.encode("utf-8"),
+        key.encode("utf-8"),
         payload_b64.encode("ascii"),
         hashlib.sha256,
     ).hexdigest()
@@ -139,13 +178,22 @@ def verify_client_password(password: str, encoded: str | None) -> bool:
 
 def load_client_login_token(token: str) -> dict | None:
     """Validate a client login token and return its payload if valid."""
+    return _load_signed_login_token(token=token, key=CLIENT_LOGIN_KEY)
+
+
+def load_admin_login_token(token: str) -> dict | None:
+    """Validate an admin login token and return its payload if valid."""
+    return _load_signed_login_token(token=token, key=ADMIN_LOGIN_KEY)
+
+
+def _load_signed_login_token(token: str, key: str) -> dict | None:
     try:
         payload_b64, signature = token.split(".", 1)
     except ValueError:
         return None
 
     expected_signature = hmac.new(
-        CLIENT_LOGIN_KEY.encode("utf-8"),
+        key.encode("utf-8"),
         payload_b64.encode("ascii"),
         hashlib.sha256,
     ).hexdigest()

@@ -73,13 +73,6 @@ export class ServerProxy {
     this.interceptors.error.push(fn);
   }
 
-  getAuthToken(): string | null {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("token") || localStorage.getItem("auth_token") || null;
-    }
-    return (typeof process !== "undefined" && process.env && process.env.AUTH_TOKEN) || null;
-  }
-
   async request<T = any>(endpoint: string, options: ProxyRequestOptions = {}): Promise<ProxyResponse<T>> {
     const {
       method = "GET",
@@ -114,11 +107,6 @@ export class ServerProxy {
       ...headers,
     };
 
-    const token = this.getAuthToken();
-    if (token && !reqHeaders.Authorization && !reqHeaders.authorization) {
-      reqHeaders.Authorization = `Bearer ${token}`;
-    }
-
     let reqBody = body;
     if (
       body &&
@@ -133,6 +121,7 @@ export class ServerProxy {
       method: method.toUpperCase(),
       headers: reqHeaders,
       body: reqBody,
+      credentials: "include",
       ...customConfig,
     };
 

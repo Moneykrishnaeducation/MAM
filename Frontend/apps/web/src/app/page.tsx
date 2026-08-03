@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Mail,
   Lock,
@@ -351,6 +352,7 @@ function LoginCard({
   onForgotClick: () => void;
   onSecurityClick: () => void;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"password" | "demo">("password");
   const [showPw, setShowPw] = useState(false);
   const [email, setEmail] = useState("");
@@ -360,7 +362,7 @@ function LoginCard({
   const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast.error("Required fields missing", {
@@ -370,16 +372,49 @@ function LoginCard({
     }
 
     setSubmitting(true);
-    toast.info("Authenticating with VTIndex terminal...", {
-      description: "Verifying HSM certificates & session key...",
-    });
+    try {
+      const response = await fetch("/api/login", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-    setTimeout(() => {
-      setSubmitting(false);
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Login failed");
+      }
+
+      const role = String(data?.role || data?.client?.role || data?.admin?.role || "").toLowerCase();
+      const isAdmin = role.includes("admin");
+      const userId = data?.admin?.id ?? data?.client?.id ?? data?.profile?.user_id;
+      if (userId !== undefined && userId !== null) {
+        if (isAdmin) {
+          localStorage.setItem("admin_user_id", String(userId));
+        } else {
+          localStorage.setItem("client_user_id", String(userId));
+        }
+      }
+
       toast.success("Access Granted!", {
         description: `Welcome back to VTIndex. Initializing session for ${email}`,
       });
-    }, 1200);
+
+      router.push(isAdmin ? "/admin/dashboard" : "/client/dashboard");
+    } catch (error: any) {
+      toast.error("Login failed", {
+        description: error?.message || "Please check your credentials and try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSSO = (provider: string) => {

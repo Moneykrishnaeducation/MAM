@@ -9,7 +9,12 @@ from typing import Any
 
 from django.http import JsonResponse
 
-from clientPanel.view.common import load_client_login_token
+from clientPanel.view.common import (
+    get_admin_request_token,
+    get_client_request_token,
+    load_admin_login_token,
+    load_client_login_token,
+)
 
 
 def _normalize_role(value: Any) -> str | None:
@@ -21,6 +26,11 @@ def _normalize_role(value: Any) -> str | None:
     return role.lower()
 
 
+def _is_admin_role(value: Any) -> bool:
+    role = _normalize_role(value)
+    return bool(role) and "admin" in role
+
+
 def _extract_role_from_request(request) -> str | None:
     for attr in ("auth_user", "client_user", "admin_user", "user"):
         user = getattr(request, attr, None)
@@ -28,21 +38,27 @@ def _extract_role_from_request(request) -> str | None:
             continue
         if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
             return "admin"
-        role = _normalize_role(getattr(user, "role", None))
+        role_value = getattr(user, "role", None)
+        if _is_admin_role(role_value):
+            return "admin"
+        role = _normalize_role(role_value)
         if role:
             return role
         if getattr(user, "is_authenticated", False):
             if attr == "client_user":
                 return "client"
 
-    headers = getattr(request, "headers", {}) or {}
-    authorization = headers.get("Authorization") or headers.get("authorization")
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() == "bearer" and token.strip():
-            payload = load_client_login_token(token.strip())
-            if payload is not None:
-                return "client"
+    admin_token = get_admin_request_token(request)
+    if admin_token:
+        payload = load_admin_login_token(admin_token)
+        if payload is not None:
+            return "admin"
+
+    token = get_client_request_token(request)
+    if token:
+        payload = load_client_login_token(token)
+        if payload is not None:
+            return "client"
 
     return None
 

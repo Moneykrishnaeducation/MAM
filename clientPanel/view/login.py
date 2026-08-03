@@ -8,8 +8,13 @@ from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientProfile, ClientUser
 from clientPanel.view.common import (
+    ADMIN_LOGIN_COOKIE_NAME,
+    ADMIN_LOGIN_MAX_AGE,
+    CLIENT_LOGIN_COOKIE_NAME,
+    CLIENT_LOGIN_MAX_AGE,
     _error,
     _serialize_client_profile,
+    create_admin_login_token,
     create_client_login_token,
     verify_client_password,
 )
@@ -32,10 +37,33 @@ def _serialize_client_user(user: ClientUser, profile: ClientProfile | None = Non
     }
 
 
+def _serialize_admin_user(user: ClientUser) -> dict:
+    return {
+        "id": user.id,
+        "name": user.name,
+        "email": user.email,
+        "role": user.role,
+        "department": user.department,
+        "permissions": user.permissions or [],
+        "status": user.status,
+        "verified": user.verified,
+        "country": user.country,
+        "avatar": user.avatar,
+        "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+    }
+
+
+def _request_is_secure(request) -> bool:
+    is_secure = getattr(request, "is_secure", None)
+    if callable(is_secure):
+        return bool(is_secure())
+    return False
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 async def login_client(request):
-    """Authenticate a client with email and access code."""
+    """Authenticate a client or admin with email and password."""
     try:
         body = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, ValueError):
@@ -56,13 +84,39 @@ async def login_client(request):
     user = await ClientUser.filter(email=email).first()
     if user is None:
         return _error("Invalid credentials", status=401)
-    if str(user.role or "").strip().lower() == "admin":
-        return _error("Invalid credentials", status=401)
 
+    role_value = str(user.role or "").strip().lower()
+    is_admin = "admin" in role_value
     password_login = bool(user.password_hash) and verify_client_password(access_code, user.password_hash)
     access_code_login = bool(user.user_code) and user.user_code == access_code
-    if not password_login and not access_code_login:
+    if is_admin:
+        if not password_login:
+            return _error("Invalid credentials", status=401)
+    elif not password_login and not access_code_login:
         return _error("Invalid credentials", status=401)
+
+    if is_admin:
+        token = create_admin_login_token(user.id, user.email, user.role)
+        response = JsonResponse(
+            {
+                "status": "ok",
+                "message": "Admin login successful",
+                "token_type": "Bearer",
+                "token": token,
+                "role": "Admin",
+                "admin": _serialize_admin_user(user),
+            }
+        )
+        response.set_cookie(
+            ADMIN_LOGIN_COOKIE_NAME,
+            token,
+            max_age=ADMIN_LOGIN_MAX_AGE,
+            httponly=True,
+            secure=_request_is_secure(request),
+            samesite="Lax",
+            path="/",
+        )
+        return response
 
     profile = await ClientProfile.filter(user_id=user.id).first()
     if profile is None:
@@ -70,13 +124,24 @@ async def login_client(request):
 
     token = create_client_login_token(user.id, user.email)
 
-    return JsonResponse(
+    response = JsonResponse(
         {
             "status": "ok",
             "message": "Client login successful",
-            "token": token,
             "token_type": "Bearer",
+            "token": token,
+            "role": "Client",
             "client": _serialize_client_user(user, profile),
             "profile": _serialize_client_profile(profile),
         }
     )
+    response.set_cookie(
+        CLIENT_LOGIN_COOKIE_NAME,
+        token,
+        max_age=CLIENT_LOGIN_MAX_AGE,
+        httponly=True,
+        secure=_request_is_secure(request),
+        samesite="Lax",
+        path="/",
+    )
+    return response

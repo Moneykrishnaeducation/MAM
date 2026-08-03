@@ -61,6 +61,7 @@ AI assistants should suggest updates to this file when they notice relevant chan
 
 Recent additions:
 
+- `static/frontend/` is the drop-in location for the exported Next.js frontend build. The backend reads from that directory only.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.
 - `adminPanel/view/pending_requests.py` provides the admin-only request-tab APIs under `/api/admin/requests/...`.
 - `adminPanel/view/client_profile.py` provides the admin-only client profile update API under `/api/admin/users/<user_id>/profile`.

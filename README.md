@@ -49,6 +49,8 @@ MAM is a high-performance Multi-Account Management platform powered by Django, U
    uv run python manage.py collectstatic --noinput
    ```
 
+   The backend serves the exported site from `static/frontend/`.
+
 4. **Start the Application Server**:
    ```bash
    uv run python -m backendPanel.main

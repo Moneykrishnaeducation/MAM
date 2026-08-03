@@ -7,6 +7,8 @@ from typing import Any
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from backendPanel.static_frontend import get_frontend_static_dirs
+
 # Base directory relative to project root
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,9 +43,8 @@ class Settings(BaseSettings):
         default_factory=lambda: [
             d
             for d in [
-                BASE_DIR / "static",
-                BASE_DIR / "Frontend" / "apps" / "web" / "out",
                 BASE_DIR / "Frontend" / "apps" / "web" / "public",
+                *get_frontend_static_dirs(),
             ]
             if d.exists()
         ],

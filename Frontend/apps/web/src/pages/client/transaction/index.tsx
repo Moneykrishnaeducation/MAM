@@ -146,7 +146,7 @@ const createEmptyTransactionSummary = (): TransactionSummary => ({
   totalVolume: 0,
 });
 
-const getClientRequestContext = (): { token?: string; userId?: string } => {
+const getClientRequestContext = (): { userId?: string } => {
   if (typeof window === 'undefined') {
     return {};
   }
@@ -154,7 +154,6 @@ const getClientRequestContext = (): { token?: string; userId?: string } => {
   const searchParams = new URLSearchParams(window.location.search);
 
   return {
-    token: localStorage.getItem('token') || localStorage.getItem('auth_token') || undefined,
     userId:
       searchParams.get('user_id') ||
       localStorage.getItem('client_user_id') ||
@@ -182,27 +181,18 @@ const fetchTransactionsForTab = async (tab: TransactionTabId): Promise<Transacti
     return null;
   }
 
-  const { token } = getClientRequestContext();
   const endpoint = buildTransactionsEndpoint(tab);
 
-  const request = async (includeToken: boolean) =>
+  const request = async () =>
     fetch(endpoint, {
+      credentials: 'include',
       headers: {
         Accept: 'application/json',
-        ...(includeToken && token ? { Authorization: `Bearer ${token}` } : {}),
       },
     });
 
   try {
-    let response = await request(Boolean(token));
-
-    if (!response.ok && token) {
-      response = await fetch(endpoint, {
-        headers: {
-          Accept: 'application/json',
-        },
-      });
-    }
+    const response = await request();
 
     if (!response.ok) {
       return null;

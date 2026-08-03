@@ -7,14 +7,19 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
 from django.views.static import serve
 
-from backendPanel.settings import BASE_DIR, get_settings
-from clientPanel.view.login import login_client
 from adminPanel.views import (
     get_available_groups,
     get_current_group_config,
+    save_demo_group_configuration,
     save_group_configuration,
-    save_demo_group_configuration
 )
+from backendPanel.settings import get_settings
+from backendPanel.static_frontend import (
+    STATIC_FRONTEND_DIR,
+    get_frontend_static_dirs,
+    iter_frontend_candidates,
+)
+from clientPanel.view.login import login_client
 
 
 def health(request):
@@ -28,26 +33,14 @@ def api_status(request):
 
 
 def serve_frontend_page(request, route=""):
-    """Serve exported static HTML frontend pages or fallback to SPA index.html."""
+    """Serve exported static HTML frontend pages from static/frontend."""
     _app_settings = get_settings()
     search_dirs = [
         *_app_settings.staticfiles_dirs,
         _app_settings.static_root,
-        BASE_DIR / "Frontend" / "apps" / "web" / "out",
+        *get_frontend_static_dirs(),
     ]
-
-    clean_route = route.strip("/")
-    candidates = []
-    if clean_route:
-        candidates.extend([
-            f"{clean_route}.html",
-            f"{clean_route}/index.html",
-            clean_route,
-        ])
-    else:
-        candidates.append("index.html")
-
-    candidates.append("index.html")
+    candidates = iter_frontend_candidates(route)
 
     for d in search_dirs:
         base_path = Path(d)
@@ -65,7 +58,7 @@ def serve_next_data(request, path=""):
     search_dirs = [
         *_app_settings.staticfiles_dirs,
         _app_settings.static_root,
-        BASE_DIR / "Frontend" / "apps" / "web" / "out",
+        *get_frontend_static_dirs(),
     ]
     for d in search_dirs:
         target_path = Path(d) / "_next" / "data" / path
@@ -83,7 +76,7 @@ def serve_next_static(request, path=""):
     _app_settings = get_settings()
     search_dirs = [
         Path(settings.STATIC_ROOT) / "_next",
-        BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next",
+        *(directory / "_next" for directory in get_frontend_static_dirs()),
         *_app_settings.staticfiles_dirs,
     ]
     for d in search_dirs:
@@ -104,7 +97,7 @@ def serve_next_static(request, path=""):
         document_root=str(
             Path(settings.STATIC_ROOT) / "_next"
             if (Path(settings.STATIC_ROOT) / "_next").exists()
-            else BASE_DIR / "Frontend" / "apps" / "web" / "out" / "_next"
+            else (STATIC_FRONTEND_DIR / "_next")
         ),
     )
 

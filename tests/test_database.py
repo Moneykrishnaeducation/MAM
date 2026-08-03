@@ -36,7 +36,7 @@ from adminPanel.view.pending_requests import (
 )
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
-from clientPanel.view.common import create_client_login_token
+from clientPanel.view.common import create_client_login_token, hash_client_password
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.login import login_client
@@ -690,6 +690,58 @@ class TestClientPanelModels:
         assert profile_response.status_code == 200
         assert profile_payload["status"] == "ok"
         assert profile_payload["profile"]["email"] == "alex.login@example.com"
+
+    async def test_admin_login_and_dashboard_token_lookup(self):
+        """Test admin login response and bearer-token access to the admin dashboard."""
+        admin_user = await ClientUser.create(
+            name="Root Admin",
+            email="root.admin@example.com",
+            password_hash=hash_client_password("Admin@2026!"),
+            role="Admin",
+            department="Operations",
+            permissions=["User Approvals", "View Reports"],
+            status="Active",
+            verified=True,
+        )
+
+        login_request = type(
+            "Request",
+            (object,),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {"email": "root.admin@example.com", "password": "Admin@2026!"}
+                ).encode(),
+            },
+        )()
+
+        login_response = await login_client(login_request)
+        login_payload = json.loads(login_response.content)
+
+        assert login_response.status_code == 200
+        assert login_payload["status"] == "ok"
+        assert login_payload["role"] == "Admin"
+        assert login_payload["admin"]["id"] == admin_user.id
+
+        dashboard_request = type(
+            "Request",
+            (object,),
+            {
+                "method": "GET",
+                "headers": {"Authorization": f"Bearer {login_payload['token']}"},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        dashboard_response = await get_admin_dashboard(dashboard_request)
+        dashboard_payload = json.loads(dashboard_response.content)
+
+        assert dashboard_response.status_code == 200
+        assert dashboard_payload["status"] == "ok"
+        assert "dashboard" in dashboard_payload
 
     async def test_reset_client_password_by_email(self):
         """Test resetting a client password with email."""
