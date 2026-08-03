@@ -133,6 +133,26 @@ export default function ClientAvailablePage() {
     };
   }, [isInvestModalOpen]);
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      if (isInvestModalOpen) {
+        closeInvestModal();
+        return;
+      }
+
+      if (isViewModalOpen) {
+        closeViewModal();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isInvestModalOpen, isViewModalOpen]);
+
 
   // Only show a highlighted card when user is actively searching
   const highlightedManager =
@@ -151,8 +171,14 @@ export default function ClientAvailablePage() {
 
       {/* ── Invest in Manager Modal ── */}
       {isInvestModalOpen && selectedManager && (
-        <div className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="w-full max-w-xl rounded-3xl overflow-hidden border border-blue-900/40 bg-[#0c1636] shadow-2xl my-auto">
+        <div
+          className="fixed inset-0 z-[9999] bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
+          onClick={closeInvestModal}
+        >
+          <div
+            className="w-full max-w-xl rounded-3xl overflow-hidden border border-blue-900/40 bg-[#0c1636] shadow-2xl my-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="flex items-start justify-between gap-4 p-6 border-b border-blue-900/30 bg-[#0f1b42]">
               <div>
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-300 text-[11px] font-bold tracking-wider uppercase mb-3">
@@ -164,8 +190,9 @@ export default function ClientAvailablePage() {
                 </p>
               </div>
               <button
+                type="button"
                 onClick={closeInvestModal}
-                className="p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                className="relative z-20 p-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors cursor-pointer pointer-events-auto"
                 aria-label="Close invest modal"
               >
                 <X size={20} />
@@ -242,13 +269,22 @@ export default function ClientAvailablePage() {
       )}
 
       {isViewModalOpen && viewManager && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
-          <div className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-blue-500/30 bg-[#07152c] shadow-2xl shadow-blue-950/40">
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl"
+          onClick={closeViewModal}
+        >
+          <div
+            className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-blue-500/30 bg-[#07152c] shadow-2xl shadow-blue-950/40"
+            onClick={(event) => event.stopPropagation()}
+          >
             <div className="relative overflow-hidden bg-gradient-to-br from-blue-900 via-slate-900 to-[#0f1c42] px-6 py-5 sm:px-8">
               <button
                 type="button"
-                onClick={closeViewModal}
-                className="absolute right-5 top-5 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  closeViewModal();
+                }}
+                className="absolute right-5 top-5 z-20 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10 cursor-pointer pointer-events-auto"
                 aria-label="Close manager view"
               >
                 <X size={18} />
@@ -285,18 +321,19 @@ export default function ClientAvailablePage() {
                 ))}
               </div>
 
-              <div className="rounded-[28px] border border-blue-500/10 bg-gradient-to-br from-blue-950/80 via-blue-900/70 to-slate-950/80 p-6 shadow-lg shadow-blue-900/30">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-xs font-bold uppercase tracking-[0.2em] text-sky-300/80">Manager Summary</p>
-                    <p className="mt-3 text-sm text-slate-300 leading-relaxed">
-                      This manager offers a strong blue-horizon strategy with stable balance and equity performance. Use the Invest action to start funding this manager directly.
-                    </p>
-                  </div>
-                  <div className="rounded-3xl bg-blue-500/10 px-4 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
-                    View Mode
-                  </div>
-                </div>
+              <div className="flex justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!viewManager) return;
+                    const managerToInvest = viewManager;
+                    closeViewModal();
+                    openInvestModal(managerToInvest);
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-xs font-semibold uppercase tracking-[0.2em] text-blue-100 hover:bg-blue-500/20 transition-colors"
+                >
+                  <MessageSquare size={14} /> Invest Now
+                </button>
               </div>
             </div>
           </div>
@@ -492,7 +529,6 @@ export default function ClientAvailablePage() {
                   </div>
 
                   {/* Action buttons */}
-                  
                 </div>
               </div>
             </div>

@@ -85,6 +85,12 @@ export default function ClientManagerPage() {
     setCurrentPage(1);
   };
 
+  const closeActiveManagerCard = () => {
+    setSelectedManager(null);
+    setQuery('');
+    setCurrentPage(1);
+  };
+
   // Only show a highlighted card when user is actively searching
   const highlightedManager =
     hasQuery && filteredManagers.length > 0 ? filteredManagers[0] : null;
@@ -152,8 +158,9 @@ export default function ClientManagerPage() {
               <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
               <button
                 type="button"
-                onClick={() => setSelectedManager(null)}
-                className="absolute top-4 right-4 rounded-full border border-blue-500/30 bg-blue-900/70 p-2 text-blue-100 hover:bg-blue-800 transition"
+                onClick={closeActiveManagerCard}
+                aria-label="Close manager card"
+                className="absolute top-4 right-4 z-20 cursor-pointer pointer-events-auto rounded-full border border-blue-500/30 bg-blue-900/70 p-2 text-blue-100 transition hover:bg-blue-800"
               >
                 <X size={18} />
               </button>

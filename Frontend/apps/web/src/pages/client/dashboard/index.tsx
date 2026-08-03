@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
-import { 
+import {
   BookOpen, 
   Clock, 
-  Award, 
   TrendingUp, 
   ChevronRight,
   ArrowUpRight,
@@ -15,7 +14,6 @@ import {
   Info,
   UploadCloud,
   Send,
-  RefreshCw,
   Globe,
 } from 'lucide-react';
 import AccountOpenModal from '../model/accountopen';
@@ -88,6 +86,15 @@ type ClientAccountPayload = {
   leverage: string;
   currency: string;
   status: string;
+};
+
+type ClientInvestmentPayload = {
+  id: number | string;
+  manager?: string | null;
+  manager_name?: string | null;
+  allocated?: number | string | null;
+  allocated_amount?: number | string | null;
+  status?: string | null;
 };
 
 function getClientRequestContext(): ClientRequestContext {
@@ -206,14 +213,102 @@ const formatDashboardTime = (value?: string | null) => {
   });
 };
 
+const formatCurrency = (value?: number | null) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 2,
+  }).format(value ?? 0);
+
+const toNumber = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  if (typeof value === 'string') {
+    const parsed = Number(value.replace(/[^0-9.-]/g, ''));
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
+};
+
 const dashboardCardIcons: Record<
   string,
   React.ComponentType<{ className?: string; size?: number; strokeWidth?: number }>
 > = {
+  manager_account: UserCheck,
+  funds_invested: TrendingUp,
   balance: Banknote,
-  equity: Award,
-  invested: TrendingUp,
-  activity: RefreshCw,
+};
+
+const buildDashboardCards = (
+  dashboardData: ClientDashboardPayload | null,
+  account: ClientAccountPayload | null,
+  investments: ClientInvestmentPayload[] | null,
+): DashboardCardPayload[] => {
+  const dashboardCards = dashboardData?.cards ?? [];
+  const balanceCard = dashboardCards.find((card) => card.key === 'balance') || null;
+  const investedCard = dashboardCards.find((card) => card.key === 'invested') || null;
+  const liveInvestments = investments ?? null;
+  const liveInvestmentRows = Array.isArray(liveInvestments) ? liveInvestments : [];
+  const investmentManagerNames = Array.from(
+    new Set(
+      liveInvestmentRows
+        .map((investment) => String(investment.manager || investment.manager_name || '').trim())
+        .filter(Boolean),
+    ),
+  );
+  const liveInvestmentTotal = liveInvestmentRows.reduce(
+    (sum, investment) => sum + toNumber(investment.allocated ?? investment.allocated_amount),
+    0,
+  );
+  const totalBalance =
+    typeof balanceCard?.raw_value === 'number'
+      ? balanceCard.raw_value
+      : account?.balance ?? 0;
+  const totalInvested =
+    typeof investedCard?.raw_value === 'number'
+      ? investedCard.raw_value
+      : liveInvestmentTotal;
+  const managerName =
+    investmentManagerNames[0] || '-';
+  const managerSubtitle =
+    investmentManagerNames.length > 0
+      ? `${investmentManagerNames.length} linked manager${investmentManagerNames.length === 1 ? '' : 's'}`
+      : undefined;
+  const allocationCount = liveInvestmentRows.length;
+
+  return [
+    {
+      key: 'manager_account',
+      title: 'MAM Manager Account',
+      value: managerName,
+      raw_value: managerName,
+      subtitle: managerSubtitle,
+    },
+    {
+      key: 'funds_invested',
+      title: 'MAM Funds Invested',
+      value: formatCurrency(totalInvested),
+      raw_value: totalInvested,
+      subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
+    },
+    {
+      key: 'balance',
+      title: 'MAM Balance',
+      value: formatCurrency(totalBalance),
+      raw_value: totalBalance,
+      subtitle: balanceCard?.subtitle || (account ? `Account ${account.account_number}` : undefined),
+    },
+    {
+      key: 'available_managers',
+      title: 'Available MAM Managers',
+      value: investmentManagerNames.length > 0 ? `${investmentManagerNames.length}` : '0',    
+      raw_value: investmentManagerNames.length,    
+      subtitle: investmentManagerNames.length > 0 ? `Managers: ${investmentManagerNames.join(', ')}` : undefined,
+    }
+  ];
 };
 
 const StatusOverlay = ({ type, isDarkMode }: { type: 'pending' | 'redirect'; isDarkMode: boolean }) => {
@@ -279,8 +374,8 @@ export default function ClientDashboardPage() {
   const [dashboardData, setDashboardData] = useState<ClientDashboardPayload | null>(null);
   const [clientProfile, setClientProfile] = useState<ClientProfilePayload | null>(null);
   const [clientAccount, setClientAccount] = useState<ClientAccountPayload | null>(null);
+  const [clientInvestments, setClientInvestments] = useState<ClientInvestmentPayload[] | null>(null);
   const [dashboardLoading, setDashboardLoading] = useState(true);
-  const [dashboardError, setDashboardError] = useState<string | null>(null);
   const [cheeseAmount, setCheeseAmount] = useState('');
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
   const [proof, setProof] = useState<File | null>(null);
@@ -293,10 +388,11 @@ export default function ClientDashboardPage() {
       setDashboardLoading(true);
 
       try {
-        const [liveDashboard, liveProfile, liveAccount] = await Promise.all([
+        const [liveDashboard, liveProfile, liveAccount, liveInvestments] = await Promise.all([
           fetchClientDashboard(),
           fetchClientProfile(),
           fetchClientAccount(),
+          fetchClientEndpoint<{ investments?: ClientInvestmentPayload[] }>('/api/client/my-investments'),
         ]);
 
         if (!isMounted) {
@@ -306,13 +402,17 @@ export default function ClientDashboardPage() {
         setDashboardData(liveDashboard ? (liveDashboard as ClientDashboardPayload) : null);
         setClientProfile(liveProfile ? (liveProfile as ClientProfilePayload) : null);
         setClientAccount(liveAccount ? (liveAccount as ClientAccountPayload) : null);
-        setDashboardError(liveDashboard ? null : 'Live dashboard data is unavailable.');
+        setClientInvestments(
+          liveInvestments && Array.isArray(liveInvestments.investments)
+            ? (liveInvestments.investments as ClientInvestmentPayload[])
+            : null,
+        );
       } catch {
         if (isMounted) {
           setDashboardData(null);
           setClientProfile(null);
           setClientAccount(null);
-          setDashboardError('Live dashboard data is unavailable.');
+          setClientInvestments(null);
         }
       } finally {
         if (isMounted) {
@@ -352,10 +452,9 @@ export default function ClientDashboardPage() {
 
   const isDarkMode = false;
 
-  const liveClient = clientProfile || dashboardData?.client || null;
   const depositAccountNumber = clientAccount?.account_number || '';
   const depositAccountCurrency = clientAccount?.currency || 'USD';
-  const dashboardCards = dashboardData?.cards || [];
+  const dashboardCards = buildDashboardCards(dashboardData, clientAccount, clientInvestments);
   const dashboardActivityRows: ActivityRowView[] =
     dashboardData?.recent_activity_logs?.map((log) => ({
       id: log.id,
@@ -397,87 +496,48 @@ export default function ClientDashboardPage() {
             </button>
           </div>
 
-          <div className="mb-6 rounded-3xl border border-blue-800/50 bg-[#091634]/85 p-4 shadow-xl shadow-blue-950/20">
-            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-300">
-                  Live Dashboard Snapshot
-                </p>
-                <p className="mt-1 text-sm text-slate-300">
-                  {dashboardLoading
-                    ? 'Fetching your live client dashboard from Django...'
-                    : dashboardError
-                      ? 'Live dashboard data is unavailable right now.'
-                      : liveClient
-                        ? `Loaded for ${liveClient.full_name}.`
-                        : 'No live client profile is loaded.'}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[11px] font-bold uppercase tracking-[0.18em]">
-                {liveClient ? (
-                  <>
-                    <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-blue-200">
-                      Client: {liveClient.full_name}
-                    </span>
-                    <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-emerald-200">
-                      {liveClient.tier}
-                    </span>
-                    <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-amber-200">
-                      {liveClient.kyc_status}
-                    </span>
-                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-3 py-1 text-cyan-200">
-                      {depositAccountNumber || 'No trading account loaded'}
-                    </span>
-                  </>
-                ) : null}
-              </div>
-            </div>
-          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {dashboardCards.map((st, idx) => {
+              const IconComp = dashboardCardIcons[st.key] || BookOpen;
+              const isFallbackCard = !dashboardData?.cards?.length;
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
-            {dashboardLoading && !dashboardData ? (
-              <div className="col-span-full rounded-3xl border border-blue-800/40 bg-[#0b183f]/70 p-8 text-center text-slate-300 shadow-2xl">
-                Loading live dashboard metrics...
-              </div>
-            ) : dashboardCards.length > 0 ? (
-              dashboardCards.map((st, idx) => {
-                const IconComp = dashboardCardIcons[st.key] || BookOpen;
-
-                return (
-                  <div key={st.key || idx} className="relative overflow-hidden bg-[#0b183f]/80 backdrop-blur-sm border border-blue-800/40 rounded-3xl p-6 shadow-2xl group hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 transition-all duration-300">
-                    <div className="absolute -top-4 -right-4 text-blue-500/10 group-hover:text-blue-500/20 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 pointer-events-none">
-                      <IconComp size={100} strokeWidth={1} />
-                    </div>
-                    
-                    <div className="relative z-10 flex flex-col h-full justify-between gap-4">
-                      <div className="flex items-center justify-between">
-                        <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-blue-400 shadow-inner group-hover:text-white group-hover:bg-blue-600 transition-all duration-300">
-                          <IconComp size={18} strokeWidth={2.5} />
-                        </div>
-                        <div className="px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/50 text-[10px] uppercase font-bold tracking-widest text-blue-300">
-                          Metric
-                        </div>
-                      </div>
-                      
-                      <div className="mt-2">
-                        <div className="text-blue-200/80 text-xs font-semibold tracking-wide mb-1">{st.title}</div>
-                        <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">{st.value}</div>
-                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300/60">
-                          {st.subtitle || 'Live metric'}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Hover bottom gradient bar */}
-                    <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+              return (
+                <div
+                  key={st.key || idx}
+                  className={`relative overflow-hidden rounded-3xl border p-6 shadow-2xl group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 ${
+                    isFallbackCard ? 'bg-[#081737]/90 border-blue-800/30' : 'bg-[#0b183f]/80 border-blue-800/40 backdrop-blur-sm'
+                  }`}
+                >
+                  <div className="absolute -top-4 -right-4 text-blue-500/10 group-hover:text-blue-500/20 group-hover:rotate-12 group-hover:scale-110 transition-all duration-500 pointer-events-none">
+                    <IconComp size={100} strokeWidth={1} />
                   </div>
-                );
-              })
-            ) : (
-              <div className="col-span-full rounded-3xl border border-blue-800/40 bg-[#0b183f]/70 p-8 text-center text-slate-300 shadow-2xl">
-                No live dashboard metrics are available for this client.
-              </div>
-            )}
+
+                  <div className="relative z-10 flex h-full flex-col justify-between gap-4">
+                    <div className="flex items-center justify-between">
+                      <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-blue-400 shadow-inner group-hover:text-white group-hover:bg-blue-600 transition-all duration-300">
+                        <IconComp size={18} strokeWidth={2.5} />
+                      </div>
+                      <div className="px-3 py-1 rounded-full bg-blue-950/80 border border-blue-800/50 text-[10px] uppercase font-bold tracking-widest text-blue-300">
+                        {isFallbackCard ? 'Snapshot' : 'Metric'}
+                      </div>
+                    </div>
+
+                    <div className="mt-2">
+                      <div className="text-blue-200/80 text-xs font-semibold tracking-wide mb-1">{st.title}</div>
+                      <div className="text-2xl sm:text-3xl font-black text-white tracking-tight">{st.value}</div>
+                      {st.subtitle ? (
+                        <div className="mt-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-300/60">
+                          {st.subtitle}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {/* Hover bottom gradient bar */}
+                  <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-blue-500 via-cyan-400 to-emerald-400 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                </div>
+              );
+            })}
           </div>
 
           {/* Recent Activity */}
@@ -565,12 +625,14 @@ export default function ClientDashboardPage() {
                         <h3 className="text-2xl font-black tracking-tight" style={{ color: isDarkMode ? WHITE_COL : NAVY }}>
                           Deposit Funds
                         </h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <ShieldCheck className="h-4 w-4 text-green-500" />
-                          <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
-                            Account: <span className="font-mono text-[#2155C4]">{depositAccountNumber || 'No live account loaded'}</span>
-                          </span>
-                        </div>
+                        {depositAccountNumber ? (
+                          <div className="flex items-center gap-2 mt-1">
+                            <ShieldCheck className="h-4 w-4 text-green-500" />
+                            <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
+                              Account: <span className="font-mono text-[#2155C4]">{depositAccountNumber}</span>
+                            </span>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
 

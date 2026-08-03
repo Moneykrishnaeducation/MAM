@@ -396,9 +396,6 @@ export default function TransactionHistory() {
             </div>
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">Transaction History</h1>
-              <p className="mt-2 max-w-2xl text-sm text-slate-400">
-                Deposit and withdrawal records pulled from the live client endpoint.
-              </p>
             </div>
           </div>
 
