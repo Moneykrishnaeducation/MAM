@@ -29,6 +29,10 @@ def _serialize_client_profile(profile: ClientProfile) -> dict:
         "email": profile.email,
         "phone": profile.phone,
         "country": profile.country,
+        "dateOfBirth": profile.date_of_birth,
+        "address": profile.address,
+        "city": profile.city,
+        "postalCode": profile.postal_code,
         "tier": profile.tier,
         "kyc_status": profile.kyc_status,
     }

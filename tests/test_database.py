@@ -20,6 +20,7 @@ from adminPanel.models import (
     MyInvestment,
     PendingRequest,
 )
+from adminPanel.view.client_profile import update_client_profile
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
 from adminPanel.view.pending_requests import (
@@ -324,6 +325,75 @@ class TestAdminPanelModels:
         assert denied_response.status_code == 403
         assert denied_payload["status"] == "error"
         assert denied_payload["required_roles"] == ["admin"]
+
+    async def test_admin_update_client_profile(self):
+        """Test saving the admin users-page client profile modal."""
+        user = await ClientUser.create(
+            user_code="USR-PROFILE1",
+            name="Jordan Doe",
+            email="jordan.profile@example.com",
+            phone="+1 555 0100",
+            country="United States",
+            avatar="https://example.com/old-avatar.png",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jordan Doe",
+            email="jordan.profile@example.com",
+            phone="+1 555 0100",
+            country="United States",
+            tier="Standard",
+            kyc_status="Pending",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "PUT",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "name": "Jordan A. Doe",
+                        "email": "jordan.profile@example.com",
+                        "phone": "+1 555 0111",
+                        "country": "Canada",
+                        "dateOfBirth": "1990-01-15",
+                        "address": "123 King Street",
+                        "city": "Toronto",
+                        "postalCode": "M5H 2N2",
+                        "tier": "VIP",
+                        "kycStatus": "Verified",
+                        "avatar": "https://example.com/new-avatar.png",
+                    }
+                ).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        response = await update_client_profile(request, user_id="USR-PROFILE1")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["user"]["name"] == "Jordan A. Doe"
+        assert payload["profile"]["tier"] == "VIP"
+        assert payload["profile"]["kyc_status"] == "Verified"
+        assert payload["profile"]["dateOfBirth"] == "1990-01-15"
+
+        refreshed_user = await ClientUser.get(id=user.id)
+        refreshed_profile = await ClientProfile.get(user_id=user.id)
+        assert refreshed_user.name == "Jordan A. Doe"
+        assert refreshed_user.country == "Canada"
+        assert refreshed_user.avatar == "https://example.com/new-avatar.png"
+        assert refreshed_profile.address == "123 King Street"
+        assert refreshed_profile.city == "Toronto"
+        assert refreshed_profile.postal_code == "M5H 2N2"
 
 
 class TestClientPanelModels:

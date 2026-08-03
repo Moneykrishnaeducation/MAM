@@ -2,6 +2,7 @@
 
 from django.urls import path
 
+from adminPanel.view.client_profile import update_client_profile
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
 from adminPanel.view.pending_requests import (
@@ -36,6 +37,7 @@ urlpatterns = [
     path("requests/cryptos", list_pending_cryptos, name="requests-cryptos"),
     path("admin-users", list_admin_system_users, name="admin-users"),
     path("users", list_client_users, name="users"),
+    path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
     path("managers", list_managers, name="managers"),
     path("investors", list_investors, name="investors"),
     path("activity", list_activity_logs, name="activity"),
