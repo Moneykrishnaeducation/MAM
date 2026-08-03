@@ -9,7 +9,11 @@ from clientPanel.view.investments import get_client_investments
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import reset_client_password
-from clientPanel.view.tickets import get_client_tickets
+from clientPanel.view.tickets import (
+    create_client_ticket,
+    get_client_ticket_detail,
+    get_client_tickets,
+)
 from clientPanel.view.transactions import get_client_transactions
 from clientPanel.view.withdrawal import create_client_withdrawal
 
@@ -26,4 +30,6 @@ urlpatterns = [
     path("my-investments", get_client_investments, name="my-investments"),
     path("transactions", get_client_transactions, name="transactions"),
     path("tickets", get_client_tickets, name="tickets"),
+    path("tickets/create", create_client_ticket, name="ticket-create"),
+    path("tickets/<int:ticket_id>", get_client_ticket_detail, name="ticket-detail"),
 ]

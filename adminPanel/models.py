@@ -204,8 +204,10 @@ class ClientTicket(models.Model):
     id = fields.IntField(primary_key=True)
     client_profile = fields.ForeignKeyField("models.ClientProfile", related_name="tickets")
     subject = fields.CharField(max_length=255)
+    category = fields.CharField(max_length=100, default="General Question")
     priority = fields.CharField(max_length=50, default="Normal")
     status = fields.CharField(max_length=50, default="Open")
+    description = fields.TextField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:

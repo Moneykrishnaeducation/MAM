@@ -14,9 +14,9 @@ from adminPanel.models import (
     ClientTransaction,
     ClientUser,
     Investor,
+    MamAccount,
     Manager,
     MyInvestment,
-    MamAccount,
 )
 from adminPanel.view.mam_accounts import create_mam_account
 from clientPanel import crud as client_crud
@@ -27,6 +27,7 @@ from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import reset_client_password
+from clientPanel.view.tickets import create_client_ticket, get_client_ticket_detail
 from clientPanel.view.withdrawal import create_client_withdrawal
 
 
@@ -420,3 +421,97 @@ class TestClientPanelModels:
         assert saved is not None
         assert saved.amount == 250.0
         assert saved.payment_method == "Bank Transfer"
+
+    async def test_client_ticket_create_and_detail(self):
+        """Test creating and reading a client ticket for the logged-in user."""
+        user = await ClientUser.create(
+            user_code="USR-TICKET1",
+            name="Casey Morgan",
+            email="casey.ticket@example.com",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Casey Morgan",
+            email="casey.ticket@example.com",
+            country="United States",
+        )
+
+        create_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "subject": "Withdrawal delay inquiry",
+                        "category": "Deposits & Withdrawals",
+                        "priority": "High",
+                        "description": "My withdrawal has been pending for two business days.",
+                    }
+                ).encode(),
+            },
+        )()
+
+        create_response = await create_client_ticket(create_request)
+        create_payload = json.loads(create_response.content)
+
+        assert create_response.status_code == 201
+        assert create_payload["status"] == "ok"
+        assert create_payload["ticket"]["subject"] == "Withdrawal delay inquiry"
+        assert create_payload["ticket"]["category"] == "Deposits & Withdrawals"
+        assert create_payload["ticket"]["description"] == "My withdrawal has been pending for two business days."
+
+        saved = await ClientTicket.filter(client_profile_id=profile.id).first()
+        assert saved is not None
+
+        detail_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        detail_response = await get_client_ticket_detail(detail_request, ticket_id=saved.id)
+        detail_payload = json.loads(detail_response.content)
+
+        assert detail_response.status_code == 200
+        assert detail_payload["status"] == "ok"
+        assert detail_payload["ticket"]["id"] == saved.id
+        assert detail_payload["ticket"]["subject"] == "Withdrawal delay inquiry"
+
+        other_user = await ClientUser.create(
+            user_code="USR-TICKET2",
+            name="Other Client",
+            email="other.ticket@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=other_user.id,
+            full_name="Other Client",
+            email="other.ticket@example.com",
+            country="United States",
+        )
+
+        forbidden_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(other_user.id, other_user.email)}"},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        forbidden_response = await get_client_ticket_detail(forbidden_request, ticket_id=saved.id)
+        forbidden_payload = json.loads(forbidden_response.content)
+
+        assert forbidden_response.status_code == 404
+        assert forbidden_payload["status"] == "error"

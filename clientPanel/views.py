@@ -7,7 +7,11 @@ from clientPanel.view.investments import get_client_investments
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import reset_client_password
-from clientPanel.view.tickets import get_client_tickets
+from clientPanel.view.tickets import (
+    create_client_ticket,
+    get_client_ticket_detail,
+    get_client_tickets,
+)
 from clientPanel.view.transactions import get_client_transactions
 from clientPanel.view.withdrawal import create_client_withdrawal
 
@@ -22,4 +26,6 @@ __all__ = [
     "get_client_investments",
     "get_client_transactions",
     "get_client_tickets",
+    "create_client_ticket",
+    "get_client_ticket_detail",
 ]
