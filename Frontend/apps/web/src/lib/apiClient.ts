@@ -133,6 +133,17 @@ export async function fetchAdminPendingRequests() {
   }
 }
 
+export async function fetchAdminDashboard() {
+  try {
+    const res = await fetch('/api/admin/dashboard');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.dashboard || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function fetchClientProfile() {
   const data = await fetchClientEndpoint<{ profile?: any }>('/api/client/profile');
   return data?.profile || null;

@@ -58,3 +58,8 @@ Keep AGENTS.md updated when:
 - Modifying build/dev workflows
 
 AI assistants should suggest updates to this file when they notice relevant changes.
+
+Recent additions:
+
+- `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.
+- `Frontend/apps/web/src/lib/apiClient.ts` now includes `fetchAdminDashboard()` for the admin UI.

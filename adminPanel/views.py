@@ -16,7 +16,7 @@ from adminPanel.models import (
     Manager,
     PendingRequest,
 )
-from adminPanel.view.mam_accounts import create_mam_account
+from clientPanel.view.common import hash_client_password
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
@@ -131,8 +131,6 @@ async def list_activity_logs(request):
     ]
     return JsonResponse({"status": "ok", "activities": results})
 
-
-from clientPanel.view.common import hash_client_password
 
 # ── POST views ─────────────────────────────────────────────────────────────────
 
@@ -275,3 +273,4 @@ async def create_client_user(request):
         },
         status=201,
     )
+

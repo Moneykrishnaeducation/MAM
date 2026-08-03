@@ -9,6 +9,7 @@ from tortoise import Tortoise
 from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
+    AdminUser,
     ClientProfile,
     ClientTicket,
     ClientTransaction,
@@ -17,7 +18,9 @@ from adminPanel.models import (
     MamAccount,
     Manager,
     MyInvestment,
+    PendingRequest,
 )
+from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
@@ -109,6 +112,108 @@ class TestAdminPanelModels:
 
         saved = await MamAccount.get(master_strategy="Balanced Growth")
         assert saved.total_balance == 150000.0
+
+    async def test_admin_dashboard(self):
+        """Test admin dashboard summary payload and admin-only access."""
+        await AdminUser.create(
+            name="System Admin",
+            email="system.admin@example.com",
+            role="Super Admin",
+            department="Operations",
+        )
+        await ClientUser.create(
+            user_code="USR-DASH-A",
+            name="Alex Rivera",
+            email="alex.dash@example.com",
+            country="United States",
+        )
+        await ClientUser.create(
+            user_code="USR-DASH-B",
+            name="Taylor Morgan",
+            email="taylor.dash@example.com",
+            country="Canada",
+        )
+        await Manager.create(
+            name="Robert Vance",
+            email="robert.vance@example.com",
+            total_aum=123456.78,
+        )
+        await Investor.create(
+            name="Elena Rostova",
+            email="elena.dash@example.com",
+            equity=50000.0,
+        )
+        await MamAccount.create(
+            account_number="MAM-DASH-01",
+            master_strategy="Balanced Growth",
+            total_balance=222500.0,
+            status="Operational",
+        )
+        await MamAccount.create(
+            account_number="MAM-DASH-02",
+            master_strategy="Conservative Income",
+            total_balance=87500.0,
+            status="Paused",
+        )
+        await PendingRequest.create(
+            request_type="Withdrawal",
+            client_name="Alex Rivera",
+            amount=1250.0,
+            status="Pending",
+        )
+        await ActivityLog.create(
+            user_email="system.admin@example.com",
+            action="Approved withdrawal",
+            details="Approved withdrawal request #1",
+            ip_address="127.0.0.1",
+        )
+
+        admin_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        response = await get_admin_dashboard(admin_request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert len(payload["dashboard"]["cards"]) == 4
+        assert payload["dashboard"]["cards"][0]["title"] == "Total MAM Investors"
+        assert payload["dashboard"]["summary"]["admin_users"] == 1
+        assert payload["dashboard"]["summary"]["investors"] == 1
+        assert len(payload["dashboard"]["recent_registrations"]) == 2
+        assert len(payload["dashboard"]["recent_requests"]) == 1
+        assert len(payload["dashboard"]["recent_activity_logs"]) == 1
+
+        denied_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        denied_response = await get_admin_dashboard(denied_request)
+        denied_payload = json.loads(denied_response.content)
+
+        assert denied_response.status_code == 403
+        assert denied_payload["status"] == "error"
+        assert denied_payload["required_roles"] == ["admin"]
 
 
 class TestClientPanelModels:
