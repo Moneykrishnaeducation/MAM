@@ -22,6 +22,16 @@ from adminPanel.models import (
 )
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account
+from adminPanel.view.pending_requests import (
+    list_pending_banks,
+    list_pending_cryptos,
+    list_pending_deposits,
+    list_pending_documents,
+    list_pending_profiles,
+    list_pending_requests,
+    list_pending_requests_summary,
+    list_pending_withdrawals,
+)
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
 from clientPanel.view.common import create_client_login_token
@@ -209,6 +219,106 @@ class TestAdminPanelModels:
         )()
 
         denied_response = await get_admin_dashboard(denied_request)
+        denied_payload = json.loads(denied_response.content)
+
+        assert denied_response.status_code == 403
+        assert denied_payload["status"] == "error"
+        assert denied_payload["required_roles"] == ["admin"]
+
+    async def test_admin_pending_request_tabs(self):
+        """Test each pending-request tab endpoint and the admin permission guard."""
+        pending_rows = [
+            ("Deposit", "Alex Rivera", 1000.0),
+            ("Deposit", "Elena Rostova", 2500.0),
+            ("Deposit", "Michael Chen", 5000.0),
+            ("Withdrawal", "Sarah Jenkins", 3500.0),
+            ("Withdrawal", "Alex Rivera", 1200.0),
+            ("Document Upload", "Michael Chen", 0.0),
+            ("Document Upload", "Sarah Jenkins", 0.0),
+            ("Profile Update", "Elena Rostova", 0.0),
+            ("Profile Update", "Alex Rivera", 0.0),
+            ("Bank Account", "Michael Chen", 0.0),
+            ("Bank Account", "Elena Rostova", 0.0),
+            ("Crypto Wallet", "Alex Rivera", 0.0),
+            ("Crypto Wallet", "Sarah Jenkins", 0.0),
+        ]
+        for request_type, client_name, amount in pending_rows:
+            await PendingRequest.create(
+                request_type=request_type,
+                client_name=client_name,
+                amount=amount,
+                status="Pending",
+            )
+
+        admin_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        tab_expectations = [
+            (list_pending_deposits, "deposits", 3),
+            (list_pending_withdrawals, "withdrawals", 2),
+            (list_pending_documents, "documents", 2),
+            (list_pending_profiles, "profiles", 2),
+            (list_pending_banks, "banks", 2),
+            (list_pending_cryptos, "cryptos", 2),
+        ]
+
+        for view_func, tab_name, expected_count in tab_expectations:
+            response = await view_func(admin_request)
+            payload = json.loads(response.content)
+
+            assert response.status_code == 200
+            assert payload["status"] == "ok"
+            assert payload["tab"] == tab_name
+            assert payload["count"] == expected_count
+            assert len(payload["requests"]) == expected_count
+
+        combined_response = await list_pending_requests(admin_request)
+        combined_payload = json.loads(combined_response.content)
+
+        assert combined_response.status_code == 200
+        assert combined_payload["status"] == "ok"
+        assert len(combined_payload["requests"]) == 13
+
+        summary_response = await list_pending_requests_summary(admin_request)
+        summary_payload = json.loads(summary_response.content)
+
+        assert summary_response.status_code == 200
+        assert summary_payload["status"] == "ok"
+        assert summary_payload["summary"] == {
+            "deposits": 3,
+            "withdrawals": 2,
+            "documents": 2,
+            "profiles": 2,
+            "banks": 2,
+            "cryptos": 2,
+        }
+        assert summary_payload["total"] == 13
+
+        denied_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        denied_response = await list_pending_deposits(denied_request)
         denied_payload = json.loads(denied_response.content)
 
         assert denied_response.status_code == 403

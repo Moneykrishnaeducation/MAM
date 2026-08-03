@@ -62,4 +62,4 @@ AI assistants should suggest updates to this file when they notice relevant chan
 Recent additions:
 
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.
-- `Frontend/apps/web/src/lib/apiClient.ts` now includes `fetchAdminDashboard()` for the admin UI.
+- `adminPanel/view/pending_requests.py` provides the admin-only request-tab APIs under `/api/admin/requests/...`.
