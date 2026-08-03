@@ -19,6 +19,7 @@ from backendPanel.static_frontend import (
     get_frontend_static_dirs,
     iter_frontend_candidates,
 )
+from adminPanel.view.symbol_timing import symbol_timing
 from clientPanel.view.login import login_client
 
 
@@ -106,6 +107,7 @@ urlpatterns = [
     path("health", health),
     path("api/status", api_status),
     path("api/login", login_client, name="login"),
+    path("api/symbol-timing/", symbol_timing, name="symbol-timing"),
     path("api/available-groups/", get_available_groups),
     path("api/demo-available-groups/", get_available_groups),
     path("api/current-group-config/", get_current_group_config),
