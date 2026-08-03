@@ -35,6 +35,8 @@ async def reset_client_password(request):
     user = await ClientUser.filter(email=email).first()
     if user is None:
         return _error("Client not found", status=404)
+    if str(user.role or "").strip().lower() == "admin":
+        return _error("Client not found", status=404)
 
     user.password_hash = hash_client_password(new_password)
     await user.save(update_fields=["password_hash", "updated_at"])

@@ -56,6 +56,8 @@ async def login_client(request):
     user = await ClientUser.filter(email=email).first()
     if user is None:
         return _error("Invalid credentials", status=401)
+    if str(user.role or "").strip().lower() == "admin":
+        return _error("Invalid credentials", status=401)
 
     password_login = bool(user.password_hash) and verify_client_password(access_code, user.password_hash)
     access_code_login = bool(user.user_code) and user.user_code == access_code

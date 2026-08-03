@@ -1,8 +1,7 @@
-"""CRUD operations for adminPanel models including AdminUser and ClientUser."""
+"""CRUD operations for adminPanel models including the unified ClientUser table."""
 
 from adminPanel.models import (
     ActivityLog,
-    AdminUser,
     ClientUser,
     Investor,
     MamAccount,
@@ -12,14 +11,14 @@ from adminPanel.models import (
 
 
 # Admin User CRUD Operations
-async def get_admin_user(user_id: int) -> AdminUser | None:
+async def get_admin_user(user_id: int) -> ClientUser | None:
     """Get admin user by ID."""
-    return await AdminUser.filter(id=user_id).first()
+    return await ClientUser.filter(id=user_id, role__iexact="admin").first()
 
 
-async def get_admin_users(skip: int = 0, limit: int = 100) -> list[AdminUser]:
+async def get_admin_users(skip: int = 0, limit: int = 100) -> list[ClientUser]:
     """Get list of system admin users."""
-    return await AdminUser.all().offset(skip).limit(limit)
+    return await ClientUser.filter(role__iexact="admin").offset(skip).limit(limit)
 
 
 async def create_admin_user(
@@ -28,9 +27,9 @@ async def create_admin_user(
     role: str = "admin",
     department: str = "Operations",
     permissions: list[str] | None = None,
-) -> AdminUser:
+) -> ClientUser:
     """Create a new system admin user."""
-    return await AdminUser.create(
+    return await ClientUser.create(
         name=name,
         email=email,
         role=role,
@@ -42,12 +41,12 @@ async def create_admin_user(
 # Client User CRUD Operations
 async def get_client_user(user_id: int) -> ClientUser | None:
     """Get client user by ID."""
-    return await ClientUser.filter(id=user_id).first()
+    return await ClientUser.filter(id=user_id).exclude(role__iexact="admin").first()
 
 
 async def get_client_users(skip: int = 0, limit: int = 100) -> list[ClientUser]:
     """Get list of client users."""
-    return await ClientUser.all().offset(skip).limit(limit)
+    return await ClientUser.exclude(role__iexact="admin").offset(skip).limit(limit)
 
 
 async def create_client_user(
@@ -64,6 +63,7 @@ async def create_client_user(
         user_code=user_code,
         phone=phone,
         country=country,
+        role="Client",
     )
 
 

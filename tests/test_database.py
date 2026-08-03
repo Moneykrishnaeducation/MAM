@@ -9,7 +9,6 @@ from tortoise import Tortoise
 from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
-    AdminUser,
     ClientProfile,
     ClientTicket,
     ClientTransaction,
@@ -78,6 +77,8 @@ class TestAdminPanelModels:
         assert admin.name == "Admin Test"
         assert admin.email == "admin@example.com"
         assert admin.role == "Super Admin"
+        saved = await ClientUser.get(email="admin@example.com")
+        assert saved.role == "Super Admin"
 
     async def test_create_manager_and_investor(self):
         """Test creating manager and investor."""
@@ -128,11 +129,13 @@ class TestAdminPanelModels:
 
     async def test_admin_dashboard(self):
         """Test admin dashboard summary payload and admin-only access."""
-        await AdminUser.create(
+        await ClientUser.create(
             name="System Admin",
             email="system.admin@example.com",
-            role="Super Admin",
+            role="Admin",
             department="Operations",
+            permissions=["View Reports", "User Approvals"],
+            verified=True,
         )
         await ClientUser.create(
             user_code="USR-DASH-A",

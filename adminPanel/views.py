@@ -10,7 +10,6 @@ from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import (
     ActivityLog,
-    AdminUser,
     ClientUser,
     Investor,
     Manager,
@@ -22,7 +21,7 @@ from clientPanel.view.common import hash_client_password
 
 async def list_admin_system_users(request):
     """List system admin users directly from database."""
-    admin_users = await AdminUser.all()
+    admin_users = await ClientUser.filter(role__iexact="admin").order_by("-created_at")
     results = [
         {
             "id": f"ADM-{user.id:03d}",
@@ -42,7 +41,7 @@ async def list_admin_system_users(request):
 
 async def list_client_users(request):
     """List client users directly from database."""
-    client_users = await ClientUser.all()
+    client_users = await ClientUser.exclude(role__iexact="admin").order_by("-joined")
     results = [
         {
             "id": user.user_code or f"USR-{user.id:03d}",
@@ -163,7 +162,7 @@ async def create_admin_user(request):
     if not name or not email:
         return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
 
-    if await AdminUser.filter(email=email).exists():
+    if await ClientUser.filter(email=email).exists():
         return JsonResponse(
             {"status": "error", "message": "An admin user with this email already exists"},
             status=409,
@@ -171,7 +170,7 @@ async def create_admin_user(request):
 
     password_hash = hash_client_password(password) if password else None
 
-    user = await AdminUser.create(
+    user = await ClientUser.create(
         name=name,
         email=email,
         role=role,
@@ -180,6 +179,7 @@ async def create_admin_user(request):
         status="Active",
         avatar=avatar,
         password_hash=password_hash,
+        verified=True,
     )
 
     return JsonResponse(
@@ -214,7 +214,7 @@ async def create_client_user(request):
     name = body.get("name", "").strip()
     email = body.get("email", "").strip()
     phone = body.get("phone", "").strip()
-    role = body.get("role", "Client User").strip()
+    role = body.get("role", "Client").strip()
     country = body.get("country", "United States").strip()
     password = body.get("password", "").strip()
     avatar = body.get(
@@ -224,6 +224,9 @@ async def create_client_user(request):
 
     if not name or not email:
         return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
+
+    if role.lower() == "admin":
+        return JsonResponse({"status": "error", "message": "Admin users must be created through the admin user endpoint"}, status=400)
 
     if await ClientUser.filter(email=email).exists():
         return JsonResponse(
@@ -242,7 +245,7 @@ async def create_client_user(request):
         name=name,
         email=email,
         phone=phone or None,
-        role=role,
+        role="Client",
         country=country,
         status="Active",
         verified=False,

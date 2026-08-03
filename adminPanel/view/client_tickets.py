@@ -15,16 +15,20 @@ async def _resolve_client_user(user_id: str) -> ClientUser | None:
         return None
 
     user = await ClientUser.filter(user_code=lookup).first()
-    if user is not None:
+    if user is not None and str(user.role or "").strip().lower() != "admin":
         return user
 
     if lookup.upper().startswith("USR-"):
         suffix = lookup.split("-", 1)[1]
         if suffix.isdigit():
-            return await ClientUser.filter(id=int(suffix)).first()
+            user = await ClientUser.filter(id=int(suffix)).first()
+            if user is not None and str(user.role or "").strip().lower() != "admin":
+                return user
 
     if lookup.isdigit():
-        return await ClientUser.filter(id=int(lookup)).first()
+        user = await ClientUser.filter(id=int(lookup)).first()
+        if user is not None and str(user.role or "").strip().lower() != "admin":
+            return user
 
     return None
 
