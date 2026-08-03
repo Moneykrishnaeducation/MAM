@@ -8,6 +8,7 @@ from django.urls import include, path, re_path
 from django.views.static import serve
 
 from backendPanel.settings import BASE_DIR, get_settings
+from clientPanel.view.login import login_client
 
 
 def health(request):
@@ -105,6 +106,7 @@ def serve_next_static(request, path=""):
 urlpatterns = [
     path("health", health),
     path("api/status", api_status),
+    path("api/login", login_client, name="login"),
     path("api/admin/", include("adminPanel.urls")),
     path("api/client/", include("clientPanel.urls")),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
