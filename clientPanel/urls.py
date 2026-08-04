@@ -2,11 +2,11 @@
 
 from django.urls import path
 
-from clientPanel.view.account import get_client_account
+from clientPanel.view.account import get_client_account, create_client_trading_account
 from clientPanel.view.activity_logs import get_client_activity_logs
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
-from clientPanel.view.investments import get_client_investments
+from clientPanel.view.investments import get_client_investments, pause_copying_api, start_copying_api
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.logout import logout_client
 from clientPanel.view.reset_password import change_client_password, reset_client_password
@@ -30,7 +30,10 @@ urlpatterns = [
     path("withdrawal", create_client_withdrawal, name="withdrawal"),
     path("profile", get_client_profile, name="profile"),
     path("account", get_client_account, name="account"),
+    path("accounts/create", create_client_trading_account, name="create-account"),
     path("my-investments", get_client_investments, name="my-investments"),
+    path("my-investments/pause", pause_copying_api, name="pause-copying"),
+    path("my-investments/start", start_copying_api, name="start-copying"),
     path("transactions", get_client_transactions, name="transactions"),
     path("tickets", get_client_tickets, name="tickets"),
     path("tickets/create", create_client_ticket, name="ticket-create"),
