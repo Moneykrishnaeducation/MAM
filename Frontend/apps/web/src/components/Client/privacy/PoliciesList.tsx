@@ -27,7 +27,7 @@ export default function PoliciesList({ items }: PoliciesListProps) {
                   setOpenIndex(-1);
                 }
               }}
-              className="group rounded-[28px] border border-white/8 bg-white/[0.03] overflow-hidden transition-all duration-300 hover:border-amber-400/20"
+              className="group rounded-[28px] border border-blue-900/35 bg-[#0b1533]/75 overflow-hidden transition-all duration-300 hover:border-amber-400/20 hover:bg-[#10214a]/80"
             >
               <summary className="flex cursor-pointer list-none items-center gap-4 px-5 py-5 md:px-6 md:py-6">
                 <div
@@ -41,7 +41,7 @@ export default function PoliciesList({ items }: PoliciesListProps) {
                           : 'bg-gradient-to-br from-amber-500 to-orange-500'
                   }`}
                 >
-                  <div className="w-full h-full bg-[#0f172a] rounded-2xl flex items-center justify-center">
+                  <div className="w-full h-full bg-[#0d1a40] rounded-2xl flex items-center justify-center">
                     <PolicyIcon size={22} className="text-white" />
                   </div>
                 </div>
@@ -66,7 +66,7 @@ export default function PoliciesList({ items }: PoliciesListProps) {
               </summary>
 
               <div className="px-5 pb-5 md:px-6 md:pb-6">
-                <div className="rounded-3xl border border-white/8 bg-[#07111f]/70 p-5 md:p-6">
+                <div className="rounded-3xl border border-blue-900/30 bg-[#0b1533]/70 p-5 md:p-6">
                   <p className="text-sm md:text-base leading-relaxed text-slate-300/90">
                     {policy.content}
                   </p>
@@ -89,7 +89,7 @@ export default function PoliciesList({ items }: PoliciesListProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <a
             href="mailto:support@vtindex.com"
-            className="group flex items-center gap-5 p-6 bg-gradient-to-br from-[#1e293b]/50 to-[#0f172a]/50 backdrop-blur-sm rounded-2xl border border-blue-800/30 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/10"
+            className="group flex items-center gap-5 p-6 bg-gradient-to-br from-[#10214a]/70 to-[#0b1533]/70 backdrop-blur-sm rounded-2xl border border-blue-800/35 hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-500/10"
           >
             <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center group-hover:bg-blue-500/20 transition-colors">
               <Mail size={22} className="text-blue-400 group-hover:text-blue-300" />
@@ -103,7 +103,7 @@ export default function PoliciesList({ items }: PoliciesListProps) {
             <ChevronRight size={20} className="text-slate-600 ml-auto group-hover:text-blue-400 group-hover:translate-x-1 transition-all" />
           </a>
 
-          <div className="group flex items-center gap-5 p-6 bg-gradient-to-br from-[#1e293b]/50 to-[#0f172a]/50 backdrop-blur-sm rounded-2xl border border-blue-800/30 hover:border-yellow-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-yellow-500/10 cursor-default">
+          <div className="group flex items-center gap-5 p-6 bg-gradient-to-br from-[#10214a]/70 to-[#0b1533]/70 backdrop-blur-sm rounded-2xl border border-blue-800/35 hover:border-yellow-500/50 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-yellow-500/10 cursor-default">
             <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center group-hover:bg-yellow-500/20 transition-colors shrink-0">
               <MapPin size={22} className="text-yellow-400 group-hover:text-yellow-300" />
             </div>

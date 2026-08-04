@@ -1,14 +1,12 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
-import { ArrowUpRight, ShieldCheck, Sparkles, FileText, Star } from 'lucide-react';
+import { FileText, Star } from 'lucide-react';
 import BenefitsList from '@/components/Client/privacy/BenefitsList';
 import PoliciesList from '@/components/Client/privacy/PoliciesList';
 import { benefits, policies } from '@/components/Client/privacy/privacyData';
 
 export default function PrivacyPage() {
   const [activeTab, setActiveTab] = useState<'benefits' | 'privacy'>('benefits');
-  const benefitCount = benefits.length;
-  const policyCount = policies.length;
 
   return (
     <>
@@ -16,15 +14,15 @@ export default function PrivacyPage() {
         <title>Benefits & Policies | Client Portal</title>
       </Head>
 
-      <div className="relative z-10 min-h-screen p-6 md:p-10 lg:p-12">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-          <div className="absolute -top-24 -left-24 h-[420px] w-[420px] rounded-full bg-cyan-500/10 blur-[120px]" />
-          <div className="absolute top-1/3 -right-24 h-[360px] w-[360px] rounded-full bg-blue-600/10 blur-[120px]" />
-          <div className="absolute bottom-0 left-1/4 h-[280px] w-[280px] rounded-full bg-amber-500/5 blur-[100px]" />
+      <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
         </div>
 
-        <div className="relative mx-auto flex w-full max-w-7xl flex-col gap-8">
-          <section className="rounded-[32px] border border-blue-800/25 bg-[#0a1324]/85 p-5 md:p-6 shadow-2xl shadow-slate-950/40">
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 relative z-10">
+          <section className="rounded-[32px] border border-blue-900/45 bg-[#0d1a40]/80 p-5 md:p-6 shadow-2xl shadow-blue-950/30 backdrop-blur-xl">
             <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
@@ -35,7 +33,7 @@ export default function PrivacyPage() {
                 </p>
               </div>
 
-              <div className="inline-flex rounded-2xl border border-white/10 bg-white/5 p-1">
+              <div className="inline-flex rounded-2xl border border-blue-800/40 bg-[#12244f]/80 p-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('benefits')}
@@ -63,7 +61,7 @@ export default function PrivacyPage() {
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-white/8 bg-[#07111f]/70 p-4 md:p-5">
+            <div className="rounded-[28px] border border-blue-900/35 bg-[#0b1533]/75 p-4 md:p-5">
               {activeTab === 'benefits' ? (
                 <BenefitsList items={benefits} />
               ) : (

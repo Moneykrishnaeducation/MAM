@@ -554,7 +554,12 @@ const Tickets = () => {
   );
 
   return (
-    <div className={`overflow-x-hidden bg-[radial-gradient(circle_at_bottom,rgba(22,55,157,0.18),transparent_25%),linear-gradient(180deg,#050f35_0%,#081846_100%)] transition-all duration-300 p-4 md:p-8`}>
+    <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+        <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
+      </div>
       {/* ===================== PAGE HEADER ===================== */}
       <div className="text-center mb-8">
         <h1 className={`text-4xl font-black tracking-tighter ${headingTextClass} mb-2`}>

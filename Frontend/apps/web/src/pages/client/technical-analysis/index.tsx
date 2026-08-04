@@ -908,15 +908,13 @@ export default function ClientTechnicalAnalysisPage() {
         <title>Technical Analysis | Client Portal</title>
       </Head>
 
-      <div
-        className="min-h-screen p-6 md:p-12 relative overflow-hidden text-white"
-        style={{
-          background: 'radial-gradient(circle at bottom,rgba(22,55,157,0.18),transparent 25%),linear-gradient(180deg,#050f35 0%,#081846 100%)',
-        }}
-      >
-        {/* Background glow */}
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-yellow-400/5 blur-[120px] rounded-full pointer-events-none" />
-        <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-blue-500/5 blur-[100px] rounded-full pointer-events-none" />
+      <div className="relative p-6 md:p-10 space-y-12 overflow-hidden text-white">
+        {/* Ambient background orbs */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
+        </div>
 
         <div className="max-w-[1600px] mx-auto relative z-10">
           {/* Header */}
