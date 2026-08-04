@@ -18,7 +18,17 @@ import {
   ChevronRight,
   ChevronLeft,
 } from 'lucide-react';
-import { getClientData, getAdminManagers } from '@/lib/mockDataLoader';
+import { fetchAdminManagers, fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
+import {
+  buildManagerRows,
+  DEFAULT_MANAGER_ROW,
+  formatCurrency,
+  pickAssignedManager,
+  toNumber,
+  type ClientInvestmentSummary,
+  type ManagerRow,
+} from '@/lib/live-manager-data';
+import { AvailableSkeleton } from '@/components/client-page-skeletons';
 
 const riskBadge = (risk: string, isDarkMode: boolean) => {
   if (risk === 'Low')
@@ -34,23 +44,84 @@ const riskBadge = (risk: string, isDarkMode: boolean) => {
     : 'bg-red-500/15 text-red-400 border border-red-500/30';
 };
 
+type ManagerViewRow = ManagerRow & {
+  loginId: string;
+  equity: string;
+  age: string;
+  growth: string;
+};
+
 export default function ClientAvailablePage() {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
-
-  const clientData = getClientData();
-  const managerInfo = clientData.assignedManager;
-  const allManagers = getAdminManagers();
 
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
   const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [selectedManager, setSelectedManager] = useState<(typeof displayManagers)[number] | null>(null);
-  const [viewManager, setViewManager] = useState<(typeof displayManagers)[number] | null>(null);
+  const [selectedManager, setSelectedManager] = useState<ManagerViewRow | null>(null);
+  const [viewManager, setViewManager] = useState<ManagerViewRow | null>(null);
   const [investmentPassword, setInvestmentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isPageLoading, setIsPageLoading] = useState(true);
+  const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
+  const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
+  const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadLiveData = async () => {
+      setIsPageLoading(true);
+
+      const [dashboardResponse, managersResponse, investmentsResponse] = await Promise.all([
+        fetchClientDashboard(),
+        fetchAdminManagers(),
+        fetchClientInvestments(),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      const dashboard = dashboardResponse || null;
+      const profile = dashboard?.client || null;
+      const investments = Array.isArray(investmentsResponse) ? investmentsResponse : [];
+      const liveManagers = buildManagerRows(Array.isArray(managersResponse) ? managersResponse : [], investments, profile);
+      const assignedManager = pickAssignedManager(liveManagers, investments) || DEFAULT_MANAGER_ROW;
+
+      setClientInvestments(investments);
+      setAllManagers(liveManagers);
+      setManagerInfo(assignedManager);
+      setSelectedManager((current) => {
+        if (!current) {
+          return null;
+        }
+        return toViewRow(liveManagers.find((manager) => manager.id === current.id) || assignedManager);
+      });
+      setViewManager((current) => {
+        if (!current) {
+          return null;
+        }
+        return toViewRow(liveManagers.find((manager) => manager.id === current.id) || assignedManager);
+      });
+      setIsPageLoading(false);
+    };
+
+    loadLiveData().catch(() => {
+      if (active) {
+        setAllManagers([]);
+        setClientInvestments([]);
+        setManagerInfo(DEFAULT_MANAGER_ROW);
+        setIsPageLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
@@ -63,6 +134,14 @@ export default function ClientAvailablePage() {
   const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
+
+  const toViewRow = (manager: ManagerRow): ManagerViewRow => ({
+    ...manager,
+    loginId: manager.accountId,
+    equity: manager.strategy,
+    age: manager.status,
+    growth: `${manager.investorsCount} linked`,
+  });
 
   const filteredManagers = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -77,17 +156,7 @@ export default function ClientAvailablePage() {
   }, [query, allManagers]);
 
   const displayManagers = useMemo(() => {
-    return filteredManagers.map((m, idx) => {
-      const ageDays = 90 + ((idx * 37) % 410);
-      const growth = idx % 2 === 0 ? m.profit : `+${m.profit}`;
-      return {
-        ...m,
-        loginId: m.id,
-        equity: m.balance,
-        age: `${ageDays} days`,
-        growth,
-      };
-    });
+    return filteredManagers.map((manager) => toViewRow(manager));
   }, [filteredManagers]);
 
   const hasQuery = query.trim().length > 0;
@@ -184,6 +253,35 @@ export default function ClientAvailablePage() {
     highlightedManager?.name === managerInfo.name ||
     highlightedManager?.email === managerInfo.email;
 
+  const totalInvested = clientInvestments.reduce(
+    (sum, investment) => sum + toNumber(investment.allocated ?? investment.allocated_amount),
+    0,
+  );
+  const totalProfit = clientInvestments.reduce((sum, investment) => {
+    const currentValue = toNumber(investment.current_value);
+    const allocatedAmount = toNumber(investment.allocated ?? investment.allocated_amount);
+    return sum + Math.max(0, currentValue - allocatedAmount);
+  }, 0);
+  const activeNodes = Math.max(
+    1,
+    new Set(
+      clientInvestments
+        .map((investment) => String(investment.manager || investment.manager_name || '').trim())
+        .filter(Boolean),
+    ).size,
+  );
+
+  if (isPageLoading) {
+    return (
+      <>
+        <Head>
+          <title>Available MAM Managers | Client Portal</title>
+        </Head>
+        <AvailableSkeleton />
+      </>
+    );
+  }
+
   return (
     <>
       <Head>
@@ -229,12 +327,12 @@ export default function ClientAvailablePage() {
                 <div className={`rounded-2xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
                   <p className={`text-[11px] font-black uppercase tracking-widest ${softTextClass}`}>Manager Name</p>
                   <p className="mt-2 text-lg font-black text-white">
-                    {`(${selectedManager.accountId})-MAM`}
+                    {selectedManager.accountId}
                   </p>
                   <p className={`text-xs mt-1 ${softTextClass}`}>{selectedManager.name}</p>
                 </div>
                 <div className={`rounded-2xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
-                  <p className={`text-[11px] font-black uppercase tracking-widest ${softTextClass}`}>Profit Share</p>
+                  <p className={`text-[11px] font-black uppercase tracking-widest ${softTextClass}`}>Performance Fee</p>
                   <p className="mt-2 text-lg font-black text-emerald-400">
                     {selectedManager.share || '20%'}
                   </p>
@@ -335,12 +433,12 @@ export default function ClientAvailablePage() {
             <div className="space-y-4 p-6 sm:p-8">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {[
-                  { label: 'Balance', value: viewManager.balance, accent: 'bg-blue-500/10 text-blue-200' },
-                  { label: 'Equity', value: viewManager.equity, accent: 'bg-sky-500/10 text-sky-200' },
-                  { label: 'Profit Share', value: viewManager.share, accent: 'bg-violet-500/10 text-violet-200' },
-                  { label: 'Growth', value: viewManager.growth, accent: 'bg-emerald-500/10 text-emerald-200' },
-                  { label: 'Risk Level', value: viewManager.risk, accent: riskBadge(viewManager.risk, isDarkMode) },
-                  { label: 'Age', value: viewManager.age, accent: 'bg-blue-500/10 text-blue-200' },
+                  { label: 'Account ID', value: viewManager.loginId, accent: 'bg-blue-500/10 text-blue-200' },
+                  { label: 'AUM', value: viewManager.balance, accent: 'bg-sky-500/10 text-sky-200' },
+                  { label: 'Strategy', value: viewManager.equity, accent: 'bg-violet-500/10 text-violet-200' },
+                  { label: 'Performance Fee', value: viewManager.share, accent: 'bg-emerald-500/10 text-emerald-200' },
+                  { label: 'Linked', value: viewManager.growth, accent: 'bg-blue-500/10 text-blue-200' },
+                  { label: 'Status', value: viewManager.age, accent: riskBadge(viewManager.risk, isDarkMode) },
                 ].map((item) => (
                   <div key={item.label} className={`rounded-3xl border p-4 ${borderMutedClass} bg-white/[0.02] ${item.accent}`}>
                     <p className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`}>{item.label}</p>
@@ -385,9 +483,9 @@ export default function ClientAvailablePage() {
         {/* Summary Info Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { label: 'Total Invested', value: '$0.00', meta: 'USD', color: 'text-emerald-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20' },
-            { label: 'Total Profit', value: '$0.00', meta: 'USD', color: 'text-blue-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-blue-500/10 border-blue-500/20' },
-            { label: 'Active Nodes', value: '0', meta: 'Live', color: 'text-amber-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-amber-500/10 border-amber-500/20' },
+            { label: 'Total Invested', value: formatCurrency(totalInvested), meta: 'USD', color: 'text-emerald-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20' },
+            { label: 'Total Profit', value: formatCurrency(totalProfit), meta: 'USD', color: 'text-blue-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-blue-500/10 border-blue-500/20' },
+            { label: 'Active Nodes', value: String(activeNodes), meta: 'Live', color: 'text-amber-400', bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-amber-500/10 border-amber-500/20' },
           ].map((item) => (
             <div
               key={item.label}
@@ -504,7 +602,7 @@ export default function ClientAvailablePage() {
                     <span
                       className={`font-semibold ${highlightedManager.risk === 'Low' ? 'text-emerald-400' : highlightedManager.risk === 'Medium' ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {highlightedManager.risk} Risk
+                      {highlightedManager.status}
                     </span>
                   </div>
                 </div>
@@ -513,14 +611,14 @@ export default function ClientAvailablePage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     {
-                      label: 'Balance',
+                      label: 'AUM',
                       value: highlightedManager.balance,
                       icon: <DollarSign size={14} />,
                       color: 'text-emerald-400',
                       bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20',
                     },
                     {
-                      label: 'Profit Share',
+                      label: 'Strategy',
                       value: highlightedManager.profit,
                       icon: <TrendingUp size={14} />,
                       color: 'text-blue-400',
@@ -534,7 +632,7 @@ export default function ClientAvailablePage() {
                       bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-purple-500/10 border-purple-500/20',
                     },
                     {
-                      label: 'Total Investors',
+                      label: 'Linked',
                       value: highlightedManager.investorsCount,
                       icon: <Users size={14} />,
                       color: 'text-amber-400',
@@ -607,12 +705,12 @@ export default function ClientAvailablePage() {
                 <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
                   {[
                     'Manager Name',
-                    'Login ID',
-                    'Balance',
-                    'Equity',
-                    'Profit Share',
-                    'Age',
-                    'Growth',
+                    'Account ID',
+                    'AUM',
+                    'Strategy',
+                    'Performance Fee',
+                    'Status',
+                    'Linked',
                     'Actions',
                   ].map((h) => (
                     <th
@@ -675,10 +773,9 @@ export default function ClientAvailablePage() {
                         </td>
 
                         <td className="px-6 py-5 whitespace-nowrap">
-                          <div className="flex flex-col">
-                            <span className="text-slate-100 font-semibold">{mgr.age.split(' ')[0]}</span>
-                            <span className="text-xs text-blue-400 font-semibold mt-0.5">{mgr.age.split(' ')[1]}</span>
-                          </div>
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.14em] ${riskBadge(mgr.risk, isDarkMode)}`}>
+                            {mgr.age}
+                          </span>
                         </td>
 
                         <td className="px-6 py-5 whitespace-nowrap">
@@ -800,7 +897,7 @@ export default function ClientAvailablePage() {
           {hasQuery && highlightedManager && highlightedManager.investorsList?.length > 0 && (
             <div className={`border-t px-6 py-4 ${borderMutedClass}`}>
               <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${softTextClass}`}>
-                Investors under{' '}
+                Linked investments under{' '}
                 <span className="text-emerald-400">
                   {highlightedManager.name}
                 </span>

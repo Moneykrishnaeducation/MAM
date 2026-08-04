@@ -4,6 +4,7 @@ import { useTheme } from 'next-themes';
 import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
+import { InvestmentsSkeleton } from '@/components/client-page-skeletons';
 
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => {
   const { theme } = useTheme();
@@ -357,6 +358,17 @@ export default function ClientMyInvestPage() {
   const visibleCount = visibleInvestments.length;
   const showingStart = visibleCount > 0 ? 1 : 0;
   const showingEnd = visibleCount;
+
+  if (investmentsLoading) {
+    return (
+      <>
+        <Head>
+          <title>My Investments | Client Portal</title>
+        </Head>
+        <InvestmentsSkeleton />
+      </>
+    );
+  }
 
   return (
     <>

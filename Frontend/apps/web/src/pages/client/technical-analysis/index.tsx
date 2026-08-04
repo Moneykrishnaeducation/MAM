@@ -20,10 +20,11 @@ import {
   Download,
 } from 'lucide-react';
 import TradingViewWidget from '@/components/Client/TradingViewWidget';
+import { Skeleton } from '@/components/ui/skeleton';
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Helpers
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function fmtSize(bytes: number) {
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(2) + ' MB';
   if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -38,9 +39,9 @@ function formatDateLabel(name: string) {
   return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Timezone conversion (MT5 server = UTC+3)
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TIMEZONES = [
   { value: 180, label: 'Server Time (UTC+3)' },
   { value: 0, label: 'UTC / GMT (UTC+0)' },
@@ -144,9 +145,9 @@ function convertSessions(
   return list;
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Glass Card
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function GlassCard({
   children,
   className = '',
@@ -167,9 +168,9 @@ function GlassCard({
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   ReportPDF — archive of PDF reports fetched from API
-───────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   ReportPDF â€” archive of PDF reports fetched from API
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface ReportItem { name: string; size: number; url: string; }
 
 function ReportPDF() {
@@ -223,15 +224,22 @@ function ReportPDF() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="flex flex-col items-center justify-center py-32"
+            className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3"
           >
-            <div className="relative">
-              <RefreshCw className="animate-spin text-yellow-400" size={64} />
-              <div className="absolute inset-0 blur-2xl bg-yellow-400/20 animate-pulse" />
-            </div>
-            <p className="font-black uppercase tracking-[0.3em] text-[10px] text-slate-400 mt-8">
-              Decrypting Archives
-            </p>
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div
+                key={index}
+                className="relative overflow-hidden rounded-[2rem] border border-[#1d58c8] bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] p-8 shadow-[0_24px_60px_rgba(4,15,54,0.28)]"
+              >
+                <Skeleton className="mb-6 h-16 w-16 rounded-2xl bg-white/10" />
+                <Skeleton className="mb-3 h-5 w-3/4 rounded-full bg-white/10" />
+                <Skeleton className="mb-8 h-4 w-1/2 rounded-full bg-white/10" />
+                <div className="flex gap-3 border-t border-slate-600/20 pt-4">
+                  <Skeleton className="h-3.5 w-20 rounded-full bg-white/10" />
+                  <Skeleton className="h-3.5 w-16 rounded-full bg-white/10" />
+                </div>
+              </div>
+            ))}
           </motion.div>
         ) : reports.length === 0 ? (
           <motion.div
@@ -323,9 +331,9 @@ function ReportPDF() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Symbol type badge colours
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
   stock: { bg: 'bg-blue-500/10', text: 'text-blue-400', label: 'Stock' },
   forex: { bg: 'bg-green-500/10', text: 'text-green-400', label: 'Forex' },
@@ -337,7 +345,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> =
   bond: { bg: 'bg-slate-500/10', text: 'text-slate-400', label: 'Bond' },
 };
 const typeStyle = (t = '') =>
-  TYPE_COLORS[t.toLowerCase()] ?? { bg: 'bg-slate-500/10', text: 'text-slate-400', label: t || '—' };
+  TYPE_COLORS[t.toLowerCase()] ?? { bg: 'bg-slate-500/10', text: 'text-slate-400', label: t || 'â€”' };
 
 const QUICK_SYMBOLS = [
   { label: 'GOLD', value: 'OANDA:XAUUSD' },
@@ -348,9 +356,9 @@ const QUICK_SYMBOLS = [
   { label: 'OIL', value: 'CAPITALCOM:OIL' },
 ];
 
-/* ─────────────────────────────────────────────────────────────
-   MarketOverview — TradingView Technical Analysis widget
-───────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   MarketOverview â€” TradingView Technical Analysis widget
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function MarketOverview() {
   const [symbol, setSymbol] = useState('OANDA:XAUUSD');
   const [query, setQuery] = useState('');
@@ -529,9 +537,9 @@ function MarketOverview() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   EconomicCalendar — TradingView events widget
-───────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   EconomicCalendar â€” TradingView events widget
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function EconomicCalendar() {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -580,9 +588,9 @@ function EconomicCalendar() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
-   EconomicMap — tv-economic-map web component
-───────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   EconomicMap â€” tv-economic-map web component
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const EconomicMap = memo(({ isActive }: { isActive: boolean }) => {
   const ref = useRef<HTMLDivElement>(null);
   const mapElRef = useRef<HTMLElement | null>(null);
@@ -644,10 +652,11 @@ const EconomicMap = memo(({ isActive }: { isActive: boolean }) => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Macro Indices</p>
         </div>
       </div>
-      {loading && (
-        <div className="flex flex-col items-center justify-center py-20 relative z-10">
-          <RefreshCw className="animate-spin text-yellow-400 mb-4" size={48} />
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading map…</span>
+            {loading && (
+        <div className="relative z-10 space-y-4 py-2">
+          <Skeleton className="h-4 w-40 rounded-full bg-white/10" />
+          <Skeleton className="h-3.5 w-64 rounded-full bg-white/10" />
+          <Skeleton className="h-[520px] rounded-[2rem] bg-white/10" />
         </div>
       )}
       <div className="relative z-10 min-h-[600px]" ref={ref} />
@@ -656,9 +665,9 @@ const EconomicMap = memo(({ isActive }: { isActive: boolean }) => {
 });
 EconomicMap.displayName = 'EconomicMap';
 
-/* ─────────────────────────────────────────────────────────────
-   AllSymbolsTiming — paginated MT5 session table
-───────────────────────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   AllSymbolsTiming â€” paginated MT5 session table
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 interface SymbolTimingItem { symbol: string; category: string; sessions: RawSession[]; }
 
 function AllSymbolsTiming() {
@@ -765,7 +774,7 @@ function AllSymbolsTiming() {
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            placeholder={`Search ${activeCategory === 'all' ? 'Symbols' : activeCategory} (e.g. JP225, EURUSD, XAUUSD)…`}
+            placeholder={`Search ${activeCategory === 'all' ? 'Symbols' : activeCategory} (e.g. JP225, EURUSD, XAUUSD)â€¦`}
             className="flex-1 bg-transparent outline-none text-sm font-black uppercase tracking-tight placeholder:text-slate-500 text-white"
           />
         </div>
@@ -773,10 +782,31 @@ function AllSymbolsTiming() {
 
       {/* Table */}
       <GlassCard noPadding className="p-1 border-2 relative overflow-visible">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-32">
-            <RefreshCw className="animate-spin text-yellow-400 mb-4" size={48} />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Loading global timings…</span>
+                {loading ? (
+          <div className="space-y-4 px-2 py-2">
+            <div className="grid gap-3 md:grid-cols-3">
+              <Skeleton className="h-12 rounded-[1.1rem] bg-white/10" />
+              <Skeleton className="h-12 rounded-[1.1rem] bg-white/10" />
+              <Skeleton className="h-12 rounded-[1.1rem] bg-white/10" />
+            </div>
+            <div className="overflow-hidden rounded-[2.2rem] border border-[#1b56ca]/20">
+              <div className="grid gap-4 border-b border-[#1b56ca]/20 bg-[#0c246b] px-6 py-5" style={{ gridTemplateColumns: '1.2fr repeat(6, minmax(0, 1fr))' }}>
+                {Array.from({ length: 7 }).map((_, index) => (
+                  <Skeleton key={index} className={`h-3.5 rounded-full bg-white/10 ${index === 0 ? 'w-20' : 'w-14'}`} />
+                ))}
+              </div>
+              <div className="divide-y divide-[#1b56ca]/10 bg-[#091a4c]/50">
+                {Array.from({ length: 6 }).map((_, row) => (
+                  <div key={row} className="grid gap-4 px-6 py-5" style={{ gridTemplateColumns: '1.2fr repeat(6, minmax(0, 1fr))' }}>
+                    {Array.from({ length: 7 }).map((__, col) => (
+                      <div key={col} className="flex items-center">
+                        <Skeleton className={`h-4 rounded-full bg-white/10 ${col === 0 ? 'w-24' : 'w-full'}`} />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : error ? (
           <div className="text-center py-20">
@@ -816,12 +846,12 @@ function AllSymbolsTiming() {
                               <div className="flex flex-col gap-1">
                                 {daySessions.map((s, idx) => (
                                   <span key={idx} className="text-xs font-black font-mono text-yellow-400 bg-yellow-400/5 border border-yellow-400/10 px-2.5 py-1 rounded-md inline-block whitespace-nowrap">
-                                    {s.open} – {s.close}
+                                    {s.open} â€“ {s.close}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-xs font-black uppercase opacity-20">—</span>
+                              <span className="text-xs font-black uppercase opacity-20">â€”</span>
                             )}
                           </td>
                         );
@@ -837,7 +867,7 @@ function AllSymbolsTiming() {
                                 <span className="text-xs font-black uppercase text-white">{day.substring(0, 3)}</span>
                                 <div className="flex flex-col items-end gap-1">
                                   {daySessions.map((s, idx) => (
-                                    <span key={idx} className="text-xs font-bold font-mono text-yellow-400">{s.open} – {s.close}</span>
+                                    <span key={idx} className="text-xs font-bold font-mono text-yellow-400">{s.open} â€“ {s.close}</span>
                                   ))}
                                 </div>
                               </div>
@@ -859,7 +889,7 @@ function AllSymbolsTiming() {
       {!loading && !error && totalPages > 1 && (
         <div className="flex items-center justify-between px-6 py-4 rounded-[2rem] border backdrop-blur-md bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] shadow-lg">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Showing {Math.min(filteredData.length, (currentPage - 1) * itemsPerPage + 1)}–{Math.min(filteredData.length, currentPage * itemsPerPage)} of {filteredData.length} symbols
+            Showing {Math.min(filteredData.length, (currentPage - 1) * itemsPerPage + 1)}â€“{Math.min(filteredData.length, currentPage * itemsPerPage)} of {filteredData.length} symbols
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -884,9 +914,9 @@ function AllSymbolsTiming() {
   );
 }
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Tabs config
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const TABS = [
   { id: 'report', label: 'Archive', icon: Layers },
   { id: 'analysis', label: 'Analytics', icon: Activity },
@@ -896,9 +926,9 @@ const TABS = [
   { id: 'map', label: 'Eco Map', icon: Globe },
 ];
 
-/* ─────────────────────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Page
-───────────────────────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function ClientTechnicalAnalysisPage() {
   const [activeTab, setActiveTab] = useState('report');
 

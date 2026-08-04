@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
+import Head from "next/head";
 import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
 import { useTheme } from 'next-themes';
+import { TicketsSkeleton } from '@/components/client-page-skeletons';
 
 type TicketMessage = {
   id: string;
@@ -443,6 +445,17 @@ const Tickets = () => {
 
     setFilteredTickets(result);
   }, [tickets, searchTerm, filters]);
+
+  if (loading && activePage === "view") {
+    return (
+      <>
+        <Head>
+          <title>Support Tickets | Client Portal</title>
+        </Head>
+        <TicketsSkeleton />
+      </>
+    );
+  }
 
   const applyFilters = () => {
     setShowFilters(false);
@@ -963,8 +976,23 @@ const Tickets = () => {
         <Modal title="Ticket Details" onClose={() => { setShowViewModal(false); }}>
           <div className="space-y-6">
             {ticketDetailLoading && (
-              <div className="rounded-2xl border border-[#2450b7]/40 bg-[#0b226a]/70 px-4 py-3 text-sm font-bold text-[#dbe8ff]">
-                Refreshing ticket details from the server...
+              <div className="space-y-4 rounded-2xl border border-[#2450b7]/40 bg-[#0b226a]/70 p-4">
+                <div className="h-4 w-44 rounded-full bg-white/10 animate-pulse" />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <div className="h-3.5 w-20 rounded-full bg-white/10 animate-pulse" />
+                    <div className="h-10 rounded-2xl bg-white/10 animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3.5 w-24 rounded-full bg-white/10 animate-pulse" />
+                    <div className="h-10 rounded-2xl bg-white/10 animate-pulse" />
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="h-24 rounded-2xl bg-white/10 animate-pulse" />
+                  <div className="h-24 rounded-2xl bg-white/10 animate-pulse" />
+                  <div className="h-24 rounded-2xl bg-white/10 animate-pulse" />
+                </div>
               </div>
             )}
 

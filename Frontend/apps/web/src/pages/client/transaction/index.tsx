@@ -16,6 +16,7 @@ import {
   Search,
   X,
 } from 'lucide-react';
+import { TransactionsSkeleton } from '@/components/client-page-skeletons';
 
 type ClientTransaction = {
   id: number | string;
@@ -487,6 +488,17 @@ export default function TransactionHistory() {
     : searchTerm.trim() || fromDate || toDate
       ? 'No transactions match your filters.'
       : 'No live transactions are available for this tab.';
+
+  if (loading) {
+    return (
+      <>
+        <Head>
+          <title>Transactions | Client Portal</title>
+        </Head>
+        <TransactionsSkeleton />
+      </>
+    );
+  }
 
   return (
     <>

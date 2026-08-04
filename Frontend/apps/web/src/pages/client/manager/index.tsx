@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
 import {
@@ -21,7 +21,18 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { getClientData, getAdminManagers } from '@/lib/mockDataLoader';
+import { fetchAdminManagers, fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
+import {
+  buildManagerRows,
+  DEFAULT_MANAGER_ROW,
+  formatCurrency,
+  pickAssignedManager,
+  toNumber,
+  type ClientAccountSummary,
+  type ClientInvestmentSummary,
+  type ManagerRow,
+} from '@/lib/live-manager-data';
+import { ManagerSkeleton } from '@/components/client-page-skeletons';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 
@@ -43,10 +54,6 @@ export default function ClientManagerPage() {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
-  const clientData = getClientData();
-  const managerInfo = clientData.assignedManager;
-  const allManagers = getAdminManagers();
-
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
@@ -59,10 +66,65 @@ export default function ClientManagerPage() {
   const [cheeseAmount, setCheeseAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [usdtAmount, setUsdtAmount] = useState('');
+  const [isPageLoading, setIsPageLoading] = useState(true);
   const [convertedAmount, setConvertedAmount] = useState<any>(null);
   const [newLeverage, setNewLeverage] = useState<string>('500');
   const [passwordType, setPasswordType] = useState<'Investor' | 'Manager' | 'None'>('Investor');
-  const [selectedManager, setSelectedManager] = useState<any | null>(null);
+  const [selectedManager, setSelectedManager] = useState<ManagerRow | null>(null);
+  const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
+  const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
+  const [clientAccount, setClientAccount] = useState<ClientAccountSummary | null>(null);
+  const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadLiveData = async () => {
+      setIsPageLoading(true);
+
+      const [dashboardResponse, managersResponse, investmentsResponse] = await Promise.all([
+        fetchClientDashboard(),
+        fetchAdminManagers(),
+        fetchClientInvestments(),
+      ]);
+
+      if (!active) {
+        return;
+      }
+
+      const dashboard = dashboardResponse || null;
+      const profile = dashboard?.client || null;
+      const account = dashboard?.account || null;
+      const investments = Array.isArray(investmentsResponse) ? investmentsResponse : [];
+      const liveManagers = buildManagerRows(Array.isArray(managersResponse) ? managersResponse : [], investments, profile);
+      const assignedManager = pickAssignedManager(liveManagers, investments) || DEFAULT_MANAGER_ROW;
+
+      setClientAccount(account);
+      setClientInvestments(investments);
+      setAllManagers(liveManagers);
+      setManagerInfo(assignedManager);
+      setSelectedManager((current) => {
+        if (!current) {
+          return null;
+        }
+        return liveManagers.find((manager) => manager.id === current.id) || assignedManager;
+      });
+      setIsPageLoading(false);
+    };
+
+    loadLiveData().catch(() => {
+      if (active) {
+        setAllManagers([]);
+        setClientInvestments([]);
+        setManagerInfo(DEFAULT_MANAGER_ROW);
+        setIsPageLoading(false);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
@@ -129,6 +191,36 @@ export default function ClientManagerPage() {
     activeManager?.email === managerInfo.email;
 
   const selectedInvestmentId = activeManager ? String(activeManager.id) : '';
+
+  const totalInvested = clientInvestments.reduce(
+    (sum, investment) => sum + toNumber(investment.allocated ?? investment.allocated_amount),
+    0,
+  );
+  const totalProfit = clientInvestments.reduce((sum, investment) => {
+    const currentValue = toNumber(investment.current_value);
+    const allocatedAmount = toNumber(investment.allocated ?? investment.allocated_amount);
+    return sum + Math.max(0, currentValue - allocatedAmount);
+  }, 0);
+  const linkedManagerCount = Math.max(
+    1,
+    new Set(
+      clientInvestments
+        .map((investment) => String(investment.manager || investment.manager_name || '').trim())
+        .filter(Boolean),
+    ).size,
+  );
+  const currentAccountLabel = clientAccount?.account_number || activeManager?.accountId || 'N/A';
+
+  if (isPageLoading) {
+    return (
+      <>
+        <Head>
+          <title>My Manager | Client Portal</title>
+        </Head>
+        <ManagerSkeleton />
+      </>
+    );
+  }
 
   return (
     <>
@@ -256,7 +348,7 @@ export default function ClientManagerPage() {
                     <span
                       className={`font-semibold ${activeManager.risk === 'Low' ? 'text-emerald-400' : activeManager.risk === 'Medium' ? 'text-amber-400' : 'text-red-400'}`}
                     >
-                      {activeManager.risk} Risk
+                      {activeManager.status}
                     </span>
                   </div>
                 </div>
@@ -265,14 +357,14 @@ export default function ClientManagerPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {[
                     {
-                      label: 'Balance',
+                      label: 'AUM',
                       value: activeManager.balance,
                       icon: <DollarSign size={14} />,
                       color: 'text-emerald-400',
                       bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20',
                     },
                     {
-                      label: 'Profit Share',
+                      label: 'Strategy',
                       value: activeManager.profit,
                       icon: <TrendingUp size={14} />,
                       color: 'text-blue-400',
@@ -286,7 +378,7 @@ export default function ClientManagerPage() {
                       bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-purple-500/10 border-purple-500/20',
                     },
                     {
-                      label: 'Total Investors',
+                      label: 'Linked',
                       value: activeManager.investorsCount,
                       icon: <Users size={14} />,
                       color: 'text-amber-400',
@@ -318,7 +410,7 @@ export default function ClientManagerPage() {
                 <div className="flex-1">
                   <div className={`text-[10px] font-black uppercase tracking-widest ${softTextClass}`}>Net Balance</div>
                   <div className="text-4xl font-black text-white mt-1 leading-none tracking-tight">
-                    $0.00 <span className={`text-sm font-black ml-1 ${softTextClass}`}>USD</span>
+                    {formatCurrency(clientAccount?.balance ?? totalInvested)} <span className={`text-sm font-black ml-1 ${softTextClass}`}>{clientAccount?.currency || 'USD'}</span>
                   </div>
                   <div className="mt-5 flex items-center gap-3">
                     <button
@@ -340,13 +432,13 @@ export default function ClientManagerPage() {
                 <div className="flex-none w-full md:w-auto">
                   <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
                     <div className={softTextClass}>Total Profit</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">$0</div>
-                    <div className={softTextClass}>Profit Share</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">5.00%</div>
-                    <div className={softTextClass}>Risk Profile</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">medium</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{formatCurrency(totalProfit)}</div>
+                    <div className={softTextClass}>Performance Fee</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{activeManager?.share || '0%'}</div>
+                    <div className={softTextClass}>Status</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{activeManager?.status || 'Active'}</div>
                     <div className={softTextClass}>Leverage</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">1:500</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{clientAccount?.leverage || '1:500'}</div>
                   </div>
                 </div>
               </div>
@@ -417,15 +509,15 @@ export default function ClientManagerPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Pending Wallet</div>
-                    <div className="text-2xl font-black text-[#d9aa2b]">$0.00</div>
+                    <div className="text-2xl font-black text-[#d9aa2b]">{formatCurrency(totalInvested)}</div>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Total Settled</div>
-                    <div className="text-2xl font-black text-white">$0.00</div>
+                    <div className="text-2xl font-black text-white">{formatCurrency(totalProfit)}</div>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Trades Processed</div>
-                    <div className="text-2xl font-black text-white">0</div>
+                    <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Live Managers</div>
+                    <div className="text-2xl font-black text-white">{linkedManagerCount}</div>
                   </div>
                 </div>
               </div>
@@ -481,10 +573,10 @@ export default function ClientManagerPage() {
                   {[
                     'Manager',
                     'Account ID',
-                    'Balance',
-                    'Profit Share',
+                    'AUM',
+                    'Strategy',
                     'Performance Fee',
-                    'Investors',
+                    'Status',
                     'Actions',
                   ].map((h) => (
                     <th
@@ -567,7 +659,7 @@ export default function ClientManagerPage() {
                           </span>
                         </td>
 
-                        {/* Investors count */}
+                        {/* Status */}
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center gap-1.5 text-slate-300">
                             <Users
@@ -575,7 +667,7 @@ export default function ClientManagerPage() {
                               className="text-amber-400 shrink-0"
                             />
                             <span className="font-semibold">
-                              {mgr.investorsCount}
+                              {mgr.status}
                             </span>
                           </div>
                         </td>
@@ -701,7 +793,7 @@ export default function ClientManagerPage() {
           {hasQuery && activeManager && activeManager.investorsList?.length > 0 && (
             <div className={`border-t px-6 py-4 ${borderMutedClass}`}>
               <p className={`text-xs font-bold uppercase tracking-wider mb-3 ${softTextClass}`}>
-                Investors under{' '}
+                Linked investments under{' '}
                 <span className="text-emerald-400">
                   {activeManager.name}
                 </span>
@@ -883,7 +975,7 @@ export default function ClientManagerPage() {
             <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
               <div>
                 <h3 className="text-xl font-black text-white">Open Positions</h3>
-                <p className={`text-sm mt-1 ${softTextClass}`}>Real-time trading activity for Account #{activeManager.accountId}</p>
+                <p className={`text-sm mt-1 ${softTextClass}`}>Real-time trading activity for Account #{clientAccount?.account_number || activeManager.accountId}</p>
               </div>
               <button
                 type="button"
@@ -948,7 +1040,7 @@ export default function ClientManagerPage() {
         currency={currency}
         setCurrency={setCurrency}
         convertedAmount={convertedAmount}
-        selectedDepositAccount={activeManager?.accountId || activeManager?.id || 'MAM-84930'}
+        selectedDepositAccount={currentAccountLabel}
         usdtAmount={usdtAmount}
         setUsdtAmount={setUsdtAmount}
       />
@@ -957,7 +1049,7 @@ export default function ClientManagerPage() {
         <WithdrawalModal
           onClose={() => setShowWithdrawalModal(false)}
           isDarkMode={isDarkMode}
-          currentAccount={activeManager?.accountId || activeManager?.id || 'MAM-84930'}
+          currentAccount={currentAccountLabel}
         />
       )}
     </>

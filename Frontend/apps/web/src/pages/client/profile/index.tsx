@@ -29,6 +29,7 @@ import {
   X,
   Edit
 } from 'lucide-react';
+import { ProfileSkeleton } from '@/components/client-page-skeletons';
 
 type ProfileTab = 'personal' | 'security' | 'activity' | 'documents' | 'payments';
 
@@ -198,6 +199,7 @@ export default function ClientProfilePage() {
   const [profileKycStatus, setProfileKycStatus] = useState('Verified');
   const [avatarSrc, setAvatarSrc] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80');
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [personalForm, setPersonalForm] = useState({
     firstName: 'Alex',
     lastName: 'Rivera',
@@ -274,6 +276,8 @@ export default function ClientProfilePage() {
     let isMounted = true;
 
     const loadProfile = async () => {
+      setProfileLoading(true);
+
       try {
         const response = await fetch('/api/client/profile', {
           credentials: 'include',
@@ -314,6 +318,10 @@ export default function ClientProfilePage() {
           setProfileUserId(null);
           setProfileTier('Individual Trader');
           setProfileKycStatus('Verified');
+        }
+      } finally {
+        if (isMounted) {
+          setProfileLoading(false);
         }
       }
     };
@@ -401,6 +409,17 @@ export default function ClientProfilePage() {
     setIsPersonalEditing(false);
     showProfileToast('Profile Settings saved successfully!');
   };
+
+  if (profileLoading) {
+    return (
+      <>
+        <Head>
+          <title>My Profile | Client Portal</title>
+        </Head>
+        <ProfileSkeleton />
+      </>
+    );
+  }
 
   const handleSecuritySave = async () => {
     if (!securityForm.currentPassword || !securityForm.newPassword || !securityForm.confirmPassword) {

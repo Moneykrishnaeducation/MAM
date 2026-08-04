@@ -27,6 +27,7 @@ import {
 import AccountOpenModal from '../model/accountopen';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { DashboardSkeleton } from '@/components/client-page-skeletons';
 
 const WHITE_COL = '#FFFFFF';
 const NAVY = '#0B1F4B';
@@ -804,6 +805,17 @@ export default function ClientDashboardPage() {
       details: log.details,
       ipAddress: log.ip_address || 'N/A',
     })) || [];
+
+  if (dashboardLoading) {
+    return (
+      <>
+        <Head>
+          <title>Student Dashboard | Client Portal</title>
+        </Head>
+        <DashboardSkeleton />
+      </>
+    );
+  }
 
   return (
     <>
