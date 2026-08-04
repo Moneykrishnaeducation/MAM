@@ -88,6 +88,7 @@ def _serialize_ticket(ticket: ClientTicket) -> dict:
         "status": _canonical_ticket_status(ticket.status),
         "description": ticket.description,
         "date": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
+        "attachments": ticket.attachments or [],
     }
 
 

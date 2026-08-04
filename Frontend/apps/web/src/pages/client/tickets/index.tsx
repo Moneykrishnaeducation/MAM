@@ -15,8 +15,11 @@ type TicketMessage = {
 
 type TicketAttachment = {
   id: string;
+  name?: string | null;
   file?: string | null;
   file_url?: string | null;
+  content_type?: string | null;
+  size?: number | null;
 };
 
 type ClientTicketApi = {
@@ -28,6 +31,7 @@ type ClientTicketApi = {
   date?: string | null;
   created_at?: string | null;
   description?: string | null;
+  attachments?: TicketAttachment[] | null;
 };
 
 type TicketStatusFilter = "all" | "open" | "pending" | "closed";
@@ -97,14 +101,39 @@ async function createClientTicket(payload: {
   description: string;
   category?: string;
   priority?: string;
+  documents?: File[];
 }) {
-  return fetchClientEndpoint<{ ticket?: ClientTicketApi; user_id?: string; message?: string }>(
-    "/api/client/tickets/create",
-    {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("subject", payload.subject);
+    formData.append("description", payload.description);
+    if (payload.category) formData.append("category", payload.category);
+    if (payload.priority) formData.append("priority", payload.priority);
+    (payload.documents || []).forEach((file) => {
+      formData.append("documents", file, file.name);
+    });
+
+    const response = await fetch("/api/client/tickets/create", {
       method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+      credentials: "include",
+      headers: {
+        Accept: "application/json",
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    return (await response.json()) as { ticket?: ClientTicketApi; user_id?: string; message?: string };
+  } catch {
+    return null;
+  }
 }
 
 const toAbsoluteUrl = (url: string | null | undefined): string | null => {
@@ -126,6 +155,7 @@ const normalizeTicket = (ticket: ClientTicketApi, index: number, createdBy: stri
   const status = normalizeTicketStatus(ticket.status);
   const priority = String(ticket.priority || 'Normal');
   const category = String(ticket.category || 'General Question');
+  const attachments = normalizeAttachments(ticket.attachments || []);
 
   return {
     id: String(ticket.id ?? `ticket-${index}`),
@@ -137,7 +167,7 @@ const normalizeTicket = (ticket: ClientTicketApi, index: number, createdBy: stri
     created_by: createdBy,
     description: String(ticket.description || `${priority} priority ticket loaded from the live endpoint.`),
     messages: [],
-    attachments: [],
+    attachments,
   };
 };
 
@@ -153,6 +183,18 @@ const normalizeMessages = (messages: TicketMessage[] = []) =>
     created_at: message?.created_at || message?.createdAt || null,
     id: message?.id || `message-${index}`,
   }));
+
+const normalizeAttachments = (attachments: TicketAttachment[] = []) =>
+  (Array.isArray(attachments) ? attachments : []).map((attachment, index) => {
+    const file = toAbsoluteUrl(attachment?.file || attachment?.file_url || null);
+    return {
+      ...attachment,
+      id: String(attachment?.id || `attachment-${index}`),
+      name: attachment?.name || null,
+      file,
+      file_url: file,
+    };
+  });
 
 const getMessagePreview = (message?: TicketMessage | null) => {
   if (!message) return '';
@@ -174,8 +216,13 @@ const getTicketPreview = (ticket?: Ticket | null) => {
   const latestMessage = messages[messages.length - 1];
   if (latestMessage) return getMessagePreview(latestMessage);
 
-  const ticketWithExtras = ticket as Ticket & { file?: string | null; file_url?: string | null };
-  const file = ticketWithExtras.file || ticketWithExtras.file_url;
+  const ticketWithExtras = ticket as Ticket & {
+    file?: string | null;
+    file_url?: string | null;
+    attachments?: TicketAttachment[];
+  };
+  const firstAttachment = Array.isArray(ticketWithExtras.attachments) ? ticketWithExtras.attachments[0] : null;
+  const file = ticketWithExtras.file || ticketWithExtras.file_url || firstAttachment?.file || firstAttachment?.file_url;
   if (file) {
     const fileName = file.split('/').pop() || 'Attachment';
     return `[Attachment] ${fileName}`;
@@ -421,6 +468,7 @@ const Tickets = () => {
         description,
         category: ticketCategory,
         priority: ticketPriority,
+        documents: selectedFiles,
       });
 
       if (!response?.ticket) {
@@ -491,16 +539,14 @@ const Tickets = () => {
     setTicketDetailLoading(true);
 
     const normalizedMessages = normalizeMessages(ticket.messages || []);
-    const attachments = (ticket.attachments || []).map((a) => ({
-      id: a.id,
-      file: toAbsoluteUrl(a.file),
-    }));
+    const attachments = normalizeAttachments(ticket.attachments || []);
 
     setSelectedTicket({
       ...ticket,
       _normalizedMessages: normalizedMessages,
       _normalizedAttachments: attachments,
       messages: normalizedMessages,
+      attachments,
     });
     setShowViewModal(true);
 
@@ -517,13 +563,16 @@ const Tickets = () => {
           return refreshedTicket;
         }
 
+        const nextMessages = refreshedTicket.messages.length > 0 ? refreshedTicket.messages : prev.messages;
+        const nextAttachments = refreshedTicket.attachments.length > 0 ? refreshedTicket.attachments : prev.attachments;
+
         return {
           ...prev,
           ...refreshedTicket,
-          messages: prev.messages,
-          attachments: prev.attachments,
-          _normalizedMessages: prev._normalizedMessages,
-          _normalizedAttachments: prev._normalizedAttachments,
+          messages: nextMessages,
+          attachments: nextAttachments,
+          _normalizedMessages: refreshedTicket._normalizedMessages?.length ? refreshedTicket._normalizedMessages : prev._normalizedMessages,
+          _normalizedAttachments: refreshedTicket._normalizedAttachments?.length ? refreshedTicket._normalizedAttachments : prev._normalizedAttachments,
         };
       });
     } catch {
@@ -1039,17 +1088,27 @@ const Tickets = () => {
                   {selectedTicket._normalizedAttachments.map((a) => {
                     const fileUrl = a?.file || null;
                     const safeFileUrl = fileUrl ?? undefined;
-                    const isImage = safeFileUrl && /\.(jpg|jpeg|png|gif)$/i.test(safeFileUrl);
+                    const cleanFileUrl = (safeFileUrl || '').split('?')[0];
+                    const isImage =
+                      Boolean(safeFileUrl) &&
+                      (a?.content_type?.startsWith('image/') ||
+                        /\.(avif|bmp|gif|jpe?g|png|svg|webp)$/i.test(cleanFileUrl));
+                    const attachmentName =
+                      a?.name ||
+                      (cleanFileUrl.split('/').pop() || 'Attachment');
                     return (
                       <div key={a.id} className="group relative">
                         {isImage ? (
-                          <a href={safeFileUrl} target="_blank" rel="noreferrer" className={`block w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${isDarkMode ? "border-white/10" : "border-[#2450b7] hover:border-[#3aa0ff]"}`}>
+                          <a href={safeFileUrl} target="_blank" rel="noreferrer" className={`relative block w-24 h-24 rounded-xl overflow-hidden border-2 transition-all ${isDarkMode ? "border-white/10" : "border-[#2450b7] hover:border-[#3aa0ff]"}`}>
                             <img src={safeFileUrl} alt="Attachment" className="w-full h-full object-cover" />
+                            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent px-2 py-1">
+                              <p className="truncate text-[9px] font-bold text-white">{attachmentName}</p>
+                            </div>
                           </a>
                         ) : (
                           <a href={safeFileUrl} target="_blank" rel="noreferrer" className={`flex flex-col items-center justify-center w-24 h-24 rounded-xl border-2 transition-all ${isDarkMode ? "border-white/10 bg-white/5" : "border-[#2450b7] bg-[#0b226a] hover:border-[#3aa0ff]"}`}>
-                            <Plus className={`mb-1 ${isDarkMode ? "text-royal" : "text-[#f0b91f]"}`} size={20} />
-                            <span className="text-[10px] font-bold text-center px-2 truncate w-full">File</span>
+                            <FileText className={`mb-1 ${isDarkMode ? "text-royal" : "text-[#f0b91f]"}`} size={20} />
+                            <span className="text-[10px] font-bold text-center px-2 truncate w-full">{attachmentName}</span>
                           </a>
                         )}
                         <a href={safeFileUrl} download className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full flex items-center justify-center text-white shadow-lg opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)]">

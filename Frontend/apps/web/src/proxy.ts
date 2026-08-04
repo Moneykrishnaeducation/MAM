@@ -11,6 +11,12 @@ const BACKEND_URL =
 export function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
 
+  // Forward media requests so uploaded documents load from the backend server.
+  if (url.pathname.startsWith("/media/")) {
+    const destination = `${BACKEND_URL}${url.pathname}${url.search}`;
+    return NextResponse.rewrite(new URL(destination));
+  }
+
   // Forward /api/proxy/* calls to backend server
   if (url.pathname.startsWith("/api/proxy/")) {
     const backendPath = url.pathname.replace(/^\/api\/proxy/, "");

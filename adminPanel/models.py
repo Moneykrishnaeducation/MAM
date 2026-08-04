@@ -217,6 +217,7 @@ class ClientTicket(models.Model):
     priority = fields.CharField(max_length=50, default="Normal")
     status = fields.CharField(max_length=50, default="Open")
     description = fields.TextField(null=True)
+    attachments = fields.JSONField(default=list, null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
