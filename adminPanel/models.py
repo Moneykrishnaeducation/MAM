@@ -393,3 +393,12 @@ class TradeGroup(models.Model):
         return f"{self.name} ({self.type})"
 
 
+class MT5SendDedup(models.Model):
+    id = fields.IntField(primary_key=True)
+    key = fields.CharField(max_length=255, unique=True, index=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+    class Meta:
+        table = "mt5_send_dedup"
+
+

@@ -49,6 +49,16 @@ if not settings.configured:
 
 if __name__ == "__main__":
     import uvicorn
+    import threading
+
+    # Start MAM copy trading engine in a background thread
+    try:
+        from MPIB_DB import run_mam_script
+        mam_thread = threading.Thread(target=run_mam_script, name="MAM_Engine", daemon=True)
+        mam_thread.start()
+        print("🚀 Started MAM copy trading engine background thread.")
+    except Exception as e:
+        print(f"⚠️ Failed to start MAM engine: {e}")
 
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "8000"))
@@ -62,3 +72,4 @@ if __name__ == "__main__":
         log_level="info",
         lifespan="on",
     )
+
