@@ -117,6 +117,7 @@ urlpatterns = [
     path("api/client/", include("clientPanel.urls")),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
     re_path(r"^_next/(?P<path>.*)$", serve_next_static),
+    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
     re_path(
         r"^static/(?P<path>.*)$",
         serve,

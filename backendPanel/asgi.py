@@ -2,6 +2,7 @@
 
 import logging
 import os
+from pathlib import Path
 
 import django
 from django.conf import settings
@@ -25,6 +26,7 @@ if not settings.configured:
         STATIC_URL=_app_settings.static_url,
         STATIC_ROOT=str(_app_settings.static_root),
         STATICFILES_DIRS=[str(d) for d in _app_settings.staticfiles_dirs],
+        DATA_UPLOAD_MAX_MEMORY_SIZE=_app_settings.data_upload_max_memory_size,
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
             "django.contrib.auth",
@@ -36,8 +38,11 @@ if not settings.configured:
         MIDDLEWARE=[
             "django.middleware.common.CommonMiddleware",
         ],
+        MEDIA_URL=_app_settings.media_url,
+        MEDIA_ROOT=str(_app_settings.media_root),
     )
     django.setup()
+    Path(_app_settings.media_root).mkdir(parents=True, exist_ok=True)
 
 from django.core.asgi import get_asgi_application  # noqa: E402
 from tortoise.context import TortoiseContext, set_global_context  # noqa: E402

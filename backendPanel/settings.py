@@ -50,6 +50,12 @@ class Settings(BaseSettings):
         ],
         alias="STATICFILES_DIRS",
     )
+    media_url: str = "/media/"
+    media_root: Path = Field(
+        default_factory=lambda: BASE_DIR / "media",
+        alias="MEDIA_ROOT",
+    )
+    data_upload_max_memory_size: int = 10485760
 
     # Database settings
     db_engine: str = Field(

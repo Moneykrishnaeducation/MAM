@@ -1,6 +1,7 @@
 """Main application entry point for backendPanel — runs uvicorn ASGI server."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -24,6 +25,7 @@ if not settings.configured:
         STATIC_URL=_app_settings.static_url,
         STATIC_ROOT=str(_app_settings.static_root),
         STATICFILES_DIRS=[str(d) for d in _app_settings.staticfiles_dirs],
+        DATA_UPLOAD_MAX_MEMORY_SIZE=_app_settings.data_upload_max_memory_size,
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
             "django.contrib.auth",
@@ -36,10 +38,13 @@ if not settings.configured:
         MIDDLEWARE=[
             "django.middleware.common.CommonMiddleware",
         ],
+        MEDIA_URL=_app_settings.media_url,
+        MEDIA_ROOT=str(_app_settings.media_root),
         CORS_ALLOW_ALL_ORIGINS=not _cors_origin,
         CORS_ALLOWED_ORIGINS=[_cors_origin] if _cors_origin else [],
     )
     django.setup()
+    Path(_app_settings.media_root).mkdir(parents=True, exist_ok=True)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,14 @@
 """Plain async view functions for adminPanel — no router decorators."""
 
+import base64
 import json
+import os
 import random
+import re
 import string
+from pathlib import Path
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -17,8 +22,38 @@ from adminPanel.models import (
     PendingRequest,
 )
 from backendPanel.permissions import IsAdmin, permission_required
-from clientPanel.view.common import hash_client_password
+from clientPanel.view.common import (
+    get_admin_request_token,
+    hash_client_password,
+    load_admin_login_token,
+)
 from clientPanel.crud import create_client_profile
+
+AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
+
+
+def _save_avatar_data(avatar_base64: str, admin_id: int) -> str | None:
+    """Save base64 image data to media/avatars and return the public media path."""
+    match = AVATAR_FILENAME_RE.match(avatar_base64)
+    if not match:
+        return None
+
+    ext = match.group("ext")
+    avatar_data = avatar_base64.split(",", 1)[-1]
+    try:
+        decoded = base64.b64decode(avatar_data)
+    except (TypeError, ValueError):
+        return None
+
+    avatar_dir = Path(settings.MEDIA_ROOT) / "avatars"
+    avatar_dir.mkdir(parents=True, exist_ok=True)
+    filename = f"admin-avatar-{admin_id}.{ext}"
+    file_path = avatar_dir / filename
+
+    with open(file_path, "wb") as f:
+        f.write(decoded)
+
+    return f"{settings.MEDIA_URL.rstrip('/')}/avatars/{filename}"
 
 # Valid roles for AdminUser records (canonical title-case)
 _VALID_ADMIN_ROLES: frozenset[str] = frozenset({"Admin", "SuperAdmin", "Viewer"})
@@ -35,6 +70,25 @@ _ROLE_CANONICAL: dict[str, str] = {
 def _canonicalize_admin_role(raw: str) -> str | None:
     """Return canonical title-case role or None if not a valid admin role."""
     return _ROLE_CANONICAL.get(raw.strip().lower().replace("-", "").replace(" ", ""))
+
+async def _get_current_admin_user(request):
+    token = get_admin_request_token(request)
+    if not token:
+        return None, JsonResponse({"status": "error", "message": "Authentication token missing."}, status=401)
+
+    payload = load_admin_login_token(token)
+    if payload is None:
+        return None, JsonResponse({"status": "error", "message": "Invalid or expired admin token."}, status=401)
+
+    user_id = payload.get("user_id")
+    if user_id is None:
+        return None, JsonResponse({"status": "error", "message": "Invalid admin token payload."}, status=401)
+
+    user = await AdminUser.filter(id=int(user_id)).first()
+    if user is None:
+        return None, JsonResponse({"status": "error", "message": "Admin user not found."}, status=404)
+
+    return user, None
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
@@ -57,6 +111,77 @@ async def list_admin_system_users(request):
         for user in admin_users
     ]
     return JsonResponse({"status": "ok", "admin_users": results})
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET", "PUT"])
+async def admin_profile(request):
+    """Get or update the currently authenticated admin user's profile."""
+    user, error_response = await _get_current_admin_user(request)
+    if error_response is not None:
+        return error_response
+
+    if request.method == "GET":
+        return JsonResponse(
+            {
+                "status": "ok",
+                "admin_user": {
+                    "id": f"ADM-{user.id:03d}",
+                    "name": user.name,
+                    "email": user.email,
+                    "role": user.role,
+                    "department": user.department,
+                    "permissions": user.permissions or [],
+                    "status": user.status,
+                    "avatar": user.avatar,
+                    "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
+                },
+            }
+        )
+
+    try:
+        body = json.loads(request.body)
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    if "name" in body:
+        user.name = body["name"]
+    if "department" in body:
+        user.department = body["department"]
+    if "permissions" in body:
+        user.permissions = body["permissions"]
+    if "status" in body:
+        user.status = body["status"]
+    if "avatar" in body:
+        avatar_value = body["avatar"]
+        if isinstance(avatar_value, str) and avatar_value.startswith("data:image/"):
+            saved_path = _save_avatar_data(avatar_value, user.id)
+            if saved_path:
+                user.avatar = saved_path
+        else:
+            user.avatar = avatar_value
+    if "password" in body and body["password"]:
+        user.password_hash = hash_client_password(body["password"])
+
+    await user.save()
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Administrator profile updated successfully",
+            "admin_user": {
+                "id": f"ADM-{user.id:03d}",
+                "name": user.name,
+                "email": user.email,
+                "role": user.role,
+                "department": user.department,
+                "permissions": user.permissions or [],
+                "status": user.status,
+                "avatar": user.avatar,
+                "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
+            },
+        }
+    )
 
 
 async def list_client_users(request):
