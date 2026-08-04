@@ -257,6 +257,7 @@ async def list_managers(request):
     results = [
         {
             "id": m.id,
+            "account_id": m.account_id,
             "name": m.account_name or (m.user.name if m.user else "MAM Manager"),
             "email": m.user.email if m.user else "manager@mam.com",
             "strategy": m.risk_level or "Quantitative Grid",
@@ -271,13 +272,15 @@ async def list_managers(request):
 
 async def list_investors(request):
     """List investors directly from database."""
-    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
+    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account")
     results = [
         {
             "id": i.id,
+            "account_id": i.account_id,
             "name": i.user.name if i.user else "Investor User",
             "email": i.user.email if i.user else "investor@mam.com",
             "equity": float(i.equity),
+            "allocated_mam_name": i.mam_master_account.account_name if i.mam_master_account else None,
             "allocated_mam": i.mam_master_account.account_id if i.mam_master_account else None,
             "status": i.status or "Active",
         }

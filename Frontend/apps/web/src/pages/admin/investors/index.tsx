@@ -49,9 +49,9 @@ export default function AdminInvestorsPage() {
             id: `INV-${i.id}`,
             name: i.name,
             email: i.email,
-            managerName: i.allocated_mam || 'Not Assigned',
-            managerUserId: 'MGR-00',
-            accountId: `ACC-${i.id}08`,
+            managerName: i.allocated_mam_name ? i.allocated_mam_name : 'Not Assigned',
+            managerUserId: i.allocated_mam ? `MGR-${i.allocated_mam}` : 'Not Assigned',
+            accountId: i.account_id || 'Unknown',
             invested: `$${(i.equity || 0).toLocaleString()}`,
             profit: '+$0',
           }));

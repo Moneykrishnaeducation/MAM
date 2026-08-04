@@ -52,7 +52,7 @@ export default function AdminManagersPage() {
             id: `MGR-${m.id}`,
             name: m.name,
             email: m.email,
-            accountId: `ACC-${m.id}09`,
+            accountId: m.account_id || 'Unknown',
             balance: `$${(m.aum || 0).toLocaleString()}`,
             profit: `+${m.strategy ? '12.4%' : '0.0%'}`,
             share: m.performance_fee || '20%',

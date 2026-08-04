@@ -124,7 +124,7 @@ class TradingAccount(models.Model):
     copy_multiplier_mode = fields.CharField(max_length=50, default="Fixed")
     fixed_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
     max_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
-    multi_trade_count = fields.IntField(default=1)                  # must be >= 0
+    multi_trade_count = fields.IntField(default=1, min_value=0)      # must be >= 0
 
     # ── Profit & risk ─────────────────────────────────────────────────────
     profit_sharing_percentage = fields.DecimalField(max_digits=5, decimal_places=2, null=True)
