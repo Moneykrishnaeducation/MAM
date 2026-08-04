@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import {
   User, 
@@ -24,7 +25,8 @@ import {
   CreditCard,
   PencilLine,
   Info,
-  X
+  X,
+  Edit
 } from 'lucide-react';
 
 type ProfileTab = 'personal' | 'security' | 'activity' | 'documents' | 'payments';
@@ -131,13 +133,13 @@ const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
 };
 
 const PAYMENT_STATUS_CLASSES: Record<PaymentStatus, string> = {
-  approved: 'text-emerald-400',
+  approved: 'text-amber-400',
   pending: 'text-cyan-400',
 };
 
 const formatFileSize = (size: number) => {
   if (!Number.isFinite(size) || size <= 0) {
-    return '0 B';
+    return '0 B'; 
   }
 
   const units = ['B', 'KB', 'MB', 'GB'];
@@ -333,24 +335,24 @@ export default function ClientProfilePage() {
       </Head>
 
       <div className="relative isolate flex-1 overflow-hidden p-6 md:p-8">
-        {/* Decorative background glows - Emerald and Teal to match Client Sidebar active theme */}
+        {/* Decorative background glows - warm gold accents for the profile theme */}
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500/12 blur-[160px] z-0"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/12 blur-[160px] z-0"
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-emerald-600/10 blur-[140px] z-0"
+          className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-amber-600/10 blur-[140px] z-0"
           aria-hidden="true"
         />
         <div
-          className="pointer-events-none absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-teal-600/10 blur-[120px] z-0"
+          className="pointer-events-none absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-amber-600/10 blur-[120px] z-0"
           aria-hidden="true"
         />
 
         <div className="relative z-10">
-          {/* Toast Notification (Emerald theme) */}
+          {/* Toast Notification (gold theme) */}
           {showToast && (
-            <div className="fixed bottom-6 right-6 bg-emerald-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 border border-emerald-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+            <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
               <span>Profile Settings saved successfully!</span>
             </div>
@@ -363,19 +365,19 @@ export default function ClientProfilePage() {
             {/* Left Column - User Summary Card */}
             <div className="lg:col-span-4 space-y-6">
               <div className="relative overflow-hidden rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(13,31,69,0.98)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
-                <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-emerald-500/5 blur-2xl" />
+                <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-amber-500/5 blur-2xl" />
 
                 <div className="flex flex-col items-center text-center">
                   <div className="group relative mb-4">
                     <img
                       src={avatarSrc}
                       alt="Avatar"
-                      className="h-28 w-28 rounded-3xl border-4 border-emerald-500/40 object-cover shadow-xl transition-all duration-300 group-hover:scale-105"
+                      className="h-28 w-28 rounded-3xl border-4 border-amber-500/40 object-cover shadow-xl transition-all duration-300 group-hover:scale-105"
                     />
                     <button
                       type="button"
                       onClick={openAvatarPicker}
-                      className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-xl border-4 border-[#081433] bg-emerald-500 text-slate-950 shadow-md transition-colors hover:bg-emerald-400"
+                      className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-xl border-4 border-[#081433] bg-amber-500 text-slate-950 shadow-md transition-colors hover:bg-amber-400"
                       title="Change Avatar"
                     >
                       <Upload size={14} />
@@ -393,7 +395,7 @@ export default function ClientProfilePage() {
                   </div>
 
                   <h3 className="mb-1 text-xl font-bold text-white">{personalFullName}</h3>
-                  <p className="mb-4 inline-flex items-center gap-1 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-400">
+                  <p className="mb-4 inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
                     <Mail size={11} />
                     {personalForm.email}
                   </p>
@@ -422,7 +424,7 @@ export default function ClientProfilePage() {
 
                 <div className="mt-4 space-y-4">
                     <div className="flex items-start gap-3">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
                         <Check size={12} />
                       </div>
                       <div className="text-xs">
@@ -431,7 +433,7 @@ export default function ClientProfilePage() {
                       </div>
                     </div>
                   <div className="flex items-start gap-3">
-                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
                       <Check size={12} />
                     </div>
                     <div className="text-xs">
@@ -441,7 +443,7 @@ export default function ClientProfilePage() {
                   </div>
                 </div>
 
-                <div className="pointer-events-none absolute -bottom-8 left-1/2 w-[220px] -translate-x-1/2 text-emerald-400/20">
+                <div className="pointer-events-none absolute -bottom-8 left-1/2 w-[220px] -translate-x-1/2 text-amber-400/20">
                   <Shield size={180} strokeWidth={1.25} />
                 </div>
               </div>
@@ -456,7 +458,7 @@ export default function ClientProfilePage() {
                     onClick={() => setActiveTab('personal')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'personal' 
-                        ? 'border-emerald-500 text-emerald-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -466,7 +468,7 @@ export default function ClientProfilePage() {
                     onClick={() => setActiveTab('security')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'security' 
-                        ? 'border-emerald-500 text-emerald-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -477,7 +479,7 @@ export default function ClientProfilePage() {
                     onClick={() => setActiveTab('activity')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'activity' 
-                        ? 'border-emerald-500 text-emerald-400' 
+                        ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -488,7 +490,7 @@ export default function ClientProfilePage() {
                     onClick={() => setActiveTab('documents')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'documents'
-                        ? 'border-emerald-500 text-emerald-400'
+                        ? 'border-amber-500 text-amber-400'
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -499,7 +501,7 @@ export default function ClientProfilePage() {
                     onClick={() => setActiveTab('payments')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'payments'
-                        ? 'border-emerald-500 text-emerald-400'
+                        ? 'border-amber-500 text-amber-400'
                         : 'border-transparent text-slate-400 hover:text-slate-200'
                     }`}
                   >
@@ -516,7 +518,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -539,7 +541,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -562,7 +564,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -581,7 +583,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -604,7 +606,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -627,7 +629,7 @@ export default function ClientProfilePage() {
                         <div
                           className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-emerald-500'
+                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
                               : 'border-slate-800/60 bg-slate-900/30'
                           }`}
                         >
@@ -647,9 +649,9 @@ export default function ClientProfilePage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.55)_0%,rgba(8,22,59,0.72)_100%)] px-5 py-4">
+                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-amber-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.55)_0%,rgba(8,22,59,0.72)_100%)] px-5 py-4">
                       <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-sky-400/30 bg-sky-400/10 text-sky-300">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300">
                           <Info size={16} />
                         </div>
                         <div>
@@ -660,27 +662,37 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
 
-                      <div className="hidden items-end gap-1.5 md:flex">
-                        <div className="h-14 w-14 rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(123,189,255,0.55)_0%,rgba(99,102,241,0.55)_100%)] shadow-inner shadow-black/20" />
-                        <div className="-ml-5 h-10 w-10 rounded-xl border border-white/10 bg-[linear-gradient(180deg,rgba(99,102,241,0.65)_0%,rgba(67,56,202,0.55)_100%)]" />
-                        <div className="-ml-3 flex h-8 w-8 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/80 text-slate-950 shadow-md">
-                          <Check size={14} />
+                      <div className="hidden shrink-0 md:flex">
+                        <div className="relative h-20 w-28">
+                          <div className="absolute left-2 top-3 h-10 w-14 rotate-[-8deg] rounded-[12px] bg-[linear-gradient(180deg,rgba(196,219,255,0.95)_0%,rgba(126,153,255,0.95)_100%)] shadow-[0_10px_24px_rgba(79,70,229,0.28)]" />
+                          <div className="absolute left-7 top-1 h-12 w-16 rotate-[6deg] rounded-[12px] bg-[linear-gradient(180deg,rgba(167,180,255,0.98)_0%,rgba(92,112,243,0.98)_100%)] shadow-[0_14px_30px_rgba(59,130,246,0.28)]">
+                            <div className="absolute -top-2 left-3 h-4 w-7 rounded-t-[8px] bg-[linear-gradient(180deg,rgba(210,220,255,0.96)_0%,rgba(176,190,255,0.94)_100%)]" />
+                            <div className="absolute left-2 top-3 h-2 w-8 rounded-full bg-white/25" />
+                            <div className="absolute left-2 top-6 h-1.5 w-9 rounded-full bg-white/18" />
+                            <div className="absolute left-2 top-8 h-1.5 w-6 rounded-full bg-white/16" />
+                          </div>
+                          <div className="absolute right-1 top-11 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-400/15 shadow-[0_0_0_6px_rgba(34,211,238,0.08)] backdrop-blur-sm">
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-slate-950 shadow-[0_10px_20px_rgba(34,211,238,0.25)]">
+                              <Check size={14} strokeWidth={3} />
+                            </div>
+                          </div>
+                          <div className="absolute left-5 top-2 h-14 w-16 rounded-[18px] bg-blue-400/10 blur-2xl" />
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap justify-end gap-3">
                       <button
                         type="button"
                         onClick={() => setIsPersonalEditing(true)}
-                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-300 hover:to-cyan-300"
+                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:from-amber-300 hover:to-yellow-200"
                       >
-                        <Check size={14} className="mr-2" />
+                        <Edit size={14} className="mr-2" />
                         Edit
                       </button>
                       <button
                         type="submit"
                         disabled={!isPersonalEditing}
-                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-emerald-500/20 transition-all hover:from-emerald-300 hover:to-cyan-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:from-amber-300 hover:to-yellow-200 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         <Check size={14} className="mr-2" />
                         Save Changes
@@ -695,28 +707,28 @@ export default function ClientProfilePage() {
                     <div className="space-y-4 max-w-md">
                       <div>
                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Current Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-emerald-500 transition-colors">
+                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
                           <Lock size={15} className="text-slate-400" />
-                          <input type="password" placeholder="••••••••" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
+                          <input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                       <div>
                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">New Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-emerald-500 transition-colors">
+                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
                           <Key size={15} className="text-slate-400" />
                           <input type="password" placeholder="Min. 8 characters" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                       <div>
                         <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Confirm New Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-emerald-500 transition-colors">
+                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
                           <Key size={15} className="text-slate-400" />
                           <input type="password" placeholder="Must match new password" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                     </div>
 
-                    <button type="submit" className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
+                    <button type="submit" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
                       Update Security Settings
                     </button>
                   </form>
@@ -730,13 +742,13 @@ export default function ClientProfilePage() {
                         <h4 className="text-xs font-bold text-slate-100">Document Vault</h4>
                         <p className="text-[11px] text-slate-400 mt-1">Review the latest identity and address verification files.</p>
                       </div>
-                      <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">
                         {documentStats.total} documents
                       </span>
                     </div>
 
                     {uploadNotice && (
-                      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                         {uploadNotice}
                       </div>
                     )}
@@ -844,7 +856,7 @@ export default function ClientProfilePage() {
                         <h4 className="text-xs font-bold text-slate-100">Saved Payment Methods</h4>
                         <p className="text-[11px] text-slate-400 mt-1">Manage the bank and crypto details used for funding requests.</p>
                       </div>
-                      <span className="rounded-full border border-sky-500/20 bg-sky-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                      <span className="rounded-full border border-sky-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
                         2 methods
                       </span>
                     </div>
@@ -971,7 +983,8 @@ export default function ClientProfilePage() {
                   </div>
                 )}
 
-                {paymentEditTarget && (
+                {paymentEditTarget && typeof document !== 'undefined'
+                  ? createPortal(
                   <div
                     className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-slate-950/90 px-4 py-6 backdrop-blur-2xl"
                     onClick={closePaymentEditor}
@@ -1110,7 +1123,7 @@ export default function ClientProfilePage() {
                             className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-950 transition-colors ${
                               paymentEditTarget === 'crypto'
                                 ? 'bg-amber-400 hover:bg-amber-300'
-                                : 'bg-emerald-500 hover:bg-emerald-400'
+                                : 'bg-amber-500 hover:bg-amber-400'
                             }`}
                           >
                             <Check size={14} />
@@ -1119,15 +1132,17 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  </div>,
+                  document.body,
+                )
+                  : null}
 
                 {/* Tab: Activity Log */}
                 {activeTab === 'activity' && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-xs font-bold text-slate-100">Audit History Log</h4>
-                      <button className="text-[10px] text-emerald-400 hover:underline">Clear list</button>
+                      <button className="text-[10px] text-amber-400 hover:underline">Clear list</button>
                     </div>
 
                     <div className="border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800">
@@ -1139,7 +1154,7 @@ export default function ClientProfilePage() {
                           </div>
                           <div className="md:text-right flex items-center md:flex-col gap-2 md:gap-0.5 justify-between">
                             <span className="text-slate-300 text-[11px]">{log.time}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-bold border border-emerald-500/20">
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">
                               {log.status}
                             </span>
                           </div>
