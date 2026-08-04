@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
@@ -116,6 +116,20 @@ type PaymentFormState = {
   cryptoStatus: PaymentStatus;
 };
 
+type ClientProfileApi = {
+  user_id?: number | string;
+  full_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  country?: string | null;
+  tier?: string | null;
+  kyc_status?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+};
+
 const INITIAL_PAYMENT_DETAILS: PaymentDetails = {
   bank: {
     bankName: 'ICICI',
@@ -170,6 +184,10 @@ export default function ClientProfilePage() {
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Profile Settings saved successfully!');
+  const [profileUserId, setProfileUserId] = useState<string | null>(null);
+  const [profileTier, setProfileTier] = useState('Individual Trader');
+  const [profileKycStatus, setProfileKycStatus] = useState('Verified');
   const [avatarSrc, setAvatarSrc] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80');
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
   const [personalForm, setPersonalForm] = useState({
@@ -194,6 +212,12 @@ export default function ClientProfilePage() {
     cryptoCurrency: INITIAL_PAYMENT_DETAILS.crypto.currency,
     cryptoStatus: INITIAL_PAYMENT_DETAILS.crypto.status,
   });
+  const [securityForm, setSecurityForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [isSecuritySaving, setIsSecuritySaving] = useState(false);
   const documentInputRefs = useRef<Record<DocumentSlotId, HTMLInputElement | null>>({
     identity: null,
     address: null,
@@ -212,8 +236,8 @@ export default function ClientProfilePage() {
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
-  const triggerSaveToast = (e: React.FormEvent) => {
-    e.preventDefault();
+  const showProfileToast = (message: string) => {
+    setToastMessage(message);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
@@ -235,6 +259,61 @@ export default function ClientProfilePage() {
       setIsPersonalEditing(false);
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch('/api/client/profile', {
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { profile?: ClientProfileApi };
+        const profile = data.profile ?? null;
+
+        if (!isMounted || !profile) {
+          return;
+        }
+
+        const fullName = String(profile.full_name || '').trim();
+        const [firstName = '', ...restName] = fullName.split(/\s+/).filter(Boolean);
+        const lastName = restName.join(' ');
+
+        setPersonalForm((prev) => ({
+          ...prev,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
+          email: String(profile.email || prev.email),
+          phone: String(profile.phone || prev.phone),
+          country: String(profile.country || prev.country),
+        }));
+
+        setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
+        setProfileTier(String(profile.tier || 'Individual Trader'));
+        setProfileKycStatus(String(profile.kyc_status || 'Verified'));
+      } catch {
+        if (isMounted) {
+          setProfileUserId(null);
+          setProfileTier('Individual Trader');
+          setProfileKycStatus('Verified');
+        }
+      }
+    };
+
+    void loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const activityLog = [
     { event: 'Logged in from New Device', device: 'Chrome / Windows (192.168.1.45)', time: 'Today, 4:32 PM', status: 'Success' },
@@ -272,8 +351,50 @@ export default function ClientProfilePage() {
     }
 
     setIsPersonalEditing(false);
-    setShowToast(true);
-    setTimeout(() => setShowToast(false), 3000);
+    showProfileToast('Profile Settings saved successfully!');
+  };
+
+  const handleSecuritySave = async () => {
+    if (!securityForm.currentPassword || !securityForm.newPassword || !securityForm.confirmPassword) {
+      showProfileToast('Please fill all password fields.');
+      return;
+    }
+
+    setIsSecuritySaving(true);
+
+    try {
+      const response = await fetch('/api/client/change-password', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          current_password: securityForm.currentPassword,
+          new_password: securityForm.newPassword,
+          confirm_password: securityForm.confirmPassword,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to update password.');
+      }
+
+      setSecurityForm({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+      showProfileToast(data?.message || 'Password updated successfully.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update password.';
+      showProfileToast(message);
+    } finally {
+      setIsSecuritySaving(false);
+    }
   };
 
   const openPaymentEditor = (target: PaymentEditTarget) => {
@@ -313,6 +434,7 @@ export default function ClientProfilePage() {
   };
 
   const personalFullName = `${personalForm.firstName} ${personalForm.lastName}`.trim();
+  const profileIdLabel = profileUserId ? `#MAM-${profileUserId}` : '#MAM-84920';
 
   const handleDocumentChange = (slot: DocumentSlotId, file: File | undefined) => {
     if (!file) {
@@ -363,7 +485,7 @@ export default function ClientProfilePage() {
           {showToast && (
             <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
-              <span>Profile Settings saved successfully!</span>
+              <span>{toastMessage}</span>
             </div>
           )}
 
@@ -409,7 +531,7 @@ export default function ClientProfilePage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className={softTextClass}>Account ID</span>
-                        <span className={`font-mono font-bold ${headingTextClass}`}>#MAM-84920</span>
+                        <span className={`font-mono font-bold ${headingTextClass}`}>{profileIdLabel}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className={softTextClass}>Register Date</span>
@@ -417,7 +539,7 @@ export default function ClientProfilePage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className={softTextClass}>Account Type</span>
-                        <span className={`font-bold ${headingTextClass}`}>Individual Trader</span>
+                        <span className={`font-bold ${headingTextClass}`}>{profileTier}</span>
                       </div>
                     </div>
                   </div>
@@ -443,7 +565,7 @@ export default function ClientProfilePage() {
                     </div>
                     <div className="text-xs">
                       <p className={`font-medium ${headingTextClass}`}>Identity (KYC) Verified</p>
-                      <p className={softTextClass}>Passport verified on Nov 02, 2025</p>
+                      <p className={softTextClass}>{profileKycStatus}</p>
                     </div>
                   </div>
                 </div>
@@ -682,33 +804,62 @@ export default function ClientProfilePage() {
                 )}
 
                 {activeTab === 'security' && (
-                  <form onSubmit={triggerSaveToast} className="space-y-6">
+                  <form
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      void handleSecuritySave();
+                    }}
+                    className="space-y-6"
+                  >
                     <div className="space-y-4 max-w-md">
                       <div>
                         <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Current Password</label>
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Lock size={15} className="text-slate-400" />
-                          <input type="password" placeholder="••••••••" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
+                          <input
+                            type="password"
+                            placeholder="••••••••"
+                            value={securityForm.currentPassword}
+                            onChange={(event) => setSecurityForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
+                            className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
+                          />
                         </div>
                       </div>
                       <div>
                         <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>New Password</label>
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
-                          <input type="password" placeholder="Min. 8 characters" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
+                          <input
+                            type="password"
+                            placeholder="Min. 8 characters"
+                            value={securityForm.newPassword}
+                            onChange={(event) => setSecurityForm((prev) => ({ ...prev, newPassword: event.target.value }))}
+                            className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
+                          />
                         </div>
                       </div>
                       <div>
                         <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Confirm New Password</label>
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
-                          <input type="password" placeholder="Must match new password" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
+                          <input
+                            type="password"
+                            placeholder="Must match new password"
+                            value={securityForm.confirmPassword}
+                            onChange={(event) => setSecurityForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+                            className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
+                          />
                         </div>
                       </div>
                     </div>
 
-                    <button type="submit" className={`px-6 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}>
-                      Update Security Settings
+                    <button
+                      type="button"
+                      onClick={() => void handleSecuritySave()}
+                      disabled={isSecuritySaving}
+                      className={`px-6 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${goldButtonClass}`}
+                    >
+                      {isSecuritySaving ? 'Updating...' : 'Update Security Settings'}
                     </button>
                   </form>
                 )}
@@ -1144,3 +1295,4 @@ export default function ClientProfilePage() {
     </>
   );
 }
+

@@ -7,7 +7,7 @@ from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.investments import get_client_investments
 from clientPanel.view.profile import get_client_profile
-from clientPanel.view.reset_password import reset_client_password
+from clientPanel.view.reset_password import change_client_password, reset_client_password
 from clientPanel.view.tickets import (
     create_client_ticket,
     get_client_ticket_detail,
@@ -20,6 +20,7 @@ app_name = "clientPanel"
 
 urlpatterns = [
     path("reset-password", reset_client_password, name="reset-password"),
+    path("change-password", change_client_password, name="change-password"),
     path("dashboard", get_client_dashboard, name="dashboard"),
     path("deposit", create_client_deposit, name="deposit"),
     path("withdrawal", create_client_withdrawal, name="withdrawal"),
