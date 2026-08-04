@@ -3,6 +3,7 @@
 from django.urls import path
 
 from clientPanel.view.account import get_client_account
+from clientPanel.view.activity_logs import get_client_activity_logs
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.investments import get_client_investments
@@ -21,6 +22,7 @@ app_name = "clientPanel"
 urlpatterns = [
     path("reset-password", reset_client_password, name="reset-password"),
     path("change-password", change_client_password, name="change-password"),
+    path("activity-logs", get_client_activity_logs, name="activity-logs"),
     path("dashboard", get_client_dashboard, name="dashboard"),
     path("deposit", create_client_deposit, name="deposit"),
     path("withdrawal", create_client_withdrawal, name="withdrawal"),

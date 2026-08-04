@@ -130,6 +130,14 @@ type ClientProfileApi = {
   postalCode?: string | null;
 };
 
+type ActivityLogEntry = {
+  id: number | string;
+  action: string;
+  details: string;
+  ip_address: string;
+  time: string | null;
+};
+
 const INITIAL_PAYMENT_DETAILS: PaymentDetails = {
   bank: {
     bankName: 'ICICI',
@@ -218,6 +226,8 @@ export default function ClientProfilePage() {
     confirmPassword: '',
   });
   const [isSecuritySaving, setIsSecuritySaving] = useState(false);
+  const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
   const documentInputRefs = useRef<Record<DocumentSlotId, HTMLInputElement | null>>({
     identity: null,
     address: null,
@@ -315,12 +325,50 @@ export default function ClientProfilePage() {
     };
   }, []);
 
-  const activityLog = [
-    { event: 'Logged in from New Device', device: 'Chrome / Windows (192.168.1.45)', time: 'Today, 4:32 PM', status: 'Success' },
-    { event: 'Enrolled in Course', device: 'Advanced Financial Analysis', time: 'Yesterday, 11:20 AM', status: 'Completed' },
-    { event: 'MAM Risk Preference Updated', device: 'Set to High Growth (70%)', time: '3 days ago', status: 'Success' },
-    { event: 'Password Changed', device: 'IP: 182.43.22.10', time: 'July 15, 2026', status: 'Verified' },
-  ];
+  useEffect(() => {
+    if (activeTab !== 'activity') {
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadActivityLogs = async () => {
+      setActivityLoading(true);
+
+      try {
+        const response = await fetch('/api/client/activity-logs', {
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to load activity logs (${response.status})`);
+        }
+
+        const data = (await response.json()) as { activity_logs?: ActivityLogEntry[] };
+
+        if (isMounted) {
+          setActivityLogs(Array.isArray(data.activity_logs) ? data.activity_logs : []);
+        }
+      } catch {
+        if (isMounted) {
+          setActivityLogs([]);
+        }
+      } finally {
+        if (isMounted) {
+          setActivityLoading(false);
+        }
+      }
+    };
+
+    void loadActivityLogs();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
 
   const openDocumentPicker = (slot: DocumentSlotId) => {
     documentInputRefs.current[slot]?.click();
@@ -1270,20 +1318,32 @@ export default function ClientProfilePage() {
                     </div>
 
                     <div className={`border ${borderMutedClass} rounded-2xl overflow-hidden divide-y divide-white/5`}>
-                      {activityLog.map((log, idx) => (
-                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs hover:bg-white/5 transition-colors">
-                          <div>
-                            <p className={`font-semibold ${headingTextClass}`}>{log.event}</p>
-                            <p className={`${softTextClass} text-[11px] mt-0.5`}>{log.device}</p>
-                          </div>
-                          <div className="md:text-right flex items-center md:flex-col gap-2 md:gap-0.5 justify-between">
-                            <span className={`${softTextClass} text-[11px]`}>{log.time}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">
-                              {log.status}
-                            </span>
-                          </div>
+                      {activityLoading ? (
+                        <div className="p-5 text-xs font-semibold text-slate-400">
+                          Loading recent activity...
                         </div>
-                      ))}
+                      ) : activityLogs.length > 0 ? (
+                        activityLogs.map((log) => (
+                          <div key={log.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs hover:bg-white/5 transition-colors">
+                            <div>
+                              <p className={`font-semibold ${headingTextClass}`}>{log.action}</p>
+                              <p className={`${softTextClass} text-[11px] mt-0.5`}>{log.details || 'No details provided'}</p>
+                            </div>
+                            <div className="md:text-right flex items-center md:flex-col gap-2 md:gap-0.5 justify-between">
+                              <span className={`${softTextClass} text-[11px]`}>
+                                {log.time ? new Date(log.time.replace(' ', 'T')).toLocaleString() : 'N/A'}
+                              </span>
+                              <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">
+                                {log.ip_address}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-5 text-xs font-semibold text-slate-400">
+                          No recent activity found for this client.
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
