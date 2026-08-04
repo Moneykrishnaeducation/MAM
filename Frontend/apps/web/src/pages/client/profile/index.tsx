@@ -51,27 +51,20 @@ type DocumentCard = {
 const DOCUMENT_ORDER: DocumentSlotId[] = ['identity', 'address'];
 const DOCUMENT_ACCEPT = '.pdf,.jpg,.jpeg,.png,.webp';
 
+const EMPTY_DOCUMENT_CARD = (slot: DocumentSlotId): DocumentCard => ({
+  id: slot,
+  title: slot === 'identity' ? 'Identity Document' : 'Residential Proof',
+  description: slot === 'identity' ? 'Identity verification file' : 'Proof of address file',
+  helperText: 'No document uploaded yet.',
+  status: 'pending',
+  fileName: null,
+  fileSize: null,
+  uploadedAt: null,
+});
+
 const INITIAL_DOCUMENTS: Record<DocumentSlotId, DocumentCard> = {
-  identity: {
-    id: 'identity',
-    title: 'Identity Document',
-    description: 'Aadhaar, Passport or License',
-    helperText: 'Verified on Nov 02, 2025',
-    status: 'verified',
-    fileName: 'Passport.pdf',
-    fileSize: '2.4 MB',
-    uploadedAt: 'Nov 02, 2025',
-  },
-  address: {
-    id: 'address',
-    title: 'Residential Proof',
-    description: 'Utility bills or statements',
-    helperText: 'Pending review',
-    status: 'pending',
-    fileName: null,
-    fileSize: null,
-    uploadedAt: null,
-  },
+  identity: EMPTY_DOCUMENT_CARD('identity'),
+  address: EMPTY_DOCUMENT_CARD('address'),
 };
 
 const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
@@ -161,15 +154,15 @@ type ActivityLogEntry = {
 
 const INITIAL_PAYMENT_DETAILS: PaymentDetails = {
   bank: {
-    bankName: 'ICICI',
-    accountNumber: '****7895',
-    ifsc: 'ICICIN878876',
+    bankName: '',
+    accountNumber: '',
+    ifsc: '',
     branch: '',
-    status: 'approved',
+    status: 'pending',
   },
   crypto: {
-    address: '0x7aB9c4F8d3E2a1b0C6D9f4A8e2C1b7d9F0A6',
-    currency: 'USDTs',
+    address: '',
+    currency: '',
     status: 'pending',
   },
 };
@@ -241,19 +234,19 @@ export default function ClientProfilePage() {
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('Profile Settings saved successfully!');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
-  const [profileTier, setProfileTier] = useState('Individual Trader');
-  const [profileKycStatus, setProfileKycStatus] = useState('Verified');
-  const [avatarSrc, setAvatarSrc] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80');
+  const [profileTier, setProfileTier] = useState('');
+  const [profileKycStatus, setProfileKycStatus] = useState('');
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
   const [isPersonalSaving, setIsPersonalSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [personalForm, setPersonalForm] = useState({
-    firstName: 'Alex',
-    lastName: 'Rivera',
-    email: 'alex.rivera@example.com',
-    phone: '+1 (555) 019-2834',
-    country: 'United States',
-    timezone: 'America/New_York (EST)',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    country: '',
+    timezone: '',
   });
   const [documents, setDocuments] = useState<Record<DocumentSlotId, DocumentCard>>(INITIAL_DOCUMENTS);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
@@ -261,14 +254,14 @@ export default function ClientProfilePage() {
   const [paymentEditTarget, setPaymentEditTarget] = useState<PaymentEditTarget | null>(null);
   const [isPaymentSaving, setIsPaymentSaving] = useState(false);
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
-    bankName: INITIAL_PAYMENT_DETAILS.bank.bankName,
-    accountNumber: INITIAL_PAYMENT_DETAILS.bank.accountNumber,
-    ifsc: INITIAL_PAYMENT_DETAILS.bank.ifsc,
-    branch: INITIAL_PAYMENT_DETAILS.bank.branch,
-    bankStatus: INITIAL_PAYMENT_DETAILS.bank.status,
-    cryptoAddress: INITIAL_PAYMENT_DETAILS.crypto.address,
-    cryptoCurrency: INITIAL_PAYMENT_DETAILS.crypto.currency,
-    cryptoStatus: INITIAL_PAYMENT_DETAILS.crypto.status,
+    bankName: '',
+    accountNumber: '',
+    ifsc: '',
+    branch: '',
+    bankStatus: 'pending',
+    cryptoAddress: '',
+    cryptoCurrency: '',
+    cryptoStatus: 'pending',
   });
   const [securityForm, setSecurityForm] = useState({
     currentPassword: '',
@@ -359,8 +352,8 @@ export default function ClientProfilePage() {
         }));
 
         setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
-        setProfileTier(String(profile.tier || 'Individual Trader'));
-        setProfileKycStatus(String(profile.kyc_status || 'Verified'));
+        setProfileTier(String(profile.tier || ''));
+        setProfileKycStatus(String(profile.kyc_status || ''));
         setPaymentDetails(normalizePaymentDetails(data.payment_details));
         setPaymentForm((prev) => ({
           ...prev,
@@ -376,8 +369,8 @@ export default function ClientProfilePage() {
       } catch {
         if (isMounted) {
           setProfileUserId(null);
-          setProfileTier('Individual Trader');
-          setProfileKycStatus('Verified');
+          setProfileTier('');
+          setProfileKycStatus('');
           setPaymentDetails(INITIAL_PAYMENT_DETAILS);
         }
       } finally {
@@ -655,7 +648,14 @@ export default function ClientProfilePage() {
   };
 
   const personalFullName = `${personalForm.firstName} ${personalForm.lastName}`.trim();
-  const profileIdLabel = profileUserId ? `#MAM-${profileUserId}` : '#MAM-84920';
+  const profileIdLabel = profileUserId ? `#MAM-${profileUserId}` : 'Not assigned';
+  const avatarInitials =
+    personalFullName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join('') || 'U';
 
   const handleDocumentChange = (slot: DocumentSlotId, file: File | undefined) => {
     if (!file) {
@@ -681,12 +681,23 @@ export default function ClientProfilePage() {
   const documentStats = DOCUMENT_ORDER.reduce(
     (stats, slot) => {
       const document = documents[slot];
-      stats.total += 1;
-      stats[document.status] += 1;
+      if (document.fileName || document.uploadedAt) {
+        stats.total += 1;
+      }
+      stats[document.status] += document.fileName || document.uploadedAt ? 1 : 0;
       return stats;
     },
     { total: 0, verified: 0, pending: 0, uploaded: 0 },
   );
+  const paymentMethodsCount = [
+    paymentDetails.bank.bankName,
+    paymentDetails.bank.accountNumber,
+    paymentDetails.bank.ifsc,
+    paymentDetails.bank.branch,
+  ].some(Boolean)
+    ? 1
+    : 0;
+  const cryptoMethodsCount = [paymentDetails.crypto.address, paymentDetails.crypto.currency].some(Boolean) ? 1 : 0;
 
   return (
     <>
@@ -717,11 +728,17 @@ export default function ClientProfilePage() {
 
                 <div className="flex flex-col items-center text-center">
                   <div className="group relative mb-4">
-                    <img
-                      src={avatarSrc}
-                      alt="Avatar"
-                      className="h-28 w-28 rounded-3xl border-4 border-amber-500/40 object-cover shadow-xl transition-all duration-300 group-hover:scale-105"
-                    />
+                    {avatarSrc ? (
+                      <img
+                        src={avatarSrc}
+                        alt="Avatar"
+                        className="h-28 w-28 rounded-3xl border-4 border-amber-500/40 object-cover shadow-xl transition-all duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-28 w-28 items-center justify-center rounded-3xl border-4 border-amber-500/40 bg-white/5 text-3xl font-black text-amber-400 shadow-xl transition-all duration-300 group-hover:scale-105">
+                        {avatarInitials}
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={openAvatarPicker}
@@ -745,7 +762,7 @@ export default function ClientProfilePage() {
                   <h3 className={`mb-1 text-xl font-bold ${headingTextClass}`}>{personalFullName}</h3>
                   <p className="mb-4 inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
                     <Mail size={11} />
-                    {personalForm.email}
+                    {personalForm.email || 'Not set'}
                   </p>
 
                   <div className={`w-full border-t ${borderMutedClass} pt-4 text-left text-xs`}>
@@ -756,11 +773,11 @@ export default function ClientProfilePage() {
                       </div>
                       <div className="flex items-center justify-between">
                         <span className={softTextClass}>Register Date</span>
-                        <span className={`font-bold ${headingTextClass}`}>Oct 14, 2025</span>
+                        <span className={`font-bold ${headingTextClass}`}>Not available</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className={softTextClass}>Account Type</span>
-                        <span className={`font-bold ${headingTextClass}`}>{profileTier}</span>
+                        <span className={`font-bold ${headingTextClass}`}>{profileTier || 'Not set'}</span>
                       </div>
                     </div>
                   </div>
@@ -777,7 +794,7 @@ export default function ClientProfilePage() {
                     </div>
                     <div className="text-xs">
                       <p className={`font-medium ${headingTextClass}`}>Email Verified</p>
-                      <p className={softTextClass}>{personalForm.email}</p>
+                      <p className={softTextClass}>{personalForm.email || 'Not set'}</p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
@@ -786,7 +803,7 @@ export default function ClientProfilePage() {
                     </div>
                     <div className="text-xs">
                       <p className={`font-medium ${headingTextClass}`}>Identity (KYC) Verified</p>
-                      <p className={softTextClass}>{profileKycStatus}</p>
+                      <p className={softTextClass}>{profileKycStatus || 'Not set'}</p>
                     </div>
                   </div>
                 </div>
@@ -1207,7 +1224,7 @@ export default function ClientProfilePage() {
                         <p className="text-[11px] text-slate-400 mt-1">Manage the bank and crypto details used for funding requests.</p>
                       </div>
                       <span className="rounded-full border border-sky-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#3aa0ff]">
-                        2 methods
+                        {paymentMethodsCount + cryptoMethodsCount} methods
                       </span>
                     </div>
 
@@ -1236,7 +1253,7 @@ export default function ClientProfilePage() {
                                 Bank Name
                               </p>
                               <p className="mt-2 text-[15px] font-black uppercase tracking-[0.08em] text-slate-50">
-                                {paymentDetails.bank.bankName}
+                                {paymentDetails.bank.bankName || 'Not set'}
                               </p>
                             </div>
 
@@ -1245,7 +1262,7 @@ export default function ClientProfilePage() {
                                 Account Number
                               </p>
                               <p className="mt-2 text-[15px] font-black uppercase tracking-[0.08em] text-slate-50">
-                                {paymentDetails.bank.accountNumber}
+                                {paymentDetails.bank.accountNumber || 'Not set'}
                               </p>
                             </div>
 
@@ -1254,7 +1271,7 @@ export default function ClientProfilePage() {
                                 IFSC
                               </p>
                               <p className="mt-2 text-[15px] font-black uppercase tracking-[0.08em] text-slate-50">
-                                {paymentDetails.bank.ifsc}
+                                {paymentDetails.bank.ifsc || 'Not set'}
                               </p>
                             </div>
 
@@ -1303,7 +1320,7 @@ export default function ClientProfilePage() {
                                 Address
                               </p>
                               <p className="mt-2 break-all text-[15px] font-black tracking-[0.04em] leading-6 text-slate-50 font-mono">
-                                {paymentDetails.crypto.address}
+                                {paymentDetails.crypto.address || 'Not set'}
                               </p>
                             </div>
 
@@ -1313,7 +1330,7 @@ export default function ClientProfilePage() {
                                   Currency
                                 </p>
                                 <p className="mt-2 text-[15px] font-black uppercase tracking-[0.08em] text-slate-50">
-                                  {paymentDetails.crypto.currency}
+                                  {paymentDetails.crypto.currency || 'Not set'}
                                 </p>
                               </div>
 
