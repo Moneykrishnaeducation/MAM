@@ -7,6 +7,7 @@ from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import (
     ActivityLog,
+    AdminUser,
     ClientUser,
     Investor,
     MamAccount,
@@ -54,12 +55,12 @@ async def get_admin_dashboard(request):
     managers = await Manager.all()
     investors = await Investor.all()
     mam_accounts = await MamAccount.all()
-    admin_users = await ClientUser.filter(role__iexact="admin").all()
-    client_users = await ClientUser.exclude(role__iexact="admin").all()
+    admin_users = await AdminUser.all()
+    client_users = await ClientUser.all()
     pending_requests = await PendingRequest.all().order_by("-created_at").limit(5)
     pending_count = await PendingRequest.filter(status__iexact="pending").count()
     recent_activity_logs = await ActivityLog.all().order_by("-created_at").limit(5)
-    recent_clients = await ClientUser.exclude(role__iexact="admin").order_by("-joined").limit(5)
+    recent_clients = await ClientUser.all().order_by("-joined").limit(5)
 
     total_aum = sum(manager.total_aum for manager in managers)
     total_managed_balance = sum(account.total_balance for account in mam_accounts)

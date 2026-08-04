@@ -21,32 +21,22 @@ import {
   Edit3
 } from "lucide-react";
 
-// Helper to get cookie value
-function getCookie(name: string): string {
+// Read the role cookie set by the backend on login
+function getAdminRole(): string {
   try {
-    const nameEQ = name + "=";
+    const nameEQ = 'role=';
     const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
-      let cookie = cookies[i].trim();
+      const cookie = cookies[i].trim();
       if (cookie.indexOf(nameEQ) === 0) {
-        return decodeURIComponent(cookie.substring(nameEQ.length));
+        return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
       }
     }
   } catch {}
   return '';
 }
 
-// Check if user is superuser
-function isSuperuser(): boolean {
-  try {
-    const userCookie = getCookie('user');
-    if (userCookie) {
-      const user = JSON.parse(userCookie);
-      return user?.is_superuser === true || user?.is_superuser === 'true';
-    }
-  } catch {}
-  return false;
-}
+const isSuperAdminRole = (role: string) => role.toLowerCase() === 'superadmin';
 
 const PASSWORD_MASK = '••••••••';
 
@@ -371,9 +361,10 @@ export default function AdminSettingsPage() {
   };
 
   useEffect(() => {
-    setIsSuperuserUser(isSuperuser());
+    setIsSuperuserUser(isSuperAdminRole(getAdminRole()));
     setSuperuserCheckDone(true);
   }, []);
+
 
   if (superuserCheckDone && !isSuperuserUser) {
     return (

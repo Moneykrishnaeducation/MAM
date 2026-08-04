@@ -6,7 +6,27 @@ from tortoise import fields, models
 
 logger = logging.getLogger(__name__)
 
+class AdminUser(models.Model):
+    """Admin System User model for admin-users management."""
 
+    id = fields.IntField(primary_key=True)
+    name = fields.CharField(max_length=255)
+    email = fields.CharField(max_length=255, unique=True, index=True)
+    password_hash = fields.CharField(max_length=255, null=True)
+    role = fields.CharField(max_length=100, default="Admin")
+    department = fields.CharField(max_length=100, default="Operations")
+    permissions = fields.JSONField(default=list)
+    status = fields.CharField(max_length=50, default="Active")
+    avatar = fields.CharField(max_length=500, null=True)
+    last_login = fields.DatetimeField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "admin_users"
+
+    def __repr__(self) -> str:
+        return f"<AdminUser(id={self.id}, name={self.name}, email={self.email})>"
 class ClientUser(models.Model):
     """Unified user model for both admin and client records."""
 
@@ -29,7 +49,7 @@ class ClientUser(models.Model):
     updated_at = fields.DatetimeField(auto_now=True)
 
     class Meta:
-        table = "client"
+        table = "client_users"
 
     def __repr__(self) -> str:
         return f"<ClientUser(id={self.id}, name={self.name}, email={self.email})>"

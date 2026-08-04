@@ -10,6 +10,7 @@ from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import (
     ActivityLog,
+    AdminUser,
     ClientUser,
     Investor,
     Manager,
@@ -19,11 +20,27 @@ from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import hash_client_password
 from clientPanel.crud import create_client_profile
 
+# Valid roles for AdminUser records (canonical title-case)
+_VALID_ADMIN_ROLES: frozenset[str] = frozenset({"Admin", "SuperAdmin", "Viewer"})
+
+_ROLE_CANONICAL: dict[str, str] = {
+    "admin": "Admin",
+    "superadmin": "SuperAdmin",
+    "super_admin": "SuperAdmin",
+    "super admin": "SuperAdmin",
+    "viewer": "Viewer",
+}
+
+
+def _canonicalize_admin_role(raw: str) -> str | None:
+    """Return canonical title-case role or None if not a valid admin role."""
+    return _ROLE_CANONICAL.get(raw.strip().lower().replace("-", "").replace(" ", ""))
+
 # ── GET views ──────────────────────────────────────────────────────────────────
 
 async def list_admin_system_users(request):
-    """List system admin users directly from database."""
-    admin_users = await ClientUser.filter(role__iexact="admin").order_by("-created_at")
+    """List system admin users from the admin_users table."""
+    admin_users = await AdminUser.all().order_by("-created_at")
     results = [
         {
             "id": f"ADM-{user.id:03d}",
@@ -44,7 +61,7 @@ async def list_admin_system_users(request):
 
 async def list_client_users(request):
     """List client users directly from database."""
-    client_users = await ClientUser.exclude(role__iexact="admin").order_by("-joined")
+    client_users = await ClientUser.all()
     results = [
         {
             "id": user.user_code or f"USR-{user.id:03d}",
@@ -145,15 +162,19 @@ def _generate_user_code(prefix: str, length: int = 6) -> str:
 @csrf_exempt
 @require_http_methods(["POST"])
 async def create_admin_user(request):
-    """Create a new system admin user."""
+    """Create a new system admin user in the admin_users table.
+
+    Required fields: name, email, password, role (Admin | SuperAdmin | Viewer).
+    """
     try:
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
 
     name = body.get("name", "").strip()
-    email = body.get("email", "").strip()
-    role = body.get("role", "admin").strip()
+    email = body.get("email", "").strip().lower()
+    role_input = body.get("role", "Admin").strip()
+    role = _canonicalize_admin_role(role_input)
     department = body.get("department", "Operations").strip()
     permissions = body.get("permissions", [])
     password = body.get("password", "").strip()
@@ -165,15 +186,27 @@ async def create_admin_user(request):
     if not name or not email:
         return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
 
-    if await ClientUser.filter(email=email).exists():
+    if not password:
+        return JsonResponse({"status": "error", "message": "password is required for admin users"}, status=400)
+
+    if role is None:
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"Invalid role '{role_input}'. Must be one of: Admin, SuperAdmin, Viewer.",
+            },
+            status=400,
+        )
+
+    if await AdminUser.filter(email=email).exists():
         return JsonResponse(
             {"status": "error", "message": "An admin user with this email already exists"},
             status=409,
         )
 
-    password_hash = hash_client_password(password) if password else None
+    password_hash = hash_client_password(password)
 
-    user = await ClientUser.create(
+    user = await AdminUser.create(
         name=name,
         email=email,
         role=role,
@@ -182,7 +215,6 @@ async def create_admin_user(request):
         status="Active",
         avatar=avatar,
         password_hash=password_hash,
-        verified=True,
     )
 
     return JsonResponse(
@@ -217,7 +249,7 @@ async def create_client_user(request):
     name = body.get("name", "").strip()
     email = body.get("email", "").strip()
     phone = body.get("phone", "").strip()
-    role = body.get("role", "Client").strip()
+    role = body.get("role", "Client User").strip()
     country = body.get("country", "United States").strip()
     password = body.get("password", "").strip()
     avatar = body.get(
@@ -248,7 +280,7 @@ async def create_client_user(request):
         name=name,
         email=email,
         phone=phone or None,
-        role="Client",
+        role=role,
         country=country,
         status="Active",
         verified=False,
@@ -518,34 +550,62 @@ async def save_demo_group_configuration(request):
 @csrf_exempt
 @require_http_methods(["PUT", "POST"])
 async def update_admin_user(request, user_id):
-    """Update an administrator's profile or password."""
+    """Update an administrator's profile, role, or password (targets admin_users table)."""
     try:
         body = json.loads(request.body)
-        
+
         clean_id = user_id
-        if "ADM-" in user_id or "USR-" in user_id:
+        if "ADM-" in str(user_id):
             try:
-                clean_id = int(user_id.split("-")[-1])
+                clean_id = int(str(user_id).split("-")[-1])
             except ValueError:
                 pass
-                
-        user = await ClientUser.filter(id=clean_id).first()
+
+        user = await AdminUser.filter(id=clean_id).first()
         if not user:
             return JsonResponse({"status": "error", "message": "Administrator not found"}, status=404)
-            
+
         if "role" in body:
-            user.role = body["role"]
+            new_role_input = str(body["role"]).strip()
+            new_role = _canonicalize_admin_role(new_role_input)
+            if new_role is None:
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": f"Invalid role '{new_role_input}'. Must be one of: Admin, SuperAdmin, Viewer.",
+                    },
+                    status=400,
+                )
+            user.role = new_role
         if "name" in body:
             user.name = body["name"]
-        if "phone" in body:
-            user.phone = body["phone"]
-        if "address" in body:
-            user.address = body["address"]
+        if "department" in body:
+            user.department = body["department"]
+        if "status" in body:
+            user.status = body["status"]
+        if "permissions" in body:
+            user.permissions = body["permissions"]
+        if "avatar" in body:
+            user.avatar = body["avatar"]
         if "password" in body and body["password"]:
             user.password_hash = hash_client_password(body["password"])
-            
+
         await user.save()
-        return JsonResponse({"status": "ok", "message": "Administrator updated successfully"})
+        return JsonResponse(
+            {
+                "status": "ok",
+                "message": "Administrator updated successfully",
+                "admin_user": {
+                    "id": f"ADM-{user.id:03d}",
+                    "name": user.name,
+                    "email": user.email,
+                    "role": user.role,
+                    "department": user.department,
+                    "permissions": user.permissions or [],
+                    "status": user.status,
+                    "avatar": user.avatar,
+                },
+            }
+        )
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
-

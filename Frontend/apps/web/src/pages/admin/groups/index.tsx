@@ -3,30 +3,22 @@ import Head from "next/head";
 import { useRouter } from "next/router";
 import { Info, ShieldCheck, Sparkles, ChevronLeft, Search } from "lucide-react";
 
-function getCookie(name: string) {
+// Read the role cookie set by the backend on login
+function getAdminRole(): string {
   try {
-    const nameEQ = `${name}=`;
-    const cookies = document.cookie.split(";");
+    const nameEQ = 'role=';
+    const cookies = document.cookie.split(';');
     for (let i = 0; i < cookies.length; i += 1) {
       const cookie = cookies[i].trim();
       if (cookie.indexOf(nameEQ) === 0) {
-        return decodeURIComponent(cookie.substring(nameEQ.length));
+        return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
       }
     }
   } catch (e) {}
-  return null;
+  return '';
 }
 
-function isSuperuser() {
-  try {
-    const userCookie = getCookie("user");
-    if (userCookie) {
-      const user = JSON.parse(userCookie);
-      return user?.is_superuser === true || user?.is_superuser === "true";
-    }
-  } catch (e) {}
-  return false;
-}
+const isSuperAdminRole = (role: string) => role.toLowerCase() === 'superadmin';
 
 function Badge({ label, alias, isActive, isDemo }: { label: string; alias?: string; isActive: boolean; isDemo: boolean }) {
   const baseClass =
@@ -264,10 +256,11 @@ export default function GroupConfiguration() {
   }, [fetchCurrentGroups, fetchAvailableGroups]);
 
   useEffect(() => {
-    setIsSuperuserUser(isSuperuser());
+    setIsSuperuserUser(isSuperAdminRole(getAdminRole()));
     setSuperuserCheckDone(true);
     loadData();
   }, [loadData]);
+
 
   const [syncing, setSyncing] = useState(false);
 

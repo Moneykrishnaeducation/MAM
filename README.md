@@ -157,3 +157,66 @@ The application automatically synchronizes Python model definitions in `adminPan
    - Simply add or edit fields in `adminPanel/models.py` and save the file.
    - Run or restart the server (`uv run python -m backendPanel.main`).
    - The PostgreSQL database schema updates automatically with no manual migration CLI commands required!
+
+
+  All files compile cleanly. Here's a summary of everything that was changed:          
+  ──────                                                                               
+  ## Summary of Changes                                                                
+                                                                                       
+  ### Role System Design                                                               
+                                                                                       
+   Role           │ Access Level  │ Description
+  ────────────────┼───────────────┼────────────────────────────────────────────────────
+   SuperAdmin     │ Full          │ Can manage all users, settings, and other admins
+   Admin          │ Standard      │ Normal admin operations, cannot manage SuperAdmins
+   Viewer         │ Read-only     │ Can only view data, no write operations
+  ──────                                                                               
+  ### Files Changed                                                                    
+                                                                                       
+  **permissions.py** — Complete rewrite:                                               
+                                                                                       
+  • Added role constants: ROLE_SUPERADMIN, ROLE_ADMIN, ROLE_VIEWER, ROLE_CLIENT        
+  • Added _canonical_admin_role() — normalizes "Admin", "SuperAdmin", "Super Admin" →  
+  canonical lowercase                                                                  
+  • _extract_role_from_request() now reads the exact role from the JWT token (not just 
+  "is admin or not")                                                                   
+  • New permission classes: IsSuperAdmin, IsAdminOrSuperAdmin, IsViewer                
+  • IsAdmin now allows all three admin roles (Admin, SuperAdmin, Viewer)               
+  • New require_role(*roles) decorator for fine-grained view-level control             
+  • New get_request_role(request) public helper                                        
+                                                                                       
+  **login.py** — Admin login rewritten:                                                
+                                                                                       
+  • Checks AdminUser table first (not ClientUser)                                      
+  • Validates role is one of {Admin, SuperAdmin, Viewer} — returns 403 otherwise       
+  • Records last_login timestamp on successful login                                   
+  • Exact role (SuperAdmin, Viewer, etc.) stored in cookie + token                     
+  • Clients in ClientUser with admin-like roles are rejected (must be in AdminUser)    
+                                                                                       
+  **views.py** — Fixed to target AdminUser correctly:                                  
+                                                                                       
+  • create_admin_user — validates role, requires password, normalises email to         
+  lowercase, no more bogus verified=True (not in AdminUser schema)                     
+  • update_admin_user — queries AdminUser table (was querying ClientUser before),      
+  validates role on change                                                             
+  • list_admin_system_users — orders by -created_at                                    
+  ──────                                                                               
+  ### Usage Examples                                                                   
+                                                                                       
+    from backendPanel.permissions import (                                             
+        permission_required, require_role,                                             
+        IsSuperAdmin, IsAdminOrSuperAdmin, IsAdmin,                                    
+        ROLE_SUPERADMIN, ROLE_ADMIN                                                    
+    )                                                                                  
+                                                                                       
+    # Allow any admin (Admin / SuperAdmin / Viewer) to view                            
+    @permission_required(IsAdmin)                                                      
+    async def list_users(request): ...                                                 
+                                                                                       
+    # Only SuperAdmin can delete admin users                                           
+    @require_role(ROLE_SUPERADMIN)                                                     
+    async def delete_admin_user(request, user_id): ...                                 
+                                                                                       
+    # Admin + SuperAdmin can create users, but Viewer cannot                           
+    @require_role(ROLE_ADMIN, ROLE_SUPERADMIN)                                         
+    async def create_user(request): ...     

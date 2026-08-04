@@ -37,23 +37,30 @@ function getCookie(name: string): string {
   return '';
 }
 
-// Helper to check if user is superuser
-function isSuperuser(): boolean {
+// Read the role cookie set by the backend on login
+function getAdminRole(): string {
   try {
-    const userCookie = getCookie('user');
-    if (userCookie) {
-      try {
-        const userFromCookie = JSON.parse(userCookie);
-        return userFromCookie?.is_superuser === true || userFromCookie?.is_superuser === 'true';
-      } catch {
-        return false;
+    const nameEQ = 'role=';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
+        } catch {
+          return cookie.substring(nameEQ.length).trim();
+        }
       }
     }
-  } catch {
-    return false;
-  }
-  return false;
+  } catch {}
+  return '';
 }
+
+// Role helpers
+const isSuperAdminRole = (role: string) => role.toLowerCase() === 'superadmin';
+const isAdminOrAbove   = (role: string) => ['superadmin', 'admin'].includes(role.toLowerCase());
+const isViewerOnly     = (role: string) => role.toLowerCase() === 'viewer';
+
 
 const formatDateTime = (value: string) => {
   if (!value || value === "-") return { date: "N/A", time: "N/A" };
@@ -117,7 +124,7 @@ export default function AdminUsersManagementPage() {
   const [loading, setLoading] = useState(true);
   const [createLoading, setCreateLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSuperuserUser, setIsSuperuserUser] = useState(false);
+  const [adminRole, setAdminRole] = useState('');
 
   const showMessage = (title: string, text: string) => {
     setMessageTitle(title);
@@ -169,9 +176,10 @@ export default function AdminUsersManagementPage() {
   };
 
   useEffect(() => {
-    setIsSuperuserUser(isSuperuser());
+    setAdminRole(getAdminRole());
     fetchAdmins();
   }, []);
+
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,19 +190,16 @@ export default function AdminUsersManagementPage() {
 
     setCreateLoading(true);
     try {
-      const payload: any = {
+    const payload: any = {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         first_name: formData.firstName,
         last_name: formData.lastName,
-        role: formData.role.toLowerCase(),
-        manager_admin_status: formData.role,
+        role: formData.role,
         phone_number: formData.phone || '',
         address: formData.address || '',
+        password: formData.password || '',
       };
-      if (isSuperuserUser && formData.password) {
-        payload.password = formData.password;
-      }
 
       const res = await fetch('/api/admin/admin-users/create', {
         method: 'POST',
@@ -260,7 +265,7 @@ export default function AdminUsersManagementPage() {
         throw new Error(body?.message || `Failed to update admin profile: status ${res.status}`);
       }
 
-      setAdminUsers(prev => prev.map(u => u.id === selectedUserRow.id ? { ...u, role: editRoleValue === 'manager' ? 'Manager' : 'Admin' } : u));
+      setAdminUsers(prev => prev.map(u => u.id === selectedUserRow.id ? { ...u, role: editRoleValue } : u));
       setIsRoleModalOpen(false);
       showMessage('Success', 'Profile updated successfully.');
     } catch (err: any) {
@@ -325,7 +330,7 @@ export default function AdminUsersManagementPage() {
             </h1>
             <p className="text-slate-400 text-sm mt-1">Manage system administrators, permissions, MT5 groups and primary environment defaults.</p>
           </div>
-          {activeTab === 'users' && (
+          {activeTab === 'users' && !isViewerOnly(adminRole) && (
             <button 
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
@@ -335,8 +340,8 @@ export default function AdminUsersManagementPage() {
           )}
         </div>
 
-        {/* TAB TOGGLE BAR */}
-        {isSuperuserUser && (
+        {/* TAB TOGGLE BAR — SuperAdmin only */}
+        {isSuperAdminRole(adminRole) && (
           <div className="flex flex-wrap items-center justify-start gap-2 p-2 rounded-2xl md:rounded-[2rem] w-full md:w-fit border mb-8 bg-slate-900/90 border-slate-800">
             <button
               onClick={() => setActiveTab('users')}
@@ -398,24 +403,24 @@ export default function AdminUsersManagementPage() {
 
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
                 <div>
-                  <div className="text-slate-400 text-xs font-medium">Admins</div>
-                  <div className="text-3xl font-black text-emerald-400 mt-1">
-                    {adminUsers.filter(u => u.role.toLowerCase() === 'admin').length} Active
+                  <div className="text-slate-400 text-xs font-medium">SuperAdmins</div>
+                  <div className="text-3xl font-black text-amber-400 mt-1">
+                    {adminUsers.filter(u => u.role.toLowerCase() === 'superadmin').length} Active
                   </div>
                 </div>
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                   <Shield size={24} />
                 </div>
               </div>
 
               <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
                 <div>
-                  <div className="text-slate-400 text-xs font-medium">Managers</div>
-                  <div className="text-3xl font-black text-purple-400 mt-1">
-                    {adminUsers.filter(u => u.role.toLowerCase() === 'manager').length} Active
+                  <div className="text-slate-400 text-xs font-medium">Admins / Viewers</div>
+                  <div className="text-3xl font-black text-emerald-400 mt-1">
+                    {adminUsers.filter(u => ['admin','viewer'].includes(u.role.toLowerCase())).length} Active
                   </div>
                 </div>
-                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   <Lock size={24} />
                 </div>
               </div>
@@ -441,8 +446,9 @@ export default function AdminUsersManagementPage() {
                   className="rounded-2xl border border-slate-700 bg-slate-800 py-2.5 px-4 text-xs font-semibold text-slate-300 outline-none transition focus:border-blue-500"
                 >
                   <option value="All">All Roles</option>
+                  <option value="SuperAdmin">SuperAdmin</option>
                   <option value="Admin">Admin</option>
-                  <option value="Manager">Manager</option>
+                  <option value="Viewer">Viewer</option>
                 </select>
               </div>
 
@@ -454,7 +460,7 @@ export default function AdminUsersManagementPage() {
                       <th className="pb-3 font-semibold">Name & Email</th>
                       <th className="pb-3 font-semibold">Role</th>
                       <th className="pb-3 font-semibold">Elevated Date</th>
-                      {isSuperuserUser && <th className="pb-3 text-right font-semibold">Actions</th>}
+                      {isAdminOrAbove(adminRole) && <th className="pb-3 text-right font-semibold">Actions</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60">
@@ -485,9 +491,11 @@ export default function AdminUsersManagementPage() {
                             </td>
                             <td className="py-4">
                               <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
-                                user.role === 'Admin' 
-                                  ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20' 
-                                  : 'text-purple-400 bg-purple-500/10 border border-purple-500/20'
+                                user.role.toLowerCase() === 'superadmin'
+                                  ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
+                                  : user.role.toLowerCase() === 'admin'
+                                  ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
+                                  : 'text-slate-400 bg-slate-500/10 border border-slate-500/20'
                               }`}>
                                 {user.role}
                               </span>
@@ -496,7 +504,7 @@ export default function AdminUsersManagementPage() {
                               <div className="font-medium text-slate-200">{date}</div>
                               {time && <div className="text-[10px] text-slate-500 font-mono mt-0.5">{time}</div>}
                             </td>
-                            {isSuperuserUser && (
+                            {isAdminOrAbove(adminRole) && (
                               <td className="py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <button
@@ -591,18 +599,17 @@ export default function AdminUsersManagementPage() {
                 />
               </div>
 
-              {isSuperuserUser && (
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Password</label>
-                  <input 
-                    type="password" 
-                    placeholder="Master Password"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-slate-400 font-semibold mb-1">Password</label>
+                <input 
+                  type="password" 
+                  required
+                  placeholder="Master Password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
+                />
+              </div>
 
               <div>
                 <label className="block text-slate-400 font-semibold mb-1">Phone Number</label>
@@ -633,9 +640,9 @@ export default function AdminUsersManagementPage() {
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
                 >
-                  <option value="superadmin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Viewer</option>
+                  {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
+                  <option value="Admin">Admin</option>
+                  <option value="Viewer">Viewer</option>
                 </select>
               </div>
 
@@ -692,9 +699,9 @@ export default function AdminUsersManagementPage() {
                   onChange={(e) => setEditRoleValue(e.target.value)}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
                 >
-                  <option value="superadmin">Super Admin</option>
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Viewer</option>
+                  {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
+                  <option value="Admin">Admin</option>
+                  <option value="Viewer">Viewer</option>
                 </select>
               </div>
 
