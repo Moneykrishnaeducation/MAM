@@ -191,7 +191,7 @@ const dashboardCardIcons: Record<
   React.ComponentType<{ className?: string; size?: number; strokeWidth?: number }>
 > = {
   manager_account: UserCheck,
-  funds_invested: TrendingUp,
+  Total_Investments: TrendingUp,
   balance: Banknote,
   available_managers: Users,
 };
@@ -246,8 +246,8 @@ const buildDashboardCards = (
       subtitle: managerSubtitle,
     },
     {
-      key: 'funds_invested',
-      title: 'MAM Funds Invested',
+      key: 'Total_Investments',
+      title: 'Total Investments',
       value: formatCurrency(totalInvested),
       raw_value: totalInvested,
       subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
@@ -265,6 +265,13 @@ const buildDashboardCards = (
       value: investmentManagerNames.length > 0 ? `${investmentManagerNames.length}` : '0',    
       raw_value: investmentManagerNames.length,    
       subtitle: investmentManagerNames.length > 0 ? `Managers: ${investmentManagerNames.join(', ')}` : undefined,
+    },
+    {
+      key: 'Total_Investments',
+      title: 'Total Investments',
+      value: formatCurrency(liveInvestmentTotal),
+      raw_value: liveInvestmentTotal,
+      subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
     }
   ];
 };

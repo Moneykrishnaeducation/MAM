@@ -75,6 +75,13 @@ async def get_client_dashboard(request):
             "raw_value": len(manager_names),
             "subtitle": f"Managers: {', '.join(manager_names)}" if manager_names else None,
         },
+        {
+            "key": "total_investments",
+            "title": "Total Investments",
+            "value": str(len(investments)),
+            "raw_value": len(investments),
+            "subtitle": f"Investments: {', '.join(str(inv.id) for inv in investments)}" if investments else None,
+        }
     ]
 
     return JsonResponse(

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
+import { toast } from 'sonner';
 
 const PALETTE = {
   primary: '#2155C4',
@@ -19,7 +20,7 @@ export default function AccountOpenModal({
   setShowModal = () => {},
   isDarkMode = true 
 }: AccountOpenModalProps) {
-  const [form, setForm] = useState({
+  const initialForm = {
     account_name: '',
     profit_percentage: '',
     risk_level: 'Medium',
@@ -27,20 +28,64 @@ export default function AccountOpenModal({
     payout_frequency: 'Monthly',
     master_password: '',
     investor_password: '',
+  };
+
+  const [form, setForm] = useState({
+    ...initialForm,
   });
 
   const [showMasterPwd, setShowMasterPwd] = useState(false);
   const [showInvestorPwd, setShowInvestorPwd] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
     setForm(prev => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted', form);
-    setShowModal(false);
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await fetch('/api/client/accounts/create', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'master',
+          accountName: form.account_name.trim(),
+          profitShare: Number(form.profit_percentage),
+          riskLevel: form.risk_level,
+          leverage: form.leverage,
+          payoutFrequency: form.payout_frequency,
+          masterPassword: form.master_password,
+          investorPassword: form.investor_password,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const message = data?.message || 'Failed to create master account';
+
+      if (!response.ok || data?.status === 'error') {
+        throw new Error(message);
+      }
+
+      toast.success(data?.message || 'Master account created successfully');
+      setForm(initialForm);
+      setShowModal(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create master account';
+      setSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!showModal) return null;
@@ -74,6 +119,7 @@ export default function AccountOpenModal({
                 type="text" id="account_name" value={form.account_name} onChange={handleChange} required
                 className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#0b183f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-xs md:text-sm"
                 placeholder="e.g., Global Alpha MAM"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -83,6 +129,8 @@ export default function AccountOpenModal({
                 type="number" id="profit_percentage" value={form.profit_percentage} onChange={handleChange} required
                 className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#0b183f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-xs md:text-sm"
                 placeholder="20"
+                min="0"
+                disabled={isSubmitting}
               />
             </div>
 
@@ -91,6 +139,7 @@ export default function AccountOpenModal({
               <select
                 id="risk_level" value={form.risk_level} onChange={handleChange}
                 className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#0b183f] border-blue-900/40 text-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-xs md:text-sm"
+                disabled={isSubmitting}
               >
                 {['Low', 'Medium', 'High'].map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -101,6 +150,7 @@ export default function AccountOpenModal({
               <select
                 id="leverage" value={form.leverage} onChange={handleChange}
                 className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#0b183f] border-blue-900/40 text-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-xs md:text-sm"
+                disabled={isSubmitting}
               >
                 {['10x','50x', '100x', '200x', '500x'].map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -111,6 +161,7 @@ export default function AccountOpenModal({
               <select
                 id="payout_frequency" value={form.payout_frequency} onChange={handleChange}
                 className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#0b183f] border-blue-900/40 text-white outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold text-xs md:text-sm"
+                disabled={isSubmitting}
               >
                 {['Weekly', 'Monthly', 'Quarterly', 'Half-Yearly'].map(opt => <option key={opt}>{opt}</option>)}
               </select>
@@ -121,23 +172,31 @@ export default function AccountOpenModal({
                 <div className="space-y-2">
                   <label className="flex justify-between items-center">
                     <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-blue-100/70">Master Password</span>
-                    <button type="button" onClick={() => setShowMasterPwd(!showMasterPwd)} className="text-blue-300 text-[9px] md:text-xs font-black uppercase hover:text-white hover:underline">{showMasterPwd ? 'Hide' : 'Show'}</button>
+                    <button type="button" onClick={() => setShowMasterPwd(!showMasterPwd)} className="text-blue-300 text-[9px] md:text-xs font-black uppercase hover:text-white hover:underline" disabled={isSubmitting}>{showMasterPwd ? 'Hide' : 'Show'}</button>
                   </label>
-                  <input type={showMasterPwd ? "text" : "password"} id="master_password" value={form.master_password} onChange={handleChange} className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#06142f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-xs md:text-sm" />
+                  <input type={showMasterPwd ? "text" : "password"} id="master_password" value={form.master_password} onChange={handleChange} className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#06142f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-xs md:text-sm" required disabled={isSubmitting} />
                 </div>
                 <div className="space-y-2">
                   <label className="flex justify-between items-center">
                     <span className="text-[9px] md:text-xs font-black uppercase tracking-widest text-blue-100/70">Investor Password</span>
-                    <button type="button" onClick={() => setShowInvestorPwd(!showInvestorPwd)} className="text-blue-300 text-[9px] md:text-xs font-black uppercase hover:text-white hover:underline">{showInvestorPwd ? 'Hide' : 'Show'}</button>
+                    <button type="button" onClick={() => setShowInvestorPwd(!showInvestorPwd)} className="text-blue-300 text-[9px] md:text-xs font-black uppercase hover:text-white hover:underline" disabled={isSubmitting}>{showInvestorPwd ? 'Hide' : 'Show'}</button>
                   </label>
-                  <input type={showInvestorPwd ? "text" : "password"} id="investor_password" value={form.investor_password} onChange={handleChange} className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#06142f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-xs md:text-sm" />
+                  <input type={showInvestorPwd ? "text" : "password"} id="investor_password" value={form.investor_password} onChange={handleChange} className="w-full px-4 py-2.5 md:py-3 rounded-xl md:rounded-2xl border bg-[#06142f] border-blue-900/40 text-white placeholder-blue-300/40 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-mono text-xs md:text-sm" required disabled={isSubmitting} />
                 </div>
               </div>
             </div>
 
+            {submitError && (
+              <div className="sm:col-span-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-semibold text-red-200">
+                {submitError}
+              </div>
+            )}
+
             <div className="sm:col-span-2 flex flex-col-reverse sm:flex-row gap-3 md:gap-4 pt-4 md:pt-6">
-              <button type="button" onClick={() => setShowModal(false)} className="w-full sm:flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-xs md:text-sm transition-all border bg-[#0b183f] border-blue-900/40 text-blue-100 hover:bg-[#0f1b42]">Dismiss</button>
-              <button type="submit" className="w-full sm:flex-[2] py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-xs md:text-sm text-white shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all" style={{ backgroundColor: PALETTE.primary }}>Create Master Account</button>
+              <button type="button" onClick={() => setShowModal(false)} className="w-full sm:flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-xs md:text-sm transition-all border bg-[#0b183f] border-blue-900/40 text-blue-100 hover:bg-[#0f1b42]" disabled={isSubmitting}>Dismiss</button>
+              <button type="submit" className="w-full sm:flex-[2] py-3 md:py-4 rounded-xl md:rounded-2xl font-black text-xs md:text-sm text-white shadow-xl shadow-blue-600/20 hover:scale-[1.02] active:scale-95 transition-all disabled:cursor-not-allowed disabled:opacity-70" style={{ backgroundColor: PALETTE.primary }} disabled={isSubmitting}>
+                {isSubmitting ? 'Creating...' : 'Create Master Account'}
+              </button>
             </div>
           </form>
         </div>
