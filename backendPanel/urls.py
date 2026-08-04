@@ -1,11 +1,11 @@
 """Master URL routing configuration for backendPanel."""
 
+import mimetypes
 from pathlib import Path
 
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
-from django.views.static import serve
 
 from adminPanel.views import (
     get_available_groups,
@@ -72,6 +72,23 @@ def serve_next_data(request, path=""):
     return JsonResponse({})
 
 
+def serve_file_response(path: Path, content_type: str | None = None):
+    if not path.is_file():
+        return None
+    if content_type is None:
+        content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    response = HttpResponse(path.read_bytes(), content_type=content_type)
+    response["Content-Length"] = str(path.stat().st_size)
+    return response
+
+
+def is_safe_path(base: Path, target: Path) -> bool:
+    try:
+        return target.resolve().is_relative_to(base.resolve())
+    except AttributeError:
+        return str(target.resolve()).startswith(str(base.resolve()) + str(Path("/")))
+
+
 def serve_next_static(request, path=""):
     """Serve Next.js static JS/CSS asset bundles with aggressive browser caching."""
     _app_settings = get_settings()
@@ -88,19 +105,42 @@ def serve_next_static(request, path=""):
                 content_type = "text/css"
             elif path.endswith(".js"):
                 content_type = "application/javascript"
-            res = HttpResponse(target_path.read_bytes(), content_type=content_type)
-            res["Cache-Control"] = "public, max-age=31536000, immutable"
-            return res
+            res = serve_file_response(target_path, content_type=content_type)
+            if res is not None:
+                res["Cache-Control"] = "public, max-age=31536000, immutable"
+                return res
 
-    return serve(
-        request,
-        path,
-        document_root=str(
-            Path(settings.STATIC_ROOT) / "_next"
-            if (Path(settings.STATIC_ROOT) / "_next").exists()
-            else (STATIC_FRONTEND_DIR / "_next")
-        ),
-    )
+    target_root = Path(settings.STATIC_ROOT) / "_next"
+    if not target_root.exists():
+        target_root = STATIC_FRONTEND_DIR / "_next"
+    target_path = target_root / path
+    response = serve_file_response(target_path)
+    if response is not None:
+        response["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
+    return JsonResponse({"detail": "Not found"}, status=404)
+
+
+def serve_media_file(request, path=""):
+    media_root = Path(settings.MEDIA_ROOT)
+    target_path = (media_root / path).resolve()
+    if not is_safe_path(media_root, target_path):
+        return JsonResponse({"detail": "Not found"}, status=404)
+    response = serve_file_response(target_path)
+    if response is None:
+        return JsonResponse({"detail": "Not found"}, status=404)
+    return response
+
+
+def serve_static_file(request, path=""):
+    static_root = Path(settings.STATIC_ROOT)
+    target_path = (static_root / path).resolve()
+    if not is_safe_path(static_root, target_path):
+        return JsonResponse({"detail": "Not found"}, status=404)
+    response = serve_file_response(target_path)
+    if response is None:
+        return JsonResponse({"detail": "Not found"}, status=404)
+    return response
 
 
 urlpatterns = [
@@ -117,12 +157,8 @@ urlpatterns = [
     path("api/client/", include("clientPanel.urls")),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
     re_path(r"^_next/(?P<path>.*)$", serve_next_static),
-    re_path(r"^media/(?P<path>.*)$", serve, {"document_root": settings.MEDIA_ROOT}),
-    re_path(
-        r"^static/(?P<path>.*)$",
-        serve,
-        {"document_root": str(settings.STATIC_ROOT)},
-    ),
+    re_path(r"^media/(?P<path>.*)$", serve_media_file),
+    re_path(r"^static/(?P<path>.*)$", serve_static_file),
     path("", serve_frontend_page),
     re_path(r"^(?P<route>.*)$", serve_frontend_page),
 ]
