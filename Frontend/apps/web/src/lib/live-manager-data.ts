@@ -27,6 +27,7 @@ export type ClientInvestmentSummary = {
 
 export type AdminManagerSummary = {
   id: number | string;
+  account_id: string;
   name: string;
   email: string;
   strategy?: string | null;
@@ -132,7 +133,7 @@ export const buildManagerRows = (
   const clientEmail = clientProfile?.email?.trim() || '';
 
   return managerList.map((manager) => {
-    const accountId = `MGR-${String(manager.id)}`;
+    const accountId = String(manager.account_id || `MGR-${String(manager.id)}`);
     const strategy = String(manager.strategy || 'Quantitative Grid');
     const aum = formatCurrency(manager.aum);
     const performanceFee = typeof manager.performance_fee === 'number'

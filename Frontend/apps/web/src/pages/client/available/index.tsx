@@ -29,6 +29,7 @@ import {
   type ManagerRow,
 } from '@/lib/live-manager-data';
 import { AvailableSkeleton } from '@/components/client-page-skeletons';
+import { toast } from 'sonner';
 
 const riskBadge = (risk: string, isDarkMode: boolean) => {
   if (risk === 'Low')
@@ -64,6 +65,8 @@ export default function ClientAvailablePage() {
   const [viewManager, setViewManager] = useState<ManagerViewRow | null>(null);
   const [investmentPassword, setInvestmentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [isSubmittingInvest, setIsSubmittingInvest] = useState(false);
+  const [investSubmitError, setInvestSubmitError] = useState<string | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
@@ -183,6 +186,8 @@ export default function ClientAvailablePage() {
     setSelectedManager(manager);
     setInvestmentPassword('');
     setConfirmPassword('');
+    setIsSubmittingInvest(false);
+    setInvestSubmitError(null);
     setIsInvestModalOpen(true);
   };
 
@@ -191,6 +196,8 @@ export default function ClientAvailablePage() {
     setSelectedManager(null);
     setInvestmentPassword('');
     setConfirmPassword('');
+    setIsSubmittingInvest(false);
+    setInvestSubmitError(null);
   };
 
   const openViewModal = (manager: (typeof displayManagers)[number]) => {
@@ -203,9 +210,57 @@ export default function ClientAvailablePage() {
     setViewManager(null);
   };
 
-  const handleCreateInvestorAccount = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleCreateInvestorAccount = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    closeInvestModal();
+
+    if (!selectedManager) {
+      const message = 'Please select a manager first';
+      setInvestSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    if (investmentPassword !== confirmPassword) {
+      const message = 'Investment password and confirmation do not match';
+      setInvestSubmitError(message);
+      toast.error(message);
+      return;
+    }
+
+    setIsSubmittingInvest(true);
+    setInvestSubmitError(null);
+
+    try {
+      const response = await fetch('/api/client/accounts/create', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'investor',
+          managerAccNumber: selectedManager.accountId,
+          investmentPassword,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const message = data?.message || 'Failed to create investor account';
+
+      if (!response.ok || data?.status === 'error') {
+        throw new Error(message);
+      }
+
+      toast.success(data?.message || 'Investor account created successfully');
+      closeInvestModal();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create investor account';
+      setInvestSubmitError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmittingInvest(false);
+    }
   };
 
   useEffect(() => {
@@ -349,7 +404,8 @@ export default function ClientAvailablePage() {
                     onChange={(e) => setInvestmentPassword(e.target.value)}
                     placeholder="Enter password"
                     required
-                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 ${inputClass}`}
+                    disabled={isSubmittingInvest}
+                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
                   />
                 </label>
 
@@ -361,10 +417,17 @@ export default function ClientAvailablePage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
                     required
-                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 ${inputClass}`}
+                    disabled={isSubmittingInvest}
+                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
                   />
                 </label>
               </div>
+
+              {investSubmitError && (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                  {investSubmitError}
+                </div>
+              )}
 
               <div className={`flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t ${borderMutedClass}`}>
                 <p className={`text-xs ${softTextClass}`}>
@@ -374,15 +437,18 @@ export default function ClientAvailablePage() {
                   <button
                     type="button"
                     onClick={closeInvestModal}
-                    className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white border`}
+                    disabled={isSubmittingInvest}
+                    className={`px-5 py-3 rounded-2xl text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white border disabled:cursor-not-allowed disabled:opacity-60`}
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
+                    disabled={isSubmittingInvest}
+                    className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${goldButtonClass}`}
                   >
-                    <Users size={15} /> Create Investor Account
+                    <Users size={15} />
+                    {isSubmittingInvest ? 'Creating...' : 'Create Investor Account'}
                   </button>
                 </div>
               </div>

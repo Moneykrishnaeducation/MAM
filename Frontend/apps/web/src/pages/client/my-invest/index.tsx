@@ -5,6 +5,7 @@ import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3,
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import { InvestmentsSkeleton } from '@/components/client-page-skeletons';
+import { toast } from 'sonner';
 
 const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => {
   const { theme } = useTheme();
@@ -30,12 +31,14 @@ const Modal: React.FC<{ title: string; onClose: () => void; children?: React.Rea
 
 type ClientInvestment = {
   id: number | string;
+  accountId: string;
   strategy: string;
   manager: string;
   allocated: number;
   currentValue: number;
   returnPct: number;
   status: string;
+  investorAllowCopy: boolean;
 };
 
 type ClientInvestmentApi = {
@@ -103,7 +106,7 @@ const toNumber = (value: unknown): number => {
 };
 
 const formatMoney = (value: number) =>
-  new Intl.NumberFormat(undefined, {
+  new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 2,
@@ -113,6 +116,8 @@ const formatPercent = (value: number) => {
   const normalized = Number.isFinite(value) ? value : 0;
   return `${normalized >= 0 ? '+' : ''}${normalized.toFixed(2)}%`;
 };
+
+const normalizeBool = (value: unknown): boolean => value !== false;
 
 export default function ClientMyInvestPage() {
   const { theme } = useTheme();
@@ -126,6 +131,7 @@ export default function ClientMyInvestPage() {
   const [showInvestorTradesModal, setShowInvestorTradesModal] = useState<boolean>(false);
   const [showManagerTradesModal, setShowManagerTradesModal] = useState<boolean>(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
+  const [isCopyingActionLoading, setIsCopyingActionLoading] = useState<boolean>(false);
   const [coefficientMethod, setCoefficientMethod] = useState<'balance' | 'fixed'>('balance');
   const [fixedRatioValue, setFixedRatioValue] = useState<string>('1.00');
   const [multiExecutionEnabled, setMultiExecutionEnabled] = useState<boolean>(false);
@@ -164,12 +170,14 @@ export default function ClientMyInvestPage() {
         const normalized = Array.isArray(response)
           ? response.map((investment: any): ClientInvestment => ({
               id: investment.id,
+              accountId: String(investment.account_id || ''),
               strategy: String(investment.strategy || investment.strategy_name || 'Untitled strategy'),
               manager: String(investment.manager || investment.manager_name || 'Unassigned'),
               allocated: toNumber(investment.allocated ?? investment.allocated_amount),
               currentValue: toNumber(investment.current_value),
               returnPct: toNumber(investment.return_pct),
               status: String(investment.status || 'Active'),
+              investorAllowCopy: normalizeBool(investment.investor_allow_copy),
             }))
           : [];
 
@@ -219,6 +227,71 @@ export default function ClientMyInvestPage() {
   const openWithdrawModal = () => {
     setShowDetailsModal(false);
     setShowWithdrawModal(true);
+  };
+
+  const handleCopyingToggle = async () => {
+    if (!selectedInvModal) {
+      return;
+    }
+
+    const accountId = selectedInvModal.accountId?.trim();
+    if (!accountId) {
+      toast.error('Investment account is not available.');
+      return;
+    }
+
+    const shouldPause = selectedInvModal.investorAllowCopy;
+    const endpoint = shouldPause ? '/api/client/my-investments/pause' : '/api/client/my-investments/start';
+
+    setIsCopyingActionLoading(true);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ account_id: accountId }),
+      });
+
+      const data = await response.json().catch(() => null);
+      const message = data?.message || (shouldPause ? 'Failed to pause copying' : 'Failed to start copying');
+
+      if (!response.ok || data?.status === 'error') {
+        throw new Error(message);
+      }
+
+      const nextAllowCopy = !shouldPause;
+      setInvestments((prev) =>
+        prev.map((investment) =>
+          String(investment.id) === String(selectedInvModal.id)
+            ? {
+                ...investment,
+                investorAllowCopy: nextAllowCopy,
+                status: nextAllowCopy ? 'Active' : 'Paused',
+              }
+            : investment,
+        ),
+      );
+      setSelectedInvModal((current) =>
+        current
+          ? {
+              ...current,
+              investorAllowCopy: nextAllowCopy,
+              status: nextAllowCopy ? 'Active' : 'Paused',
+            }
+          : current,
+      );
+
+      toast.success(data?.message || (shouldPause ? 'Copying paused successfully' : 'Copying started successfully'));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update copying state';
+      toast.error(message);
+    } finally {
+      setIsCopyingActionLoading(false);
+    }
   };
 
   const openCoefficientModal = () => {
@@ -594,8 +667,21 @@ export default function ClientMyInvestPage() {
                       >
                         Quick Deposit
                       </button>
-                      <button className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}>
-                        Pause
+                      <button
+                        type="button"
+                        onClick={handleCopyingToggle}
+                        disabled={isCopyingActionLoading}
+                        className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm disabled:cursor-not-allowed disabled:opacity-60 ${
+                          isDarkMode
+                            ? 'border-slate-800 bg-white/5 hover:bg-white/10'
+                            : 'border-blue-700/50 hover:bg-blue-800/30'
+                        }`}
+                      >
+                        {isCopyingActionLoading
+                          ? 'Updating...'
+                          : selectedInvModal.investorAllowCopy
+                            ? 'Pause Copying'
+                            : 'Start Copying'}
                       </button>
                     </div>
                   </div>
