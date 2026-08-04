@@ -38,6 +38,14 @@ type TicketStatusFilter = "all" | "open" | "pending" | "closed";
 
 const ticketStatusTabs: TicketStatusFilter[] = ["all", "open", "pending", "closed"];
 
+const formatTicketStatusLabel = (status: TicketStatusFilter) => {
+  if (status === "all") {
+    return "All";
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
 interface Ticket {
   id: string;
   subject: string;
@@ -357,9 +365,7 @@ const Tickets = () => {
 
       setTickets(liveTickets);
       setUserId(createdBy);
-      if (liveTickets.length === 0) {
-        setError("No live tickets are available.");
-      }
+      setError("");
     } catch {
       if (requestId !== requestIdRef.current) {
         return;
@@ -620,27 +626,36 @@ const Tickets = () => {
       </div>
       
       {/* Tabs + Controls Row */}
-      <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between mb-8">
+      <div className="flex flex-col xl:flex-row gap-4 xl:gap-6 items-stretch xl:items-center justify-between mb-8">
         {/* Left: Status Tabs */}
-        <div className="grid grid-cols-2 gap-2 p-2 rounded-[2rem] border border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto">
+        <div className={`flex flex-wrap gap-2 p-2 rounded-[2rem] border ${
+          isDarkMode
+            ? "border-slate-800 bg-slate-900"
+            : "border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)]"
+        } shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full xl:w-auto`}>
           {ticketStatusTabs.map((status) => (
             <button
               key={status}
+              type="button"
               onClick={() => fetchTickets(status)}
-              className={`flex w-full items-center justify-center gap-3 px-4 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all duration-300 lg:flex-1 lg:flex-none lg:px-6 ${
+              aria-pressed={selectedStatus === status}
+              aria-label={`${formatTicketStatusLabel(status)} tickets`}
+              className={`flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-3xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] transition-all duration-300 sm:flex-none sm:px-5 sm:py-3.5 sm:text-xs sm:tracking-widest ${
                 selectedStatus === status
-                  ? "border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]"
-                  : "border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white"
+                  ? "border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)]"
+                  : isDarkMode
+                    ? "border border-transparent bg-white/5 text-gray-400 hover:text-white hover:bg-white/10"
+                    : "border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white"
               }`}
             >
-              {status === "all" ? "All" : status}
+              <span className="whitespace-nowrap">{formatTicketStatusLabel(status)}</span>
             </button>
           ))}
         </div>
 
         {/* Right: Search + Filter + New Ticket */}
-        <div className="flex items-center gap-4 flex-shrink-0 w-full lg:w-auto">
-          <div className="relative flex-1 lg:w-72">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 flex-shrink-0 w-full xl:w-auto">
+          <div className="relative flex-1 min-w-0 sm:min-w-[18rem] xl:w-72">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8db5ff]" size={18} />
             <input
               type="text"
@@ -711,7 +726,9 @@ const Tickets = () => {
                       <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? "bg-gray-800" : "bg-[#0b226a]"}`}>
                         <Search className={isDarkMode ? "text-gray-400" : "text-[#8db5ff]"} size={32} />
                       </div>
-                      <p className={`text-lg font-bold ${softTextClass}`}>No tickets found</p>
+                      <p className={`text-lg font-bold ${softTextClass}`}>
+                        {tickets.length === 0 ? "No live tickets are available." : "No tickets found"}
+                      </p>
                     </td>
                   </tr>
                 ) : (
