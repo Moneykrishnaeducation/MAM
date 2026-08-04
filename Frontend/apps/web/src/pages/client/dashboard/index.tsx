@@ -7,6 +7,7 @@ import {
   ChevronRight,
   ArrowUpRight,
   UserCheck,
+  Users,
   X,
   Wallet,
   ShieldCheck,
@@ -130,15 +131,12 @@ async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {
 }
 
 async function fetchClientDashboard() {
-  return fetchClientEndpoint<{ dashboard?: ClientDashboardPayload }>('/api/client/dashboard');
-}
-
-async function fetchClientProfile() {
-  return fetchClientEndpoint<{ profile?: ClientProfilePayload }>('/api/client/profile');
-}
-
-async function fetchClientAccount() {
-  return fetchClientEndpoint<{ account?: ClientAccountPayload }>('/api/client/account');
+  return fetchClientEndpoint<{
+    dashboard?: ClientDashboardPayload & {
+      account?: ClientAccountPayload | null;
+      investments?: ClientInvestmentPayload[] | null;
+    };
+  }>('/api/client/dashboard');
 }
 
 const formatDashboardTime = (value?: string | null) => {
@@ -187,6 +185,7 @@ const dashboardCardIcons: Record<
   manager_account: UserCheck,
   funds_invested: TrendingUp,
   balance: Banknote,
+  available_managers: Users,
 };
 
 const buildDashboardCards = (
@@ -194,6 +193,10 @@ const buildDashboardCards = (
   account: ClientAccountPayload | null,
   investments: ClientInvestmentPayload[] | null,
 ): DashboardCardPayload[] => {
+  if (dashboardData?.cards && dashboardData.cards.length > 0) {
+    return dashboardData.cards;
+  }
+
   const dashboardCards = dashboardData?.cards ?? [];
   const balanceCard = dashboardCards.find((card) => card.key === 'balance') || null;
   const investedCard = dashboardCards.find((card) => card.key === 'invested') || null;
@@ -335,23 +338,19 @@ export default function ClientDashboardPage() {
       setDashboardLoading(true);
 
       try {
-        const [liveDashboard, liveProfile, liveAccount, liveInvestments] = await Promise.all([
-          fetchClientDashboard(),
-          fetchClientProfile(),
-          fetchClientAccount(),
-          fetchClientEndpoint<{ investments?: ClientInvestmentPayload[] }>('/api/client/my-investments'),
-        ]);
+        const liveDashboard = await fetchClientDashboard();
 
         if (!isMounted) {
           return;
         }
 
-        setDashboardData(liveDashboard ? (liveDashboard as ClientDashboardPayload) : null);
-        setClientProfile(liveProfile ? (liveProfile as ClientProfilePayload) : null);
-        setClientAccount(liveAccount ? (liveAccount as ClientAccountPayload) : null);
+        const db = liveDashboard?.dashboard;
+        setDashboardData(db ? (db as ClientDashboardPayload) : null);
+        setClientProfile(db?.client ? (db.client as ClientProfilePayload) : null);
+        setClientAccount(db?.account ? (db.account as ClientAccountPayload) : null);
         setClientInvestments(
-          liveInvestments && Array.isArray(liveInvestments.investments)
-            ? (liveInvestments.investments as ClientInvestmentPayload[])
+          db?.investments && Array.isArray(db.investments)
+            ? (db.investments as ClientInvestmentPayload[])
             : null,
         );
       } catch {

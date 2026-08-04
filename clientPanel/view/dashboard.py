@@ -41,39 +41,39 @@ async def get_client_dashboard(request):
     activity_logs = await ActivityLog.filter(user_email__iexact=profile.email).order_by("-created_at").limit(5)
 
     total_balance = sum(account.balance for account in accounts)
-    total_equity = sum(account.equity for account in accounts)
     total_allocated = sum(investment.allocated_amount for investment in investments)
-    open_tickets = sum(1 for ticket in tickets if str(ticket.status).lower() in {"open", "pending"})
-    active_transactions = sum(1 for tx in transactions if str(tx.status).lower() in {"completed", "approved"})
-
+    manager_names = list({inv.manager_name for inv in investments if inv.manager_name})
+    manager_name = manager_names[0] if manager_names else "-"
+    manager_subtitle = f"{len(manager_names)} linked manager{'s' if len(manager_names) != 1 else ''}" if manager_names else None
+    
     cards = [
         {
-            "key": "balance",
-            "title": "Trading Balance",
-            "value": _format_currency(total_balance),
-            "raw_value": total_balance,
-            "subtitle": f"{len(accounts)} account(s) linked",
+            "key": "manager_account",
+            "title": "MAM Manager Account",
+            "value": manager_name,
+            "raw_value": manager_name,
+            "subtitle": manager_subtitle,
         },
         {
-            "key": "equity",
-            "title": "Equity",
-            "value": _format_currency(total_equity),
-            "raw_value": total_equity,
-            "subtitle": "Combined account equity",
-        },
-        {
-            "key": "invested",
-            "title": "Allocated Investments",
+            "key": "funds_invested",
+            "title": "MAM Funds Invested",
             "value": _format_currency(total_allocated),
             "raw_value": total_allocated,
-            "subtitle": f"{len(investments)} active allocation(s)",
+            "subtitle": f"{len(investments)} active allocation{'s' if len(investments) != 1 else ''}" if investments else None,
         },
         {
-            "key": "activity",
-            "title": "Open Tickets",
-            "value": str(open_tickets),
-            "raw_value": open_tickets,
-            "subtitle": f"{active_transactions} completed transaction(s)",
+            "key": "balance",
+            "title": "MAM Balance",
+            "value": _format_currency(total_balance),
+            "raw_value": total_balance,
+            "subtitle": f"Account {accounts[0].account_number}" if accounts else None,
+        },
+        {
+            "key": "available_managers",
+            "title": "Available MAM Managers",
+            "value": str(len(manager_names)),
+            "raw_value": len(manager_names),
+            "subtitle": f"Managers: {', '.join(manager_names)}" if manager_names else None,
         },
     ]
 
@@ -91,6 +91,25 @@ async def get_client_dashboard(request):
                 },
                 "cards": cards,
                 "recent_activity_logs": [_serialize_activity_log(log) for log in activity_logs],
+                "account": {
+                    "user_id": accounts[0].client_profile_id if accounts else profile.id,
+                    "account_number": accounts[0].account_number,
+                    "server": accounts[0].server,
+                    "balance": float(accounts[0].balance),
+                    "equity": float(accounts[0].equity),
+                    "margin_free": float(accounts[0].margin_free),
+                    "leverage": accounts[0].leverage,
+                    "currency": accounts[0].currency,
+                    "status": accounts[0].status,
+                } if accounts else None,
+                "investments": [
+                    {
+                        "id": inv.id,
+                        "manager_name": inv.manager_name,
+                        "allocated_amount": float(inv.allocated_amount),
+                        "status": inv.status,
+                    } for inv in investments
+                ]
             },
         }
     )
