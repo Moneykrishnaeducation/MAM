@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import datetime
 
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
-from adminPanel.models import PendingRequest
+from adminPanel.models import ClientProfile, PendingRequest
 from backendPanel.permissions import IsAdmin, permission_required
+from clientPanel.view.common import apply_approved_payment_request
 
 TAB_ALIASES: dict[str, tuple[str, ...]] = {
     "deposits": ("deposit", "deposits"),
@@ -68,8 +72,89 @@ def _avatar_url(name: str) -> str:
     )
 
 
+def _mask_sensitive_value(value: str | None, keep_last: int = 4) -> str:
+    raw = "".join(ch for ch in str(value or "").strip() if ch.isalnum())
+    if not raw:
+        return ""
+    if len(raw) <= keep_last:
+        return raw
+    return f"**** {raw[-keep_last:]}"
+
+
+def _pending_payload(request: PendingRequest) -> dict:
+    payload = request.payload if isinstance(request.payload, dict) else {}
+    return payload if isinstance(payload, dict) else {}
+
+
+async def _resolve_profile_for_pending_request(pending_request: PendingRequest) -> ClientProfile | None:
+    if pending_request.client_profile_id:
+        profile = await ClientProfile.filter(id=pending_request.client_profile_id).first()
+        if profile is not None:
+            return profile
+
+    payload = _pending_payload(pending_request)
+    candidate_user_ids = [
+        payload.get("client_profile_id"),
+        payload.get("profile_id"),
+        payload.get("user_id"),
+    ]
+    for raw_user_id in candidate_user_ids:
+        try:
+            user_id = int(raw_user_id)
+        except (TypeError, ValueError):
+            continue
+        profile = await ClientProfile.filter(user_id=user_id).first()
+        if profile is not None:
+            pending_request.client_profile = profile
+            await pending_request.save(update_fields=["client_profile"])
+            return profile
+
+    for key in ("client_email", "email"):
+        email = str(payload.get(key) or "").strip().lower()
+        if not email:
+            continue
+        profile = await ClientProfile.filter(email=email).first()
+        if profile is not None:
+            pending_request.client_profile = profile
+            await pending_request.save(update_fields=["client_profile"])
+            return profile
+
+    candidate_names = [
+        str(payload.get("client_name") or "").strip(),
+        str(payload.get("full_name") or "").strip(),
+        str(payload.get("account_holder") or "").strip(),
+        str(pending_request.client_name or "").strip(),
+    ]
+    for name in candidate_names:
+        if not name:
+            continue
+        profile = await ClientProfile.filter(full_name__iexact=name).first()
+        if profile is not None:
+            pending_request.client_profile = profile
+            await pending_request.save(update_fields=["client_profile"])
+            return profile
+
+    return None
+
+
+def _tab_for_request_type(request_type: str | None) -> str:
+    normalized = _sanitize_request_type(request_type)
+    for tab, aliases in TAB_ALIASES.items():
+        if normalized in aliases:
+            return tab
+    return "profiles"
+
+
 def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     title = TAB_DEFAULT_TITLES[tab]
+    payload = _pending_payload(request)
+    request_type = _sanitize_request_type(request.request_type)
+    bank_name = payload.get("bank_name") or payload.get("bankName") or f"{title} Bank"
+    account_holder = payload.get("account_holder") or payload.get("accountHolder") or request.client_name
+    account_number = payload.get("account_number") or payload.get("accountNumber") or f"**** {request.id:04d}"
+    swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
+    network = payload.get("network") or "USDT-TRC20"
+    wallet_address = payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
     return {
         "id": f"{tab[:3].upper()}-{request.id}",
         "requesterName": request.client_name,
@@ -89,15 +174,18 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "fileName": f"{tab}_{request.id}.pdf",
         "fieldToUpdate": title,
         "currentValue": request.client_name,
-        "requestedValue": request.client_name,
+        "requestedValue": payload.get("bank_name")
+        or payload.get("wallet_address")
+        or payload.get("cryptoAddress")
+        or request.client_name,
         "reason": f"{title} request submitted through the admin portal.",
-        "bankName": f"{title} Bank",
-        "accountHolder": request.client_name,
-        "accountNumber": f"**** {request.id:04d}",
-        "swiftCode": f"SWFT{request.id:04d}",
-        "network": "USDT-TRC20",
-        "walletAddress": f"wallet-{request.id:04d}",
-        "label": f"{title} Wallet",
+        "bankName": bank_name,
+        "accountHolder": account_holder,
+        "accountNumber": _mask_sensitive_value(account_number) or account_number,
+        "swiftCode": swift_code,
+        "network": network,
+        "walletAddress": wallet_address,
+        "label": payload.get("currency") or payload.get("cryptoCurrency") or f"{title} Wallet",
         "request_type": request.request_type,
         "raw_request_type": _sanitize_request_type(request.request_type),
     }
@@ -106,7 +194,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
 async def _fetch_pending_requests_for_tab(tab: str) -> list[dict]:
     aliases = TAB_ALIASES[tab]
     condition = _match_condition(aliases)
-    queryset = PendingRequest.all().order_by("-created_at")
+    queryset = PendingRequest.filter(status__iexact="pending").order_by("-created_at")
     if condition is not None:
         queryset = queryset.filter(condition)
 
@@ -173,3 +261,70 @@ async def list_pending_requests_summary(request):
         summary[tab] = len(await _fetch_pending_requests_for_tab(tab))
 
     return JsonResponse({"status": "ok", "summary": summary, "total": sum(summary.values())})
+
+
+def _resolve_pending_request_id(request_id: str) -> int | None:
+    raw_id = str(request_id or "").strip()
+    if not raw_id:
+        return None
+    if "-" in raw_id:
+        raw_id = raw_id.rsplit("-", 1)[-1]
+    try:
+        return int(raw_id)
+    except ValueError:
+        return None
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["POST", "PUT"])
+async def decide_pending_request(request, request_id: str):
+    pending_id = _resolve_pending_request_id(request_id)
+    if pending_id is None:
+        return JsonResponse({"status": "error", "message": "Invalid pending request id"}, status=400)
+
+    pending_request = await PendingRequest.filter(id=pending_id).first()
+    if pending_request is None:
+        return JsonResponse({"status": "error", "message": "Pending request not found"}, status=404)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    decision = str(body.get("status") or body.get("decision") or "").strip().lower()
+    if decision not in {"approved", "rejected"}:
+        return JsonResponse(
+            {"status": "error", "message": "status must be either 'Approved' or 'Rejected'"},
+            status=400,
+        )
+
+    if decision == "approved":
+        request_type = _sanitize_request_type(pending_request.request_type)
+        if request_type in {"bank", "crypto"}:
+            profile = await _resolve_profile_for_pending_request(pending_request)
+            if profile is None:
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "Unable to resolve client profile for this payment request",
+                    },
+                    status=400,
+                )
+            await apply_approved_payment_request(pending_request, profile=profile)
+        else:
+            pending_request.status = "Approved"
+            pending_request.reviewed_at = timezone.now()
+            await pending_request.save()
+    else:
+        pending_request.status = "Rejected"
+        pending_request.reviewed_at = timezone.now()
+        await pending_request.save()
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Request {decision}",
+            "request": _serialize_pending_request(pending_request, _tab_for_request_type(pending_request.request_type)),
+        }
+    )

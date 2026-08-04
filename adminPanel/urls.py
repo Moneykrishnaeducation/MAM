@@ -4,11 +4,13 @@ from django.urls import path
 
 from adminPanel.view import mt5_crud
 from adminPanel.view.client_profile import update_client_profile
+from adminPanel.view.client_payment import update_client_payment_details
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_account_api
 from adminPanel.view.pending_requests import (
+    decide_pending_request,
     list_pending_banks,
     list_pending_cryptos,
     list_pending_deposits,
@@ -42,12 +44,15 @@ urlpatterns = [
     path("requests/profiles", list_pending_profiles, name="requests-profiles"),
     path("requests/banks", list_pending_banks, name="requests-banks"),
     path("requests/cryptos", list_pending_cryptos, name="requests-cryptos"),
+    path("requests/decision", decide_pending_request, name="request-decision-legacy"),
+    path("requests/<str:request_id>/decision", decide_pending_request, name="request-decision"),
     path("admin-users", list_admin_system_users, name="admin-users"),
     path("admin-users/<str:user_id>/update", update_admin_user, name="update-admin-user"),
     path("logout", logout_admin, name="logout"),
     path("profile", admin_profile, name="profile"),
     path("users", list_client_users, name="users"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
+    path("users/<str:user_id>/payment", update_client_payment_details, name="update-client-payment"),
     path("users/<str:user_id>/delete", delete_user, name="delete-user"),
     path("users/<str:user_id>/tickets", list_client_tickets, name="client-tickets"),
     path("users/<str:user_id>/transactions", list_client_transactions, name="client-transactions"),

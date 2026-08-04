@@ -91,35 +91,36 @@ export default function AdminPendingRequestsPage() {
   // Selected Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<SelectedRequestUnion>(null);
 
+  const loadData = async () => {
+    try {
+      const fetchTab = async (endpoint: string) => {
+        const res = await fetch(endpoint, { credentials: 'include' });
+        const data = await res.json();
+        return data.status === 'ok' ? data.requests || [] : [];
+      };
+
+      const [deps, withs, docs, profs, bnks, cryps] = await Promise.all([
+        fetchTab('/api/admin/requests/deposits'),
+        fetchTab('/api/admin/requests/withdrawals'),
+        fetchTab('/api/admin/requests/documents'),
+        fetchTab('/api/admin/requests/profiles'),
+        fetchTab('/api/admin/requests/banks'),
+        fetchTab('/api/admin/requests/cryptos'),
+      ]);
+
+      setDeposits(deps);
+      setWithdrawals(withs);
+      setDocuments(docs);
+      setProfiles(profs);
+      setBanks(bnks);
+      setCryptos(cryps);
+    } catch (err) {
+      console.error("Failed to load requests data:", err);
+    }
+  };
+
   React.useEffect(() => {
-    const loadData = async () => {
-      try {
-        const fetchTab = async (endpoint: string) => {
-          const res = await fetch(endpoint);
-          const data = await res.json();
-          return data.status === 'ok' ? data.requests || [] : [];
-        };
-
-        const [deps, withs, docs, profs, bnks, cryps] = await Promise.all([
-          fetchTab('/api/admin/requests/deposits'),
-          fetchTab('/api/admin/requests/withdrawals'),
-          fetchTab('/api/admin/requests/documents'),
-          fetchTab('/api/admin/requests/profiles'),
-          fetchTab('/api/admin/requests/banks'),
-          fetchTab('/api/admin/requests/cryptos'),
-        ]);
-
-        setDeposits(deps);
-        setWithdrawals(withs);
-        setDocuments(docs);
-        setProfiles(profs);
-        setBanks(bnks);
-        setCryptos(cryps);
-      } catch (err) {
-        console.error("Failed to load requests data:", err);
-      }
-    };
-    loadData();
+    void loadData();
   }, []);
 
   // State for all 6 request categories
@@ -137,42 +138,87 @@ export default function AdminPendingRequestsPage() {
 
   const closeModal = () => setSelectedDetail(null);
 
+  const updateRequestStatus = async (
+    requestId: string,
+    newStatus: 'Approved' | 'Rejected',
+    updateState: (status: 'Approved' | 'Rejected') => void,
+    successMessage: string,
+  ) => {
+    try {
+      const response = await fetch(`/api/admin/requests/${encodeURIComponent(requestId)}/decision`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to update request status.');
+      }
+
+      updateState((data?.request?.status as 'Approved' | 'Rejected' | undefined) || newStatus);
+      await loadData();
+      closeModal();
+      showToast(data?.message || successMessage);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to update request status.';
+      showToast(message);
+    }
+  };
+
   // Status handlers with Toast and Modal dismissal
-  const updateDepositStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setDeposits(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Deposit ${id} ${newStatus.toLowerCase()} successfully.`);
-  };
+  const updateDepositStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setDeposits(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Deposit ${id} ${newStatus.toLowerCase()} successfully.`,
+    );
 
-  const updateWithdrawStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setWithdrawals(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Withdrawal ${id} ${newStatus.toLowerCase()} successfully.`);
-  };
+  const updateWithdrawStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setWithdrawals(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Withdrawal ${id} ${newStatus.toLowerCase()} successfully.`,
+    );
 
-  const updateDocStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setDocuments(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Document ${id} ${newStatus.toLowerCase()} successfully.`);
-  };
+  const updateDocStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setDocuments(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Document ${id} ${newStatus.toLowerCase()} successfully.`,
+    );
 
-  const updateProfileStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setProfiles(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Profile edit request ${id} ${newStatus.toLowerCase()}.`);
-  };
+  const updateProfileStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setProfiles(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Profile edit request ${id} ${newStatus.toLowerCase()}.`,
+    );
 
-  const updateBankStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setBanks(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Bank account binding ${id} ${newStatus.toLowerCase()}.`);
-  };
+  const updateBankStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setBanks(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Bank account binding ${id} ${newStatus.toLowerCase()}.`,
+    );
 
-  const updateCryptoStatus = (id: string, newStatus: 'Approved' | 'Rejected') => {
-    setCryptos(prev => prev.map(item => item.id === id ? { ...item, status: newStatus } : item));
-    closeModal();
-    showToast(`Crypto wallet binding ${id} ${newStatus.toLowerCase()}.`);
-  };
+  const updateCryptoStatus = (id: string, newStatus: 'Approved' | 'Rejected') =>
+    updateRequestStatus(
+      id,
+      newStatus,
+      (status) => setCryptos(prev => prev.map(item => item.id === id ? { ...item, status } : item)),
+      `Crypto wallet binding ${id} ${newStatus.toLowerCase()}.`,
+    );
 
   // Counts for tab badges
   const pendingDeposits = deposits.filter(d => d.status === 'Pending').length;

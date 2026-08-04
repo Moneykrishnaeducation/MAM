@@ -14,6 +14,7 @@ import {
   BookOpen, 
   Lock, 
   Check, 
+  RefreshCw,
   Upload, 
   Activity, 
   Sliders,
@@ -89,7 +90,7 @@ const DOCUMENT_STATUS_CLASSES = (status: DocumentStatus, isDarkMode: boolean): s
 };
 
 type PaymentEditTarget = 'bank' | 'crypto';
-type PaymentStatus = 'approved' | 'pending';
+type PaymentStatus = 'approved' | 'pending' | 'rejected';
 
 type PaymentDetails = {
   bank: {
@@ -131,6 +132,25 @@ type ClientProfileApi = {
   postalCode?: string | null;
 };
 
+type ClientPaymentDetailsApi = {
+  paymentType?: PaymentEditTarget | string | null;
+  bank?: {
+    account_holder?: string | null;
+    bank_name?: string | null;
+    account_number?: string | null;
+    ifsc_swift?: string | null;
+    branch?: string | null;
+    country?: string | null;
+    status?: string | null;
+  } | null;
+  crypto?: {
+    network?: string | null;
+    wallet_address?: string | null;
+    currency?: string | null;
+    status?: string | null;
+  } | null;
+};
+
 type ActivityLogEntry = {
   id: number | string;
   action: string;
@@ -157,12 +177,38 @@ const INITIAL_PAYMENT_DETAILS: PaymentDetails = {
 const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   approved: 'Approved',
   pending: 'Pending',
+  rejected: 'Rejected',
 };
 
 const PAYMENT_STATUS_CLASSES: Record<PaymentStatus, string> = {
   approved: 'text-amber-400',
   pending: 'text-cyan-400',
+  rejected: 'text-red-400',
 };
+
+const normalizePaymentStatus = (value: unknown): PaymentStatus =>
+  (() => {
+    const normalized = String(value || 'pending').trim().toLowerCase();
+    if (normalized === 'approved' || normalized === 'pending' || normalized === 'rejected') {
+      return normalized;
+    }
+    return 'pending';
+  })();
+
+const normalizePaymentDetails = (details: ClientPaymentDetailsApi | null | undefined): PaymentDetails => ({
+  bank: {
+    bankName: String(details?.bank?.bank_name || INITIAL_PAYMENT_DETAILS.bank.bankName),
+    accountNumber: String(details?.bank?.account_number || INITIAL_PAYMENT_DETAILS.bank.accountNumber),
+    ifsc: String(details?.bank?.ifsc_swift || INITIAL_PAYMENT_DETAILS.bank.ifsc),
+    branch: String(details?.bank?.branch || INITIAL_PAYMENT_DETAILS.bank.branch),
+    status: normalizePaymentStatus(details?.bank?.status),
+  },
+  crypto: {
+    address: String(details?.crypto?.wallet_address || INITIAL_PAYMENT_DETAILS.crypto.address),
+    currency: String(details?.crypto?.currency || INITIAL_PAYMENT_DETAILS.crypto.currency),
+    status: normalizePaymentStatus(details?.crypto?.status),
+  },
+});
 
 const formatFileSize = (size: number) => {
   if (!Number.isFinite(size) || size <= 0) {
@@ -212,6 +258,7 @@ export default function ClientProfilePage() {
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>(INITIAL_PAYMENT_DETAILS);
   const [paymentEditTarget, setPaymentEditTarget] = useState<PaymentEditTarget | null>(null);
+  const [isPaymentSaving, setIsPaymentSaving] = useState(false);
   const [paymentForm, setPaymentForm] = useState<PaymentFormState>({
     bankName: INITIAL_PAYMENT_DETAILS.bank.bankName,
     accountNumber: INITIAL_PAYMENT_DETAILS.bank.accountNumber,
@@ -290,7 +337,7 @@ export default function ClientProfilePage() {
           return;
         }
 
-        const data = (await response.json()) as { profile?: ClientProfileApi };
+        const data = (await response.json()) as { profile?: ClientProfileApi; payment_details?: ClientPaymentDetailsApi };
         const profile = data.profile ?? null;
 
         if (!isMounted || !profile) {
@@ -313,11 +360,24 @@ export default function ClientProfilePage() {
         setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
         setProfileTier(String(profile.tier || 'Individual Trader'));
         setProfileKycStatus(String(profile.kyc_status || 'Verified'));
+        setPaymentDetails(normalizePaymentDetails(data.payment_details));
+        setPaymentForm((prev) => ({
+          ...prev,
+          bankName: String(data.payment_details?.bank?.bank_name || prev.bankName),
+          accountNumber: String(data.payment_details?.bank?.account_number || prev.accountNumber),
+          ifsc: String(data.payment_details?.bank?.ifsc_swift || prev.ifsc),
+          branch: String(data.payment_details?.bank?.branch || prev.branch),
+          bankStatus: normalizePaymentStatus(data.payment_details?.bank?.status),
+          cryptoAddress: String(data.payment_details?.crypto?.wallet_address || prev.cryptoAddress),
+          cryptoCurrency: String(data.payment_details?.crypto?.currency || prev.cryptoCurrency),
+          cryptoStatus: normalizePaymentStatus(data.payment_details?.crypto?.status),
+        }));
       } catch {
         if (isMounted) {
           setProfileUserId(null);
           setProfileTier('Individual Trader');
           setProfileKycStatus('Verified');
+          setPaymentDetails(INITIAL_PAYMENT_DETAILS);
         }
       } finally {
         if (isMounted) {
@@ -482,22 +542,69 @@ export default function ClientProfilePage() {
     setPaymentEditTarget(null);
   };
 
-  const savePaymentEditor = () => {
-    setPaymentDetails((prev) => ({
-      bank: {
-        bankName: paymentForm.bankName.trim() || prev.bank.bankName,
-        accountNumber: paymentForm.accountNumber.trim() || prev.bank.accountNumber,
-        ifsc: paymentForm.ifsc.trim() || prev.bank.ifsc,
-        branch: paymentForm.branch.trim() || prev.bank.branch,
-        status: paymentForm.bankStatus,
-      },
-      crypto: {
-        address: paymentForm.cryptoAddress.trim() || prev.crypto.address,
-        currency: paymentForm.cryptoCurrency.trim() || prev.crypto.currency,
-        status: paymentForm.cryptoStatus,
-      },
-    }));
-    closePaymentEditor();
+  const savePaymentEditor = async () => {
+    if (!paymentEditTarget) {
+      return;
+    }
+
+    setIsPaymentSaving(true);
+
+    try {
+      const payload =
+        paymentEditTarget === 'bank'
+          ? {
+              paymentType: 'bank',
+              accountHolder: `${personalForm.firstName} ${personalForm.lastName}`.trim() || personalForm.email,
+              bankName: paymentForm.bankName.trim(),
+              accountNumber: paymentForm.accountNumber.trim(),
+              ifscSwift: paymentForm.ifsc.trim(),
+              branch: paymentForm.branch.trim(),
+              bankStatus: paymentForm.bankStatus,
+              country: personalForm.country,
+            }
+          : {
+              paymentType: 'crypto',
+              cryptoAddress: paymentForm.cryptoAddress.trim(),
+              cryptoCurrency: paymentForm.cryptoCurrency.trim(),
+              cryptoStatus: paymentForm.cryptoStatus,
+            };
+
+      const response = await fetch('/api/client/payment-details', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to save payment details.');
+      }
+
+      setPaymentDetails(normalizePaymentDetails(data?.payment_details));
+      setPaymentForm((prev) => ({
+        ...prev,
+        bankName: String(data?.payment_details?.bank?.bank_name || prev.bankName),
+        accountNumber: String(data?.payment_details?.bank?.account_number || prev.accountNumber),
+        ifsc: String(data?.payment_details?.bank?.ifsc_swift || prev.ifsc),
+        branch: String(data?.payment_details?.bank?.branch || prev.branch),
+        bankStatus: normalizePaymentStatus(data?.payment_details?.bank?.status),
+        cryptoAddress: String(data?.payment_details?.crypto?.wallet_address || prev.cryptoAddress),
+        cryptoCurrency: String(data?.payment_details?.crypto?.currency || prev.cryptoCurrency),
+        cryptoStatus: normalizePaymentStatus(data?.payment_details?.crypto?.status),
+      }));
+      showProfileToast(data?.message || 'Payment details saved successfully.');
+      closePaymentEditor();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to save payment details.';
+      showProfileToast(message);
+    } finally {
+      setIsPaymentSaving(false);
+    }
   };
 
   const personalFullName = `${personalForm.firstName} ${personalForm.lastName}`.trim();
@@ -1309,17 +1416,19 @@ export default function ClientProfilePage() {
                           <button
                             type="button"
                             onClick={closePaymentEditor}
+                            disabled={isPaymentSaving}
                             className={`flex-1 rounded-2xl border px-4 py-3 text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white`}
                           >
                             Cancel
                           </button>
                           <button
                             type="button"
-                            onClick={savePaymentEditor}
-                            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition-all hover:scale-105 ${goldButtonClass}`}
+                            onClick={() => void savePaymentEditor()}
+                            disabled={isPaymentSaving}
+                            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition-all hover:scale-105 disabled:cursor-not-allowed disabled:opacity-70 ${goldButtonClass}`}
                           >
-                            <Check size={14} />
-                            Save Changes
+                            {isPaymentSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
+                            {isPaymentSaving ? 'Saving...' : 'Save Changes'}
                           </button>
                         </div>
                       </div>

@@ -727,14 +727,22 @@ function BankCryptoModal({ user }: { user: UserData }) {
       ? { paymentType: 'bank', ...bank }
       : { paymentType: 'crypto', ...crypto };
     try {
-      await fetch(`/api/admin/users/${user.id}/payment`, {
+      const response = await fetch(`/api/admin/users/${user.id}/payment`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to submit payment details.');
+      }
       setIsEditing(false);
-    } catch {}
-    finally { setSaving(false); }
+    } catch (error) {
+      console.error('Failed to submit payment details:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

@@ -165,8 +165,16 @@ class PendingRequest(models.Model):
     id = fields.IntField(primary_key=True)
     request_type = fields.CharField(max_length=100)
     client_name = fields.CharField(max_length=255)
+    client_profile = fields.ForeignKeyField(
+        "models.ClientProfile",
+        related_name="pending_requests",
+        null=True,
+        on_delete=fields.SET_NULL,
+    )
     amount = fields.FloatField(default=0.0)
     status = fields.CharField(max_length=50, default="Pending")
+    payload = fields.JSONField(default=dict, null=True)
+    reviewed_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
@@ -210,6 +218,49 @@ class ClientProfile(models.Model):
 
     def __repr__(self) -> str:
         return f"<ClientProfile(user_id={self.user_id}, name={self.full_name})>"
+
+
+class ClientBankDetail(models.Model):
+    """Client bank payment details used for funding and withdrawal requests."""
+
+    id = fields.IntField(primary_key=True)
+    client_profile = fields.OneToOneField(
+        "models.ClientProfile",
+        related_name="bank_detail",
+        on_delete=fields.CASCADE,
+    )
+    account_holder = fields.CharField(max_length=255, null=True)
+    bank_name = fields.CharField(max_length=255, default="")
+    account_number = fields.CharField(max_length=100, default="")
+    ifsc_swift = fields.CharField(max_length=100, default="")
+    branch = fields.CharField(max_length=255, null=True)
+    country = fields.CharField(max_length=100, default="United States")
+    status = fields.CharField(max_length=50, default="pending")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "client_bank_details"
+
+
+class ClientCryptoDetail(models.Model):
+    """Client crypto wallet details used for funding and withdrawal requests."""
+
+    id = fields.IntField(primary_key=True)
+    client_profile = fields.OneToOneField(
+        "models.ClientProfile",
+        related_name="crypto_detail",
+        on_delete=fields.CASCADE,
+    )
+    network = fields.CharField(max_length=100, default="USDT-TRC20")
+    wallet_address = fields.CharField(max_length=500, default="")
+    currency = fields.CharField(max_length=50, default="USDT")
+    status = fields.CharField(max_length=50, default="pending")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "client_crypto_details"
 
 
 class ClientAccount(models.Model):

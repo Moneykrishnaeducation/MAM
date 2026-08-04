@@ -8,8 +8,9 @@ import os
 import time
 
 from django.http import JsonResponse
+from django.utils import timezone
 
-from adminPanel.models import ClientProfile
+from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientProfile, PendingRequest
 
 CLIENT_LOGIN_KEY = "client-panel-login-key"
 CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
@@ -124,6 +125,280 @@ def set_auth_cookies(
     response.set_cookie(AUTH_USER_ID_COOKIE_NAME, str(user_id), **cookie_options)
     response.set_cookie(AUTH_ROLE_COOKIE_NAME, role, **cookie_options)
     return response
+
+
+def _normalize_payment_status(status: str | None, default: str = "pending") -> str:
+    value = str(status or default).strip().lower()
+    if value in {"approved", "pending"}:
+        return value
+    return default
+
+
+def _normalize_review_status(status: str | None, default: str = "pending") -> str:
+    value = str(status or default).strip().lower()
+    if value in {"approved", "pending", "rejected"}:
+        return value
+    return default
+
+
+def _mask_account_number(account_number: str | None) -> str:
+    value = "".join(ch for ch in str(account_number or "").strip() if ch.isalnum())
+    if not value:
+        return ""
+    if len(value) <= 4:
+        return value
+    return f"****{value[-4:]}"
+
+
+def serialize_client_bank_detail(detail: ClientBankDetail | None) -> dict | None:
+    if detail is None:
+        return None
+    return {
+        "id": detail.id,
+        "account_holder": detail.account_holder,
+        "bank_name": detail.bank_name,
+        "account_number": detail.account_number,
+        "ifsc_swift": detail.ifsc_swift,
+        "branch": detail.branch,
+        "country": detail.country,
+        "status": _normalize_payment_status(detail.status),
+        "created_at": detail.created_at.strftime("%Y-%m-%d %H:%M:%S") if detail.created_at else None,
+        "updated_at": detail.updated_at.strftime("%Y-%m-%d %H:%M:%S") if detail.updated_at else None,
+    }
+
+
+def serialize_client_crypto_detail(detail: ClientCryptoDetail | None) -> dict | None:
+    if detail is None:
+        return None
+    return {
+        "id": detail.id,
+        "network": detail.network,
+        "wallet_address": detail.wallet_address,
+        "currency": detail.currency,
+        "status": _normalize_payment_status(detail.status),
+        "created_at": detail.created_at.strftime("%Y-%m-%d %H:%M:%S") if detail.created_at else None,
+        "updated_at": detail.updated_at.strftime("%Y-%m-%d %H:%M:%S") if detail.updated_at else None,
+    }
+
+
+async def get_client_payment_details(profile: ClientProfile) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
+    bank_detail = await ClientBankDetail.filter(client_profile=profile).first()
+    crypto_detail = await ClientCryptoDetail.filter(client_profile=profile).first()
+    return bank_detail, crypto_detail
+
+
+async def get_latest_payment_request_status(profile: ClientProfile, payment_type: str) -> str | None:
+    normalized_type = _normalize_payment_request_type(payment_type)
+    if normalized_type is None:
+        return None
+
+    request = await PendingRequest.filter(
+        client_profile=profile,
+        request_type=normalized_type,
+    ).order_by("-created_at").first()
+    if request is None:
+        return None
+    return _normalize_review_status(request.status)
+
+
+def _normalize_payment_request_type(value: str | None) -> str | None:
+    request_type = str(value or "").strip().lower()
+    if request_type in {"bank", "crypto"}:
+        return request_type
+    return None
+
+
+def build_payment_submission_payload(
+    *,
+    profile: ClientProfile,
+    payment_type: str,
+    body: dict,
+    bank_detail: ClientBankDetail | None = None,
+    crypto_detail: ClientCryptoDetail | None = None,
+) -> dict:
+    request_type = _normalize_payment_request_type(payment_type)
+    if request_type is None:
+        raise ValueError("paymentType must be either 'bank' or 'crypto'")
+
+    if request_type == "bank":
+        existing_bank_name = bank_detail.bank_name if bank_detail else ""
+        existing_account_number = bank_detail.account_number if bank_detail else ""
+        existing_ifsc = bank_detail.ifsc_swift if bank_detail else ""
+        existing_branch = bank_detail.branch if bank_detail else ""
+        existing_status = bank_detail.status if bank_detail else None
+        return {
+            "paymentType": "bank",
+            "account_holder": str(body.get("accountHolder") or body.get("account_holder") or profile.full_name).strip()
+            or profile.full_name,
+            "bank_name": str(body.get("bankName") or body.get("bank_name") or existing_bank_name).strip(),
+            "account_number": str(body.get("accountNumber") or body.get("account_number") or existing_account_number).strip(),
+            "ifsc_swift": str(body.get("ifscSwift") or body.get("ifsc_swift") or existing_ifsc).strip(),
+            "branch": str(body.get("branch") or existing_branch).strip() or None,
+            "country": str(body.get("country") or profile.country).strip() or profile.country,
+            "status": _normalize_payment_status(
+                body.get("bankStatus") or body.get("status") or existing_status
+            ),
+        }
+
+    existing_network = crypto_detail.network if crypto_detail else "USDT-TRC20"
+    existing_wallet = crypto_detail.wallet_address if crypto_detail else ""
+    existing_currency = crypto_detail.currency if crypto_detail else "USDT"
+    existing_status = crypto_detail.status if crypto_detail else None
+    return {
+        "paymentType": "crypto",
+        "network": str(body.get("network") or existing_network).strip() or "USDT-TRC20",
+        "wallet_address": str(
+            body.get("cryptoAddress")
+            or body.get("walletAddress")
+            or body.get("wallet_address")
+            or existing_wallet
+        ).strip(),
+        "currency": str(body.get("cryptoCurrency") or body.get("currency") or existing_currency).strip() or "USDT",
+        "status": _normalize_payment_status(
+            body.get("cryptoStatus") or body.get("status") or existing_status
+        ),
+    }
+
+
+async def create_payment_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
+    payment_type = _normalize_payment_request_type(payload.get("paymentType") or payload.get("payment_type"))
+    if payment_type is None:
+        raise ValueError("paymentType must be either 'bank' or 'crypto'")
+
+    payload = {
+        **payload,
+        "client_profile_id": profile.id,
+        "user_id": profile.user_id,
+        "client_name": profile.full_name,
+        "client_email": profile.email,
+    }
+
+    pending_request = await PendingRequest.create(
+        request_type=payment_type,
+        client_name=profile.full_name,
+        client_profile=profile,
+        amount=0.0,
+        status="Pending",
+        payload=payload,
+    )
+    return pending_request
+
+
+async def apply_approved_payment_request(
+    request: PendingRequest,
+    *,
+    profile: ClientProfile | None = None,
+) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
+    profile = profile or request.client_profile
+    if profile is None:
+        raise ValueError("Pending request is not linked to a client profile")
+
+    payload = request.payload or {}
+    request_type = _normalize_payment_request_type(request.request_type)
+
+    bank_detail: ClientBankDetail | None = None
+    crypto_detail: ClientCryptoDetail | None = None
+
+    if request_type == "bank":
+        payload = {**payload, "status": "approved"}
+        bank_detail = await upsert_client_bank_detail(profile, payload)
+    elif request_type == "crypto":
+        payload = {**payload, "status": "approved"}
+        crypto_detail = await upsert_client_crypto_detail(profile, payload)
+    else:
+        raise ValueError(f"Unsupported payment request type: {request.request_type}")
+
+    request.status = "Approved"
+    request.reviewed_at = timezone.now()
+    await request.save()
+    return bank_detail, crypto_detail
+
+
+def build_payment_details_payload(
+    *,
+    profile: ClientProfile,
+    bank_detail: ClientBankDetail | None = None,
+    crypto_detail: ClientCryptoDetail | None = None,
+) -> dict:
+    bank_data = serialize_client_bank_detail(bank_detail) or {
+        "id": None,
+        "account_holder": profile.full_name,
+        "bank_name": "",
+        "account_number": "",
+        "ifsc_swift": "",
+        "branch": "",
+        "country": profile.country,
+        "status": "pending",
+        "created_at": None,
+        "updated_at": None,
+    }
+    crypto_data = serialize_client_crypto_detail(crypto_detail) or {
+        "id": None,
+        "network": "USDT-TRC20",
+        "wallet_address": "",
+        "currency": "USDT",
+        "status": "pending",
+        "created_at": None,
+        "updated_at": None,
+    }
+
+    payment_type = "bank"
+    if crypto_data.get("wallet_address") and not bank_data.get("account_number"):
+        payment_type = "crypto"
+
+    return {
+        "paymentType": payment_type,
+        "bank": bank_data,
+        "crypto": crypto_data,
+    }
+
+
+async def upsert_client_bank_detail(profile: ClientProfile, payload: dict) -> ClientBankDetail:
+    detail = await ClientBankDetail.filter(client_profile=profile).first()
+    if detail is None:
+        detail = await ClientBankDetail.create(
+            client_profile=profile,
+            account_holder=str(payload.get("account_holder") or profile.full_name).strip() or profile.full_name,
+            bank_name=str(payload.get("bank_name") or "").strip(),
+            account_number=str(payload.get("account_number") or "").strip(),
+            ifsc_swift=str(payload.get("ifsc_swift") or "").strip(),
+            branch=str(payload.get("branch") or "").strip() or None,
+            country=str(payload.get("country") or profile.country).strip() or profile.country,
+            status=_normalize_payment_status(payload.get("status")),
+        )
+        return detail
+
+    detail.account_holder = str(payload.get("account_holder") or profile.full_name).strip() or profile.full_name
+    detail.bank_name = str(payload.get("bank_name") or detail.bank_name).strip()
+    detail.account_number = str(payload.get("account_number") or detail.account_number).strip()
+    detail.ifsc_swift = str(payload.get("ifsc_swift") or detail.ifsc_swift).strip()
+    detail.branch = str(payload.get("branch") or detail.branch or "").strip() or None
+    detail.country = str(payload.get("country") or detail.country or profile.country).strip() or profile.country
+    if "status" in payload:
+        detail.status = _normalize_payment_status(payload.get("status"), default=detail.status)
+    await detail.save()
+    return detail
+
+
+async def upsert_client_crypto_detail(profile: ClientProfile, payload: dict) -> ClientCryptoDetail:
+    detail = await ClientCryptoDetail.filter(client_profile=profile).first()
+    if detail is None:
+        detail = await ClientCryptoDetail.create(
+            client_profile=profile,
+            network=str(payload.get("network") or "USDT-TRC20").strip() or "USDT-TRC20",
+            wallet_address=str(payload.get("wallet_address") or "").strip(),
+            currency=str(payload.get("currency") or "USDT").strip() or "USDT",
+            status=_normalize_payment_status(payload.get("status")),
+        )
+        return detail
+
+    detail.network = str(payload.get("network") or detail.network or "USDT-TRC20").strip() or "USDT-TRC20"
+    detail.wallet_address = str(payload.get("wallet_address") or detail.wallet_address).strip()
+    detail.currency = str(payload.get("currency") or detail.currency or "USDT").strip() or "USDT"
+    if "status" in payload:
+        detail.status = _normalize_payment_status(payload.get("status"), default=detail.status)
+    await detail.save()
+    return detail
 
 
 async def _resolve_client_user_id(request) -> int | None:

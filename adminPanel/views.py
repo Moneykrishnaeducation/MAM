@@ -17,12 +17,15 @@ from adminPanel.models import (
     ActivityLog,
     AdminUser,
     ClientUser,
+    ClientProfile,
     PendingRequest,
     TradingAccount,
 )
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
+    _mask_account_number,
     get_admin_request_token,
+    get_client_payment_details,
     hash_client_password,
     load_admin_login_token,
 )
@@ -188,6 +191,12 @@ async def list_client_users(request):
     client_users = await ClientUser.all()
     results = []
     for user in client_users:
+        profile = await ClientProfile.filter(user_id=user.id).first()
+        bank_detail = None
+        crypto_detail = None
+        if profile is not None:
+            bank_detail, crypto_detail = await get_client_payment_details(profile)
+
         # Fetch associated TradingAccount entries
         t_accs = await TradingAccount.filter(user_id=user.id)
         trading_accounts_data = [
@@ -211,6 +220,30 @@ async def list_client_users(request):
         # Primary trading account (for backward compatibility / default view)
         primary_acc = trading_accounts_data[0] if trading_accounts_data else None
 
+        bank_account_number = bank_detail.account_number if bank_detail else ""
+        crypto_wallet_address = crypto_detail.wallet_address if crypto_detail else ""
+        crypto_network = crypto_detail.network if crypto_detail else "USDT-TRC20"
+        payment_details = {
+            "paymentType": "bank" if bank_detail else ("crypto" if crypto_detail else "bank"),
+            "accountHolder": bank_detail.account_holder if bank_detail and bank_detail.account_holder else user.name,
+            "accountNumber": bank_account_number,
+            "bankName": bank_detail.bank_name if bank_detail else "",
+            "ifscSwift": bank_detail.ifsc_swift if bank_detail else "",
+            "branch": bank_detail.branch if bank_detail and bank_detail.branch else "",
+            "country": bank_detail.country if bank_detail and bank_detail.country else user.country,
+            "bankStatus": bank_detail.status if bank_detail else "pending",
+            "network": crypto_network,
+            "cryptoAddress": crypto_wallet_address,
+            "cryptoCurrency": crypto_detail.currency if crypto_detail else "USDT",
+            "cryptoStatus": crypto_detail.status if crypto_detail else "pending",
+        }
+
+        bank_crypto = {
+            "accountMask": _mask_account_number(bank_account_number) if bank_account_number else "Not Configured",
+            "bankName": bank_detail.bank_name if bank_detail else "Not Configured",
+            "cryptoWallet": f"{crypto_wallet_address} ({crypto_network})".strip() if crypto_wallet_address else "Not Configured",
+        }
+
         results.append({
             "id": user.user_code or f"USR-{user.id:03d}",
             "name": user.name,
@@ -224,11 +257,8 @@ async def list_client_users(request):
             "avatar": user.avatar,
             "tradingAccount": primary_acc,
             "tradingAccounts": trading_accounts_data,
-            "bankCrypto": {
-                "accountMask": "**** 1234",
-                "bankName": "Equinix Direct",
-                "cryptoWallet": "Not Configured",
-            },
+            "paymentDetails": payment_details,
+            "bankCrypto": bank_crypto,
             "transactions": [],
             "tickets": [],
         })
@@ -272,7 +302,7 @@ async def list_managers(request):
 
 async def list_investors(request):
     """List investors directly from database."""
-    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account")
+    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
     results = [
         {
             "id": i.id,
