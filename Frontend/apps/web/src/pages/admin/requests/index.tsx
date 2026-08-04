@@ -83,45 +83,84 @@ export type SelectedRequestUnion =
   | { type: 'crypto'; data: CryptoRequest }
   | null;
 
+const REQUEST_ENDPOINTS: Record<RequestTab, string> = {
+  deposit: '/api/admin/requests/deposits',
+  withdraw: '/api/admin/requests/withdrawals',
+  documents: '/api/admin/requests/documents',
+  profile: '/api/admin/requests/profiles',
+  bank: '/api/admin/requests/banks',
+  crypto: '/api/admin/requests/cryptos',
+};
+
+type RequestCounts = Record<RequestTab, number>;
+
 export default function AdminPendingRequestsPage() {
   const [activeTab, setActiveTab] = useState<RequestTab>('deposit');
   const [searchTerm, setSearchTerm] = useState('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [requestCounts, setRequestCounts] = useState<RequestCounts>({
+    deposit: 0,
+    withdraw: 0,
+    documents: 0,
+    profile: 0,
+    bank: 0,
+    crypto: 0,
+  });
 
   // Selected Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<SelectedRequestUnion>(null);
 
-  const loadData = async () => {
+  const loadActiveTabData = async (tab: RequestTab = activeTab) => {
     try {
-      const fetchTab = async (endpoint: string) => {
-        const res = await fetch(endpoint, { credentials: 'include' });
-        const data = await res.json();
-        return data.status === 'ok' ? data.requests || [] : [];
-      };
+      const endpoint = REQUEST_ENDPOINTS[tab];
+      const res = await fetch(endpoint, { credentials: 'include' });
+      const data = await res.json();
+      const requests = data.status === 'ok' ? data.requests || [] : [];
 
-      const [deps, withs, docs, profs, bnks, cryps] = await Promise.all([
-        fetchTab('/api/admin/requests/deposits'),
-        fetchTab('/api/admin/requests/withdrawals'),
-        fetchTab('/api/admin/requests/documents'),
-        fetchTab('/api/admin/requests/profiles'),
-        fetchTab('/api/admin/requests/banks'),
-        fetchTab('/api/admin/requests/cryptos'),
-      ]);
-
-      setDeposits(deps);
-      setWithdrawals(withs);
-      setDocuments(docs);
-      setProfiles(profs);
-      setBanks(bnks);
-      setCryptos(cryps);
+      if (tab === 'deposit') {
+        setDeposits(requests);
+      } else if (tab === 'withdraw') {
+        setWithdrawals(requests);
+      } else if (tab === 'documents') {
+        setDocuments(requests);
+      } else if (tab === 'profile') {
+        setProfiles(requests);
+      } else if (tab === 'bank') {
+        setBanks(requests);
+      } else if (tab === 'crypto') {
+        setCryptos(requests);
+      }
     } catch (err) {
-      console.error("Failed to load requests data:", err);
+      console.error(`Failed to load ${tab} requests data:`, err);
+    }
+  };
+
+  const loadRequestCounts = async () => {
+    try {
+      const res = await fetch('/api/admin/requests/summary', { credentials: 'include' });
+      const data = await res.json();
+      if (data.status === 'ok') {
+        setRequestCounts({
+          deposit: Number(data.summary?.deposit || 0),
+          withdraw: Number(data.summary?.withdraw || 0),
+          documents: Number(data.summary?.documents || 0),
+          profile: Number(data.summary?.profile || 0),
+          bank: Number(data.summary?.bank || 0),
+          crypto: Number(data.summary?.crypto || 0),
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load requests summary:', err);
     }
   };
 
   React.useEffect(() => {
-    void loadData();
+    void loadRequestCounts();
   }, []);
+
+  React.useEffect(() => {
+    void loadActiveTabData(activeTab);
+  }, [activeTab]);
 
   // State for all 6 request categories
   const [deposits, setDeposits] = useState<DepositRequest[]>([]);
@@ -162,7 +201,7 @@ export default function AdminPendingRequestsPage() {
       }
 
       updateState((data?.request?.status as 'Approved' | 'Rejected' | undefined) || newStatus);
-      await loadData();
+      await Promise.all([loadRequestCounts(), loadActiveTabData()]);
       closeModal();
       showToast(data?.message || successMessage);
     } catch (error) {
@@ -221,12 +260,12 @@ export default function AdminPendingRequestsPage() {
     );
 
   // Counts for tab badges
-  const pendingDeposits = deposits.filter(d => d.status === 'Pending').length;
-  const pendingWithdrawals = withdrawals.filter(w => w.status === 'Pending').length;
-  const pendingDocs = documents.filter(doc => doc.status === 'Pending').length;
-  const pendingProfiles = profiles.filter(p => p.status === 'Pending').length;
-  const pendingBanks = banks.filter(b => b.status === 'Pending').length;
-  const pendingCryptos = cryptos.filter(c => c.status === 'Pending').length;
+  const pendingDeposits = requestCounts.deposit;
+  const pendingWithdrawals = requestCounts.withdraw;
+  const pendingDocs = requestCounts.documents;
+  const pendingProfiles = requestCounts.profile;
+  const pendingBanks = requestCounts.bank;
+  const pendingCryptos = requestCounts.crypto;
 
   const totalPending = pendingDeposits + pendingWithdrawals + pendingDocs + pendingProfiles + pendingBanks + pendingCryptos;
 
