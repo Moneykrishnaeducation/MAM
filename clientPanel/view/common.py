@@ -10,7 +10,7 @@ import time
 from django.http import JsonResponse
 from django.utils import timezone
 
-from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientProfile, PendingRequest
+from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientProfile, ClientUser, PendingRequest
 
 CLIENT_LOGIN_KEY = "client-panel-login-key"
 CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
@@ -201,6 +201,16 @@ async def get_latest_payment_request_status(profile: ClientProfile, payment_type
     return _normalize_review_status(request.status)
 
 
+async def get_latest_profile_request_status(profile: ClientProfile) -> str | None:
+    request = await PendingRequest.filter(
+        client_profile=profile,
+        request_type__icontains="profile",
+    ).order_by("-created_at").first()
+    if request is None:
+        return None
+    return _normalize_review_status(request.status)
+
+
 def _normalize_payment_request_type(value: str | None) -> str | None:
     request_type = str(value or "").strip().lower()
     if request_type in {"bank", "crypto"}:
@@ -260,6 +270,39 @@ def build_payment_submission_payload(
     }
 
 
+def build_profile_submission_payload(*, body: dict, user: ClientUser, profile: ClientProfile | None = None) -> dict:
+    current_profile = profile
+    current_full_name = current_profile.full_name if current_profile else user.name
+    current_phone = current_profile.phone if current_profile else user.phone
+    current_country = current_profile.country if current_profile else user.country
+    current_date_of_birth = current_profile.date_of_birth if current_profile else None
+    current_address = current_profile.address if current_profile else None
+    current_city = current_profile.city if current_profile else None
+    current_postal_code = current_profile.postal_code if current_profile else None
+    current_tier = current_profile.tier if current_profile else "VIP Premium"
+    current_kyc_status = current_profile.kyc_status if current_profile else "Verified"
+
+    email = str(body.get("email") or user.email).strip().lower()
+    if email and email != user.email.lower():
+        raise ValueError("Client email cannot be changed")
+
+    return {
+        "full_name": str(body.get("name") or current_full_name).strip() or current_full_name,
+        "email": user.email,
+        "phone": str(body.get("phone") or current_phone or "").strip() or None,
+        "country": str(body.get("country") or current_country).strip() or current_country,
+        "date_of_birth": str(body.get("dateOfBirth") or current_date_of_birth or "").strip() or None,
+        "address": str(body.get("address") or current_address or "").strip() or None,
+        "city": str(body.get("city") or current_city or "").strip() or None,
+        "postal_code": str(body.get("postalCode") or current_postal_code or "").strip() or None,
+        "tier": str(body.get("tier") or current_tier).strip() or current_tier,
+        "kyc_status": str(body.get("kycStatus") or current_kyc_status).strip() or current_kyc_status,
+        "avatar": str(body.get("avatar") or user.avatar or "").strip() or None,
+        "user_id": user.id,
+        "user_code": user.user_code,
+    }
+
+
 async def create_payment_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
     payment_type = _normalize_payment_request_type(payload.get("paymentType") or payload.get("payment_type"))
     if payment_type is None:
@@ -280,6 +323,26 @@ async def create_payment_pending_request(profile: ClientProfile, payload: dict) 
         amount=0.0,
         status="Pending",
         payload=payload,
+    )
+    return pending_request
+
+
+async def create_profile_pending_request(profile: ClientProfile, user: ClientUser, payload: dict) -> PendingRequest:
+    submission_payload = {
+        **payload,
+        "user_id": user.id,
+        "user_code": user.user_code,
+        "client_profile_id": profile.id if profile else None,
+        "client_name": payload.get("full_name") or payload.get("name") or user.name,
+        "client_email": user.email,
+    }
+    pending_request = await PendingRequest.create(
+        request_type="profile",
+        client_name=str(submission_payload.get("client_name") or user.name).strip() or user.name,
+        client_profile=profile,
+        amount=0.0,
+        status="Pending",
+        payload=submission_payload,
     )
     return pending_request
 
@@ -312,6 +375,59 @@ async def apply_approved_payment_request(
     request.reviewed_at = timezone.now()
     await request.save()
     return bank_detail, crypto_detail
+
+
+async def apply_approved_profile_request(
+    request: PendingRequest,
+    *,
+    user: ClientUser | None = None,
+    profile: ClientProfile | None = None,
+) -> tuple[ClientUser | None, ClientProfile | None]:
+    payload = request.payload or {}
+    profile = profile or request.client_profile
+    if profile is None and request.client_profile_id:
+        profile = await ClientProfile.filter(id=request.client_profile_id).first()
+    if profile is None:
+        raise ValueError("Pending request is not linked to a client profile")
+
+    if user is None:
+        user = await ClientUser.filter(id=profile.user_id).first()
+    if user is None:
+        raise ValueError("Pending request is not linked to a client user")
+
+    full_name = str(payload.get("full_name") or payload.get("name") or profile.full_name).strip() or profile.full_name
+    phone = str(payload.get("phone") or profile.phone or "").strip() or None
+    country = str(payload.get("country") or profile.country).strip() or profile.country
+    date_of_birth = str(payload.get("date_of_birth") or payload.get("dateOfBirth") or profile.date_of_birth or "").strip() or None
+    address = str(payload.get("address") or profile.address or "").strip() or None
+    city = str(payload.get("city") or profile.city or "").strip() or None
+    postal_code = str(payload.get("postal_code") or payload.get("postalCode") or profile.postal_code or "").strip() or None
+    tier = str(payload.get("tier") or profile.tier).strip() or profile.tier
+    kyc_status = str(payload.get("kyc_status") or payload.get("kycStatus") or profile.kyc_status).strip() or profile.kyc_status
+    avatar = str(payload.get("avatar") or user.avatar or "").strip() or None
+
+    profile.full_name = full_name
+    profile.email = user.email
+    profile.phone = phone
+    profile.country = country
+    profile.date_of_birth = date_of_birth
+    profile.address = address
+    profile.city = city
+    profile.postal_code = postal_code
+    profile.tier = tier
+    profile.kyc_status = kyc_status
+    await profile.save()
+
+    user.name = full_name
+    user.phone = phone
+    user.country = country
+    user.avatar = avatar
+    await user.save()
+
+    request.status = "Approved"
+    request.reviewed_at = timezone.now()
+    await request.save()
+    return user, profile
 
 
 def build_payment_details_payload(

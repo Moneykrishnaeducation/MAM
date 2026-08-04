@@ -245,6 +245,7 @@ export default function ClientProfilePage() {
   const [profileKycStatus, setProfileKycStatus] = useState('Verified');
   const [avatarSrc, setAvatarSrc] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80');
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
+  const [isPersonalSaving, setIsPersonalSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(true);
   const [personalForm, setPersonalForm] = useState({
     firstName: 'Alex',
@@ -460,14 +461,60 @@ export default function ClientProfilePage() {
     reader.readAsDataURL(file);
   };
 
-  const handlePersonalSave = (e: React.FormEvent) => {
+  const handlePersonalSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isPersonalEditing) {
       return;
     }
 
-    setIsPersonalEditing(false);
-    showProfileToast('Profile Settings saved successfully!');
+    setIsPersonalSaving(true);
+
+    try {
+      const response = await fetch('/api/client/profile', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: `${personalForm.firstName} ${personalForm.lastName}`.trim(),
+          email: personalForm.email,
+          phone: personalForm.phone,
+          country: personalForm.country,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to submit profile changes.');
+      }
+
+      const profile = data?.profile as ClientProfileApi | undefined;
+      if (profile) {
+        const fullName = String(profile.full_name || '').trim();
+        const [firstName = '', ...restName] = fullName.split(/\s+/).filter(Boolean);
+        const lastName = restName.join(' ');
+
+        setPersonalForm((prev) => ({
+          ...prev,
+          firstName: firstName || prev.firstName,
+          lastName: lastName || prev.lastName,
+          email: String(profile.email || prev.email),
+          phone: String(profile.phone || prev.phone),
+          country: String(profile.country || prev.country),
+        }));
+      }
+
+      setIsPersonalEditing(false);
+      showProfileToast(data?.message || 'Profile details submitted for approval.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to submit profile changes.';
+      showProfileToast(message);
+    } finally {
+      setIsPersonalSaving(false);
+    }
   };
 
   if (profileLoading) {
@@ -967,11 +1014,11 @@ export default function ClientProfilePage() {
                       </button>
                       <button
                         type="submit"
-                        disabled={!isPersonalEditing}
+                        disabled={!isPersonalEditing || isPersonalSaving}
                         className={`inline-flex items-center rounded-xl px-6 py-3 text-xs font-black transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${goldButtonClass}`}
                       >
                         <Check size={14} className="mr-2" />
-                        Save Changes
+                        {isPersonalSaving ? 'Saving...' : 'Save Changes'}
                       </button>
                     </div>
                   </form>

@@ -487,15 +487,23 @@ function ProfileModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`/api/admin/users/${user.id}/profile`, {
+      const response = await fetch(`/api/admin/users/${user.id}/profile`, {
         method: 'PUT',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to submit profile update.');
+      }
       onSave(user.id, form);
       setIsEditing(false);
-    } catch {}
-    finally { setSaving(false); }
+    } catch (error) {
+      console.error('Failed to submit profile update:', error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const Field = ({
@@ -1552,15 +1560,8 @@ export default function AdminUsersPage() {
   };
 
   const handleProfileSave = (userId: string, data: Partial<UserData>) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id !== userId) return u;
-        const updated = { ...u, ...data };
-        if (activeModalUser?.id === userId) setActiveModalUser(updated);
-        showToast(`Profile for ${updated.name} saved`);
-        return updated;
-      }),
-    );
+    const user = users.find((u) => u.id === userId);
+    showToast(`Profile for ${user?.name || userId} submitted for approval`);
   };
 
   const handleDeleteUser = (userId: string, userName: string) => {

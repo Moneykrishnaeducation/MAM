@@ -14,7 +14,7 @@ from tortoise.expressions import Q
 
 from adminPanel.models import ClientProfile, PendingRequest
 from backendPanel.permissions import IsAdmin, permission_required
-from clientPanel.view.common import apply_approved_payment_request
+from clientPanel.view.common import apply_approved_payment_request, apply_approved_profile_request
 
 TAB_ALIASES: dict[str, tuple[str, ...]] = {
     "deposits": ("deposit", "deposits"),
@@ -155,6 +155,17 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
     network = payload.get("network") or "USDT-TRC20"
     wallet_address = payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
+    requested_value = request.client_name
+    if request_type == "profile":
+        requested_value = (
+            payload.get("full_name")
+            or payload.get("name")
+            or request.client_name
+        )
+    elif request_type == "bank":
+        requested_value = payload.get("bank_name") or payload.get("bankName") or request.client_name
+    elif request_type == "crypto":
+        requested_value = payload.get("wallet_address") or payload.get("cryptoAddress") or request.client_name
     return {
         "id": f"{tab[:3].upper()}-{request.id}",
         "requesterName": request.client_name,
@@ -174,10 +185,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "fileName": f"{tab}_{request.id}.pdf",
         "fieldToUpdate": title,
         "currentValue": request.client_name,
-        "requestedValue": payload.get("bank_name")
-        or payload.get("wallet_address")
-        or payload.get("cryptoAddress")
-        or request.client_name,
+        "requestedValue": requested_value,
         "reason": f"{title} request submitted through the admin portal.",
         "bankName": bank_name,
         "accountHolder": account_holder,
@@ -312,6 +320,17 @@ async def decide_pending_request(request, request_id: str):
                     status=400,
                 )
             await apply_approved_payment_request(pending_request, profile=profile)
+        elif request_type == "profile":
+            profile = await _resolve_profile_for_pending_request(pending_request)
+            if profile is None:
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "Unable to resolve client profile for this profile request",
+                    },
+                    status=400,
+                )
+            await apply_approved_profile_request(pending_request, profile=profile)
         else:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()
