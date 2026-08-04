@@ -22,17 +22,8 @@ export default function PrivacyPage() {
         </div>
 
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 relative z-10">
-          <section className="rounded-[32px] border border-blue-900/45 bg-[#0d1a40]/80 p-5 md:p-6 shadow-2xl shadow-blue-950/30 backdrop-blur-xl">
-            <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <h2 className="mt-1 text-2xl font-black tracking-tight text-white">
-                  Separate tabs for benefits and privacy
-                </h2>
-                <p className="mt-2 text-sm leading-relaxed text-slate-400">
-                  Use the tabs below to switch between the two sections.
-                </p>
-              </div>
-
+          <section >
+            <div className="mb-5 flex justify-center">
               <div className="inline-flex rounded-2xl border border-blue-800/40 bg-[#12244f]/80 p-1">
                 <button
                   type="button"
