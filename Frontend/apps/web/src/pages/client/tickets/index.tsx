@@ -573,12 +573,12 @@ const Tickets = () => {
       {/* Tabs + Controls Row */}
       <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between mb-8">
         {/* Left: Status Tabs */}
-        <div className="flex gap-2 p-2 rounded-[2rem] border border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:w-auto">
+        <div className="grid grid-cols-2 gap-2 p-2 rounded-[2rem] border border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto">
           {ticketStatusTabs.map((status) => (
             <button
               key={status}
               onClick={() => fetchTickets(status)}
-              className={`flex items-center gap-3 px-6 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all duration-300 flex-1 lg:flex-none ${
+              className={`flex w-full items-center justify-center gap-3 px-4 py-4 rounded-3xl font-black text-xs uppercase tracking-widest transition-all duration-300 lg:flex-1 lg:flex-none lg:px-6 ${
                 selectedStatus === status
                   ? "border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]"
                   : "border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white"

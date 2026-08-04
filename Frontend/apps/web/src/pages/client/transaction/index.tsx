@@ -1,16 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
+import { useTheme } from 'next-themes';
 import {
   ArrowDownCircle,
   ArrowUpCircle,
   Calendar,
   CircleDollarSign,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   FileText,
   Flag,
   Loader2,
   RotateCw,
   Search,
+  X,
 } from 'lucide-react';
 
 type ClientTransaction = {
@@ -28,6 +32,8 @@ const tabs = [
   { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: ArrowUpCircle },
 ] as const;
 
+const PAGE_SIZE_OPTIONS = [10, 30, 50, 100, 500, 1000] as const;
+
 type TransactionTabId = (typeof tabs)[number]['id'];
 
 type TransactionCounts = Record<TransactionTabId, number>;
@@ -36,6 +42,15 @@ type TransactionSummary = {
   totalTransactions: number;
   pendingCount: number;
   totalVolume: number;
+};
+
+type TransactionPagination = {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
 };
 
 type TransactionApiResponse = {
@@ -47,6 +62,14 @@ type TransactionApiResponse = {
     total_transactions?: number;
     pending_count?: number;
     total_volume?: number;
+  };
+  pagination?: {
+    page?: number;
+    per_page?: number;
+    total?: number;
+    total_pages?: number;
+    has_next?: boolean;
+    has_previous?: boolean;
   };
   transactions?: any[];
 };
@@ -97,29 +120,45 @@ const normalizeTransaction = (transaction: any): ClientTransaction => ({
   date: transaction.date ? String(transaction.date) : null,
 });
 
-const getStatusStyles = (status: string) => {
+const getStatusStyles = (status: string, isDarkMode: boolean) => {
   switch (status.toLowerCase()) {
     case 'pending':
-      return 'bg-amber-500/10 text-amber-300 border-amber-500/20';
+      return isDarkMode
+        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+        : 'bg-amber-500/10 text-amber-300 border-amber-500/20';
     case 'processing':
-      return 'bg-sky-500/10 text-sky-300 border-sky-500/20';
+      return isDarkMode
+        ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+        : 'bg-sky-500/10 text-sky-300 border-sky-500/20';
     case 'completed':
-      return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
+      return isDarkMode
+        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
     case 'failed':
-      return 'bg-rose-500/10 text-rose-300 border-rose-500/20';
+      return isDarkMode
+        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        : 'bg-rose-500/10 text-rose-300 border-rose-500/20';
     default:
-      return 'bg-blue-500/10 text-blue-200 border-blue-500/20';
+      return isDarkMode
+        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+        : 'bg-blue-500/10 text-blue-200 border-blue-500/20';
   }
 };
 
-const getTypeStyles = (type: string) => {
+const getTypeStyles = (type: string, isDarkMode: boolean) => {
   switch (type.toLowerCase()) {
     case 'deposit':
-      return 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
+      return isDarkMode
+        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
     case 'withdrawal':
-      return 'bg-rose-500/10 text-rose-300 border-rose-500/20';
+      return isDarkMode
+        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+        : 'bg-rose-500/10 text-rose-300 border-rose-500/20';
     default:
-      return 'bg-blue-500/10 text-blue-200 border-blue-500/20';
+      return isDarkMode
+        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+        : 'bg-blue-500/10 text-blue-200 border-blue-500/20';
   }
 };
 
@@ -146,21 +185,63 @@ const createEmptyTransactionSummary = (): TransactionSummary => ({
   totalVolume: 0,
 });
 
-const buildTransactionsEndpoint = (tab: TransactionTabId) => {
+const buildTransactionsEndpoint = ({
+  tab,
+  page,
+  perPage,
+  searchTerm,
+  fromDate,
+  toDate,
+}: {
+  tab: TransactionTabId;
+  page: number;
+  perPage: number;
+  searchTerm: string;
+  fromDate: string;
+  toDate: string;
+}) => {
   const searchParams = new URLSearchParams();
 
   searchParams.set('tab', tab.toLowerCase());
+  searchParams.set('page', String(page));
+  searchParams.set('per_page', String(perPage));
+
+  if (searchTerm.trim()) {
+    searchParams.set('search', searchTerm.trim());
+  }
+
+  if (fromDate) {
+    searchParams.set('from_date', fromDate);
+  }
+
+  if (toDate) {
+    searchParams.set('to_date', toDate);
+  }
 
   const queryString = searchParams.toString();
   return queryString ? `/api/client/transactions?${queryString}` : '/api/client/transactions';
 };
 
-const fetchTransactionsForTab = async (tab: TransactionTabId): Promise<TransactionApiResponse | null> => {
+const fetchTransactionsForTab = async ({
+  tab,
+  page,
+  perPage,
+  searchTerm,
+  fromDate,
+  toDate,
+}: {
+  tab: TransactionTabId;
+  page: number;
+  perPage: number;
+  searchTerm: string;
+  fromDate: string;
+  toDate: string;
+}): Promise<TransactionApiResponse | null> => {
   if (typeof window === 'undefined') {
     return null;
   }
 
-  const endpoint = buildTransactionsEndpoint(tab);
+  const endpoint = buildTransactionsEndpoint({ tab, page, perPage, searchTerm, fromDate, toDate });
 
   const request = async () =>
     fetch(endpoint, {
@@ -184,17 +265,42 @@ const fetchTransactionsForTab = async (tab: TransactionTabId): Promise<Transacti
 };
 
 export default function TransactionHistory() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+
   const [activeTab, setActiveTab] = useState<TransactionTabId>('PENDING');
   const [searchTerm, setSearchTerm] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [transactions, setTransactions] = useState<ClientTransaction[]>([]);
   const [tabCounts, setTabCounts] = useState<TransactionCounts>(createEmptyTransactionCounts);
   const [summary, setSummary] = useState<TransactionSummary>(createEmptyTransactionSummary);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<TransactionPagination>({
+    page: 1,
+    perPage: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  });
   const [error, setError] = useState<string | null>(null);
   const requestIdRef = useRef(0);
 
-  const loadTransactions = useCallback(async (tab: TransactionTabId) => {
+  const panelClass = isDarkMode
+    ? 'border-slate-800 bg-slate-900'
+    : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
+  const inputClass = isDarkMode
+    ? 'bg-white/10 border-white/10 text-white placeholder:text-gray-500'
+    : 'border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7]';
+  const softTextClass = isDarkMode ? 'text-gray-400' : 'text-[#8fb8ff]';
+  const headingTextClass = isDarkMode ? 'text-white' : 'text-white';
+  const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
+
+  const loadTransactions = useCallback(async () => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
@@ -202,7 +308,14 @@ export default function TransactionHistory() {
     setError(null);
 
     try {
-      const response = await fetchTransactionsForTab(tab);
+      const response = await fetchTransactionsForTab({
+        tab: activeTab,
+        page: currentPage,
+        perPage: rowsPerPage,
+        searchTerm,
+        fromDate,
+        toDate,
+      });
       if (requestId !== requestIdRef.current) {
         return;
       }
@@ -211,20 +324,17 @@ export default function TransactionHistory() {
         throw new Error('Unable to load live transactions right now.');
       }
 
-      const normalized = Array.isArray(response.transactions)
-        ? response.transactions.map(normalizeTransaction).sort((a, b) => {
-            const aTime = a.date ? new Date(a.date).getTime() : 0;
-            const bTime = b.date ? new Date(b.date).getTime() : 0;
-
-            if (bTime !== aTime) {
-              return bTime - aTime;
-            }
-
-            return Number(b.id) - Number(a.id);
-          })
-        : [];
+      const normalized = Array.isArray(response.transactions) ? response.transactions.map(normalizeTransaction) : [];
 
       setTransactions(normalized);
+      setPagination({
+        page: Number(response.pagination?.page ?? currentPage),
+        perPage: Number(response.pagination?.per_page ?? rowsPerPage),
+        total: Number(response.pagination?.total ?? normalized.length),
+        totalPages: Number(response.pagination?.total_pages ?? 1),
+        hasNext: Boolean(response.pagination?.has_next),
+        hasPrevious: Boolean(response.pagination?.has_previous),
+      });
       setTabCounts({
         PENDING: response.counts?.PENDING ?? 0,
         DEPOSIT: response.counts?.DEPOSIT ?? 0,
@@ -242,6 +352,14 @@ export default function TransactionHistory() {
       }
 
       setTransactions([]);
+      setPagination({
+        page: currentPage,
+        perPage: rowsPerPage,
+        total: 0,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      });
       setTabCounts(createEmptyTransactionCounts());
       setSummary(createEmptyTransactionSummary());
       setError('Unable to load live transactions right now.');
@@ -250,11 +368,11 @@ export default function TransactionHistory() {
         setLoading(false);
       }
     }
-  }, []);
+  }, [activeTab, currentPage, fromDate, rowsPerPage, searchTerm, toDate]);
 
   useEffect(() => {
-    void loadTransactions(activeTab);
-  }, [activeTab, loadTransactions]);
+    void loadTransactions();
+  }, [loadTransactions]);
 
   useEffect(
     () => () => {
@@ -270,62 +388,75 @@ export default function TransactionHistory() {
         value: String(summary.totalTransactions),
         subtitle: 'Live records loaded',
         icon: FileText,
-        accentClassName:
-          'relative overflow-hidden rounded-3xl border border-blue-800/60 bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
-        iconClassName:
-          'flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/20 text-blue-300',
+        accentClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-xl'
+          : 'relative overflow-hidden rounded-3xl border border-blue-800/60 bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
+        iconClassName: isDarkMode
+          ? 'flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-gray-300'
+          : 'flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/30 bg-blue-500/20 text-blue-300',
         valueClassName: 'text-3xl font-black text-white',
-        subtitleClassName: 'text-xs font-semibold uppercase tracking-[0.2em] text-blue-300/70',
+        subtitleClassName: isDarkMode ? 'text-xs font-semibold uppercase tracking-[0.2em] text-gray-400' : 'text-xs font-semibold uppercase tracking-[0.2em] text-blue-300/70',
       },
       {
         title: 'Pending',
         value: String(summary.pendingCount),
         subtitle: 'Needs attention',
         icon: Clock,
-        accentClassName:
-          'relative overflow-hidden rounded-3xl border border-amber-800/50 bg-gradient-to-br from-amber-900/30 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
-        iconClassName:
-          'flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/20 text-amber-300',
+        accentClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-3xl border border-amber-900/45 bg-slate-900 p-6 shadow-xl'
+          : 'relative overflow-hidden rounded-3xl border border-amber-800/50 bg-gradient-to-br from-amber-900/30 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
+        iconClassName: isDarkMode
+          ? 'flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-400'
+          : 'flex h-12 w-12 items-center justify-center rounded-2xl border border-amber-500/30 bg-amber-500/20 text-amber-300',
         valueClassName: 'text-3xl font-black text-white',
-        subtitleClassName: 'text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/70',
+        subtitleClassName: isDarkMode ? 'text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/80' : 'text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/70',
       },
       {
         title: 'Total Volume',
         value: formatMoney(summary.totalVolume),
         subtitle: 'All transactions',
         icon: CircleDollarSign,
-        accentClassName:
-          'relative overflow-hidden rounded-3xl border border-emerald-800/50 bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
-        iconClassName:
-          'flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/20 text-emerald-300',
+        accentClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-3xl border border-emerald-900/45 bg-slate-900 p-6 shadow-xl'
+          : 'relative overflow-hidden rounded-3xl border border-emerald-800/50 bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
+        iconClassName: isDarkMode
+          ? 'flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+          : 'flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/20 text-emerald-300',
         valueClassName: 'text-3xl font-black text-white flex items-baseline gap-2',
-        subtitleClassName: 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70',
+        subtitleClassName: isDarkMode ? 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80' : 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70',
       },
     ],
-    [summary],
+    [summary, isDarkMode],
   );
 
-  const selectedTransactions = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    if (!query) {
-      return transactions;
+  const totalTransactions = pagination.total;
+  const totalPages = Math.max(1, pagination.totalPages);
+  const safePage = pagination.page;
+
+  const paginationItems = useMemo<Array<number | 'ellipsis'>>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
     }
 
-    return transactions.filter((transaction) =>
-      [
-        String(transaction.id),
-        transaction.type,
-        transaction.method,
-        transaction.status,
-        transaction.date || '',
-        `TXN-${transaction.id}`,
-        formatMoney(transaction.amount),
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
-  }, [searchTerm, transactions]);
+    const items: Array<number | 'ellipsis'> = [1];
+    const leftSibling = Math.max(2, safePage - 1);
+    const rightSibling = Math.min(totalPages - 1, safePage + 1);
+
+    if (leftSibling > 2) {
+      items.push('ellipsis');
+    }
+
+    for (let page = leftSibling; page <= rightSibling; page += 1) {
+      items.push(page);
+    }
+
+    if (rightSibling < totalPages - 1) {
+      items.push('ellipsis');
+    }
+
+    items.push(totalPages);
+    return items;
+  }, [safePage, totalPages]);
 
   const lastUpdatedLabel = lastUpdated
     ? new Intl.DateTimeFormat(undefined, {
@@ -334,20 +465,28 @@ export default function TransactionHistory() {
       }).format(lastUpdated)
     : 'Waiting for sync';
 
-  const showingStart = selectedTransactions.length > 0 ? 1 : 0;
-  const showingEnd = selectedTransactions.length;
+  const showingStart = totalTransactions > 0 ? (safePage - 1) * pagination.perPage + 1 : 0;
+  const showingEnd = totalTransactions > 0
+    ? Math.min(showingStart + transactions.length - 1, totalTransactions)
+    : 0;
 
   const activeTabLabel = tabs.find((tab) => tab.id === activeTab)?.label || 'PENDING';
 
   const handleRefresh = () => {
-    void loadTransactions(activeTab);
+    void loadTransactions();
+  };
+
+  const clearDateFilters = () => {
+    setFromDate('');
+    setToDate('');
+    setCurrentPage(1);
   };
 
   const hasError = Boolean(error);
   const emptyMessage = hasError
     ? error || 'Unable to load live transactions.'
-    : searchTerm.trim()
-      ? 'No transactions match your search.'
+    : searchTerm.trim() || fromDate || toDate
+      ? 'No transactions match your filters.'
       : 'No live transactions are available for this tab.';
 
   return (
@@ -356,51 +495,110 @@ export default function TransactionHistory() {
         <title>Transaction History | Client Portal</title>
       </Head>
 
-    <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
-        <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
-        <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
-      </div>
-      <div className="mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-300">
-              <FileText size={13} />
-              Live Client Ledger
-            </div>
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-white md:text-4xl">Transaction History</h1>
-            </div>
+      <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
+        </div>
+
+        {/* Controls Row */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
+          {/* Left: Tabs */}
+          <div className={`grid grid-cols-3 gap-2 p-2 rounded-[2rem] border ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)]'} shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto`}>
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setActiveTab(tab.id);
+                    setCurrentPage(1);
+                  }}
+                  title={tab.label}
+                  aria-label={tab.label}
+                  className={`flex min-w-0 items-center justify-center gap-2 rounded-3xl px-3 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 lg:flex-1 lg:px-6 lg:py-4 lg:text-xs lg:tracking-widest ${
+                    isActive
+                      ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]'
+                      : isDarkMode
+                        ? 'border border-transparent bg-white/5 text-gray-400 hover:text-white'
+                        : 'border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white'
+                  }`}
+                >
+                  <Icon size={14} className="shrink-0" />
+                  <span className="whitespace-nowrap">
+                    {tab.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4965a3]" size={18} />
+          {/* Right: Search + Date Filters + Refresh */}
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center md:flex-row md:items-center flex-1 lg:flex-initial w-full lg:w-auto">
+            {/* From Date */}
+            <div className="relative w-full sm:w-[11.5rem]">
               <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search transactions..."
-                className="w-full rounded-full border border-[#1b2b5a] bg-[#0e1736] py-2.5 pl-12 pr-4 text-sm text-blue-100 placeholder-[#4965a3] outline-none transition-colors focus:border-blue-600 sm:w-[320px]"
+                type="date"
+                value={fromDate}
+                onChange={(e) => {
+                  setFromDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className={`w-full px-4 py-3 rounded-[1.1rem] border outline-none transition-all font-medium text-xs ${inputClass}`}
+                title="From Date"
               />
             </div>
-            <button
-              type="button"
-              onClick={handleRefresh}
-              disabled={loading}
-              className="inline-flex h-[42px] w-[42px] items-center justify-center rounded-2xl border border-[#1b2b5a] bg-[#0e1736] shadow-lg transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"
-              aria-label="Refresh transactions"
-            >
-              {loading ? (
-                <Loader2 size={18} className="animate-spin text-[#EAB308]" />
-              ) : (
-                <RotateCw size={18} className="text-[#EAB308]" />
-              )}
-            </button>
+            {/* To Date */}
+            <div className="relative w-full sm:w-[11.5rem]">
+              <input
+                type="date"
+                value={toDate}
+                onChange={(e) => {
+                  setToDate(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className={`w-full px-4 py-3 rounded-[1.1rem] border outline-none transition-all font-medium text-xs ${inputClass}`}
+                title="To Date"
+              />
+            </div>
+            {/* Clear Dates Button */}
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={clearDateFilters}
+                className={`p-3 rounded-[1.1rem] border transition-all ${
+                  isDarkMode
+                    ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+                    : 'border-blue-900/60 bg-[#11255e] text-blue-300 hover:bg-[#18317a] hover:text-white'
+                }`}
+                title="Clear date filters"
+              >
+                <X size={16} />
+              </button>
+            )}
+            {/* Search Input */}
+            <div className="relative w-full sm:min-w-[16rem] sm:flex-1 lg:w-64">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8db5ff]" size={18} />
+              <input
+                type="text"
+                placeholder="Search transactions..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className={`w-full pl-11 pr-4 py-3 rounded-[1.1rem] border outline-none transition-all font-medium focus:border-[#3aa0ff] ${inputClass}`}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        {/* Summary Cards Grid */}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {summaryCards.map((card) => {
             const Icon = card.icon;
 
@@ -411,7 +609,7 @@ export default function TransactionHistory() {
                   <div>
                     <div className={`${card.subtitleClassName} mb-2`}>{card.title}</div>
                     <div className={card.valueClassName}>{card.value}</div>
-                    <div className="mt-2 text-sm text-slate-300/70">{card.subtitle}</div>
+                    <div className={isDarkMode ? 'mt-2 text-sm text-gray-400' : 'mt-2 text-sm text-slate-300/70'}>{card.subtitle}</div>
                   </div>
                   <div className={card.iconClassName}>
                     <Icon size={22} strokeWidth={2.5} />
@@ -422,73 +620,161 @@ export default function TransactionHistory() {
           })}
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            const count = tabCounts[tab.id];
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${
-                  isActive
-                    ? 'border-yellow-400/40 bg-yellow-400 text-[#0A1128] shadow-[0_0_15px_rgba(234,179,8,0.18)]'
-                    : 'border-[#1b2b5a] bg-[#0e1736] text-[#8a9cc3] hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                <Icon size={15} />
-                {tab.label}
-                <span
-                  className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
-                    isActive ? 'bg-black/10 text-[#0A1128]' : 'bg-white/5 text-blue-200'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-[#1b2b5a] bg-[#0e1736] shadow-2xl">
-          <div className="flex flex-col gap-4 border-b border-[#1b2b5a] px-6 py-5 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm text-slate-400">
-                Showing <span className="font-semibold text-white">{selectedTransactions.length}</span> transactions in{' '}
-                <span className="font-semibold text-white">{activeTabLabel}</span>
-              </p>
+        {/* Table Container */}
+        <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden`}>
+          {/* Table Header Section */}
+          <div className={`p-8 border-b ${borderMutedClass}`}>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <h2 className={`text-xl font-bold ${headingTextClass}`}>Transaction History</h2>
             </div>
-            <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Last synced {lastUpdatedLabel}</div>
           </div>
 
-          <div className="flex-1 overflow-x-auto">
-            <table className="w-full border-separate border-spacing-y-2 text-left text-sm">
+          <div className="flex flex-col gap-4 border-b border-white/5 px-6 py-5 md:flex-row md:items-center md:justify-between bg-white/[0.02]">
+            <div>
+              <p className={`text-sm ${softTextClass}`}>
+                Showing <span className={`font-semibold ${headingTextClass}`}>{totalTransactions}</span> transactions in{' '}
+                <span className={`font-semibold ${headingTextClass}`}>{activeTabLabel}</span>
+              </p>
+            </div>
+            <div className="flex flex-col items-start gap-3 md:items-end">
+              <div className="flex items-center gap-3">
+                <label className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`} htmlFor="transactions-per-page">
+                  Rows per page
+                </label>
+                <select
+                  id="transactions-per-page"
+                  value={rowsPerPage}
+                  onChange={(event) => {
+                    setRowsPerPage(Number(event.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all ${inputClass}`}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={`text-xs uppercase tracking-[0.18em] ${softTextClass}`}>
+                Page {safePage} of {totalPages} - Last synced {lastUpdatedLabel}
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="mx-8 mt-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-4 px-4 pb-4 md:hidden">
+            {loading ? (
+              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-5 shadow-[0_20px_60px_rgba(2,6,23,0.22)]">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="h-4 w-28 animate-pulse rounded-full bg-white/10" />
+                  <div className="h-6 w-20 animate-pulse rounded-full bg-white/10" />
+                </div>
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
+                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
+                </div>
+              </div>
+            ) : transactions.length > 0 ? (
+              transactions.map((transaction) => {
+                const TypeIcon = getTypeIcon(transaction.type);
+                const amountClass =
+                  transaction.type.toLowerCase() === 'withdrawal'
+                    ? 'text-rose-400'
+                    : transaction.type.toLowerCase() === 'deposit'
+                      ? 'text-emerald-400'
+                      : isDarkMode ? 'text-white' : 'text-white';
+
+                return (
+                  <article
+                    key={String(transaction.id)}
+                    className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-4 shadow-[0_20px_60px_rgba(2,6,23,0.22)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Reference</p>
+                        <p className="mt-1 font-mono text-sm font-bold text-slate-50">{`TXN-${transaction.id}`}</p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold ${getStatusStyles(transaction.status, isDarkMode)}`}
+                      >
+                        {transaction.status}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Date</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">{formatDate(transaction.date)}</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Type</p>
+                        <span
+                          className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}
+                        >
+                          <TypeIcon size={12} />
+                          {transaction.type}
+                        </span>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Method</p>
+                        <p className="mt-1 text-sm font-semibold text-slate-100">{transaction.method}</p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
+                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Amount</p>
+                        <p className={`mt-1 text-sm font-black ${amountClass}`}>{formatMoney(transaction.amount)}</p>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-8 text-center shadow-[0_20px_60px_rgba(2,6,23,0.22)]">
+                <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-[#0b226a]'}`}>
+                  <Search className={isDarkMode ? 'text-gray-400' : 'text-[#8db5ff]'} size={26} />
+                </div>
+                <p className={`text-base font-bold ${softTextClass}`}>{emptyMessage}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full">
               <thead>
-                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <th className="px-5 pb-3 pt-2">
+                <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
                     <div className="inline-flex items-center gap-2">
                       <Calendar size={14} className="text-[#6484c9]" />
                       Date
                     </div>
                   </th>
-                  <th className="px-5 pb-3 pt-2">Type</th>
-                  <th className="px-5 pb-3 pt-2">Method</th>
-                  <th className="px-5 pb-3 pt-2">
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Type</th>
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Method</th>
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
                     <div className="inline-flex items-center gap-2">
                       <CircleDollarSign size={14} className="text-[#6484c9]" />
                       Amount
                     </div>
                   </th>
-                  <th className="px-5 pb-3 pt-2">
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
                     <div className="inline-flex items-center gap-2">
                       <FileText size={14} className="text-[#6484c9]" />
                       Reference
                     </div>
                   </th>
-                  <th className="px-5 pb-3 pt-2">
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
                     <div className="inline-flex items-center gap-2">
                       <Flag size={14} className="text-[#6484c9]" />
                       Status
@@ -497,46 +783,50 @@ export default function TransactionHistory() {
                 </tr>
               </thead>
 
-              <tbody>
+              <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-5 py-16 text-center">
-                      <div className="inline-flex items-center gap-3 rounded-full border border-blue-800/40 bg-[#101f4c] px-5 py-3 text-sm font-bold text-blue-100">
-                        <Loader2 size={18} className="animate-spin text-[#EAB308]" />
-                        Loading live transactions...
+                    <td colSpan={6} className="p-20 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4" />
+                        <p className={`font-bold ${softTextClass}`}>Fetching transactions...</p>
                       </div>
                     </td>
                   </tr>
-                ) : selectedTransactions.length > 0 ? (
-                  selectedTransactions.map((transaction) => {
+                ) : transactions.length > 0 ? (
+                  transactions.map((transaction) => {
                     const TypeIcon = getTypeIcon(transaction.type);
                     const amountClass =
                       transaction.type.toLowerCase() === 'withdrawal'
-                        ? 'text-rose-300'
+                        ? 'text-rose-400'
                         : transaction.type.toLowerCase() === 'deposit'
-                          ? 'text-emerald-300'
-                          : 'text-white';
+                          ? 'text-emerald-400'
+                          : isDarkMode ? 'text-white' : 'text-white';
 
                     return (
                       <tr
                         key={String(transaction.id)}
-                        className="rounded-3xl border border-[#1b2b5a] bg-[#0b1739] transition-colors hover:bg-[#11214f]"
+                        className={`group ${isDarkMode ? 'hover:bg-white/5' : 'text-[#dbe8ff] hover:bg-[#0a205f]'} transition-colors`}
                       >
-                        <td className="px-5 py-4 whitespace-nowrap text-slate-300">{formatDate(transaction.date)}</td>
-                        <td className="px-5 py-4 whitespace-nowrap">
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`font-bold ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>
+                            {formatDate(transaction.date)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${getTypeStyles(transaction.type)}`}
+                            className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}
                           >
                             <TypeIcon size={13} />
                             {transaction.type}
                           </span>
                         </td>
-                        <td className="px-5 py-4 whitespace-nowrap text-slate-200">{transaction.method}</td>
-                        <td className={`px-5 py-4 whitespace-nowrap font-bold ${amountClass}`}>{formatMoney(transaction.amount)}</td>
-                        <td className="px-5 py-4 whitespace-nowrap font-mono text-sky-300">{`TXN-${transaction.id}`}</td>
-                        <td className="px-5 py-4 whitespace-nowrap">
+                        <td className={`px-6 py-5 whitespace-nowrap font-bold ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>{transaction.method}</td>
+                        <td className={`px-6 py-5 whitespace-nowrap font-bold ${amountClass}`}>{formatMoney(transaction.amount)}</td>
+                        <td className="px-6 py-5 whitespace-nowrap font-mono text-sky-400">{`TXN-${transaction.id}`}</td>
+                        <td className="px-6 py-5 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${getStatusStyles(transaction.status)}`}
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${getStatusStyles(transaction.status, isDarkMode)}`}
                           >
                             {transaction.status}
                           </span>
@@ -546,27 +836,11 @@ export default function TransactionHistory() {
                   })
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-5 py-10 text-center">
-                      <div className="mx-auto max-w-lg rounded-3xl border border-blue-800/40 bg-[#101f4c] px-6 py-8 text-blue-100">
-                        <div className="mb-3 text-2xl font-black text-white">No records found</div>
-                        <p className="text-sm text-blue-200/70">{emptyMessage}</p>
-                        <div className="mt-6 flex flex-wrap justify-center gap-3">
-                          <button
-                            type="button"
-                            onClick={() => setSearchTerm('')}
-                            className="rounded-full border border-blue-700/50 px-5 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white transition-colors hover:bg-blue-800/30"
-                          >
-                            Clear Search
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleRefresh}
-                            className="rounded-full bg-[#EAB308] px-5 py-2 text-xs font-bold uppercase tracking-[0.18em] text-[#0A1128] transition-colors hover:opacity-90"
-                          >
-                            Refresh
-                          </button>
-                        </div>
+                    <td colSpan={6} className="p-20 text-center">
+                      <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? 'bg-gray-800' : 'bg-[#0b226a]'}`}>
+                        <Search className={isDarkMode ? 'text-gray-400' : 'text-[#8db5ff]'} size={32} />
                       </div>
+                      <p className={`text-lg font-bold ${softTextClass}`}>{emptyMessage}</p>
                     </td>
                   </tr>
                 )}
@@ -574,13 +848,52 @@ export default function TransactionHistory() {
             </table>
           </div>
 
-          <div className="flex items-center justify-between gap-4 border-t border-[#1b2b5a] px-6 py-4">
-            <div className="text-xs font-bold uppercase tracking-[0.2em] text-[#3a4f82]">
-              SHOWING {showingStart} TO {showingEnd} OF {selectedTransactions.length}
+          <div className={`flex flex-col gap-4 border-t ${borderMutedClass} px-6 py-4 lg:flex-row lg:items-center lg:justify-between`}>
+            <div className={`text-xs font-bold uppercase tracking-[0.2em] ${softTextClass}`}>
+              SHOWING {showingStart} TO {showingEnd} OF {totalTransactions}
             </div>
-            <div className="flex items-center gap-2 text-xs text-blue-200">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-              LIVE SYNC
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                disabled={safePage === 1 || !pagination.hasPrevious}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                <ChevronLeft size={13} />
+                Prev
+              </button>
+
+              {paginationItems.map((pageItem, index) =>
+                pageItem === 'ellipsis' ? (
+                  <span key={`ellipsis-${index}`} className="px-1 text-xs select-none text-slate-600">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={pageItem}
+                    type="button"
+                    onClick={() => setCurrentPage(pageItem)}
+                    className={`min-w-[32px] h-8 rounded-lg border text-xs font-bold transition-all ${
+                      pageItem === safePage
+                        ? 'border-amber-500 bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                        : 'border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                    }`}
+                  >
+                    {pageItem}
+                  </button>
+                ),
+              )}
+
+              <button
+                type="button"
+                onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                disabled={safePage === totalPages || !pagination.hasNext}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+              >
+                Next
+                <ChevronRight size={13} />
+              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
+import { useTheme } from 'next-themes';
 import {
   User, 
   Mail, 
@@ -77,10 +78,13 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   uploaded: 'Uploaded',
 };
 
-const DOCUMENT_STATUS_CLASSES: Record<DocumentStatus, string> = {
-  verified: 'border-amber-500/25 bg-amber-500/10 text-amber-300',
-  pending: 'border-slate-500/20 bg-slate-500/10 text-slate-300',
-  uploaded: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+const DOCUMENT_STATUS_CLASSES = (status: DocumentStatus, isDarkMode: boolean): string => {
+  const mapping: Record<DocumentStatus, string> = {
+    verified: isDarkMode ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+    pending: isDarkMode ? 'border-slate-800 bg-slate-800 text-slate-400' : 'border-slate-500/20 bg-slate-500/10 text-slate-300',
+    uploaded: isDarkMode ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400' : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+  };
+  return mapping[status];
 };
 
 type PaymentEditTarget = 'bank' | 'crypto';
@@ -161,9 +165,11 @@ const formatUploadedAt = () =>
   }).format(new Date());
 
 export default function ClientProfilePage() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+
   const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
   const [showToast, setShowToast] = useState(false);
-  const [riskTolerance, setRiskTolerance] = useState(70);
   const [avatarSrc, setAvatarSrc] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80');
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
   const [personalForm, setPersonalForm] = useState({
@@ -193,6 +199,18 @@ export default function ClientProfilePage() {
     address: null,
   });
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
+
+  const panelClass = isDarkMode
+    ? 'border-slate-800 bg-slate-900 shadow-xl'
+    : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
+  const inputClass = isDarkMode
+    ? 'bg-white/10 border-white/10 text-white placeholder:text-gray-500'
+    : 'border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7]';
+  const softTextClass = isDarkMode ? 'text-gray-400' : 'text-[#8fb8ff]';
+  const headingTextClass = isDarkMode ? 'text-white' : 'text-white';
+  const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
+  const goldButtonClass =
+    'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
   const triggerSaveToast = (e: React.FormEvent) => {
     e.preventDefault();
@@ -334,23 +352,14 @@ export default function ClientProfilePage() {
         <meta name="description" content="View and manage your student profile and MAM preferences" />
       </Head>
 
-      <div className="relative isolate flex-1 overflow-hidden p-6 md:p-8">
-        {/* Decorative background glows - warm gold accents for the profile theme */}
-        <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[34rem] w-[34rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-amber-400/12 blur-[160px] z-0"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-amber-600/10 blur-[140px] z-0"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute bottom-0 left-1/4 w-[400px] h-[400px] rounded-full bg-amber-600/10 blur-[120px] z-0"
-          aria-hidden="true"
-        />
+      <div className="relative isolate flex-1 overflow-hidden p-6 md:p-10 space-y-12">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[100px]" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/5 blur-[90px]" />
+        </div>
 
         <div className="relative z-10">
-          {/* Toast Notification (gold theme) */}
           {showToast && (
             <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
@@ -358,13 +367,9 @@ export default function ClientProfilePage() {
             </div>
           )}
 
-          
-
-
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* Left Column - User Summary Card */}
             <div className="lg:col-span-4 space-y-6">
-              <div className="relative overflow-hidden rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(13,31,69,0.98)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
+              <div className={`relative overflow-hidden rounded-[2.5rem] border p-6 ${panelClass}`}>
                 <div className="pointer-events-none absolute right-0 top-0 h-32 w-32 rounded-full bg-amber-500/5 blur-2xl" />
 
                 <div className="flex flex-col items-center text-center">
@@ -394,51 +399,51 @@ export default function ClientProfilePage() {
                     />
                   </div>
 
-                  <h3 className="mb-1 text-xl font-bold text-white">{personalFullName}</h3>
+                  <h3 className={`mb-1 text-xl font-bold ${headingTextClass}`}>{personalFullName}</h3>
                   <p className="mb-4 inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-400">
                     <Mail size={11} />
                     {personalForm.email}
                   </p>
 
-                  <div className="w-full border-t border-slate-800/80 pt-4 text-left text-xs">
+                  <div className={`w-full border-t ${borderMutedClass} pt-4 text-left text-xs`}>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Account ID</span>
-                        <span className="font-mono text-slate-200">#MAM-84920</span>
+                        <span className={softTextClass}>Account ID</span>
+                        <span className={`font-mono font-bold ${headingTextClass}`}>#MAM-84920</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Register Date</span>
-                        <span className="text-slate-200">Oct 14, 2025</span>
+                        <span className={softTextClass}>Register Date</span>
+                        <span className={`font-bold ${headingTextClass}`}>Oct 14, 2025</span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400">Account Type</span>
-                        <span className="text-slate-200">Individual Trader</span>
+                        <span className={softTextClass}>Account Type</span>
+                        <span className={`font-bold ${headingTextClass}`}>Individual Trader</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="relative overflow-hidden rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(13,31,69,0.98)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
-                <h4 className="text-sm font-bold text-white">Account Security Status</h4>
+              <div className={`relative overflow-hidden rounded-[2.5rem] border p-6 ${panelClass}`}>
+                <h4 className={`text-sm font-bold ${headingTextClass}`}>Account Security Status</h4>
 
                 <div className="mt-4 space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
-                        <Check size={12} />
-                      </div>
-                      <div className="text-xs">
-                        <p className="font-medium text-slate-200">Email Verified</p>
-                        <p className="text-slate-400">{personalForm.email}</p>
-                      </div>
-                    </div>
                   <div className="flex items-start gap-3">
                     <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
                       <Check size={12} />
                     </div>
                     <div className="text-xs">
-                      <p className="font-medium text-slate-200">Identity (KYC) Verified</p>
-                      <p className="text-slate-400">Passport verified on Nov 02, 2025</p>
+                      <p className={`font-medium ${headingTextClass}`}>Email Verified</p>
+                      <p className={softTextClass}>{personalForm.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-400">
+                      <Check size={12} />
+                    </div>
+                    <div className="text-xs">
+                      <p className={`font-medium ${headingTextClass}`}>Identity (KYC) Verified</p>
+                      <p className={softTextClass}>Passport verified on Nov 02, 2025</p>
                     </div>
                   </div>
                 </div>
@@ -449,14 +454,12 @@ export default function ClientProfilePage() {
               </div>
             </div>
 
-            {/* Right Column - Navigation & Tabs Form */}
             <div className="lg:col-span-8 space-y-6">
-              <div className="rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(13,31,69,0.98)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
-                {/* Tabs Navigation */}
-                <div className="flex border-b border-slate-800 gap-6 mb-6 overflow-x-auto pb-1 scrollbar-hide">
+              <div className={`rounded-[2.5rem] border p-6 ${panelClass}`}>
+                <div className={`flex border-b ${borderMutedClass} gap-6 mb-6 overflow-x-auto pb-1 scrollbar-hide`}>
                   <button 
                     onClick={() => setActiveTab('personal')}
-                    className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'personal' 
                         ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -466,7 +469,7 @@ export default function ClientProfilePage() {
                   </button>
                   <button 
                     onClick={() => setActiveTab('security')}
-                    className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'security' 
                         ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -477,7 +480,7 @@ export default function ClientProfilePage() {
                   
                   <button 
                     onClick={() => setActiveTab('activity')}
-                    className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'activity' 
                         ? 'border-amber-500 text-amber-400' 
                         : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -488,7 +491,7 @@ export default function ClientProfilePage() {
 
                   <button
                     onClick={() => setActiveTab('documents')}
-                    className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'documents'
                         ? 'border-amber-500 text-amber-400'
                         : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -499,7 +502,7 @@ export default function ClientProfilePage() {
 
                   <button
                     onClick={() => setActiveTab('payments')}
-                    className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${
+                    className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'payments'
                         ? 'border-amber-500 text-amber-400'
                         : 'border-transparent text-slate-400 hover:text-slate-200'
@@ -509,17 +512,16 @@ export default function ClientProfilePage() {
                   </button>
                 </div>
 
-                {/* Tab: Personal Info */}
                 {activeTab === 'personal' && (
                   <form onSubmit={handlePersonalSave} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">First Name</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>First Name</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
+                              ? 'border-[#3aa0ff]'
+                              : borderMutedClass
                           }`}
                         >
                           <User size={15} className="text-slate-400" />
@@ -530,19 +532,19 @@ export default function ClientProfilePage() {
                             onChange={(event) =>
                               setPersonalForm((prev) => ({ ...prev, firstName: event.target.value }))
                             }
-                            className={`w-full border-none bg-transparent text-xs outline-none ${
-                              isPersonalEditing ? 'text-slate-100' : 'cursor-not-allowed text-slate-300'
+                            className={`w-full border-none bg-transparent text-xs outline-none text-white ${
+                              isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Last Name</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Last Name</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
+                              ? 'border-[#3aa0ff]'
+                              : borderMutedClass
                           }`}
                         >
                           <User size={15} className="text-slate-400" />
@@ -553,20 +555,16 @@ export default function ClientProfilePage() {
                             onChange={(event) =>
                               setPersonalForm((prev) => ({ ...prev, lastName: event.target.value }))
                             }
-                            className={`w-full border-none bg-transparent text-xs outline-none ${
-                              isPersonalEditing ? 'text-slate-100' : 'cursor-not-allowed text-slate-300'
+                            className={`w-full border-none bg-transparent text-xs outline-none text-white ${
+                              isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Email Address</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Email Address</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
-                            isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
-                          }`}
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all cursor-not-allowed ${inputClass} ${borderMutedClass}`}
                         >
                           <Mail size={15} className="text-slate-400" />
                           <input
@@ -579,12 +577,12 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Phone Number</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Phone Number</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
+                              ? 'border-[#3aa0ff]'
+                              : borderMutedClass
                           }`}
                         >
                           <Phone size={15} className="text-slate-400" />
@@ -595,19 +593,19 @@ export default function ClientProfilePage() {
                             onChange={(event) =>
                               setPersonalForm((prev) => ({ ...prev, phone: event.target.value }))
                             }
-                            className={`w-full border-none bg-transparent text-xs outline-none ${
-                              isPersonalEditing ? 'text-slate-100' : 'cursor-not-allowed text-slate-300'
+                            className={`w-full border-none bg-transparent text-xs outline-none text-white ${
+                              isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Country / Region</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Country / Region</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
+                              ? 'border-[#3aa0ff]'
+                              : borderMutedClass
                           }`}
                         >
                           <MapPin size={15} className="text-slate-400" />
@@ -618,19 +616,19 @@ export default function ClientProfilePage() {
                             onChange={(event) =>
                               setPersonalForm((prev) => ({ ...prev, country: event.target.value }))
                             }
-                            className={`w-full border-none bg-transparent text-xs outline-none ${
-                              isPersonalEditing ? 'text-slate-100' : 'cursor-not-allowed text-slate-300'
+                            className={`w-full border-none bg-transparent text-xs outline-none text-white ${
+                              isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Local Timezone</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Local Timezone</label>
                         <div
-                          className={`flex items-center gap-2 rounded-xl border px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
-                              ? 'border-slate-700/60 bg-slate-800/40 focus-within:border-amber-500'
-                              : 'border-slate-800/60 bg-slate-900/30'
+                              ? 'border-[#3aa0ff]'
+                              : borderMutedClass
                           }`}
                         >
                           <Calendar size={15} className="text-slate-400" />
@@ -641,42 +639,24 @@ export default function ClientProfilePage() {
                             onChange={(event) =>
                               setPersonalForm((prev) => ({ ...prev, timezone: event.target.value }))
                             }
-                            className={`w-full border-none bg-transparent text-xs outline-none ${
-                              isPersonalEditing ? 'text-slate-100' : 'cursor-not-allowed text-slate-300'
+                            className={`w-full border-none bg-transparent text-xs outline-none text-white ${
+                              isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4 rounded-[22px] border border-amber-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.55)_0%,rgba(8,22,59,0.72)_100%)] px-5 py-4">
+                    <div className={`flex items-center justify-between gap-4 rounded-[22px] border ${borderMutedClass} bg-white/[0.02] px-5 py-4`}>
                       <div className="flex items-start gap-3">
                         <div className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300">
                           <Info size={16} />
                         </div>
                         <div>
                           <p className="text-sm font-semibold text-slate-100">Keep your information up to date</p>
-                          <p className="mt-1 max-w-xl text-xs text-slate-400">
+                          <p className={`mt-1 max-w-xl text-xs ${softTextClass}`}>
                             Ensure your personal information is accurate to avoid any interruptions in your trading activities.
                           </p>
-                        </div>
-                      </div>
-
-                      <div className="hidden shrink-0 md:flex">
-                        <div className="relative h-20 w-28">
-                          <div className="absolute left-2 top-3 h-10 w-14 rotate-[-8deg] rounded-[12px] bg-[linear-gradient(180deg,rgba(196,219,255,0.95)_0%,rgba(126,153,255,0.95)_100%)] shadow-[0_10px_24px_rgba(79,70,229,0.28)]" />
-                          <div className="absolute left-7 top-1 h-12 w-16 rotate-[6deg] rounded-[12px] bg-[linear-gradient(180deg,rgba(167,180,255,0.98)_0%,rgba(92,112,243,0.98)_100%)] shadow-[0_14px_30px_rgba(59,130,246,0.28)]">
-                            <div className="absolute -top-2 left-3 h-4 w-7 rounded-t-[8px] bg-[linear-gradient(180deg,rgba(210,220,255,0.96)_0%,rgba(176,190,255,0.94)_100%)]" />
-                            <div className="absolute left-2 top-3 h-2 w-8 rounded-full bg-white/25" />
-                            <div className="absolute left-2 top-6 h-1.5 w-9 rounded-full bg-white/18" />
-                            <div className="absolute left-2 top-8 h-1.5 w-6 rounded-full bg-white/16" />
-                          </div>
-                          <div className="absolute right-1 top-11 flex h-8 w-8 items-center justify-center rounded-full border border-cyan-300/30 bg-cyan-400/15 shadow-[0_0_0_6px_rgba(34,211,238,0.08)] backdrop-blur-sm">
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-cyan-500 text-slate-950 shadow-[0_10px_20px_rgba(34,211,238,0.25)]">
-                              <Check size={14} strokeWidth={3} />
-                            </div>
-                          </div>
-                          <div className="absolute left-5 top-2 h-14 w-16 rounded-[18px] bg-blue-400/10 blur-2xl" />
                         </div>
                       </div>
                     </div>
@@ -684,7 +664,7 @@ export default function ClientProfilePage() {
                       <button
                         type="button"
                         onClick={() => setIsPersonalEditing(true)}
-                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:from-amber-300 hover:to-yellow-200"
+                        className={`inline-flex items-center rounded-xl px-6 py-3 text-xs font-black transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
                       >
                         <Edit size={14} className="mr-2" />
                         Edit
@@ -692,7 +672,7 @@ export default function ClientProfilePage() {
                       <button
                         type="submit"
                         disabled={!isPersonalEditing}
-                        className="inline-flex items-center rounded-xl bg-gradient-to-r from-amber-400 to-yellow-300 px-6 py-3 text-xs font-black text-slate-950 shadow-lg shadow-amber-500/20 transition-all hover:from-amber-300 hover:to-yellow-200 disabled:cursor-not-allowed disabled:opacity-50"
+                        className={`inline-flex items-center rounded-xl px-6 py-3 text-xs font-black transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${goldButtonClass}`}
                       >
                         <Check size={14} className="mr-2" />
                         Save Changes
@@ -701,40 +681,38 @@ export default function ClientProfilePage() {
                   </form>
                 )}
 
-                {/* Tab: Security */}
                 {activeTab === 'security' && (
                   <form onSubmit={triggerSaveToast} className="space-y-6">
                     <div className="space-y-4 max-w-md">
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Current Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Current Password</label>
+                        <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Lock size={15} className="text-slate-400" />
-                          <input type="password" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
+                          <input type="password" placeholder="••••••••" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">New Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>New Password</label>
+                        <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
                           <input type="password" placeholder="Min. 8 characters" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Confirm New Password</label>
-                        <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-amber-500 transition-colors">
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Confirm New Password</label>
+                        <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
                           <input type="password" placeholder="Must match new password" className="bg-transparent border-none text-slate-100 outline-none w-full text-xs" />
                         </div>
                       </div>
                     </div>
 
-                    <button type="submit" className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
+                    <button type="submit" className={`px-6 py-3 rounded-xl font-black text-xs transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}>
                       Update Security Settings
                     </button>
                   </form>
                 )}
 
-                {/* Tab: Documents */}
                 {activeTab === 'documents' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -748,13 +726,13 @@ export default function ClientProfilePage() {
                     </div>
 
                     {uploadNotice && (
-                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                      <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 font-bold">
                         {uploadNotice}
                       </div>
                     )}
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                      <div className="rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.97)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
+                      <div className={`rounded-[2rem] border p-6 ${panelClass}`}>
                         <div className="flex min-h-[300px] flex-col items-center text-center">
                           <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/5 text-amber-400 shadow-inner shadow-black/20">
                             <IdCard size={34} strokeWidth={2.1} />
@@ -767,14 +745,14 @@ export default function ClientProfilePage() {
                             {documents.identity.description}
                           </p>
 
-                          <div className={`mt-8 flex w-full items-center justify-center rounded-full border px-4 py-3 text-[10px] font-black uppercase tracking-[0.28em] ${DOCUMENT_STATUS_CLASSES[documents.identity.status]}`}>
+                          <div className={`mt-8 flex w-full items-center justify-center rounded-full border px-4 py-3 text-[10px] font-black uppercase tracking-[0.28em] ${DOCUMENT_STATUS_CLASSES(documents.identity.status, isDarkMode)}`}>
                             Status: {DOCUMENT_STATUS_LABELS[documents.identity.status].toUpperCase()}
                           </div>
 
                           <button
                             type="button"
                             onClick={() => openDocumentPicker('identity')}
-                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce]"
+                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
                           >
                             Update Document
                           </button>
@@ -800,7 +778,7 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
 
-                      <div className="rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.97)_0%,rgba(8,22,59,0.99)_100%)] p-6 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
+                      <div className={`rounded-[2rem] border p-6 ${panelClass}`}>
                         <div className="flex min-h-[300px] flex-col items-center text-center">
                           <div className="flex h-20 w-20 items-center justify-center rounded-[24px] border border-white/10 bg-white/5 text-amber-400 shadow-inner shadow-black/20">
                             <House size={34} strokeWidth={2.1} />
@@ -813,14 +791,14 @@ export default function ClientProfilePage() {
                             {documents.address.description}
                           </p>
 
-                          <div className={`mt-8 flex w-full items-center justify-center rounded-full border px-4 py-3 text-[10px] font-black uppercase tracking-[0.28em] ${DOCUMENT_STATUS_CLASSES[documents.address.status]}`}>
+                          <div className={`mt-8 flex w-full items-center justify-center rounded-full border px-4 py-3 text-[10px] font-black uppercase tracking-[0.28em] ${DOCUMENT_STATUS_CLASSES(documents.address.status, isDarkMode)}`}>
                             Status: {DOCUMENT_STATUS_LABELS[documents.address.status].toUpperCase()}
                           </div>
 
                           <button
                             type="button"
                             onClick={() => openDocumentPicker('address')}
-                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce]"
+                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
                           >
                             Update Document
                           </button>
@@ -848,7 +826,7 @@ export default function ClientProfilePage() {
                     </div>
                   </div>
                 )}
-                {/* Tab: Payments */}
+
                 {activeTab === 'payments' && (
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
@@ -856,13 +834,13 @@ export default function ClientProfilePage() {
                         <h4 className="text-xs font-bold text-slate-100">Saved Payment Methods</h4>
                         <p className="text-[11px] text-slate-400 mt-1">Manage the bank and crypto details used for funding requests.</p>
                       </div>
-                      <span className="rounded-full border border-sky-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-sky-300">
+                      <span className="rounded-full border border-sky-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#3aa0ff]">
                         2 methods
                       </span>
                     </div>
 
                     <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                      <div className="relative overflow-hidden rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.97)_0%,rgba(8,22,59,0.99)_100%)] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
+                      <div className={`relative overflow-hidden rounded-[2rem] border p-5 ${panelClass}`}>
                         <div className="pointer-events-none absolute right-5 top-4 text-white/5">
                           <Building2 size={84} strokeWidth={1.4} />
                         </div>
@@ -929,7 +907,7 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
 
-                      <div className="relative overflow-hidden rounded-[30px] border border-sky-500/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.97)_0%,rgba(8,22,59,0.99)_100%)] p-5 shadow-[0_30px_80px_rgba(2,6,23,0.35)]">
+                      <div className={`relative overflow-hidden rounded-[2rem] border p-5 ${panelClass}`}>
                         <div className="pointer-events-none absolute right-5 top-4 text-white/5">
                           <Bitcoin size={84} strokeWidth={1.4} />
                         </div>
@@ -952,7 +930,7 @@ export default function ClientProfilePage() {
                               <p className="text-[9px] font-black uppercase tracking-[0.28em] text-slate-400">
                                 Address
                               </p>
-                              <p className="mt-2 break-all text-[15px] font-black tracking-[0.04em] leading-6 text-slate-50">
+                              <p className="mt-2 break-all text-[15px] font-black tracking-[0.04em] leading-6 text-slate-50 font-mono">
                                 {paymentDetails.crypto.address}
                               </p>
                             </div>
@@ -986,17 +964,17 @@ export default function ClientProfilePage() {
                 {paymentEditTarget && typeof document !== 'undefined'
                   ? createPortal(
                   <div
-                    className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-slate-950/90 px-4 py-6 backdrop-blur-2xl"
+                    className="fixed inset-0 z-[120] flex items-center justify-center overflow-y-auto bg-black/40 backdrop-blur-md px-4 py-6"
                     onClick={closePaymentEditor}
                   >
                     <div
-                      className="my-auto w-full max-w-[520px] max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-[28px] border border-white/10 bg-[#081433] shadow-[0_35px_100px_rgba(2,6,23,0.55)]"
+                      className={`my-auto w-full max-w-[520px] max-h-[calc(100dvh-3rem)] overflow-y-auto rounded-[2rem] border shadow-2xl ${panelClass}`}
                       onClick={(event) => event.stopPropagation()}
                     >
-                      <div className="flex items-start justify-between border-b border-white/10 px-6 py-5">
+                      <div className={`flex items-start justify-between border-b ${borderMutedClass} px-6 py-5`}>
                         <div>
-                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-sky-300">Edit Payment</p>
-                          <h4 className="mt-2 text-lg font-black uppercase tracking-[0.16em] text-white">
+                          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3aa0ff]">Edit Payment</p>
+                          <h4 className={`mt-2 text-lg font-black uppercase tracking-[0.16em] ${headingTextClass}`}>
                             {paymentEditTarget === 'bank' ? 'Bank Account' : 'Crypto Wallet'}
                           </h4>
                         </div>
@@ -1004,7 +982,11 @@ export default function ClientProfilePage() {
                         <button
                           type="button"
                           onClick={closePaymentEditor}
-                          className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
+                          className={`flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+                            isDarkMode
+                              ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                              : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                          }`}
                           aria-label="Close payment editor"
                         >
                           <X size={18} />
@@ -1016,7 +998,7 @@ export default function ClientProfilePage() {
                           {paymentEditTarget === 'bank' ? (
                             <>
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   Bank Name
                                 </label>
                                 <input
@@ -1024,13 +1006,13 @@ export default function ClientProfilePage() {
                                   onChange={(event) =>
                                     setPaymentForm((prev) => ({ ...prev, bankName: event.target.value }))
                                   }
-                                  className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors ${inputClass}`}
                                   placeholder="Bank name"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   Account Number
                                 </label>
                                 <input
@@ -1038,13 +1020,13 @@ export default function ClientProfilePage() {
                                   onChange={(event) =>
                                     setPaymentForm((prev) => ({ ...prev, accountNumber: event.target.value }))
                                   }
-                                  className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors ${inputClass}`}
                                   placeholder="Account number"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   IFSC
                                 </label>
                                 <input
@@ -1052,13 +1034,13 @@ export default function ClientProfilePage() {
                                   onChange={(event) =>
                                     setPaymentForm((prev) => ({ ...prev, ifsc: event.target.value }))
                                   }
-                                  className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors ${inputClass}`}
                                   placeholder="IFSC code"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   Branch Name
                                 </label>
                                 <input
@@ -1066,17 +1048,15 @@ export default function ClientProfilePage() {
                                   onChange={(event) =>
                                     setPaymentForm((prev) => ({ ...prev, branch: event.target.value }))
                                   }
-                                  className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors ${inputClass}`}
                                   placeholder="Branch name"
                                 />
                               </div>
-
-                              
                             </>
                           ) : (
                             <>
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   Wallet Address
                                 </label>
                                 <textarea
@@ -1085,13 +1065,13 @@ export default function ClientProfilePage() {
                                     setPaymentForm((prev) => ({ ...prev, cryptoAddress: event.target.value }))
                                   }
                                   rows={4}
-                                  className="w-full resize-none rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full resize-none rounded-2xl border px-4 py-3 text-sm outline-none transition-colors font-mono ${inputClass}`}
                                   placeholder="Wallet address"
                                 />
                               </div>
 
                               <div>
-                                <label className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">
+                                <label className={`mb-2 block text-[10px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>
                                   Currency
                                 </label>
                                 <input
@@ -1099,12 +1079,10 @@ export default function ClientProfilePage() {
                                   onChange={(event) =>
                                     setPaymentForm((prev) => ({ ...prev, cryptoCurrency: event.target.value }))
                                   }
-                                  className="w-full rounded-2xl border border-white/10 bg-slate-900/70 px-4 py-3 text-sm text-slate-100 outline-none transition-colors placeholder:text-slate-600 focus:border-sky-500/50"
+                                  className={`w-full rounded-2xl border px-4 py-3 text-sm outline-none transition-colors ${inputClass}`}
                                   placeholder="Currency"
                                 />
                               </div>
-
-                              
                             </>
                           )}
                         </div>
@@ -1113,18 +1091,14 @@ export default function ClientProfilePage() {
                           <button
                             type="button"
                             onClick={closePaymentEditor}
-                            className="flex-1 rounded-2xl border border-white/10 px-4 py-3 text-xs font-bold text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+                            className={`flex-1 rounded-2xl border px-4 py-3 text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white`}
                           >
                             Cancel
                           </button>
                           <button
                             type="button"
                             onClick={savePaymentEditor}
-                            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-slate-950 transition-colors ${
-                              paymentEditTarget === 'crypto'
-                                ? 'bg-amber-400 hover:bg-amber-300'
-                                : 'bg-amber-500 hover:bg-amber-400'
-                            }`}
+                            className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition-all hover:scale-105 ${goldButtonClass}`}
                           >
                             <Check size={14} />
                             Save Changes
@@ -1137,24 +1111,23 @@ export default function ClientProfilePage() {
                 )
                   : null}
 
-                {/* Tab: Activity Log */}
                 {activeTab === 'activity' && (
                   <div className="space-y-4">
                     <div className="flex justify-between items-center mb-2">
                       <h4 className="text-xs font-bold text-slate-100">Audit History Log</h4>
-                      <button className="text-[10px] text-amber-400 hover:underline">Clear list</button>
+                      <button className="text-[10px] text-amber-400 hover:underline font-bold uppercase tracking-wider">Clear list</button>
                     </div>
 
-                    <div className="border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800">
+                    <div className={`border ${borderMutedClass} rounded-2xl overflow-hidden divide-y divide-white/5`}>
                       {activityLog.map((log, idx) => (
-                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs hover:bg-slate-800/20 transition-colors">
+                        <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs hover:bg-white/5 transition-colors">
                           <div>
-                            <p className="font-semibold text-slate-200">{log.event}</p>
-                            <p className="text-slate-400 text-[11px] mt-0.5">{log.device}</p>
+                            <p className={`font-semibold ${headingTextClass}`}>{log.event}</p>
+                            <p className={`${softTextClass} text-[11px] mt-0.5`}>{log.device}</p>
                           </div>
                           <div className="md:text-right flex items-center md:flex-col gap-2 md:gap-0.5 justify-between">
-                            <span className="text-slate-300 text-[11px]">{log.time}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20">
+                            <span className={`${softTextClass} text-[11px]`}>{log.time}</span>
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">
                               {log.status}
                             </span>
                           </div>
@@ -1168,6 +1141,6 @@ export default function ClientProfilePage() {
           </div>
         </div>
       </div>
-      </>
+    </>
   );
 }

@@ -1,22 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
+import { useTheme } from 'next-themes';
 import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 
-const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => (
-  <div className="fixed inset-0 z-[99999] bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 overflow-y-auto">
-    <div className="relative z-[100000] w-full max-w-[1000px] bg-[#0a1435] rounded-xl border border-blue-900/30 shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
-      <div className="flex items-center justify-between px-6 py-5 border-b border-blue-900/30">
-        <h3 className="text-[17px] font-extrabold text-white tracking-wide">{title}</h3>
-        <button onClick={onClose} className="text-white/50 hover:text-white transition-colors">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
+const Modal: React.FC<{ title: string; onClose: () => void; children?: React.ReactNode }> = ({ title, onClose, children }) => {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+  const panelClass = isDarkMode
+    ? 'border-slate-800 bg-slate-900 shadow-2xl'
+    : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
+  const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
+  return (
+    <div className="fixed inset-0 z-[99999] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <div className={`relative z-[100000] w-full max-w-[1000px] rounded-[2rem] border overflow-hidden flex flex-col max-h-[95vh] ${panelClass}`}>
+        <div className={`flex items-center justify-between px-6 py-5 border-b ${borderMutedClass}`}>
+          <h3 className="text-[17px] font-extrabold text-white tracking-wide">{title}</h3>
+          <button onClick={onClose} className={`transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-white/70 hover:text-white'}`}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div className="p-6 md:p-8 overflow-y-auto">{children}</div>
       </div>
-      <div className="p-6 md:p-8 overflow-y-auto">{children}</div>
     </div>
-  </div>
-);
+  );
+};
 
 type ClientInvestment = {
   id: number | string;
@@ -105,6 +114,9 @@ const formatPercent = (value: number) => {
 };
 
 export default function ClientMyInvestPage() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+
   const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
   const [selectedInvModal, setSelectedInvModal] = useState<ClientInvestment | null>(null);
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
@@ -127,6 +139,18 @@ export default function ClientMyInvestPage() {
   const [investments, setInvestments] = useState<ClientInvestment[]>([]);
   const [investmentsLoading, setInvestmentsLoading] = useState<boolean>(true);
   const [investmentsError, setInvestmentsError] = useState<string | null>(null);
+
+  const panelClass = isDarkMode
+    ? 'border-slate-800 bg-slate-900 shadow-xl'
+    : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
+  const inputClass = isDarkMode
+    ? 'bg-white/10 border-white/10 text-white placeholder:text-gray-500'
+    : 'border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7]';
+  const softTextClass = isDarkMode ? 'text-gray-400' : 'text-[#8fb8ff]';
+  const headingTextClass = isDarkMode ? 'text-white' : 'text-white';
+  const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
+  const goldButtonClass =
+    'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
   useEffect(() => {
     let active = true;
@@ -269,15 +293,17 @@ export default function ClientMyInvestPage() {
         suffix: 'USD',
         icon: Wallet,
         badge: 'Live',
-        cardClassName:
-          'relative overflow-hidden bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-blue-600/80 transition-all duration-500',
+        cardClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900 p-6 shadow-xl group hover:border-[#1d53ca]/50 transition-all duration-500'
+          : 'relative overflow-hidden bg-gradient-to-br from-blue-900/40 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-[2rem] p-6 shadow-2xl group hover:border-blue-600/80 transition-all duration-500',
         glowClassName:
           'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-blue-500/10 blur-3xl group-hover:bg-blue-500/20 transition-all duration-500',
-        iconClassName:
-          'w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.15)] group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all',
+        iconClassName: isDarkMode
+          ? 'w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center transition-all'
+          : 'w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.15)] group-hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] transition-all',
         badgeClassName:
           'text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider',
-        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        titleClassName: isDarkMode ? 'text-gray-400 text-xs font-black tracking-widest uppercase mb-1.5' : 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
         valueClassName: 'text-3xl font-black text-white flex items-baseline gap-1.5',
         suffixClassName: 'text-sm font-bold text-blue-500',
       },
@@ -287,15 +313,17 @@ export default function ClientMyInvestPage() {
         suffix: formatPercent(totalProfitPct),
         icon: TrendingUp,
         badge: 'Growth',
-        cardClassName:
-          'relative overflow-hidden bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-emerald-700/60 transition-all duration-500',
+        cardClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-[2rem] border border-emerald-950/45 bg-slate-900 p-6 shadow-xl group hover:border-[#1d53ca]/50 transition-all duration-500'
+          : 'relative overflow-hidden bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-[2rem] p-6 shadow-2xl group hover:border-emerald-700/60 transition-all duration-500',
         glowClassName:
           'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-emerald-500/10 blur-3xl group-hover:bg-emerald-500/20 transition-all duration-500',
-        iconClassName:
-          'w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all',
+        iconClassName: isDarkMode
+          ? 'w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center transition-all'
+          : 'w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all',
         badgeClassName:
           'text-emerald-400 text-[11px] font-bold px-3 py-1 bg-emerald-500/10 rounded-full border border-emerald-500/20 uppercase tracking-wider',
-        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        titleClassName: isDarkMode ? 'text-gray-400 text-xs font-black tracking-widest uppercase mb-1.5' : 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
         valueClassName: 'text-3xl font-black text-white flex items-baseline gap-1.5',
         suffixClassName: 'text-sm font-bold text-emerald-500',
       },
@@ -305,20 +333,22 @@ export default function ClientMyInvestPage() {
         suffix: `${investments.length} total`,
         icon: ShieldCheck,
         badge: 'Open',
-        cardClassName:
-          'relative overflow-hidden bg-gradient-to-br from-yellow-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-3xl p-6 shadow-2xl group hover:border-yellow-700/60 transition-all duration-500',
+        cardClassName: isDarkMode
+          ? 'relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900 p-6 shadow-xl group hover:border-[#1d53ca]/50 transition-all duration-500'
+          : 'relative overflow-hidden bg-gradient-to-br from-yellow-900/30 via-[#0b183f] to-[#0b183f] border border-blue-800/60 rounded-[2rem] p-6 shadow-2xl group hover:border-yellow-700/60 transition-all duration-500',
         glowClassName:
           'absolute top-0 right-0 -mr-12 -mt-12 w-40 h-40 rounded-full bg-yellow-500/10 blur-3xl group-hover:bg-yellow-500/20 transition-all duration-500',
-        iconClassName:
-          'w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.15)] group-hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] transition-all',
+        iconClassName: isDarkMode
+          ? 'w-12 h-12 rounded-2xl bg-white/5 border border-white/10 text-gray-300 flex items-center justify-center transition-all'
+          : 'w-12 h-12 rounded-2xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.15)] group-hover:shadow-[0_0_20px_rgba(234,179,8,0.3)] transition-all',
         badgeClassName:
           'text-blue-300 text-[11px] font-bold px-3 py-1 bg-blue-900/50 rounded-full border border-blue-700/50 uppercase tracking-wider',
-        titleClassName: 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
+        titleClassName: isDarkMode ? 'text-gray-400 text-xs font-black tracking-widest uppercase mb-1.5' : 'text-blue-300 text-xs font-semibold tracking-widest uppercase mb-1.5',
         valueClassName: 'text-3xl font-black text-white',
         suffixClassName: 'text-sm font-bold text-yellow-300',
       },
     ],
-    [activeInvestments, investments.length, totalInvested, totalProfit, totalProfitPct],
+    [activeInvestments, investments.length, totalInvested, totalProfit, totalProfitPct, isDarkMode],
   );
 
   const visibleInvestments = investments;
@@ -333,648 +363,664 @@ export default function ClientMyInvestPage() {
       <Head>
         <title>My Investments | Client Portal</title>
       </Head>
-        <div className="p-6 md:p-8 space-y-6 relative h-full min-h-screen">
-          
-          {/* Top Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {summaryCards.map((card) => {
-              const Icon = card.icon;
-
-              return (
-                <div key={card.title} className={card.cardClassName}>
-                  <div className={card.glowClassName} />
-                  <div className="flex items-center justify-between mb-5 relative z-10">
-                    <div className={card.iconClassName}>
-                      <Icon size={22} strokeWidth={2.5} />
-                    </div>
-                    <div className={card.badgeClassName}>{card.badge}</div>
-                  </div>
-                  <div className="relative z-10">
-                    <div className={card.titleClassName}>{card.title}</div>
-                    <div className={card.valueClassName}>
-                      {card.value}
-                      {card.suffix ? <span className={card.suffixClassName}>{card.suffix}</span> : null}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Main Table Container */}
-          <div className="bg-[#0a1435] border border-blue-900/30 rounded-3xl overflow-hidden shadow-2xl mt-8">
-            {/* Header */}
-            <div className="p-6 border-b border-blue-900/30 flex items-center gap-3 bg-[#0a1435]">
-              <div className="w-1.5 h-6 bg-yellow-500 rounded-full"></div>
-              <h2 className="text-xl font-bold text-white tracking-wide">My Investments</h2>
-            </div>
-            
-            {/* Table */}
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-[#0f1d4a]">
-                  <tr>
-                    {[
-                      'STRATEGY',
-                      'INVESTMENT ID',
-                      'ALLOCATED',
-                      'CURRENT VALUE',
-                      'RETURN %',
-                      'PROFIT',
-                      'STATUS',
-                      'ACTIONS',
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="text-left px-4 py-5 text-[11px] font-extrabold text-blue-200 uppercase tracking-wider whitespace-nowrap"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-blue-900/30">
-                  {investmentsLoading ? (
-                    <tr className="bg-[#0a1435]">
-                      <td colSpan={8} className="px-4 py-16 text-center">
-                        <div className="inline-flex items-center gap-3 rounded-full border border-blue-800/40 bg-[#101f4c] px-5 py-3 text-sm font-bold text-blue-100">
-                          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-yellow-400" />
-                          Loading live investments...
-                        </div>
-                      </td>
-                    </tr>
-                  ) : visibleInvestments.length > 0 ? (
-                    visibleInvestments.map((inv) => {
-                      const profit = inv.currentValue - inv.allocated;
-                      const isPositive = profit >= 0;
-                      const isActive = String(inv.status).toLowerCase() === 'active';
-
-                      return (
-                        <tr
-                          key={String(inv.id)}
-                          className="transition-colors hover:bg-[#11255e] bg-[#0a1435]"
-                        >
-                          {/* Strategy */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-900 font-extrabold text-sm shadow-sm shrink-0">
-                                {inv.strategy.charAt(0).toUpperCase()}
-                              </div>
-                              <div>
-                                <div className="font-bold text-white text-[14px]">
-                                  {inv.strategy}
-                                </div>
-                                <div className="text-[11px] text-blue-200/70 mt-0.5">
-                                  Manager: {inv.manager}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Investment ID */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-sm font-bold text-white bg-[#101f4c] px-3 py-1.5 rounded-lg border border-blue-800/50">
-                              #{String(inv.id)}
-                            </span>
-                          </td>
-
-                          {/* Allocated */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-white font-bold text-[14px]">
-                              {formatMoney(inv.allocated)}
-                            </span>
-                          </td>
-
-                          {/* Current Value */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-white font-bold text-[14px]">
-                              {formatMoney(inv.currentValue)}
-                            </span>
-                          </td>
-
-                          {/* Return % */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-white font-bold text-[14px]">
-                              {formatPercent(inv.returnPct)}
-                            </span>
-                          </td>
-
-                          {/* Profit */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className={`text-[14px] font-bold ${isPositive ? 'text-emerald-300' : 'text-rose-300'}`}>
-                              {formatMoney(profit)}
-                            </span>
-                          </td>
-
-                          {/* Status */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span
-                              className={`px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wide uppercase border ${
-                                isActive
-                                  ? 'bg-[#003822] text-[#00e676] border-[#005e3a]'
-                                  : 'bg-[#101f4c] text-blue-200 border-blue-800/50'
-                              }`}
-                            >
-                              {String(inv.status).toUpperCase()}
-                            </span>
-                          </td>
-
-                          {/* Actions */}
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => openDetailsModal(inv)}
-                                className="px-4 py-2 rounded-xl font-bold text-xs bg-white/10 text-white hover:bg-white/20 border border-white/20 transition-all"
-                              >
-                                Details
-                              </button>
-                              <button
-                                onClick={() => openDepositModal(inv)}
-                                className="px-4 py-1.5 rounded-xl bg-gradient-to-b from-[#fcd34d] to-[#d97706] text-amber-950 text-xs font-bold transition hover:opacity-90 shadow-lg shadow-amber-500/20"
-                              >
-                                Deposit
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  ) : (
-                    <tr className="bg-[#0a1435]">
-                      <td colSpan={8} className="px-4 py-16 text-center">
-                        <div className="mx-auto max-w-md rounded-2xl border border-blue-800/40 bg-[#101f4c] px-6 py-5 text-blue-100">
-                          <div className="text-sm font-bold">
-                            {investmentsError || 'No live investments are available.'}
-                          </div>
-                          <div className="mt-1 text-xs text-blue-200/70">
-                            Once the backend returns investment records, they will appear here automatically.
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Footer */}
-            <div className="flex items-center justify-between px-6 py-5 border-t border-blue-900/30 bg-[#0a1435]">
-              <div className="text-xs font-bold text-blue-200 uppercase tracking-widest">
-                SHOWING {showingStart} TO {showingEnd} OF {visibleCount}
-              </div>
-
-              <div className="flex items-center gap-4">
-                <button className="w-8 h-8 flex items-center justify-center rounded-full border border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
-                <span className="text-xs font-bold text-white">Page 1</span>
-                <button className="w-8 h-8 flex items-center justify-center rounded-full border border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
-              </div>
-            </div>
-            {/* Details Modal (opened from table) */}
-            {showDetailsModal && selectedInvModal && (
-              <Modal title={`${selectedInvestmentId || 'N/A'} - ${selectedInvModal.strategy}`} onClose={closeDetailsModal}>
-                <div className="space-y-8">
-                  {/* Top section: Balance and Stats (No separate container background, just flex layout) */}
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-2">
-                    <div className="flex-1">
-                      <div className="text-[11px] font-extrabold text-blue-200 uppercase tracking-widest">Current Value</div>
-                      <div className="text-[40px] font-black text-white mt-1 leading-none tracking-tight">
-                        {formatMoney(selectedInvModal.currentValue)} <span className="text-lg font-extrabold text-white/70 ml-2">USD</span>
-                      </div>
-                      <div className="mt-5 flex items-center gap-3">
-                        <button
-                          onClick={() => openDepositModal(selectedInvModal)}
-                          className="px-5 py-2.5 rounded-lg font-bold bg-[#d9aa2b] hover:bg-[#eabb3a] text-amber-950 transition-colors shadow-lg shadow-amber-500/20 text-sm"
-                        >
-                          Quick Deposit
-                        </button>
-                        <button className="px-5 py-2.5 rounded-lg border border-blue-700/50 hover:bg-blue-800/30 text-white font-bold transition-colors text-sm">
-                          Pause
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Right: Stats Grid */}
-                    <div className="flex-none w-full md:w-auto">
-                      <div className="grid grid-cols-2 gap-x-12 gap-y-4">
-                        <div className="text-sm text-white/60">Allocated Amount</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{formatMoney(selectedInvModal.allocated)}</div>
-
-                        <div className="text-sm text-white/60">Profit</div>
-                        <div className={`text-[15px] font-extrabold text-right ${selectedInvestmentProfit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-                          {formatMoney(selectedInvestmentProfit)}
-                        </div>
-
-                        <div className="text-sm text-white/60">Return %</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{formatPercent(selectedInvModal.returnPct)}</div>
-
-                        <div className="text-sm text-white/60">Status</div>
-                        <div className="text-[15px] font-extrabold text-white text-right">{String(selectedInvModal.status).toUpperCase()}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Info cards row */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    <div className="p-6 rounded-[20px] bg-[#0b1739] border border-blue-900/40">
-                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Investment Configuration</h4>
-                      <div className="space-y-4 text-sm">
-                        <div className="flex justify-between items-center"><span className="text-white/60">Investment ID</span><span className="font-extrabold text-white">{selectedInvestmentId || 'N/A'}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Manager</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.manager}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Strategy</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.strategy}</span></div>
-                        <div className="flex justify-between items-center"><span className="text-white/60">Status</span><span className="font-extrabold text-white">{String(selectedInvModal.status).toUpperCase()}</span></div>
-                      </div>
-                    </div>
-
-                    {/* Account Security */}
-                    <div className="p-6 rounded-[20px] bg-[#08132e] border border-blue-800/50 flex flex-col items-center text-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-[#142c70] flex items-center justify-center mb-4">
-                        {/* Custom Lock SVG matching image style */}
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9aa2b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                      </div>
-                      <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Account Security</h4>
-                      <div className="w-full space-y-3 mt-1">
-                        <button
-                          onClick={() => setShowPasswordModal(true)}
-                          className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm"
-                        >
-                          Password Settings
-                        </button>
-                        <button
-                          onClick={openCoefficientModal}
-                          className="w-full py-3 rounded-xl bg-[#2962ff] hover:bg-[#1e4ed8] text-white font-extrabold transition-colors text-sm"
-                        >
-                          Edit Coefficient
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick Actions */}
-                    <div className="p-6 rounded-[32px] bg-white/5 border border-blue-700/40 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-xl">
-                      <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-blue-100 mb-5">QUICK ACTIONS</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={openInvestorTradesModal}
-                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
-                        >
-                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
-                            <BarChart3 size={18} />
-                          </span>
-                          Investor Trades
-                        </button>
-                        <button
-                          onClick={openManagerTradesModal}
-                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
-                        >
-                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
-                            <Users size={18} />
-                          </span>
-                          Manager Trades
-                        </button>
-                        <button
-                          onClick={openWithdrawModal}
-                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
-                        >
-                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
-                            <ArrowUpCircle size={18} />
-                          </span>
-                          Withdraw
-                        </button>
-                        <button
-                          onClick={() => openDepositModal(selectedInvModal)}
-                          className="group flex flex-col items-center justify-center gap-2 rounded-3xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff] shadow-[0_15px_35px_-20px_rgba(37,99,235,0.7)]"
-                        >
-                          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-800/20">
-                            <ArrowDownCircle size={18} />
-                          </span>
-                          Deposit
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Modal>
-            )}
-          </div>
+      <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/5 blur-[100px]" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/5 blur-[90px]" />
         </div>
 
-        <DepositModal
-          showDepositModal={showDepositModal}
-          setShowDepositModal={setShowDepositModal}
-          activeTab={activeDepositTab}
-          setActiveTab={setActiveDepositTab}
-          cheeseAmount={cheeseAmount}
-          setCheeseAmount={setCheeseAmount}
-          currency={currency}
-          setCurrency={setCurrency}
-          usdtAmount={usdtAmount}
-          setUsdtAmount={setUsdtAmount}
-          selectedDepositAccount={selectedInvestmentId}
+        {/* Top Summary Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
+
+            return (
+              <div key={card.title} className={card.cardClassName}>
+                <div className={card.glowClassName} />
+                <div className="flex items-center justify-between mb-5 relative z-10">
+                  <div className={card.iconClassName}>
+                    <Icon size={22} strokeWidth={2.5} />
+                  </div>
+                  <div className={card.badgeClassName}>{card.badge}</div>
+                </div>
+                <div className="relative z-10">
+                  <div className={card.titleClassName}>{card.title}</div>
+                  <div className={card.valueClassName}>
+                    {card.value}
+                    {card.suffix ? <span className={card.suffixClassName}>{card.suffix}</span> : null}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Main Table Container */}
+        <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden mt-8`}>
+          {/* Header */}
+          <div className={`p-8 border-b ${borderMutedClass} flex items-center gap-3`}>
+            <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+            <h2 className={`text-xl font-bold ${headingTextClass} tracking-wide`}>My Investments</h2>
+          </div>
+          
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
+                  {[
+                    'STRATEGY',
+                    'INVESTMENT ID',
+                    'ALLOCATED',
+                    'CURRENT VALUE',
+                    'RETURN %',
+                    'PROFIT',
+                    'STATUS',
+                    'ACTIONS',
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
+                {investmentsLoading ? (
+                  <tr>
+                    <td colSpan={8} className="p-20 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4" />
+                        <p className={`font-bold ${softTextClass}`}>Fetching investments...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : visibleInvestments.length > 0 ? (
+                  visibleInvestments.map((inv) => {
+                    const profit = inv.currentValue - inv.allocated;
+                    const isPositive = profit >= 0;
+                    const isActive = String(inv.status).toLowerCase() === 'active';
+
+                    return (
+                      <tr
+                        key={String(inv.id)}
+                        className={`group ${isDarkMode ? 'hover:bg-white/5' : 'text-[#dbe8ff] hover:bg-[#0a205f]'} transition-colors`}
+                      >
+                        {/* Strategy */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-900 font-extrabold text-sm shadow-sm shrink-0">
+                              {inv.strategy.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className={`font-bold text-[14px] ${isDarkMode ? 'text-white' : 'text-white'}`}>
+                                {inv.strategy}
+                              </div>
+                              <div className={`text-[11px] mt-0.5 ${softTextClass}`}>
+                                Manager: {inv.manager}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Investment ID */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`font-mono font-bold px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-white/5 text-royal-400' : 'border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]'}`}>
+                            #{String(inv.id)}
+                          </span>
+                        </td>
+
+                        {/* Allocated */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`font-bold text-[14px] ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>
+                            {formatMoney(inv.allocated)}
+                          </span>
+                        </td>
+
+                        {/* Current Value */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`font-bold text-[14px] ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>
+                            {formatMoney(inv.currentValue)}
+                          </span>
+                        </td>
+
+                        {/* Return % */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`font-bold text-[14px] ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>
+                            {formatPercent(inv.returnPct)}
+                          </span>
+                        </td>
+
+                        {/* Profit */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span className={`text-[14px] font-bold ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            {formatMoney(profit)}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span
+                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                              isActive
+                                ? 'bg-green-500/10 text-green-500'
+                                : 'bg-gray-500/10 text-gray-500'
+                            }`}
+                          >
+                            {String(inv.status).toUpperCase()}
+                          </span>
+                        </td>
+
+                        {/* Actions */}
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => openDetailsModal(inv)}
+                              className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all duration-200 ${isDarkMode ? 'bg-royal/10 text-royal hover:bg-royal hover:text-white border-royal/20' : 'border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c]'}`}
+                            >
+                              Details
+                            </button>
+                            <button
+                              onClick={() => openDepositModal(inv)}
+                              className={`px-4 py-2 rounded-xl font-black text-xs transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
+                            >
+                              Deposit
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={8} className="p-20 text-center">
+                      <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? 'bg-gray-800' : 'bg-[#0b226a]'}`}>
+                        <ShieldCheck className={isDarkMode ? 'text-gray-400' : 'text-[#8db5ff]'} size={32} />
+                      </div>
+                      <p className={`text-lg font-bold ${softTextClass}`}>{investmentsError || 'No live investments are available.'}</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination Footer */}
+          <div className={`flex items-center justify-between px-6 py-5 border-t ${borderMutedClass}`}>
+            <div className={`text-xs font-bold uppercase tracking-widest ${softTextClass}`}>
+              SHOWING {showingStart} TO {showingEnd} OF {visibleCount}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <button className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-800 text-gray-400 hover:bg-white/5 hover:text-white' : 'border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              </button>
+              <span className={`text-xs font-bold ${headingTextClass}`}>Page 1</span>
+              <button className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-800 text-gray-400 hover:bg-white/5 hover:text-white' : 'border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white'}`}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+              </button>
+            </div>
+          </div>
+          {/* Details Modal (opened from table) */}
+          {showDetailsModal && selectedInvModal && (
+            <Modal title={`${selectedInvestmentId || 'N/A'} - ${selectedInvModal.strategy}`} onClose={closeDetailsModal}>
+              <div className="space-y-8">
+                {/* Top section: Balance and Stats */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-2">
+                  <div className="flex-1">
+                    <div className={`text-[11px] font-black uppercase tracking-widest ${softTextClass}`}>Current Value</div>
+                    <div className="text-[40px] font-black text-white mt-1 leading-none tracking-tight">
+                      {formatMoney(selectedInvModal.currentValue)} <span className={`text-lg font-black ml-2 ${softTextClass}`}>USD</span>
+                    </div>
+                    <div className="mt-5 flex items-center gap-3">
+                      <button
+                        onClick={() => openDepositModal(selectedInvModal)}
+                        className={`px-5 py-2.5 rounded-lg font-black text-sm transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
+                      >
+                        Quick Deposit
+                      </button>
+                      <button className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}>
+                        Pause
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Right: Stats Grid */}
+                  <div className="flex-none w-full md:w-auto">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                      <div className={`text-sm ${softTextClass}`}>Allocated Amount</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{formatMoney(selectedInvModal.allocated)}</div>
+
+                      <div className={`text-sm ${softTextClass}`}>Profit</div>
+                      <div className={`text-[15px] font-extrabold text-right ${selectedInvestmentProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {formatMoney(selectedInvestmentProfit)}
+                      </div>
+
+                      <div className={`text-sm ${softTextClass}`}>Return %</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{formatPercent(selectedInvModal.returnPct)}</div>
+
+                      <div className={`text-sm ${softTextClass}`}>Status</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{String(selectedInvModal.status).toUpperCase()}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Info cards row */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                  <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0b1739] border-blue-900/40'}`}>
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Investment Configuration</h4>
+                    <div className="space-y-4 text-sm">
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Investment ID</span><span className="font-extrabold text-white">#{selectedInvestmentId || 'N/A'}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Manager</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.manager}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Strategy</span><span className="font-extrabold text-white text-right max-w-[120px] truncate">{selectedInvModal.strategy}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Status</span><span className="font-extrabold text-white">{String(selectedInvModal.status).toUpperCase()}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Account Security */}
+                  <div className={`p-6 rounded-[20px] border flex flex-col items-center text-center justify-center ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#08132e] border-blue-800/50'}`}>
+                    <div className="w-12 h-12 rounded-full bg-[#142c70] flex items-center justify-center mb-4 border border-blue-500/20">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d9aa2b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Account Security</h4>
+                    <div className="w-full space-y-3 mt-1">
+                      <button
+                        onClick={() => setShowPasswordModal(true)}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass}`}
+                      >
+                        Password Settings
+                      </button>
+                      <button
+                        onClick={openCoefficientModal}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass}`}
+                      >
+                        Edit Coefficient
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#08132e] border-blue-800/50'}`}>
+                    <h4 className="text-[11px] font-black uppercase tracking-[0.25em] text-white mb-5">QUICK ACTIONS</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={openInvestorTradesModal}
+                        className="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff]"
+                      >
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
+                          <BarChart3 size={18} />
+                        </span>
+                        Investor Trades
+                      </button>
+                      <button
+                        onClick={openManagerTradesModal}
+                        className="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff]"
+                      >
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
+                          <Users size={18} />
+                        </span>
+                        Manager Trades
+                      </button>
+                      <button
+                        onClick={openWithdrawModal}
+                        className="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff]"
+                      >
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
+                          <ArrowUpCircle size={18} />
+                        </span>
+                        Withdraw
+                      </button>
+                      <button
+                        onClick={() => openDepositModal(selectedInvModal)}
+                        className="group flex flex-col items-center justify-center gap-2 rounded-2xl bg-[#1f56e0] p-4 text-center text-xs font-bold uppercase tracking-[0.18em] text-white transition hover:bg-[#316bff]"
+                      >
+                        <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-md">
+                          <ArrowDownCircle size={18} />
+                        </span>
+                        Deposit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Modal>
+          )}
+        </div>
+      </div>
+
+      <DepositModal
+        showDepositModal={showDepositModal}
+        setShowDepositModal={setShowDepositModal}
+        activeTab={activeDepositTab}
+        setActiveTab={setActiveDepositTab}
+        cheeseAmount={cheeseAmount}
+        setCheeseAmount={setCheeseAmount}
+        currency={currency}
+        setCurrency={setCurrency}
+        usdtAmount={usdtAmount}
+        setUsdtAmount={setUsdtAmount}
+        selectedDepositAccount={selectedInvestmentId}
+      />
+
+      {showWithdrawModal && (
+        <WithdrawalModal
+          onClose={() => setShowWithdrawModal(false)}
+          isDarkMode={isDarkMode}
+          currentAccount={selectedInvestmentId}
         />
+      )}
 
-        {showWithdrawModal && (
-          <WithdrawalModal
-            onClose={() => setShowWithdrawModal(false)}
-            isDarkMode={true}
-            currentAccount={selectedInvestmentId}
-          />
-        )}
-
-        {showCoefficientModal && (
-          <div className="fixed inset-0 z-[100002] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
-            <div className="w-full max-w-lg rounded-[32px] border border-blue-500/20 bg-slate-950 shadow-2xl shadow-blue-950/40 overflow-hidden">
-              <div className="flex items-center justify-between gap-4 px-6 py-5 bg-blue-950/95 border-b border-blue-500/10">
-                <div>
-                  <h3 className="text-xl font-black text-white">Coefficient Configuration</h3>
-                  <p className="text-sm uppercase tracking-[0.26em] text-blue-200/80 mt-1">Risk Engine</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowCoefficientModal(false)}
-                  className="rounded-full border border-blue-500/30 bg-blue-900/70 p-2 text-blue-100 hover:bg-blue-800 transition"
-                >
-                  <X size={18} />
-                </button>
+      {showCoefficientModal && (
+        <div className="fixed inset-0 z-[100002] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+          <div className={`w-full max-w-lg rounded-[2rem] border shadow-2xl overflow-hidden ${panelClass}`}>
+            <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
+              <div>
+                <h3 className="text-xl font-black text-white">Coefficient Configuration</h3>
+                <p className={`text-sm uppercase tracking-[0.26em] mt-1 ${softTextClass}`}>Risk Engine</p>
               </div>
+              <button
+                type="button"
+                onClick={() => setShowCoefficientModal(false)}
+                className={`rounded-full p-2 transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                }`}
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-              <div className="space-y-5 px-6 py-6 bg-[#08132a]">
-                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/10 p-4 shadow-[0_15px_40px_rgba(15,23,42,0.35)]">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="rounded-2xl bg-blue-900/80 p-3 text-blue-300">
-                        <ArrowRight size={18} />
-                      </div>
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Target Investment</div>
-                        <div className="text-sm font-bold text-white">ID: {selectedInvestmentId || 'N/A'}</div>
-                      </div>
+            <div className="space-y-5 px-6 py-6">
+              <div className={`rounded-3xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-2xl bg-blue-900/80 p-3 text-blue-300">
+                      <ArrowRight size={18} />
                     </div>
-                    <span className="rounded-full bg-yellow-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-500">Risk Engine</span>
-                  </div>
-                </div>
-
-                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setCoefficientMethod('balance')}
-                      className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'balance' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
-                    >
-                      Balance Ratio
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCoefficientMethod('fixed')}
-                      className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'fixed' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
-                    >
-                      Fixed Ratio
-                    </button>
-                  </div>
-                </div>
-
-                {coefficientMethod === 'fixed' && (
-                  <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
-                    <div className="flex items-center justify-between gap-4 mb-3">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.26em] text-blue-300/70">Multiplication Factor</div>
-                        <div className="text-sm font-black text-white">Multiplier</div>
-                      </div>
-                      <div className="rounded-2xl bg-blue-900/80 px-3 py-2 text-blue-200 text-sm font-black">x{fixedRatioValue}</div>
-                    </div>
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      value={fixedRatioValue}
-                      onChange={(e) => setFixedRatioValue(e.target.value)}
-                      onWheel={(e) => e.currentTarget.blur()}
-                      className="w-full rounded-2xl border border-blue-500/20 bg-[#071127] px-4 py-3 text-lg font-black text-white outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-                    />
-                    <p className="mt-2 text-[11px] text-blue-200/70">Example: A factor of 2.0 will double the relative trade size.</p>
-                  </div>
-                )}
-
-                <div className="rounded-3xl border border-blue-500/10 bg-blue-950/5 p-4">
-                  <div className="flex items-center justify-between gap-4 mb-4">
                     <div>
-                      <div className="text-sm font-bold text-white">Multi-Execution</div>
-                      <div className="text-xs text-blue-200/70">Order cloning technology</div>
+                      <div className={`text-[10px] uppercase tracking-[0.26em] ${softTextClass}`}>Target Investment</div>
+                      <div className="text-sm font-bold text-white">ID: #{selectedInvestmentId || 'N/A'}</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setMultiExecutionEnabled(!multiExecutionEnabled)}
-                      className={`relative inline-flex h-9 w-16 items-center rounded-full transition ${multiExecutionEnabled ? 'bg-blue-500' : 'bg-slate-800/90'}`}
-                    >
-                      <span className={`inline-block h-7 w-7 rounded-full bg-white shadow transition-transform ${multiExecutionEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
-                    </button>
                   </div>
-                  <div className="text-xs uppercase tracking-[0.24em] text-blue-300/60">Scaling methodology selected: {coefficientMethod === 'balance' ? 'Balance Ratio' : 'Fixed Ratio'}</div>
+                  <span className="rounded-full bg-yellow-300/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.26em] text-amber-500">Risk Engine</span>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleDeployConfiguration}
-                  className="w-full rounded-2xl bg-gradient-to-r from-[#d7b128] to-[#b28915] px-5 py-3 text-sm font-bold text-slate-950 shadow-lg shadow-amber-500/20 hover:opacity-95 transition"
-                >
-                  Deploy Configuration
-                </button>
               </div>
+
+              <div className={`rounded-3xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setCoefficientMethod('balance')}
+                    className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'balance' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
+                  >
+                    Balance Ratio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoefficientMethod('fixed')}
+                    className={`rounded-2xl py-3 text-sm font-bold transition ${coefficientMethod === 'fixed' ? 'bg-white text-blue-950 shadow-sm' : 'bg-blue-950/70 text-blue-100 hover:bg-blue-900'}`}
+                  >
+                    Fixed Ratio
+                  </button>
+                </div>
+              </div>
+
+              {coefficientMethod === 'fixed' && (
+                <div className={`rounded-3xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
+                  <div className="flex items-center justify-between gap-4 mb-3">
+                    <div>
+                      <div className={`text-[10px] uppercase tracking-[0.26em] ${softTextClass}`}>Multiplication Factor</div>
+                      <div className="text-sm font-black text-white">Multiplier</div>
+                    </div>
+                    <div className="rounded-2xl bg-blue-900/80 px-3 py-2 text-blue-200 text-sm font-black">x{fixedRatioValue}</div>
+                  </div>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={fixedRatioValue}
+                    onChange={(e) => setFixedRatioValue(e.target.value)}
+                    onWheel={(e) => e.currentTarget.blur()}
+                    className={`w-full rounded-2xl border px-4 py-3 text-lg font-black text-white outline-none transition ${inputClass}`}
+                  />
+                  <p className={`mt-2 text-[11px] ${softTextClass}`}>Example: A factor of 2.0 will double the relative trade size.</p>
+                </div>
+              )}
+
+              <div className={`rounded-3xl border p-4 ${borderMutedClass} bg-white/[0.02]`}>
+                <div className="flex items-center justify-between gap-4 mb-4">
+                  <div>
+                    <div className="text-sm font-bold text-white">Multi-Execution</div>
+                    <div className={`text-xs ${softTextClass}`}>Order cloning technology</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setMultiExecutionEnabled(!multiExecutionEnabled)}
+                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition ${multiExecutionEnabled ? 'bg-blue-500' : 'bg-slate-800/90'}`}
+                  >
+                    <span className={`inline-block h-7 w-7 rounded-full bg-white shadow transition-transform ${multiExecutionEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
+                  </button>
+                </div>
+                <div className={`text-xs uppercase tracking-[0.24em] ${softTextClass}`}>Scaling methodology selected: {coefficientMethod === 'balance' ? 'Balance Ratio' : 'Fixed Ratio'}</div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDeployConfiguration}
+                className={`w-full py-3 rounded-2xl font-black text-sm hover:scale-[1.02] transition-all uppercase tracking-widest ${goldButtonClass}`}
+              >
+                Deploy Configuration
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showInvestorTradesModal && (
-          <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-blue-950/90 backdrop-blur-xl">
-            <div className="w-full max-w-3xl rounded-[32px] bg-[#0c2d62] shadow-2xl overflow-hidden border border-blue-600/70">
-              <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
-                <div>
-                  <h3 className="text-xl font-black text-white">Open Positions</h3>
-                  <p className="text-sm text-blue-200">Real-time trading activity for Investment #{selectedInvestmentId || 'N/A'}</p>
+      {showInvestorTradesModal && (
+        <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+          <div className={`w-full max-w-3xl rounded-[2rem] shadow-2xl overflow-hidden border ${panelClass}`}>
+            <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
+              <div>
+                <h3 className="text-xl font-black text-white">Open Positions</h3>
+                <p className={`text-sm mt-1 ${softTextClass}`}>Real-time trading activity for Investment #{selectedInvestmentId || 'N/A'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInvestorTradesModal(false)}
+                className={`rounded-full p-2 transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                }`}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
+                      {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                        <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
+                    <tr>
+                      <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                            <ArrowRight size={20} />
+                          </span>
+                          <div className={`text-sm font-semibold ${softTextClass}`}>No open positions found</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
+                <div className={`inline-flex items-center gap-2 ${softTextClass}`}>
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> LIVE FEED
                 </div>
                 <button
                   type="button"
+                  className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
                   onClick={() => setShowInvestorTradesModal(false)}
-                  className="rounded-full bg-blue-800 p-2 text-blue-100 hover:bg-blue-700 transition"
                 >
-                  <X size={18} />
+                  Close Panel
                 </button>
-              </div>
-              <div className="p-6 bg-[#0b1b46]">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm text-blue-100">
-                    <thead>
-                      <tr className="text-xs uppercase tracking-[0.18em] text-blue-200 border-b border-blue-700/50">
-                        {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
-                          <th key={label} className="px-3 py-3 text-blue-100">{label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-blue-700/40">
-                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
-                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
-                              <ArrowRight size={20} />
-                            </span>
-                            <div className="text-sm font-semibold text-blue-200">No open positions found</div>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
-                  <div className="inline-flex items-center gap-2 text-blue-200">
-                    <span className="h-2 w-2 rounded-full bg-blue-400" /> LIVE FEED
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
-                    onClick={() => setShowInvestorTradesModal(false)}
-                  >
-                    Close Panel
-                  </button>
-                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showManagerTradesModal && (
-          <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-blue-950/90 backdrop-blur-xl">
-            <div className="w-full max-w-3xl rounded-[32px] bg-[#0c2d62] shadow-2xl overflow-hidden border border-blue-600/70">
-              <div className="flex items-center justify-between gap-4 bg-[#0d3f7a] px-6 py-5 border-b border-blue-700/60 rounded-t-[32px]">
-                <div>
-                  <h3 className="text-xl font-black text-white">Manager Trades</h3>
-                  <p className="text-sm text-blue-200">Manager activity for Investment #{selectedInvestmentId || 'N/A'}</p>
+      {showManagerTradesModal && (
+        <div className="fixed inset-0 z-[100003] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+          <div className={`w-full max-w-3xl rounded-[2rem] shadow-2xl overflow-hidden border ${panelClass}`}>
+            <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
+              <div>
+                <h3 className="text-xl font-black text-white">Manager Trades</h3>
+                <p className={`text-sm mt-1 ${softTextClass}`}>Manager activity for Investment #{selectedInvestmentId || 'N/A'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowManagerTradesModal(false)}
+                className={`rounded-full p-2 transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                }`}
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
+                      {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                        <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
+                    <tr>
+                      <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                            <ArrowRight size={20} />
+                          </span>
+                          <div className={`text-sm font-semibold ${softTextClass}`}>No manager trades found</div>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
+                <div className={`inline-flex items-center gap-2 ${softTextClass}`}>
+                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> LIVE FEED
                 </div>
                 <button
                   type="button"
+                  className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
                   onClick={() => setShowManagerTradesModal(false)}
-                  className="rounded-full bg-blue-800 p-2 text-blue-100 hover:bg-blue-700 transition"
                 >
-                  <X size={18} />
+                  Close Panel
                 </button>
-              </div>
-              <div className="p-6 bg-[#0b1b46]">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm text-blue-100">
-                    <thead>
-                      <tr className="text-xs uppercase tracking-[0.18em] text-blue-200 border-b border-blue-700/50">
-                        {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
-                          <th key={label} className="px-3 py-3 text-blue-100">{label}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b border-blue-700/40">
-                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
-                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
-                              <ArrowRight size={20} />
-                            </span>
-                            <div className="text-sm font-semibold text-blue-200">No manager trades found</div>
-                          </div>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
-                  <div className="inline-flex items-center gap-2 text-blue-200">
-                    <span className="h-2 w-2 rounded-full bg-blue-400" /> LIVE FEED
-                  </div>
-                  <button
-                    type="button"
-                    className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
-                    onClick={() => setShowManagerTradesModal(false)}
-                  >
-                    Close Panel
-                  </button>
-                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showPasswordModal && (
-          <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-xl">
-            <div className="w-full max-w-md rounded-[32px] border border-blue-500/30 bg-gradient-to-br from-blue-950 via-[#0b173f] to-[#071125] shadow-2xl shadow-blue-900/40 overflow-hidden">
-              <div className="flex items-start justify-between gap-4 px-6 py-5 border-b border-blue-500/20">
-                <div>
-                  <h3 className="text-xl font-black text-white">Change Investor Password</h3>
-                  <p className="text-sm text-blue-200 mt-1">Investment ID: {selectedInvestmentId || 'N/A'}</p>
-                </div>
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-[100001] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
+          <div className={`w-full max-w-md rounded-[2rem] border shadow-2xl overflow-hidden ${panelClass}`}>
+            <div className={`flex items-start justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
+              <div>
+                <h3 className="text-xl font-black text-white">Change Investor Password</h3>
+                <p className={`text-sm mt-1 ${softTextClass}`}>Investment ID: #{selectedInvestmentId || 'N/A'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPasswordModal(false)}
+                className={`rounded-full p-2 transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                }`}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleInvestorPasswordSubmit} className="space-y-5 px-6 py-6">
+              <div className="space-y-2">
+                <label className={`block text-[11px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>New Investor Password</label>
+                <input
+                  type={showPasswordText ? 'text' : 'password'}
+                  value={newInvestorPassword}
+                  onChange={(e) => setNewInvestorPassword(e.target.value)}
+                  placeholder="Enter new investor password"
+                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className={`block text-[11px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>Confirm Investor Password</label>
+                <input
+                  type={showPasswordText ? 'text' : 'password'}
+                  value={confirmInvestorPassword}
+                  onChange={(e) => setConfirmInvestorPassword(e.target.value)}
+                  placeholder="Confirm new investor password"
+                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-3">
+                <label className={`inline-flex items-center gap-2 text-sm cursor-pointer text-slate-200`}>
+                  <input
+                    type="checkbox"
+                    checked={showPasswordText}
+                    onChange={() => setShowPasswordText(!showPasswordText)}
+                    className="accent-blue-400"
+                  />
+                  Show password
+                </label>
                 <button
                   type="button"
-                  onClick={() => setShowPasswordModal(false)}
-                  className="text-blue-200 hover:text-white transition-colors"
+                  onClick={() => setShowPasswordText(!showPasswordText)}
+                  className="inline-flex items-center gap-2 rounded-full border border-blue-500/40 bg-blue-900/40 px-3 py-2 text-xs font-bold text-blue-100 hover:bg-blue-800 transition"
                 >
-                  <X size={20} />
+                  {showPasswordText ? <EyeOff size={14} /> : <Eye size={14} />} {showPasswordText ? 'Hide' : 'Reveal'}
                 </button>
               </div>
 
-              <form onSubmit={handleInvestorPasswordSubmit} className="space-y-5 px-6 py-6">
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-[0.24em] text-blue-200">New Investor Password</label>
-                  <input
-                    type={showPasswordText ? 'text' : 'password'}
-                    value={newInvestorPassword}
-                    onChange={(e) => setNewInvestorPassword(e.target.value)}
-                    placeholder="Enter new investor password"
-                    className="w-full rounded-2xl border border-blue-500/30 bg-[#071127] px-4 py-3 text-sm text-slate-100 placeholder:text-blue-200/60 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-                  />
+              {passwordError && (
+                <div className="rounded-2xl bg-rose-500/10 border border-rose-400/20 px-4 py-3 text-sm text-rose-100">
+                  {passwordError}
                 </div>
+              )}
 
-                <div className="space-y-2">
-                  <label className="block text-[11px] font-black uppercase tracking-[0.24em] text-blue-200">Confirm Investor Password</label>
-                  <input
-                    type={showPasswordText ? 'text' : 'password'}
-                    value={confirmInvestorPassword}
-                    onChange={(e) => setConfirmInvestorPassword(e.target.value)}
-                    placeholder="Confirm new investor password"
-                    className="w-full rounded-2xl border border-blue-500/30 bg-[#071127] px-4 py-3 text-sm text-slate-100 placeholder:text-blue-200/60 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-3">
-                  <label className="inline-flex items-center gap-2 text-sm text-blue-100 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showPasswordText}
-                      onChange={() => setShowPasswordText(!showPasswordText)}
-                      className="accent-blue-400"
-                    />
-                    Show password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowPasswordText(!showPasswordText)}
-                    className="inline-flex items-center gap-2 rounded-full border border-blue-500/40 bg-blue-900/40 px-3 py-2 text-xs font-bold text-blue-100 hover:bg-blue-800 transition"
-                  >
-                    {showPasswordText ? <EyeOff size={14} /> : <Eye size={14} />} {showPasswordText ? 'Hide' : 'Reveal'}
-                  </button>
-                </div>
-
-                {passwordError && (
-                  <div className="rounded-2xl bg-rose-500/10 border border-rose-400/20 px-4 py-3 text-sm text-rose-100">
-                    {passwordError}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  className="w-full rounded-2xl bg-blue-500 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/20 hover:bg-blue-400 transition"
-                >
-                  Update Investor Password
-                </button>
-              </form>
-            </div>
+              <button
+                type="submit"
+                className={`w-full py-3 rounded-2xl font-black text-sm hover:scale-[1.02] transition-all uppercase tracking-widest ${goldButtonClass}`}
+              >
+                Update Investor Password
+              </button>
+            </form>
           </div>
-        )}
+        </div>
+      )}
     </>
   );
 }
