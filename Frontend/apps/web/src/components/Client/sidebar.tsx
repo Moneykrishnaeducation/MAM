@@ -21,6 +21,7 @@ export default function ClientSidebar() {
   const currentPath = usePathname();
   const [isOpen, setIsOpen] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (window.innerWidth < 768) {
@@ -43,6 +44,16 @@ export default function ClientSidebar() {
     return () => window.removeEventListener('client-invest-modal-toggle', handleModalToggle);
   }, []);
 
+  useEffect(() => {
+    const handleLogoutConfirmToggle = (e: Event) => {
+      const detail = (e as CustomEvent<{ isOpen: boolean }>).detail;
+      setIsLogoutConfirmOpen(Boolean(detail?.isOpen));
+    };
+
+    window.addEventListener('client-logout-confirm-toggle', handleLogoutConfirmToggle);
+    return () => window.removeEventListener('client-logout-confirm-toggle', handleLogoutConfirmToggle);
+  }, []);
+
   const navItems = [
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
@@ -54,6 +65,10 @@ export default function ClientSidebar() {
     { href: '/client/transaction', label: 'Transactions', icon: ArrowRightLeft },
     { href: '/client/privacy', label: 'Policies', icon: Shield  },
   ];
+
+  const requestLogout = () => {
+    window.dispatchEvent(new Event('client-request-logout'));
+  };
 
   return (
     <>
@@ -73,6 +88,7 @@ export default function ClientSidebar() {
             : 'w-0 p-0 overflow-hidden opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:p-0'
           }
           ${isModalOpen ? 'blur-sm brightness-50 pointer-events-none' : ''}
+          ${isLogoutConfirmOpen ? 'blur-md brightness-50 pointer-events-none' : ''}
         `} 
       >
         <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
@@ -136,7 +152,12 @@ export default function ClientSidebar() {
                 Premium Client
               </div>
             </div>
-            <button className="text-blue-300/50 hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-500/10" title="Logout">
+            <button
+              type="button"
+              onClick={requestLogout}
+              className="text-blue-300/50 hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-500/10"
+              title="Logout"
+            >
               <LogOut size={16} strokeWidth={2.5} />
             </button>
           </div>
