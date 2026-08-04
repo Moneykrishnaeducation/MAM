@@ -5,15 +5,27 @@ import Link from 'next/link';
 import { LogOut, X, Menu, TrendingUp } from 'lucide-react';
 
 export default function ClientHeader() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+
+    return window.innerWidth >= 768;
+  });
   const [displayName, setDisplayName] = useState('Client Portal');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
 
   useEffect(() => {
-    const handleToggle = () => setIsSidebarOpen(prev => !prev);
-    window.addEventListener('toggle-client-sidebar', handleToggle);
-    return () => window.removeEventListener('toggle-client-sidebar', handleToggle);
+    const handleSidebarStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ isOpen: boolean }>).detail;
+      if (typeof detail?.isOpen === 'boolean') {
+        setIsSidebarOpen(detail.isOpen);
+      }
+    };
+
+    window.addEventListener('client-sidebar-state-change', handleSidebarStateChange);
+    return () => window.removeEventListener('client-sidebar-state-change', handleSidebarStateChange);
   }, []);
 
   useEffect(() => {
@@ -83,7 +95,11 @@ export default function ClientHeader() {
   }, []);
 
   const toggleSidebar = () => {
-    window.dispatchEvent(new Event('toggle-client-sidebar'));
+    window.dispatchEvent(
+      new CustomEvent('client-sidebar-state-change', {
+        detail: { isOpen: !isSidebarOpen },
+      }),
+    );
   };
 
   const requestLogout = () => {
@@ -114,13 +130,15 @@ export default function ClientHeader() {
   return (
     <header className="h-16 flex items-center justify-between px-6 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-b border-blue-800/50 sticky top-0 z-30 w-full shadow-md shadow-blue-900/20">
       {/* Left: Sidebar Toggle */}
-      <div>
-        <button 
-          onClick={toggleSidebar} 
-          className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-slate-800"
-        >
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+      <div className="w-10 flex items-center justify-start">
+        {!isSidebarOpen && (
+          <button 
+            onClick={toggleSidebar} 
+            className="text-slate-400 hover:text-white transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-slate-800"
+          >
+            <Menu size={20} />
+          </button>
+        )}
       </div>
 
       {/* Center: Brand Name */}

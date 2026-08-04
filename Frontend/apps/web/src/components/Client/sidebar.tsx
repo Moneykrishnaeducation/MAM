@@ -10,6 +10,7 @@ import {
   Compass, 
   Shield,
   LogOut,
+  X,
   Activity,
   LifeBuoy,
   ArrowRightLeft,
@@ -19,20 +20,26 @@ import {
 export default function ClientSidebar() {
 
   const currentPath = usePathname();
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+
+    return window.innerWidth >= 768;
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setIsOpen(false);
-    }
-  }, []);
+    const handleSidebarStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ isOpen: boolean }>).detail;
+      if (typeof detail?.isOpen === 'boolean') {
+        setIsOpen(detail.isOpen);
+      }
+    };
 
-  useEffect(() => {
-    const handleToggle = () => setIsOpen(prev => !prev);
-    window.addEventListener('toggle-client-sidebar', handleToggle);
-    return () => window.removeEventListener('toggle-client-sidebar', handleToggle);
+    window.addEventListener('client-sidebar-state-change', handleSidebarStateChange);
+    return () => window.removeEventListener('client-sidebar-state-change', handleSidebarStateChange);
   }, []);
 
   useEffect(() => {
@@ -70,12 +77,28 @@ export default function ClientSidebar() {
     window.dispatchEvent(new Event('client-request-logout'));
   };
 
+  const handleNavClick = () => {
+    if (window.innerWidth < 768) {
+      window.dispatchEvent(
+        new CustomEvent('client-sidebar-state-change', {
+          detail: { isOpen: false },
+        }),
+      );
+    }
+  };
+
   return (
     <>
       {/* Mobile Sidebar Overlay Backdrop */}
       {isOpen && (
         <div 
-          onClick={() => setIsOpen(false)}
+          onClick={() =>
+            window.dispatchEvent(
+              new CustomEvent('client-sidebar-state-change', {
+                detail: { isOpen: false },
+              }),
+            )
+          }
           className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
         />
       )}
@@ -93,12 +116,27 @@ export default function ClientSidebar() {
       >
         <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
           {/* Brand Header */}
-          <div className="flex items-center gap-3 px-2 mb-10 mt-2">
+          <div className="flex items-center justify-between gap-3 px-2 mb-10 mt-2">
             <img
               src="/Vt.png"
               alt="VTIndex Logo"
               className="drop-shadow-[0_0_15px_rgba(201,162,39,0.4)] transition-transform hover:scale-[1.05] w-32"
             />
+            <button
+              type="button"
+              onClick={() =>
+                window.dispatchEvent(
+                  new CustomEvent('client-sidebar-state-change', {
+                    detail: { isOpen: false },
+                  }),
+                )
+              }
+              className="flex items-center justify-center h-9 w-9 rounded-xl border border-blue-800/40 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              title="Close menu"
+              aria-label="Close menu"
+            >
+              <X size={18} />
+            </button>
           </div>
 
           {/* Navigation */}
@@ -114,6 +152,7 @@ export default function ClientSidebar() {
                   key={item.href}
                   href={item.href as any}
                   prefetch={true}
+                  onClick={handleNavClick}
                   className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-[13px] transition-all duration-300 group ${
                     isActive
                       ? 'bg-white text-[#0a1435] shadow-[0_8px_30px_rgba(255,255,255,0.15)] translate-x-1 border border-white relative overflow-hidden'
