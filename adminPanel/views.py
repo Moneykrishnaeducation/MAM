@@ -17,9 +17,8 @@ from adminPanel.models import (
     ActivityLog,
     AdminUser,
     ClientUser,
-    Investor,
-    Manager,
     PendingRequest,
+    TradingAccount,
 )
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
@@ -187,8 +186,32 @@ async def admin_profile(request):
 async def list_client_users(request):
     """List client users directly from database."""
     client_users = await ClientUser.all()
-    results = [
-        {
+    results = []
+    for user in client_users:
+        # Fetch associated TradingAccount entries
+        t_accs = await TradingAccount.filter(user_id=user.id)
+        trading_accounts_data = [
+            {
+                "accNumber": acc.account_id,
+                "accountRole": "manager" if acc.account_type.upper() == "MAM" else "investor",
+                "type": acc.account_type,
+                "balance": float(acc.balance),
+                "equity": float(acc.equity),
+                "leverage": f"{acc.leverage}x",
+                "server": "VTIndex-Live01",
+                "currency": "USD",
+                "marginFree": float(acc.margin_free),
+                "activeTrades": 0,
+                "status": acc.status or "Active",
+                "agent": getattr(settings, 'MT5_DEFAULT_AGENT', 426) if acc.account_type.upper() == "MAM" else None,
+            }
+            for acc in t_accs
+        ]
+        
+        # Primary trading account (for backward compatibility / default view)
+        primary_acc = trading_accounts_data[0] if trading_accounts_data else None
+
+        results.append({
             "id": user.user_code or f"USR-{user.id:03d}",
             "name": user.name,
             "email": user.email,
@@ -199,13 +222,16 @@ async def list_client_users(request):
             "country": user.country,
             "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
             "avatar": user.avatar,
-            "tradingAccount": None,
-            "bankCrypto": None,
+            "tradingAccount": primary_acc,
+            "tradingAccounts": trading_accounts_data,
+            "bankCrypto": {
+                "accountMask": "**** 1234",
+                "bankName": "Equinix Direct",
+                "cryptoWallet": "Not Configured",
+            },
             "transactions": [],
             "tickets": [],
-        }
-        for user in client_users
-    ]
+        })
     return JsonResponse({"status": "ok", "users": results})
 
 
@@ -227,16 +253,16 @@ async def list_pending_requests(request):
 
 async def list_managers(request):
     """List MAM managers directly from database."""
-    managers = await Manager.all()
+    managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user")
     results = [
         {
             "id": m.id,
-            "name": m.name,
-            "email": m.email,
-            "strategy": m.strategy,
-            "aum": m.total_aum,
-            "performance_fee": f"{m.performance_fee}%",
-            "status": m.status,
+            "name": m.account_name or (m.user.name if m.user else "MAM Manager"),
+            "email": m.user.email if m.user else "manager@mam.com",
+            "strategy": m.risk_level or "Quantitative Grid",
+            "aum": float(m.balance),
+            "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
+            "status": m.status or "Active",
         }
         for m in managers
     ]
@@ -245,19 +271,20 @@ async def list_managers(request):
 
 async def list_investors(request):
     """List investors directly from database."""
-    investors = await Investor.all()
+    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
     results = [
         {
             "id": i.id,
-            "name": i.name,
-            "email": i.email,
-            "equity": i.equity,
-            "allocated_mam": i.allocated_mam,
-            "status": i.status,
+            "name": i.user.name if i.user else "Investor User",
+            "email": i.user.email if i.user else "investor@mam.com",
+            "equity": float(i.equity),
+            "allocated_mam": i.mam_master_account.account_id if i.mam_master_account else None,
+            "status": i.status or "Active",
         }
         for i in investors
     ]
     return JsonResponse({"status": "ok", "investors": results})
+
 
 
 async def list_activity_logs(request):

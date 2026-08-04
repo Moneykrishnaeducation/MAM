@@ -9,10 +9,8 @@ from adminPanel.models import (
     ActivityLog,
     AdminUser,
     ClientUser,
-    Investor,
-    MamAccount,
-    Manager,
     PendingRequest,
+    TradingAccount,
 )
 from backendPanel.permissions import IsAdmin, permission_required
 
@@ -52,24 +50,26 @@ def _dashboard_card(
 async def get_admin_dashboard(request):
     """Return the summary data used by the admin dashboard UI."""
 
-    managers = await Manager.all()
-    investors = await Investor.all()
-    mam_accounts = await MamAccount.all()
+    managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user")
+    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
+    mam_accounts = managers
     admin_users = await AdminUser.all()
     client_users = await ClientUser.all()
     pending_requests = await PendingRequest.all().order_by("-created_at").limit(5)
+
     pending_count = await PendingRequest.filter(status__iexact="pending").count()
     recent_activity_logs = await ActivityLog.all().order_by("-created_at").limit(5)
     recent_clients = await ClientUser.all().order_by("-joined").limit(5)
 
-    total_aum = sum(manager.total_aum for manager in managers)
-    total_managed_balance = sum(account.total_balance for account in mam_accounts)
+    total_aum = sum(float(manager.balance) for manager in managers)
+    total_managed_balance = total_aum
     if total_aum == 0:
         total_aum = total_managed_balance
 
     active_accounts = sum(
         1 for account in mam_accounts if str(account.status).strip().lower() in {"active", "operational"}
     )
+
 
     cards = [
         _dashboard_card(

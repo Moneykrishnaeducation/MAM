@@ -1,83 +1,152 @@
-"""MAM account creation endpoint for adminPanel."""
+"""MAM and Investor account creation API via MT5 integration."""
 
 import json
-import random
-import string
-
+import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.models import MamAccount
+from adminPanel.models import ClientUser, TradingAccount
+from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
 
-
-def _generate_mam_account_number(length: int = 6) -> str:
-    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
-    return f"MAM-{suffix}"
-
+logger = logging.getLogger(__name__)
 
 @csrf_exempt
 @permission_required(IsAdmin)
 @require_http_methods(["POST"])
-async def create_mam_account(request):
-    """Create a new MAM account."""
+async def create_account_api(request):
+    """
+    Unified API to create a MAM or Investor account with MT5 integration.
+    """
     try:
         body = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
 
-    account_number = str(body.get("account_number") or "").strip()
-    broker = str(body.get("broker") or "Equinix Direct").strip()
-    master_strategy = str(body.get("master_strategy") or "").strip()
-    leverage = str(body.get("leverage") or "1:500").strip()
-    status = str(body.get("status") or "Operational").strip()
+    acc_type = body.get("type")  # "manager" | "investor"
+    user_id_str = body.get("userId")  # "USR-XXX" or database pk
+    
+    if not acc_type or not user_id_str:
+        return JsonResponse({"status": "error", "message": "type and userId are required"}, status=400)
+    
+    # Resolve user
+    user = None
+    if str(user_id_str).startswith("USR-"):
+        try:
+            pk_val = int(user_id_str.split("-")[1])
+            user = await ClientUser.filter(id=pk_val).first()
+        except (ValueError, IndexError):
+            pass
+    if not user:
+        try:
+            user = await ClientUser.filter(id=int(user_id_str)).first()
+        except (ValueError, TypeError):
+            pass
+    if not user:
+        user = await ClientUser.filter(user_code=user_id_str).first()
+        
+    if not user:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
 
     try:
-        total_balance = float(body.get("total_balance") or 0.0)
-    except (TypeError, ValueError):
-        return JsonResponse(
-            {"status": "error", "message": "total_balance must be a valid number"},
-            status=400,
+        mt5 = MT5ManagerActions()
+    except Exception as e:
+        logger.error(f"MT5 Manager init failed: {e}")
+        return JsonResponse({"status": "error", "message": f"MT5 connection failed: {e}"}, status=500)
+
+    if acc_type == "manager" or acc_type == "master":
+        account_name = body.get("accountName", f"{user.name} MAM Master")
+        leverage_str = body.get("leverage", "500x").replace("x", "")
+        try:
+            leverage = int(leverage_str)
+        except ValueError:
+            leverage = 500
+        
+        master_password = body.get("masterPassword")
+        investor_password = body.get("investorPassword")
+        agent = body.get("agent")
+        try:
+            agent_id = int(agent) if agent else 0
+        except (ValueError, TypeError):
+            agent_id = 0
+        
+        try:
+            profit_share = float(body.get("profitShare", 20))
+        except (ValueError, TypeError):
+            profit_share = 20.0
+            
+        result = mt5.create_mam_account(
+            name=user.name,
+            email=user.email,
+            phone=user.phone or "",
+            country=user.country or "United States",
+            leverage=leverage,
+            master_password=master_password,
+            investor_password=investor_password,
+            initial_balance=0.0,
+            user_id=user.id,
+            agent=agent_id
         )
 
-    if not master_strategy:
-        return JsonResponse(
-            {"status": "error", "message": "master_strategy is required"},
-            status=400,
-        )
 
-    if not account_number:
-        account_number = _generate_mam_account_number()
-
-    while await MamAccount.filter(account_number=account_number).exists():
-        account_number = _generate_mam_account_number()
-
-    mam_account = await MamAccount.create(
-        account_number=account_number,
-        broker=broker,
-        master_strategy=master_strategy,
-        leverage=leverage,
-        total_balance=total_balance,
-        status=status,
-    )
-
-    return JsonResponse(
-        {
+        if not result:
+            return JsonResponse({"status": "error", "message": "Failed to create MAM account on MT5"}, status=500)
+            
+        trading_account = await TradingAccount.get(id=result["trading_account_id"])
+        trading_account.account_name = account_name
+        trading_account.user = user
+        trading_account.profit_sharing_percentage = profit_share
+        trading_account.risk_level = body.get("riskLevel", "Medium")
+        trading_account.payout_frequency = body.get("payoutFrequency", "Weekly")
+        await trading_account.save()
+        
+        return JsonResponse({
             "status": "ok",
-            "message": "MAM account created successfully",
-            "mam_account": {
-                "id": mam_account.id,
-                "account_number": mam_account.account_number,
-                "broker": mam_account.broker,
-                "master_strategy": mam_account.master_strategy,
-                "leverage": mam_account.leverage,
-                "total_balance": mam_account.total_balance,
-                "status": mam_account.status,
-                "created_at": mam_account.created_at.strftime("%Y-%m-%d %H:%M:%S")
-                if mam_account.created_at
-                else None,
-            },
-        },
-        status=201,
-    )
+            "message": "MAM master account created successfully",
+            "account": {
+                "login": result["login"],
+                "group": result["group"],
+            }
+        })
+        
+    elif acc_type == "investor":
+        manager_acc = body.get("managerAccNumber")
+        mam_master = await TradingAccount.filter(account_id=str(manager_acc), account_type="MAM").first()
+        if not mam_master:
+            return JsonResponse({"status": "error", "message": f"MAM Master account {manager_acc} not found"}, status=404)
+            
+        investment_pwd = body.get("investmentPassword")
+        
+        result = mt5.create_investor_account(
+            name=user.name,
+            email=user.email,
+            phone=user.phone or "",
+            country=user.country or "United States",
+            leverage=mam_master.leverage,
+            master_password=investment_pwd,
+            investor_password=investment_pwd,
+            mam_master_login=int(mam_master.account_id),
+            initial_balance=0.0,
+            user_id=user.id
+        )
+
+        if not result:
+            return JsonResponse({"status": "error", "message": "Failed to create investor account on MT5"}, status=500)
+            
+        trading_account = await TradingAccount.get(id=result["trading_account_id"])
+        trading_account.user = user
+        trading_account.mam_master_account = mam_master
+        await trading_account.save()
+        
+        return JsonResponse({
+            "status": "ok",
+            "message": "Investor account created successfully",
+            "account": {
+                "login": result["login"],
+                "group": result["group"],
+            }
+        })
+        
+    else:
+        return JsonResponse({"status": "error", "message": "Invalid account type specifier"}, status=400)

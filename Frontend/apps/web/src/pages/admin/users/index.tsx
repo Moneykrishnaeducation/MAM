@@ -1561,9 +1561,19 @@ export default function AdminUsersPage() {
     showToast(`User ${userName} deleted successfully`);
   };
 
+  const refreshUsers = () => {
+    fetch('/api/admin/users')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.users && Array.isArray(data.users)) setUsers(data.users);
+      })
+      .catch(() => {});
+  };
+
   const handleAddAccountSubmit = (userName: string) => {
     closeModal();
     showToast(`New MT5 Live Account initialized for ${userName}`);
+    refreshUsers();
   };
 
   const filteredUsers = users.filter(

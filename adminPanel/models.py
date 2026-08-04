@@ -1,4 +1,4 @@
-"""Models for adminPanel: Users, Managers, Investors, MAM Accounts, Pending Requests, Activity Logs, Client Profiles & Accounts."""
+"""Models for adminPanel: Users, TradingAccount (MAM + Investor unified), Pending Requests, Activity Logs, Client Profiles & Accounts."""
 
 import logging
 
@@ -55,52 +55,108 @@ class ClientUser(models.Model):
         return f"<ClientUser(id={self.id}, name={self.name}, email={self.email})>"
 
 
-class Manager(models.Model):
-    """MAM Manager model."""
+class TradingAccount(models.Model):
+    """
+    Unified trading account model for both MAM master accounts and investor accounts.
 
+    account_type choices:
+        - "MAM"      : MAM master / money-manager account
+        - "Investor" : Investor (follower) account linked to a MAM master
+
+    Self-referential FK:
+        mam_master_account → points to the MAM master TradingAccount
+        (null for MAM masters themselves).
+    """
+
+    # ── Identity ──────────────────────────────────────────────────────────
     id = fields.IntField(primary_key=True)
-    name = fields.CharField(max_length=255)
-    email = fields.CharField(max_length=255, unique=True)
-    strategy = fields.CharField(max_length=255, default="Quantitative Grid")
-    performance_fee = fields.FloatField(default=20.0)
-    total_aum = fields.FloatField(default=0.0)
-    status = fields.CharField(max_length=50, default="Active")
+    account_id = fields.CharField(max_length=100)          # MT5 login number
+    account_type = fields.CharField(max_length=20)         # "MAM" | "Investor"
+    account_name = fields.CharField(max_length=255)
+
+    # ── Owner ─────────────────────────────────────────────────────────────
+    # Refers to the client user who owns this account
+    user = fields.ForeignKeyField(
+        "models.ClientUser",
+        related_name="trading_accounts",
+        on_delete=fields.CASCADE,
+    )
+
+    # ── MAM hierarchy ─────────────────────────────────────────────────────
+    # Null for MAM masters; set for investor accounts
+    mam_master_account = fields.ForeignKeyField(
+        "models.TradingAccount",
+        related_name="investor_accounts",
+        null=True,
+        on_delete=fields.SET_NULL,
+    )
+
+    # ── Approved by (admin user) ──────────────────────────────────────────
+    approved_by = fields.ForeignKeyField(
+        "models.AdminUser",
+        related_name="approved_accounts",
+        null=True,
+        on_delete=fields.SET_NULL,
+    )
+
+    # ── Trading state ─────────────────────────────────────────────────────
+    leverage = fields.IntField(default=100)
+    is_enabled = fields.BooleanField(default=True)
+    is_trading_enabled = fields.BooleanField(default=True)
+    is_algo_enabled = fields.BooleanField(default=False)
+    algo_enabled = fields.BooleanField(default=False)       # legacy alias
+    is_pending = fields.BooleanField(default=False)
+
+    # ── Financial snapshot (synced from MT5) ──────────────────────────────
+    balance = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    equity = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    margin = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    margin_free = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    margin_level = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
+    # ── MAM / copy-trade configuration ────────────────────────────────────
+    manager_allow_copy = fields.BooleanField(default=False)
+    investor_allow_copy = fields.BooleanField(default=False)
+    copy_trade_enabled = fields.BooleanField(default=False)
+    dual_trade_enabled = fields.BooleanField(default=False)
+    copy_mode = fields.CharField(max_length=20, null=True)          # e.g. "Fixed" | "Proportional"
+    copy_factor = fields.DecimalField(max_digits=10, decimal_places=2, null=True)
+    copy_multiplier_mode = fields.CharField(max_length=50, default="Fixed")
+    fixed_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    max_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
+    multi_trade_count = fields.IntField(default=1)                  # must be >= 0
+
+    # ── Profit & risk ─────────────────────────────────────────────────────
+    profit_sharing_percentage = fields.DecimalField(max_digits=5, decimal_places=2, null=True)
+    risk_level = fields.CharField(max_length=10, null=True)         # e.g. "Low" | "Med" | "High"
+    payout_frequency = fields.CharField(max_length=20, null=True)   # e.g. "Monthly"
+
+    # ── Lifecycle timestamps ──────────────────────────────────────────────
+    status = fields.CharField(max_length=20, null=True, default="Active")
+    start_date = fields.DatetimeField(null=True)
+    end_date = fields.DatetimeField(null=True)
+    approved_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
-        table = "admin_managers"
+        table = "trading_accounts"
 
+    def __repr__(self) -> str:
+        return (
+            f"<TradingAccount(id={self.id}, type={self.account_type}, "
+            f"account_id={self.account_id}, name={self.account_name})>"
+        )
 
-class Investor(models.Model):
-    """Investor model managed in Admin Panel."""
+    @property
+    def is_mam_master(self) -> bool:
+        """True when this account is a MAM master (manager) account."""
+        return self.account_type == "MAM"
 
-    id = fields.IntField(primary_key=True)
-    name = fields.CharField(max_length=255)
-    email = fields.CharField(max_length=255, unique=True)
-    account_number = fields.CharField(max_length=100, unique=True, null=True)
-    equity = fields.FloatField(default=0.0)
-    allocated_mam = fields.CharField(max_length=255, null=True)
-    status = fields.CharField(max_length=50, default="Active")
-    created_at = fields.DatetimeField(auto_now_add=True)
+    @property
+    def is_investor(self) -> bool:
+        """True when this account belongs to an investor (follower)."""
+        return self.account_type == "Investor"
 
-    class Meta:
-        table = "admin_investors"
-
-
-class MamAccount(models.Model):
-    """MAM Account model."""
-
-    id = fields.IntField(primary_key=True)
-    account_number = fields.CharField(max_length=100, unique=True)
-    broker = fields.CharField(max_length=100, default="Equinix Direct")
-    master_strategy = fields.CharField(max_length=255)
-    leverage = fields.CharField(max_length=20, default="1:500")
-    total_balance = fields.FloatField(default=0.0)
-    status = fields.CharField(max_length=50, default="Operational")
-    created_at = fields.DatetimeField(auto_now_add=True)
-
-    class Meta:
-        table = "admin_mam_accounts"
 
 
 class PendingRequest(models.Model):

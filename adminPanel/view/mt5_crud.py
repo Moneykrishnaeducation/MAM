@@ -2,7 +2,7 @@ import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
-from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, MamAccount, Investor, ClientUser
+from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount, ClientUser
 
 # Helper to serialize Decimal/datetime values
 def clean_data(val):
@@ -364,16 +364,16 @@ async def trade_group_detail_update_delete(request, pk):
 @require_http_methods(["GET", "POST"])
 async def mam_accounts_list_create(request):
     if request.method == "GET":
-        accounts = await MamAccount.all().order_by("-created_at")
+        accounts = await TradingAccount.filter(account_type="MAM").order_by("-created_at")
         results = [
             {
                 "id": a.id,
-                "account_number": a.account_number,
-                "broker": a.broker,
-                "master_strategy": a.master_strategy,
-                "leverage": a.leverage,
-                "total_balance": clean_data(a.total_balance),
-                "status": a.status,
+                "account_number": a.account_id,
+                "broker": "Equinix Direct",
+                "master_strategy": "Quantitative Grid",
+                "leverage": f"1:{a.leverage}",
+                "total_balance": clean_data(a.balance),
+                "status": a.status or "Active",
                 "created_at": clean_data(a.created_at),
             }
             for a in accounts
@@ -383,20 +383,44 @@ async def mam_accounts_list_create(request):
     elif request.method == "POST":
         try:
             body = json.loads(request.body)
-            a = await MamAccount.create(
-                account_number=body.get("account_number"),
-                broker=body.get("broker", "Equinix Direct"),
-                master_strategy=body.get("master_strategy"),
-                leverage=body.get("leverage", "1:500"),
-                total_balance=float(body.get("total_balance", 0.0)),
-                status=body.get("status", "Operational"),
+            # Default to first user if none supplied since user_id is required
+            first_user = await ClientUser.first()
+            if not first_user:
+                return JsonResponse({"status": "error", "message": "No client user exists to own the MAM account"}, status=400)
+            
+            try:
+                lev = int(str(body.get("leverage", "500")).split(":")[-1])
+            except Exception:
+                lev = 500
+
+            a = await TradingAccount.create(
+                account_id=body.get("account_number"),
+                account_type="MAM",
+                account_name=body.get("account_number", "MAM Master"),
+                user=first_user,
+                leverage=lev,
+                balance=float(body.get("total_balance", 0.0)),
+                equity=float(body.get("total_balance", 0.0)),
+                margin=0,
+                margin_free=0,
+                margin_level=0,
+                is_enabled=True,
+                is_trading_enabled=True,
+                is_algo_enabled=False,
+                is_pending=False,
+                manager_allow_copy=True,
+                investor_allow_copy=False,
+                copy_trade_enabled=False,
+                dual_trade_enabled=False,
+                copy_multiplier_mode="Fixed",
+                status=body.get("status", "Active"),
             )
             return JsonResponse({
                 "status": "ok",
                 "message": "MAM account created successfully",
                 "mam_account": {
                     "id": a.id,
-                    "account_number": a.account_number,
+                    "account_number": a.account_id,
                     "status": a.status,
                 }
             }, status=201)
@@ -407,7 +431,7 @@ async def mam_accounts_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def mam_account_detail_update_delete(request, pk):
-    account = await MamAccount.filter(id=pk).first()
+    account = await TradingAccount.filter(id=pk, account_type="MAM").first()
     if not account:
         return JsonResponse({"status": "error", "message": "MAM account not found"}, status=404)
 
@@ -416,12 +440,12 @@ async def mam_account_detail_update_delete(request, pk):
             "status": "ok",
             "mam_account": {
                 "id": account.id,
-                "account_number": account.account_number,
-                "broker": account.broker,
-                "master_strategy": account.master_strategy,
-                "leverage": account.leverage,
-                "total_balance": clean_data(account.total_balance),
-                "status": account.status,
+                "account_number": account.account_id,
+                "broker": "Equinix Direct",
+                "master_strategy": "Quantitative Grid",
+                "leverage": f"1:{account.leverage}",
+                "total_balance": clean_data(account.balance),
+                "status": account.status or "Active",
                 "created_at": clean_data(account.created_at),
             }
         })
@@ -430,15 +454,14 @@ async def mam_account_detail_update_delete(request, pk):
         try:
             body = json.loads(request.body)
             if "account_number" in body:
-                account.account_number = body["account_number"]
-            if "broker" in body:
-                account.broker = body["broker"]
-            if "master_strategy" in body:
-                account.master_strategy = body["master_strategy"]
+                account.account_id = body["account_number"]
             if "leverage" in body:
-                account.leverage = body["leverage"]
+                try:
+                    account.leverage = int(str(body["leverage"]).split(":")[-1])
+                except Exception:
+                    pass
             if "total_balance" in body:
-                account.total_balance = float(body["total_balance"])
+                account.balance = float(body["total_balance"])
             if "status" in body:
                 account.status = body["status"]
             await account.save()
@@ -447,7 +470,7 @@ async def mam_account_detail_update_delete(request, pk):
                 "message": "MAM account updated successfully",
                 "mam_account": {
                     "id": account.id,
-                    "account_number": account.account_number,
+                    "account_number": account.account_id,
                     "status": account.status,
                 }
             })
@@ -459,22 +482,23 @@ async def mam_account_detail_update_delete(request, pk):
         return JsonResponse({"status": "ok", "message": "MAM account deleted successfully"})
 
 
+
 # ================= INVESTOR (MAM INVESTOR) CRUD =================
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def investors_list_create(request):
     if request.method == "GET":
-        investors = await Investor.all().order_by("-created_at")
+        investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account").order_by("-created_at")
         results = [
             {
                 "id": i.id,
-                "name": i.name,
-                "email": i.email,
-                "account_number": i.account_number,
+                "name": i.user.name if i.user else "Investor User",
+                "email": i.user.email if i.user else "investor@mam.com",
+                "account_number": i.account_id,
                 "equity": clean_data(i.equity),
-                "allocated_mam": i.allocated_mam,
-                "status": i.status,
+                "allocated_mam": i.mam_master_account.account_id if i.mam_master_account else None,
+                "status": i.status or "Active",
                 "created_at": clean_data(i.created_at),
             }
             for i in investors
@@ -484,12 +508,38 @@ async def investors_list_create(request):
     elif request.method == "POST":
         try:
             body = json.loads(request.body)
-            i = await Investor.create(
-                name=body.get("name"),
-                email=body.get("email"),
-                account_number=body.get("account_number"),
+            # Default to first user if none exists
+            first_user = await ClientUser.first()
+            if not first_user:
+                return JsonResponse({"status": "error", "message": "No client user exists to own the Investor account"}, status=400)
+
+            # Find matching MAM master account if allocated_mam is set
+            mam_master = None
+            allocated_mam = body.get("allocated_mam")
+            if allocated_mam:
+                mam_master = await TradingAccount.filter(account_id=str(allocated_mam), account_type="MAM").first()
+
+            i = await TradingAccount.create(
+                account_id=body.get("account_number"),
+                account_type="Investor",
+                account_name=body.get("name", "MAM Investor"),
+                user=first_user,
+                mam_master_account=mam_master,
+                leverage=mam_master.leverage if mam_master else 100,
+                balance=float(body.get("equity", 0.0)),
                 equity=float(body.get("equity", 0.0)),
-                allocated_mam=body.get("allocated_mam"),
+                margin=0,
+                margin_free=0,
+                margin_level=0,
+                is_enabled=True,
+                is_trading_enabled=True,
+                is_algo_enabled=False,
+                is_pending=False,
+                manager_allow_copy=False,
+                investor_allow_copy=True,
+                copy_trade_enabled=True,
+                dual_trade_enabled=False,
+                copy_multiplier_mode="Fixed",
                 status=body.get("status", "Active"),
             )
             return JsonResponse({
@@ -497,8 +547,8 @@ async def investors_list_create(request):
                 "message": "MAM Investor created successfully",
                 "investor": {
                     "id": i.id,
-                    "name": i.name,
-                    "account_number": i.account_number,
+                    "name": i.account_name,
+                    "account_number": i.account_id,
                     "status": i.status,
                 }
             }, status=201)
@@ -509,7 +559,7 @@ async def investors_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def investor_detail_update_delete(request, pk):
-    investor = await Investor.filter(id=pk).first()
+    investor = await TradingAccount.filter(id=pk, account_type="Investor").prefetch_related("user", "mam_master_account").first()
     if not investor:
         return JsonResponse({"status": "error", "message": "MAM Investor not found"}, status=404)
 
@@ -518,12 +568,12 @@ async def investor_detail_update_delete(request, pk):
             "status": "ok",
             "investor": {
                 "id": investor.id,
-                "name": investor.name,
-                "email": investor.email,
-                "account_number": investor.account_number,
+                "name": investor.user.name if investor.user else "Investor User",
+                "email": investor.user.email if investor.user else "investor@mam.com",
+                "account_number": investor.account_id,
                 "equity": clean_data(investor.equity),
-                "allocated_mam": investor.allocated_mam,
-                "status": investor.status,
+                "allocated_mam": investor.mam_master_account.account_id if investor.mam_master_account else None,
+                "status": investor.status or "Active",
                 "created_at": clean_data(investor.created_at),
             }
         })
@@ -531,16 +581,21 @@ async def investor_detail_update_delete(request, pk):
     elif request.method == "PUT":
         try:
             body = json.loads(request.body)
-            if "name" in body:
-                investor.name = body["name"]
-            if "email" in body:
-                investor.email = body["email"]
+            if "name" in body and investor.user:
+                investor.user.name = body["name"]
+                await investor.user.save()
+            if "email" in body and investor.user:
+                investor.user.email = body["email"]
+                await investor.user.save()
             if "account_number" in body:
-                investor.account_number = body["account_number"]
+                investor.account_id = body["account_number"]
             if "equity" in body:
                 investor.equity = float(body["equity"])
+                investor.balance = float(body["equity"])
             if "allocated_mam" in body:
-                investor.allocated_mam = body["allocated_mam"]
+                mam_master = await TradingAccount.filter(account_id=str(body["allocated_mam"]), account_type="MAM").first()
+                if mam_master:
+                    investor.mam_master_account = mam_master
             if "status" in body:
                 investor.status = body["status"]
             await investor.save()
@@ -549,8 +604,8 @@ async def investor_detail_update_delete(request, pk):
                 "message": "MAM Investor updated successfully",
                 "investor": {
                     "id": investor.id,
-                    "name": investor.name,
-                    "account_number": investor.account_number,
+                    "name": investor.user.name if investor.user else "Investor User",
+                    "account_number": investor.account_id,
                     "status": investor.status,
                 }
             })
@@ -560,6 +615,7 @@ async def investor_detail_update_delete(request, pk):
     elif request.method == "DELETE":
         await investor.delete()
         return JsonResponse({"status": "ok", "message": "MAM Investor deleted successfully"})
+
 
 
 # ================= SYNC GROUPS FROM MT5 =================

@@ -12,7 +12,7 @@ import os
 import json
 from asgiref.sync import async_to_sync
 
-from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, MamAccount, Investor
+from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount
 
 logger = logging.getLogger(__name__)
 
@@ -177,25 +177,15 @@ def get_cached_account_data(login_id, data_type="balance"):
 def _remove_trading_account_from_db(login_id, reason=None):
     try:
         async def mark_inactive():
-            updated = False
-            # Check MamAccount
-            ma = await MamAccount.filter(account_number=str(login_id)).first()
-            if ma:
-                await MamAccount.filter(account_number=str(login_id)).update(status="Disabled")
-                updated = True
-            # Check Investor
-            inv = await Investor.filter(account_number=str(login_id)).first()
-            if inv:
-                await Investor.filter(account_number=str(login_id)).update(status="Disabled")
-                updated = True
-            return updated
+            updated = await TradingAccount.filter(account_id=str(login_id)).update(status="Disabled", is_enabled=False)
+            return updated > 0
         updated = run_async(mark_inactive())
         if updated:
-            logger.info(f"Marked Mam/Investor Account inactive for missing MT5 account {login_id}. Reason: {reason}")
+            logger.info(f"Marked TradingAccount inactive for missing MT5 account {login_id}. Reason: {reason}")
             return True
         return False
     except Exception as e:
-        logger.error(f"Failed to remove Mam/Investor Account for login_id {login_id}: {e}")
+        logger.error(f"Failed to mark TradingAccount inactive for login_id {login_id}: {e}")
         return False
 
 def cache_failed_account_lookup(login_id, data_type="balance", cache_duration=300):
@@ -218,7 +208,10 @@ class MT5ManagerAPI:
         os.makedirs(base_directory, exist_ok=True)
         instance_directory = os.path.join(base_directory, unique_id)
         os.makedirs(instance_directory, exist_ok=True)
-        MT5Manager.InitializeManagerAPIPath(module_path=instance_directory, work_path=instance_directory)
+        MT5Manager.InitializeManagerAPIPath(
+            module_path=os.path.dirname(MT5Manager.__file__),
+            work_path=instance_directory
+        )
        
         self.manager = MT5Manager.ManagerAPI()
         self.connected = False
@@ -437,3 +430,590 @@ class MT5ManagerActions:
         except Exception as e:
             logger.error(f"Error syncing MT5 groups: {str(e)}")
             return False
+
+    # ─────────────────────────────────────────────────────────────
+    # Password generator
+    # ─────────────────────────────────────────────────────────────
+
+    def _generate_password(self, length=8):
+        """Generate a secure password that meets MT5 requirements (e.g. Test_123 format)."""
+        import random
+        import string
+        uppercase = random.choice(string.ascii_uppercase)
+        lowercase_part = "".join(random.choices(string.ascii_lowercase, k=3))
+        digits_part = "".join(random.choices(string.digits, k=3))
+        return f"{uppercase}{lowercase_part}_{digits_part}"
+
+    # ─────────────────────────────────────────────────────────────
+    # Group helpers
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def get_group_list(self, account_type: str = "real") -> list:
+        """Return all MT5 group names, optionally filtering by 'real' or 'demo'."""
+        groups = []
+        try:
+            total = self.manager.GroupTotal()
+            for i in range(total):
+                try:
+                    grp = self.manager.GroupNext(i)
+                    if grp and hasattr(grp, "Group"):
+                        groups.append(grp.Group)
+                except Exception as exc:
+                    logger.error(f"Error getting group at index {i}: {exc}")
+            if account_type.lower() == "demo":
+                groups = [g for g in groups if "demo" in g.lower()]
+            elif account_type.lower() == "real":
+                groups = [g for g in groups if "demo" not in g.lower()]
+        except Exception as exc:
+            logger.error(f"Critical error in get_group_list: {exc}")
+        return groups
+
+    @ensure_connected
+    def get_group_configuration(self, group_name: str):
+        """Return leverage limits and currency for a specific MT5 group."""
+        try:
+            for i in range(self.manager.GroupTotal()):
+                grp = self.manager.GroupNext(i)
+                if grp and grp.Group == group_name:
+                    return {
+                        "name": grp.Group,
+                        "leverage_max": getattr(grp, "LeverageMax", 1000),
+                        "leverage_min": getattr(grp, "LeverageMin", 1),
+                        "is_demo": "demo" in grp.Group.lower(),
+                        "currency": getattr(grp, "Currency", "USD"),
+                    }
+        except Exception as exc:
+            logger.error(f"Error getting group configuration for {group_name}: {exc}")
+        return None
+
+    # ─────────────────────────────────────────────────────────────
+    # MAM Account creation
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def create_mam_account(
+        self,
+        name: str = "",
+        email: str = "",
+        phone: str = "",
+        country: str = "",
+        group=None,
+        leverage: int = 100,
+        master_password=None,
+        investor_password=None,
+        master_strategy: str = "Quantitative Grid",
+        broker: str = "Equinix Direct",
+        initial_balance: float = 0.0,
+        user_id: int = 0,
+        agent: int = 0,
+    ):
+
+
+        """
+        Create a new MT5 account for a MAM Manager and persist a MamAccount record.
+
+        MT5 Agent is set to 0 (this account IS the master).
+        Returns a dict with keys:
+            login, group, master_password, investor_password, mam_account_id
+        or None on failure.
+        """
+        try:
+            # ── 1. Resolve group ──────────────────────────────────────────
+            available_groups = self.get_group_list("real")
+            if not available_groups:
+                logger.error("[MAM] No real groups available on MT5 server.")
+                return None
+
+            if group and group in available_groups:
+                selected_group = group
+            else:
+                async def _get_default_group():
+                    return await TradeGroup.filter(is_default=True, is_active=True).first()
+                default_tg = run_async(_get_default_group())
+                if default_tg and default_tg.name in available_groups:
+                    selected_group = default_tg.name
+                else:
+                    selected_group = available_groups[0]
+                    logger.warning(f"[MAM] No configured default group; falling back to: {selected_group}")
+
+            # ── 2. Build MT5 user object ─────────────────────────────────
+            user = MT5Manager.MTUser(self.manager)
+            user.Group    = str(selected_group)
+            user.Leverage = int(leverage)
+            user.Rights   = account_create_rights
+
+            parts = name.strip().split(" ", 1) if name else [""]
+            user.FirstName = parts[0]
+            user.LastName  = parts[1] if len(parts) > 1 else ""
+            if email:   user.EMail   = str(email)
+            if phone:   user.Phone   = str(phone)
+            if country: user.Country = str(country)
+            # Get the agent from settings
+            from django.conf import settings
+            agent_value = getattr(settings, 'MT5_DEFAULT_AGENT', 426)
+            user.Agent = int(agent_value) if agent_value else 0
+
+
+            # ── 3. Passwords ─────────────────────────────────────────────
+            master_pwd   = str(master_password)   if master_password   else self._generate_password()
+            investor_pwd = str(investor_password) if investor_password else self._generate_password()
+
+            logger.info(
+                f"[MAM] Creating MAM master account: name='{name}', email='{email}', "
+                f"group='{selected_group}', leverage={leverage}"
+            )
+
+            # ── 4. Add to MT5 ────────────────────────────────────────────
+            if not self.manager.UserAdd(user, master_pwd, investor_pwd):
+                last_err = MT5Manager.LastError()
+                logger.error(f"[MAM] MT5 UserAdd failed: {last_err}")
+                return None
+
+            mt5_login = user.Login
+            logger.info(f"[MAM] MT5 master account created: login={mt5_login}")
+
+            # ── 5. Set leverage explicitly after creation ─────────────────
+            try:
+                self.change_leverage(mt5_login, leverage)
+            except Exception as exc:
+                logger.warning(f"[MAM] Could not set leverage for {mt5_login}: {exc}")
+
+            # ── 5.5 Link agent explicitly ─────────────────────────────────
+            if agent_value:
+                try:
+                    user_mt5 = self.manager.UserGet(mt5_login)
+                    if user_mt5:
+                        user_mt5.Agent = int(agent_value)
+                        self.manager.UserUpdate(user_mt5)
+                except Exception as exc:
+                    logger.warning(f"[MAM] Could not explicitly set agent {agent_value} for MAM master {mt5_login}: {exc}")
+
+
+            # ── 6. Deposit initial balance if requested ───────────────────
+            if initial_balance > 0:
+                try:
+                    self.deposit_funds(mt5_login, initial_balance, "Initial MAM Balance")
+                except Exception as exc:
+                    logger.warning(f"[MAM] Could not deposit initial balance for {mt5_login}: {exc}")
+
+            # ── 7. Persist TradingAccount record in DB (type=MAM) ────────────
+            async def _save_mam(user_id):
+                return await TradingAccount.create(
+                    account_id=str(mt5_login),
+                    account_type="MAM",
+                    account_name=name or email,
+                    user_id=user_id,
+                    leverage=leverage,
+                    balance=initial_balance,
+                    equity=initial_balance,
+                    margin=0,
+                    margin_free=0,
+                    margin_level=0,
+                    is_enabled=True,
+                    is_trading_enabled=True,
+                    is_algo_enabled=False,
+                    algo_enabled=False,
+                    is_pending=False,
+                    manager_allow_copy=True,
+                    investor_allow_copy=False,
+                    copy_trade_enabled=False,
+                    dual_trade_enabled=False,
+                    copy_multiplier_mode="Fixed",
+                    fixed_copy_multiplier=1,
+                    max_copy_multiplier=1,
+                    multi_trade_count=1,
+                    status="Active",
+                )
+            mam_record = run_async(_save_mam(user_id=user_id))
+
+            logger.info(f"[MAM] TradingAccount (MAM) DB record created: id={mam_record.id}, account_id={mt5_login}")
+
+            return {
+                "login":             mt5_login,
+                "group":             selected_group,
+                "master_password":   master_pwd,
+                "investor_password": investor_pwd,
+                "trading_account_id": mam_record.id,
+            }
+
+        except Exception as exc:
+            logger.error(f"[MAM] create_mam_account error: {exc}")
+            return None
+
+    # ─────────────────────────────────────────────────────────────
+    # Investor Account creation
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def create_investor_account(
+        self,
+        name: str = "",
+        email: str = "",
+        phone: str = "",
+        country: str = "",
+        group=None,
+        leverage: int = 100,
+        master_password=None,
+        investor_password=None,
+        mam_master_login=None,
+        initial_balance: float = 0.0,
+        allocated_mam=None,
+        user_id: int = 0,
+    ):
+
+        """
+        Create a new MT5 account for an Investor and link it to a MAM master account.
+
+        The MT5 Agent field is set to `mam_master_login` so copy-trading starts
+        immediately. Persists an Investor DB record.
+
+        Returns a dict with keys:
+            login, group, master_password, investor_password, investor_id
+        or None on failure.
+        """
+        try:
+            # ── 1. Resolve group ──────────────────────────────────────────
+            available_groups = self.get_group_list("real")
+            if not available_groups:
+                logger.error("[INVESTOR] No real groups available on MT5 server.")
+                return None
+
+            if group and group in available_groups:
+                selected_group = group
+            else:
+                async def _get_default_group():
+                    return await TradeGroup.filter(is_default=True, is_active=True).first()
+                default_tg = run_async(_get_default_group())
+                if default_tg and default_tg.name in available_groups:
+                    selected_group = default_tg.name
+                else:
+                    selected_group = available_groups[0]
+                    logger.warning(f"[INVESTOR] No configured default group; falling back to: {selected_group}")
+
+            # ── 2. Build MT5 user object ─────────────────────────────────
+            user = MT5Manager.MTUser(self.manager)
+            user.Group    = str(selected_group)
+            user.Leverage = int(leverage)
+            user.Rights   = account_create_rights
+
+            parts = name.strip().split(" ", 1) if name else [""]
+            user.FirstName = parts[0]
+            user.LastName  = parts[1] if len(parts) > 1 else ""
+            if email:   user.EMail   = str(email)
+            if phone:   user.Phone   = str(phone)
+            if country: user.Country = str(country)
+
+            # Link investor to MAM master via Agent field
+            user.Agent = int(mam_master_login) if mam_master_login else 0
+
+            # ── 3. Passwords ─────────────────────────────────────────────
+            master_pwd   = str(master_password)   if master_password   else self._generate_password()
+            investor_pwd = str(investor_password) if investor_password else self._generate_password()
+
+            logger.info(
+                f"[INVESTOR] Creating investor account: name='{name}', email='{email}', "
+                f"group='{selected_group}', leverage={leverage}, mam_master={mam_master_login}"
+            )
+
+            # ── 4. Add to MT5 ────────────────────────────────────────────
+            if not self.manager.UserAdd(user, master_pwd, investor_pwd):
+                last_err = MT5Manager.LastError()
+                logger.error(f"[INVESTOR] MT5 UserAdd failed: {last_err}")
+                return None
+
+            mt5_login = user.Login
+            logger.info(f"[INVESTOR] MT5 investor account created: login={mt5_login}")
+
+            # ── 5. Set leverage ───────────────────────────────────────────
+            try:
+                self.change_leverage(mt5_login, leverage)
+            except Exception as exc:
+                logger.warning(f"[INVESTOR] Could not set leverage for {mt5_login}: {exc}")
+
+            # ── 5.5 Link investor to MAM master explicitly ───────────────
+            if mam_master_login:
+                try:
+                    self.link_investor_to_mam(mt5_login, mam_master_login)
+                except Exception as exc:
+                    logger.warning(f"[INVESTOR] Could not link investor {mt5_login} to MAM master {mam_master_login}: {exc}")
+
+
+            # ── 6. Deposit initial balance ────────────────────────────────
+            if initial_balance > 0:
+                try:
+                    self.deposit_funds(mt5_login, initial_balance, "Initial Investor Balance")
+                except Exception as exc:
+                    logger.warning(f"[INVESTOR] Could not deposit initial balance for {mt5_login}: {exc}")
+
+            # ── 7. Persist TradingAccount record in DB (type=Investor) ──────
+            async def _save_investor(user_id, mam_ta_id):
+                return await TradingAccount.create(
+                    account_id=str(mt5_login),
+                    account_type="Investor",
+                    account_name=name or email,
+                    user_id=user_id,
+                    mam_master_account_id=mam_ta_id,
+                    leverage=leverage,
+                    balance=initial_balance,
+                    equity=initial_balance,
+                    margin=0,
+                    margin_free=0,
+                    margin_level=0,
+                    is_enabled=True,
+                    is_trading_enabled=True,
+                    is_algo_enabled=False,
+                    algo_enabled=False,
+                    is_pending=False,
+                    manager_allow_copy=False,
+                    investor_allow_copy=True,
+                    copy_trade_enabled=True,
+                    dual_trade_enabled=False,
+                    copy_mode="Proportional",
+                    copy_multiplier_mode="Fixed",
+                    fixed_copy_multiplier=1,
+                    max_copy_multiplier=1,
+                    multi_trade_count=1,
+                    status="Active",
+                )
+            investor_record = run_async(_save_investor(user_id=user_id, mam_ta_id=None))
+
+            logger.info(f"[INVESTOR] TradingAccount (Investor) DB record created: id={investor_record.id}, account_id={mt5_login}")
+
+            return {
+                "login":             mt5_login,
+                "group":             selected_group,
+                "master_password":   master_pwd,
+                "investor_password": investor_pwd,
+                "trading_account_id": investor_record.id,
+            }
+
+        except Exception as exc:
+            logger.error(f"[INVESTOR] create_investor_account error: {exc}")
+            return None
+
+    # ─────────────────────────────────────────────────────────────
+    # MAM copy-trading link management
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def link_investor_to_mam(self, investor_login: int, mam_master_login: int) -> bool:
+        """Set investor Agent = MAM master login to start copy-trading."""
+        try:
+            user = self.manager.UserGet(int(investor_login))
+            if user:
+                user.Agent = int(mam_master_login)
+                if self.manager.UserUpdate(user):
+                    logger.info(f"[MAM] Linked investor {investor_login} → master {mam_master_login}")
+                    return True
+        except Exception as exc:
+            logger.error(f"[MAM] link_investor_to_mam error: {exc}")
+        return False
+
+    @ensure_connected
+    def unlink_investor_from_mam(self, investor_login: int) -> bool:
+        """Set investor Agent = 0 to stop copy-trading."""
+        try:
+            user = self.manager.UserGet(int(investor_login))
+            if user:
+                user.Agent = 0
+                if self.manager.UserUpdate(user):
+                    logger.info(f"[MAM] Unlinked investor {investor_login} from MAM master")
+                    return True
+        except Exception as exc:
+            logger.error(f"[MAM] unlink_investor_from_mam error: {exc}")
+        return False
+
+    # Aliases for compatibility
+    def pause_mam_copy(self, login_id: int) -> bool:
+        return self.unlink_investor_from_mam(login_id)
+
+    def start_mam_copy(self, login_id: int, agent: int) -> bool:
+        return self.link_investor_to_mam(login_id, agent)
+
+    # ─────────────────────────────────────────────────────────────
+    # Account enable / disable / toggle / move group
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def enable_account(self, login_id: int) -> bool:
+        """Enable a trading account (set standard creation rights)."""
+        try:
+            user = self.manager.UserGet(int(login_id))
+            if not user:
+                return False
+            user.Rights = account_create_rights
+            return bool(self.manager.UserUpdate(user))
+        except Exception as exc:
+            logger.error(f"[MT5] enable_account error for {login_id}: {exc}")
+            return False
+
+    @ensure_connected
+    def disable_account(self, login_id: int) -> bool:
+        """Disable a trading account (remove USER_RIGHT_ENABLED)."""
+        try:
+            user = self.manager.UserGet(int(login_id))
+            if not user:
+                return False
+            user.Rights = disable_account_rights
+            return bool(self.manager.UserUpdate(user))
+        except Exception as exc:
+            logger.error(f"[MT5] disable_account error for {login_id}: {exc}")
+            return False
+
+    @ensure_connected
+    def toggle_account_status(self, login_id: int, action: str) -> bool:
+        """Toggle account status: action='enable' or 'disable'."""
+        if action == "enable":
+            return self.enable_account(login_id)
+        if action == "disable":
+            return self.disable_account(login_id)
+        return False
+
+    @ensure_connected
+    def change_account_group(self, login_id: int, group: str) -> bool:
+        """Move an account to a different MT5 group."""
+        try:
+            user = self.manager.UserGet(int(login_id))
+            if user:
+                user.Group = str(group)
+                return bool(self.manager.UserUpdate(user))
+        except Exception as exc:
+            logger.error(f"[MT5] change_account_group error for {login_id}: {exc}")
+        return False
+
+    # ─────────────────────────────────────────────────────────────
+    # Account data / balance / equity helpers
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def get_account_data(self, login_id, use_cache: bool = True) -> dict:
+        """
+        Return {'balance': float, 'equity': float}.
+        Cached for 30 s to reduce MT5 API pressure.
+        """
+        try:
+            if use_cache:
+                cached = get_cached_account_success(login_id)
+                if cached:
+                    return {"balance": cached["balance"], "equity": cached["equity"]}
+
+            if get_cached_account_data(login_id, "balance"):
+                return {"balance": 0.0, "equity": 0.0}
+
+            account = self.manager.UserAccountGet(int(login_id))
+            if account:
+                balance = float(account.Balance)
+                equity  = float(account.Equity)
+                if use_cache:
+                    cache_account_success(login_id, balance, equity)
+                return {"balance": balance, "equity": equity}
+
+            cache_failed_account_lookup(login_id, "balance", 300)
+            cache_failed_account_lookup(login_id, "equity",  300)
+            _remove_trading_account_from_db(login_id, reason="account data lookup")
+
+            if should_log_error(login_id, "account_not_found"):
+                logger.warning(f"MT5 account not found for login_id: {login_id}")
+            return {"balance": 0.0, "equity": 0.0}
+
+        except Exception as exc:
+            if should_log_error(login_id, "account_error"):
+                logger.error(f"get_account_data error for {login_id}: {exc}")
+            return {"balance": 0.0, "equity": 0.0}
+
+    @ensure_connected
+    def get_balance(self, login_id) -> float:
+        return self.get_account_data(login_id).get("balance", 0.0)
+
+    @ensure_connected
+    def get_equity(self, login_id) -> float:
+        return self.get_account_data(login_id).get("equity", 0.0)
+
+    @ensure_connected
+    def get_account_info(self, login_id):
+        """Return basic account info dict or None."""
+        try:
+            user    = self.manager.UserGet(int(login_id))
+            account = self.manager.UserAccountGet(int(login_id))
+            if not user or not account:
+                return None
+            return {
+                "login":    user.Login,
+                "name":     f"{user.FirstName} {user.LastName}".strip(),
+                "email":    user.EMail,
+                "balance":  account.Balance,
+                "equity":   account.Equity,
+                "group":    user.Group,
+                "leverage": user.Leverage,
+                "rights":   user.Rights,
+                "agent":    user.Agent,
+            }
+        except Exception as exc:
+            logger.error(f"get_account_info error for {login_id}: {exc}")
+            return None
+
+    @ensure_connected
+    def get_account_details(self, login_id):
+        """Return detailed account info including margin data."""
+        try:
+            user    = self.manager.UserGet(int(login_id))
+            account = self.manager.UserAccountGet(int(login_id))
+            if not user or not account:
+                return None
+            return {
+                "login":        user.Login,
+                "name":         f"{user.FirstName} {user.LastName}".strip(),
+                "email":        user.EMail,
+                "balance":      account.Balance,
+                "equity":       account.Equity,
+                "margin":       account.Margin,
+                "margin_free":  account.MarginFree,
+                "margin_level": account.MarginLevel,
+                "profit":       account.Profit,
+                "group":        user.Group,
+                "leverage":     user.Leverage,
+                "rights":       user.Rights,
+                "agent":        user.Agent,
+            }
+        except Exception as exc:
+            logger.error(f"get_account_details error for {login_id}: {exc}")
+            return None
+
+    # ─────────────────────────────────────────────────────────────
+    # Delete account
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def delete_account(self, login_id: int) -> bool:
+        """Disable then permanently delete an MT5 account."""
+        try:
+            self.disable_account(login_id)
+            result = self.manager.UserDelete(int(login_id))
+            if result:
+                logger.info(f"[MT5] Deleted account {login_id}")
+                return True
+            logger.error(f"[MT5] Failed to delete account {login_id}: {MT5Manager.LastError()}")
+            return False
+        except Exception as exc:
+            logger.error(f"[MT5] delete_account error for {login_id}: {exc}")
+            return False
+
+    # ─────────────────────────────────────────────────────────────
+    # Profit / closed-trade helpers
+    # ─────────────────────────────────────────────────────────────
+
+    @ensure_connected
+    def total_account_profit(self, login_id) -> float:
+        """Return floating P&L = Equity - Balance."""
+        try:
+            if get_cached_account_data(login_id, "profit"):
+                return 0.0
+            account = self.manager.UserAccountGet(int(login_id))
+            if account:
+                return float(account.Equity - account.Balance)
+            cache_failed_account_lookup(login_id, "profit", 300)
+            return 0.0
+        except Exception as exc:
+            logger.error(f"total_account_profit error for {login_id}: {exc}")
+            return 0.0

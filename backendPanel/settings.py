@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     debug: bool = False
     host: str = "0.0.0.0"
     port: int = 8000
+    mt5_default_agent: int = Field(default=426, alias="MT5_DEFAULT_AGENT")
 
     @field_validator("debug", mode="before")
     def parse_debug(cls, value: Any) -> bool:
@@ -126,3 +127,4 @@ def get_settings() -> Settings:
 
 
 DATABASES = get_settings().databases
+MT5_DEFAULT_AGENT = get_settings().mt5_default_agent

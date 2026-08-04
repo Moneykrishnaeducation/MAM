@@ -7,7 +7,7 @@ from adminPanel.view.client_profile import update_client_profile
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
-from adminPanel.view.mam_accounts import create_mam_account
+from adminPanel.view.mam_accounts import create_account_api
 from adminPanel.view.pending_requests import (
     list_pending_banks,
     list_pending_cryptos,
@@ -54,7 +54,7 @@ urlpatterns = [
     path("activity", list_activity_logs, name="activity"),
     path("admin-users/create", create_admin_user, name="create-admin-user"),
     path("users/create", create_client_user, name="create-client-user"),
-    path("mam-accounts/create", create_mam_account, name="create-mam-account"),
+    path("accounts/create", create_account_api, name="create-account"),
     # MT5 CRUD Routes
     path("server-settings", mt5_crud.server_settings_list_create, name="server-settings-list-create"),
     path("server-settings/<int:pk>", mt5_crud.server_setting_detail_update_delete, name="server-setting-detail"),
