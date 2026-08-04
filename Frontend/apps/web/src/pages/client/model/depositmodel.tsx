@@ -20,13 +20,26 @@ import {
   RefreshCw
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 // Using a mock hook since we don't have the real context available here.
 // In a real environment, this should be imported correctly.
 const useTheme = () => ({ isDarkMode: true });
 
 const sharedUtils = {
-  showToast: (msg: string, type: string) => console.log(`[${type}] ${msg}`)
+  showToast: (msg: string, type: string) => {
+    if (type === "success") {
+      toast.success(msg);
+      return;
+    }
+
+    if (type === "error") {
+      toast.error(msg);
+      return;
+    }
+
+    toast(msg);
+  }
 };
 
 const NAVY = "#0B1F4B";
@@ -160,14 +173,38 @@ export default function DepositModal({
     }
 
     setIsSubmitting(true);
-    // UI Only: Simulate network delay for animations
-    setTimeout(() => {
+    try {
+      const response = await fetch("/api/client/deposit", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          account_number: selectedDepositAccount,
+          amount: Number(cheeseAmount),
+          payment_method: "Manual Deposit",
+          proof_name: proofFile.name,
+          notes: `Manual deposit submitted from deposit modal (${currency})`,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to submit deposit request");
+      }
+
+      sharedUtils.showToast(data?.message || "Manual deposit submitted successfully!", "success");
       setShowDepositModal(false);
       setCheeseAmount("");
       setProofFile(null);
+    } catch (error: any) {
+      sharedUtils.showToast(error?.message || "Failed to submit deposit request", "error");
+    } finally {
       setIsSubmitting(false);
-      sharedUtils.showToast("Manual deposit submitted successfully!", "success");
-    }, 3000);
+    }
   };
 
   const handleCheesePaySubmit = async (e: React.FormEvent) => {

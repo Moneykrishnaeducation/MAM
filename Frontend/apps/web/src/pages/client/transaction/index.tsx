@@ -88,11 +88,10 @@ const toNumber = (value: unknown): number => {
 };
 
 const formatMoney = (value: number) =>
-  new Intl.NumberFormat(undefined, {
-    style: 'currency',
-    currency: 'USD',
+  `$${new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(value);
+  }).format(value)}`;
 
 const formatDate = (value: string | null) => {
   if (!value) {

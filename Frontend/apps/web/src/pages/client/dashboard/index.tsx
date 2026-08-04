@@ -16,10 +16,17 @@ import {
   UploadCloud,
   Send,
   Globe,
+  Building2,
+  Coins,
+  CheckCircle2,
+  ChevronDown,
+  ArrowRight,
+  Loader2,
+  User,
 } from 'lucide-react';
 import AccountOpenModal from '../model/accountopen';
-import WithdrawalModal from '../model/withdrawal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 const WHITE_COL = '#FFFFFF';
 const NAVY = '#0B1F4B';
@@ -317,6 +324,373 @@ const StatusOverlay = ({ type, isDarkMode }: { type: 'pending' | 'redirect'; isD
   );
 };
 
+const WITHDRAWAL_MIN_AMOUNT = 10;
+
+const formatWithdrawalCurrency = (value: number, currency?: string | null) => {
+  const safeCurrency = typeof currency === 'string' && /^[A-Za-z]{3}$/.test(currency)
+    ? currency.toUpperCase()
+    : 'USD';
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: safeCurrency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+};
+
+const maskWithdrawalAccount = (value?: string | null) => {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) {
+    return '---';
+  }
+  if (trimmed.length <= 8) {
+    return trimmed;
+  }
+  return `${trimmed.slice(0, 4)} •••• ${trimmed.slice(-4)}`;
+};
+
+type DashboardWithdrawalModalProps = {
+  open: boolean;
+  onClose: () => void;
+  accountNumber?: string | null;
+  accountBalance?: number | null;
+  accountCurrency?: string | null;
+  accountServer?: string | null;
+  accountStatus?: string | null;
+};
+
+const DashboardWithdrawalModal = ({
+  open,
+  onClose,
+  accountNumber,
+  accountBalance,
+  accountCurrency,
+  accountServer,
+  accountStatus,
+}: DashboardWithdrawalModalProps) => {
+  const [selectedAccount, setSelectedAccount] = useState(accountNumber || '');
+  const [destinationType, setDestinationType] = useState<'bank' | 'crypto'>('bank');
+  const [amount, setAmount] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    setSelectedAccount(accountNumber || '');
+  }, [accountNumber, open]);
+
+  if (!open) {
+    return null;
+  }
+
+  const availableBalance = typeof accountBalance === 'number' && Number.isFinite(accountBalance) ? accountBalance : 0;
+  const currencyLabel = accountCurrency && /^[A-Za-z]{3}$/.test(accountCurrency) ? accountCurrency.toUpperCase() : 'USD';
+  const parsedAmount = Number(amount);
+  const canSubmit =
+    Boolean(selectedAccount) &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount >= WITHDRAWAL_MIN_AMOUNT &&
+    !submitting;
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!selectedAccount) {
+      toast.error('Please select an account.');
+      return;
+    }
+
+    if (!Number.isFinite(parsedAmount) || parsedAmount < WITHDRAWAL_MIN_AMOUNT) {
+      toast.error(`Withdrawal amount must be at least ${formatWithdrawalCurrency(WITHDRAWAL_MIN_AMOUNT, currencyLabel)}`);
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const response = await fetch('/api/client/withdrawal', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_number: selectedAccount,
+          amount: parsedAmount,
+          payment_method: destinationType === 'crypto' ? 'Crypto Wallet' : 'Bank Transfer',
+          destination_type: destinationType,
+          notes: `Dashboard withdrawal request (${currencyLabel})`,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to submit withdrawal request');
+      }
+
+      toast.success(data?.message || 'Withdrawal request submitted successfully');
+      setAmount('');
+      setDestinationType('bank');
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to submit withdrawal request');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const destinationCards = [
+    {
+      id: 'bank' as const,
+      label: 'Bank Transfer',
+      icon: Building2,
+      description: accountNumber ? `${maskWithdrawalAccount(accountNumber)}` : 'No account linked',
+    },
+    {
+      id: 'crypto' as const,
+      label: 'Crypto Wallet',
+      icon: Coins,
+      description: 'Missing Setup',
+    },
+  ];
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <motion.button
+          type="button"
+          onClick={() => !submitting && onClose()}
+          className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          aria-label="Close withdrawal modal overlay"
+        />
+
+        <motion.div
+          initial={{ scale: 0.96, opacity: 0, y: 20 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.96, opacity: 0, y: 20 }}
+          className="relative w-full max-w-[430px] max-h-[calc(100vh-1.5rem)] overflow-y-auto overflow-x-hidden rounded-[28px] border border-slate-200 bg-[#F6F8FD] shadow-2xl"
+        >
+          <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-b from-[#fbfcff] to-[#eef2fb] px-4 py-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[#d9dee8] bg-[#f1eadf] text-[#0B1F4B] shadow-sm">
+                <ArrowUpRight size={18} />
+              </div>
+              <h3 className="text-[20px] font-black tracking-tight text-[#0B1F4B]">
+                Withdraw Funds
+              </h3>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => !submitting && onClose()}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+            >
+              <X size={17} />
+            </button>
+          </div>
+
+          <form className="space-y-3 px-4 pb-4 pt-3 sm:px-5" onSubmit={handleSubmit}>
+            <div className="rounded-[24px] bg-[linear-gradient(135deg,#2d57bf_0%,#3562ce_50%,#20479f_100%)] p-3.5 text-white shadow-[0_18px_40px_rgba(33,85,196,0.22)]">
+              <div className="mb-3.5 flex items-center justify-between">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 backdrop-blur-md">
+                  <Wallet size={13} className="text-[#d4af37]" />
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-50">
+                    Treasury Balance
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 opacity-60">
+                  <ShieldCheck size={12} />
+                  <span className="text-[7px] font-black uppercase tracking-[0.2em]">
+                    Vault Encrypted
+                  </span>
+                </div>
+              </div>
+
+              <div className="text-[30px] font-black leading-none tracking-tight sm:text-[34px]">
+                {formatWithdrawalCurrency(availableBalance, currencyLabel)}
+              </div>
+
+              <div className="mt-3 rounded-[22px] border border-white/10 bg-black/10 p-2.5 backdrop-blur-md">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10">
+                      <User size={15} />
+                    </div>
+                    <div>
+                      <span className="mb-0.5 block text-[8px] font-black uppercase tracking-[0.16em] text-blue-100/60">
+                        Account ID
+                      </span>
+                      <span className="font-black tracking-[0.18em] text-[13px]">
+                        {maskWithdrawalAccount(selectedAccount || accountNumber)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+                      <span className="text-[8px] font-black uppercase tracking-[0.18em]">
+                        {String(accountStatus || 'Active').toUpperCase()}
+                      </span>
+                    </div>
+                    <span className="block text-[7px] font-black uppercase tracking-[0.18em] text-blue-100/50">
+                      {accountServer || 'Network Validated'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+                Source Ledger
+              </label>
+              <div className="relative">
+                <select
+                  value={selectedAccount}
+                  onChange={(event) => setSelectedAccount(event.target.value)}
+                  className="w-full appearance-none rounded-[22px] border border-[#ced6e6] bg-white px-4 py-3.5 pr-12 text-[15px] font-black tracking-wide text-[#0B1F4B] outline-none transition focus:border-[#2c59c9]"
+                >
+                  <option value="" disabled>
+                    Select Account
+                  </option>
+                  {accountNumber ? (
+                    <option value={accountNumber}>
+                      {maskWithdrawalAccount(accountNumber)}
+                    </option>
+                  ) : null}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+              </div>
+            </div>
+
+            <div className="space-y-2.5">
+              <div className="flex items-end justify-between gap-4 px-1">
+                <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+                  Select Destination
+                </label>
+                <a
+                  href="/client/profile?activeTab=payment"
+                  className="inline-flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.22em] text-[#2c59c9] transition hover:opacity-80"
+                >
+                  Manage Vault
+                  <ArrowUpRight size={10} />
+                </a>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                {destinationCards.map((destination) => {
+                  const Icon = destination.icon;
+                  const isActive = destinationType === destination.id;
+
+                  return (
+                    <motion.button
+                      key={destination.id}
+                      type="button"
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setDestinationType(destination.id)}
+                      className={`relative flex flex-col gap-2.5 rounded-[22px] border-2 p-3.5 text-left shadow-sm transition-all ${
+                        isActive
+                          ? 'border-[#2c59c9] bg-white shadow-[0_12px_30px_rgba(44,89,201,0.12)]'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className={`flex h-9 w-9 items-center justify-center rounded-[14px] ${
+                          isActive ? 'bg-[#bb8e16] text-white' : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          <Icon size={18} strokeWidth={2.5} />
+                        </div>
+
+                        {isActive ? (
+                          <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[#2c59c9]/20 bg-white text-[#2c59c9] shadow-sm">
+                            <CheckCircle2 size={14} strokeWidth={2.5} />
+                          </div>
+                        ) : (
+                          <div className="h-[22px] w-[22px] rounded-full border border-slate-200 bg-slate-50" />
+                        )}
+                      </div>
+
+                      <div>
+                        <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] ${
+                          isActive ? 'text-[#0B1F4B]' : 'text-slate-400'
+                        }`}>
+                          {destination.label}
+                        </h4>
+                        <p className={`mt-0.5 text-[8px] font-semibold tracking-wide ${
+                          isActive ? 'text-[#2c59c9]' : 'text-slate-400'
+                        }`}>
+                          {destination.description}
+                        </p>
+                      </div>
+
+                      {isActive ? (
+                        <motion.div
+                          layoutId="withdraw-destination-accent"
+                          className="absolute inset-x-0 bottom-0 h-1 rounded-b-[20px]"
+                          style={{ background: 'linear-gradient(to right, #d4af37 0%, #2c59c9 100%)' }}
+                        />
+                      ) : null}
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+                Withdrawal Amount
+              </label>
+              <div className="rounded-[24px] border border-slate-200 bg-white px-[18px] py-4 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black tracking-tight text-slate-400">
+                    $
+                  </span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="0.00"
+                    value={amount}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setAmount(value);
+                      }
+                    }}
+                    className="w-full border-0 bg-transparent py-1.5 text-center text-[24px] font-black tracking-tight text-[#0B1F4B] outline-none placeholder:text-slate-300"
+                  />
+                </div>
+              </div>
+              <p className="px-1 text-[10px] font-semibold text-slate-400">
+                Minimum withdrawal amount is {formatWithdrawalCurrency(WITHDRAWAL_MIN_AMOUNT, currencyLabel)}.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={!canSubmit}
+              className={`flex w-full items-center justify-center gap-3 rounded-[20px] px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.32em] transition ${
+                canSubmit
+                  ? 'bg-[#2c59c9] text-white shadow-[0_16px_30px_rgba(44,89,201,0.22)] hover:translate-y-[-1px]'
+                  : 'cursor-not-allowed bg-[#d6d8dd] text-white/80'
+              }`}
+              >
+              <span>Confirm</span>
+              {submitting ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
+            </button>
+          </form>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
 export default function ClientDashboardPage() {
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -374,26 +748,47 @@ export default function ClientDashboardPage() {
     };
   }, []);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    console.log(`${type.toUpperCase()}: ${message}`);
-  };
-
   const handleManualDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!clientAccount?.account_number || !cheeseAmount || !proof) {
-      showToast('Please fill all required fields.', 'error');
+      toast.error('Please fill all required fields.');
       return;
     }
 
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      const response = await fetch('/api/client/deposit', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          account_number: clientAccount.account_number,
+          amount: Number(cheeseAmount),
+          payment_method: 'Manual Deposit',
+          proof_name: proof.name,
+          notes: `Manual deposit submitted from dashboard (${currency})`,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Failed to submit deposit request');
+      }
+
+      toast.success(data?.message || 'Manual deposit request submitted successfully!');
       setShowDepositModal(false);
       setProof(null);
       setCheeseAmount('');
-      showToast('Manual deposit request submitted successfully!', 'success');
-    }, 1400);
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to submit deposit request');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const isDarkMode = false;
@@ -734,7 +1129,7 @@ export default function ClientDashboardPage() {
                       <button
                         type="submit"
                         disabled={submitting || !proof || !cheeseAmount || !depositAccountNumber}
-                        className="w-full group relative overflow-hidden rounded-2xl bg-[#2155C4] py-4.5 font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-[#C9A227]/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                        className="w-full group relative overflow-hidden rounded-2xl bg-[#2155C4] py-4 font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-[#C9A227]/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                       >
                         <span className="relative z-10 flex items-center justify-center gap-3">
                           {submitting ? 'Submitting...' : 'Submit Proof'} <Send className="h-4 w-4" />
@@ -754,13 +1149,15 @@ export default function ClientDashboardPage() {
             )}
           </AnimatePresence>
 
-          {showWithdrawModal && (
-            <WithdrawalModal
-              onClose={() => setShowWithdrawModal(false)}
-              isDarkMode={isDarkMode}
-              currentAccount={depositAccountNumber}
-            />
-          )}
+          <DashboardWithdrawalModal
+            open={showWithdrawModal}
+            onClose={() => setShowWithdrawModal(false)}
+            accountNumber={depositAccountNumber}
+            accountBalance={clientAccount?.balance}
+            accountCurrency={clientAccount?.currency}
+            accountServer={clientAccount?.server}
+            accountStatus={clientAccount?.status}
+          />
 
           <AccountOpenModal showModal={showAccountOpenModal} setShowModal={setShowAccountOpenModal} isDarkMode={false} />
       </>
