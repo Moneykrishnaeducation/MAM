@@ -2,23 +2,37 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Search, Bell, Shield, Sparkles, Menu, X } from 'lucide-react';
+import { Search, Bell, Shield, Sparkles, Menu } from 'lucide-react';
 
 export default function AdminHeader() {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') {
+      return true;
+    }
+
+    return window.innerWidth >= 768;
+  });
   const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (window.innerWidth < 768) {
-      setIsSidebarOpen(false);
+    if (typeof window === 'undefined' || window.innerWidth >= 768) {
+      return;
     }
+
+    setIsSidebarOpen(false);
   }, []);
 
   useEffect(() => {
-    const handleToggle = () => setIsSidebarOpen(prev => !prev);
-    window.addEventListener('toggle-admin-sidebar', handleToggle);
-    return () => window.removeEventListener('toggle-admin-sidebar', handleToggle);
+    const handleSidebarStateChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ isOpen: boolean }>).detail;
+      if (typeof detail?.isOpen === 'boolean') {
+        setIsSidebarOpen(detail.isOpen);
+      }
+    };
+
+    window.addEventListener('admin-sidebar-state-change', handleSidebarStateChange);
+    return () => window.removeEventListener('admin-sidebar-state-change', handleSidebarStateChange);
   }, []);
 
   useEffect(() => {
@@ -49,7 +63,11 @@ export default function AdminHeader() {
   }, [notificationsOpen]);
 
   const toggleSidebar = () => {
-    window.dispatchEvent(new Event('toggle-admin-sidebar'));
+    window.dispatchEvent(
+      new CustomEvent('admin-sidebar-state-change', {
+        detail: { isOpen: !isSidebarOpen },
+      }),
+    );
   };
 
   const notifications = [
@@ -63,13 +81,15 @@ export default function AdminHeader() {
       {/* Left section for mobile toggle and search */}
       <div className="flex items-center flex-1 mr-4">
         {/* Mobile Toggle Button */}
-        <button 
-          onClick={toggleSidebar} 
-          className="md:hidden text-slate-500 hover:text-slate-900 transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-slate-100 mr-3"
-          aria-label="Toggle Sidebar"
-        >
-          {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
-        </button>
+        {!isSidebarOpen && (
+          <button 
+            onClick={toggleSidebar} 
+            className="text-slate-500 hover:text-slate-900 transition-colors cursor-pointer p-1.5 rounded-xl hover:bg-slate-100 mr-3"
+            aria-label="Toggle Sidebar"
+          >
+            <Menu size={20} />
+          </button>
+        )}
 
         {/* Search Bar */}
         <div className="flex items-center gap-3 bg-slate-50 px-4 py-2.5 rounded-2xl w-full max-w-sm md:w-96 border border-slate-200/85 transition-all duration-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 shadow-inner">

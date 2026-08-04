@@ -17,6 +17,7 @@ from adminPanel.view.pending_requests import (
     list_pending_requests,
     list_pending_withdrawals,
 )
+from adminPanel.view.logout import logout_admin
 from adminPanel.views import (
     admin_profile,
     create_admin_user,
@@ -43,6 +44,7 @@ urlpatterns = [
     path("requests/cryptos", list_pending_cryptos, name="requests-cryptos"),
     path("admin-users", list_admin_system_users, name="admin-users"),
     path("admin-users/<str:user_id>/update", update_admin_user, name="update-admin-user"),
+    path("logout", logout_admin, name="logout"),
     path("profile", admin_profile, name="profile"),
     path("users", list_client_users, name="users"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
