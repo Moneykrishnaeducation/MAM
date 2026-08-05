@@ -455,7 +455,29 @@ def run_mam_script():
                 pass
     class DealerSink:
         def OnDealerResult(self, result):
-            logger.info(f"DealerSink: Dealer Result - Retcode: {result.Retcode}")
+            retcode = getattr(result, 'Retcode', 0)
+            logger.info(f"DealerSink: Dealer Result - Retcode: {retcode}")
+            if retcode not in (10009, 10008):
+                try:
+                    req = getattr(result, 'Request', result)
+                    comment = getattr(req, 'Comment', '')
+                    if comment:
+                        logger.warning(f"Dealer request rejected (Retcode {retcode}) for comment {comment}. Cleaning up dedupe markers.")
+                        # Clean up memory recent copies
+                        with _recent_copies_lock:
+                            keys_to_remove = [k for k in _recent_copies if comment in k]
+                            for k in keys_to_remove:
+                                _recent_copies.pop(k, None)
+                        
+                        # Clean up DB dedupe markers
+                        try:
+                            from adminPanel.models import MT5SendDedup
+                            safe_comment = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in comment])
+                            MT5SendDedup.objects.filter(key__icontains=safe_comment).delete()
+                        except Exception as dbe:
+                            logger.error(f"Failed to clear DB dedupe on reject: {dbe}")
+                except Exception as e:
+                    logger.error(f"Error in DealerSink reject handler: {e}")
 
         def OnDealerAnswer(self, answer):
             logger.info("DealerSink: Received Dealer Answer")
@@ -1011,16 +1033,16 @@ def run_mam_script():
                         # Verify the position actually exists on the follower; retry a couple times if necessary
                         verified = False
                         try:
-                            for attempt in range(3):
+                            for attempt in range(5):
                                 try:
                                     for p in manager.PositionGet(follower):
-                                        if p.Comment == comment:
+                                        if p.Comment and (p.Comment == comment or comment.startswith(p.Comment) or p.Comment.startswith(comment)):
                                             verified = True
                                             break
+                                    if verified:
+                                        break
                                 except Exception:
                                     pass
-                                if verified:
-                                    break
                                 sleep(0.5)
                         except Exception:
                             verified = False
@@ -1030,7 +1052,7 @@ def run_mam_script():
                             with _recent_copies_lock:
                                 _recent_copies[dedupe_key] = datetime.now().timestamp()
                         else:
-                            logger.warning(f"Position copy reported success but verification failed for follower {follower} (comment={comment})")
+                            logger.warning(f"Position copy request sent but verification failed (position not found) for follower {follower} (comment={comment})")
                             success = False
                     else:
                         # remove reservation so future attempts may retry

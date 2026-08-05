@@ -39,7 +39,12 @@ type ClientInvestment = {
   returnPct: number;
   status: string;
   investorAllowCopy: boolean;
+  copyMode?: string;
+  copyFactor?: number;
+  multiTradeCount?: number;
+  managerAccountId?: string;
 };
+
 
 type ClientInvestmentApi = {
   id: number | string;
@@ -131,6 +136,12 @@ export default function ClientMyInvestPage() {
   const [showInvestorTradesModal, setShowInvestorTradesModal] = useState<boolean>(false);
   const [showManagerTradesModal, setShowManagerTradesModal] = useState<boolean>(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState<boolean>(false);
+  const [investorPositions, setInvestorPositions] = useState<any[]>([]);
+  const [positionsLoading, setPositionsLoading] = useState<boolean>(false);
+  const [positionsError, setPositionsError] = useState<string | null>(null);
+  const [managerPositions, setManagerPositions] = useState<any[]>([]);
+  const [managerPositionsLoading, setManagerPositionsLoading] = useState<boolean>(false);
+  const [managerPositionsError, setManagerPositionsError] = useState<string | null>(null);
   const [isCopyingActionLoading, setIsCopyingActionLoading] = useState<boolean>(false);
   const [coefficientMethod, setCoefficientMethod] = useState<'balance' | 'fixed'>('balance');
   const [fixedRatioValue, setFixedRatioValue] = useState<string>('1.00');
@@ -178,6 +189,10 @@ export default function ClientMyInvestPage() {
               returnPct: toNumber(investment.return_pct),
               status: String(investment.status || 'Active'),
               investorAllowCopy: normalizeBool(investment.investor_allow_copy),
+              copyMode: investment.copy_mode || 'balance',
+              copyFactor: toNumber(investment.copy_factor ?? 1.0),
+              multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
+              managerAccountId: String(investment.manager_account_id || ''),
             }))
           : [];
 
@@ -295,15 +310,58 @@ export default function ClientMyInvestPage() {
   };
 
   const openCoefficientModal = () => {
+    if (selectedInvModal) {
+      setCoefficientMethod(selectedInvModal.copyMode === 'fixed_multiple' ? 'fixed' : 'balance');
+      setFixedRatioValue(String(selectedInvModal.copyFactor ?? '1.00'));
+      setMultiExecutionEnabled((selectedInvModal.multiTradeCount ?? 1) > 1);
+    }
     setShowCoefficientModal(true);
   };
 
-  const openInvestorTradesModal = () => {
+  const openInvestorTradesModal = async () => {
     setShowInvestorTradesModal(true);
+    if (!selectedInvModal) return;
+
+    setPositionsLoading(true);
+    setPositionsError(null);
+    setInvestorPositions([]);
+    try {
+      const response = await fetchClientEndpoint<{ success?: boolean; positions?: any[]; message?: string }>(
+        `/api/client/open-positions/${selectedInvModal.accountId}`
+      );
+      if (response && response.success) {
+        setInvestorPositions(response.positions || []);
+      } else {
+        setPositionsError(response?.message || 'Failed to fetch open positions.');
+      }
+    } catch (err) {
+      setPositionsError('Error fetching open positions.');
+    } finally {
+      setPositionsLoading(false);
+    }
   };
 
-  const openManagerTradesModal = () => {
+  const openManagerTradesModal = async () => {
     setShowManagerTradesModal(true);
+    if (!selectedInvModal || !selectedInvModal.managerAccountId) return;
+
+    setManagerPositionsLoading(true);
+    setManagerPositionsError(null);
+    setManagerPositions([]);
+    try {
+      const response = await fetchClientEndpoint<{ success?: boolean; positions?: any[]; message?: string }>(
+        `/api/client/open-positions/${selectedInvModal.managerAccountId}`
+      );
+      if (response && response.success) {
+        setManagerPositions(response.positions || []);
+      } else {
+        setManagerPositionsError(response?.message || 'Failed to fetch manager open positions.');
+      }
+    } catch (err) {
+      setManagerPositionsError('Error fetching manager open positions.');
+    } finally {
+      setManagerPositionsLoading(false);
+    }
   };
 
   const handleInvestorPasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -327,11 +385,54 @@ export default function ClientMyInvestPage() {
     console.log('Investor password updated for', selectedInvestmentId || 'unknown');
   };
 
-  const handleDeployConfiguration = () => {
-    setShowCoefficientModal(false);
-    setMultiExecutionEnabled(false);
-    setCoefficientMethod('balance');
-    console.log('Deployed coefficient configuration for', selectedInvestmentId || 'unknown');
+  const handleDeployConfiguration = async () => {
+    if (!selectedInvModal) return;
+
+    try {
+      const response = await fetchClientEndpoint<{ status?: string; message?: string }>(
+        '/api/client/my-investments/coefficient',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            account_id: selectedInvModal.accountId,
+            coefficient_method: coefficientMethod,
+            multiplier: parseFloat(fixedRatioValue),
+            multi_execution: multiExecutionEnabled,
+          }),
+        }
+      );
+
+      if (response && response.status === 'ok') {
+        toast.success(response.message || 'Coefficient configuration deployed successfully!');
+        setShowCoefficientModal(false);
+        // Refresh investments
+        const updated = await fetchClientInvestments();
+        if (updated) {
+          const normalized = Array.isArray(updated)
+            ? updated.map((investment: any): ClientInvestment => ({
+                id: investment.id,
+                accountId: String(investment.account_id || ''),
+                strategy: String(investment.strategy || investment.strategy_name || 'Untitled strategy'),
+                manager: String(investment.manager || investment.manager_name || 'Unassigned'),
+                allocated: toNumber(investment.allocated ?? investment.allocated_amount),
+                currentValue: toNumber(investment.current_value),
+                returnPct: toNumber(investment.return_pct),
+                status: String(investment.status || 'Active'),
+                investorAllowCopy: normalizeBool(investment.investor_allow_copy),
+                copyMode: investment.copy_mode || 'balance',
+                copyFactor: toNumber(investment.copy_factor ?? 1.0),
+                multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
+                managerAccountId: String(investment.manager_account_id || ''),
+              }))
+            : [];
+          setInvestments(normalized);
+        }
+      } else {
+        toast.error(response?.message || 'Failed to deploy coefficient configuration.');
+      }
+    } catch (err) {
+      toast.error('An error occurred while deploying configuration.');
+    }
   };
 
   const totalInvested = useMemo(
@@ -949,16 +1050,67 @@ export default function ClientMyInvestPage() {
                     </tr>
                   </thead>
                   <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
-                    <tr>
-                      <td className="px-3 py-5 text-blue-200" colSpan={10}>
-                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
-                            <ArrowRight size={20} />
-                          </span>
-                          <div className={`text-sm font-semibold ${softTextClass}`}>No open positions found</div>
-                        </div>
-                      </td>
-                    </tr>
+                    {positionsLoading ? (
+                      <tr>
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                            <div className={`text-sm font-semibold mt-2 ${softTextClass}`}>Loading open positions...</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : positionsError ? (
+                      <tr>
+                        <td className="px-3 py-5 text-red-400" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <div className="text-sm font-semibold">{positionsError}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : investorPositions.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                              <ArrowRight size={20} />
+                            </span>
+                            <div className={`text-sm font-semibold ${softTextClass}`}>No open positions found</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      investorPositions.map((pos, idx) => {
+                        const ticket = pos.Ticket ?? pos.ticket ?? 'N/A';
+                        const symbol = pos.Symbol ?? pos.symbol ?? 'N/A';
+                        const typeVal = pos.Type === 0 || pos.type === 0 || String(pos.Type || pos.type).toLowerCase() === 'buy' ? 'BUY' : 'SELL';
+                        const volume = pos.Volume ?? pos.volume ?? '0.00';
+                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.price_open ?? '0.00000';
+                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.price_current ?? '0.00000';
+                        const profit = toNumber(pos.Profit ?? pos.profit ?? 0);
+                        const swap = toNumber(pos.Swap ?? pos.swap ?? 0);
+                        const time = pos.Time ?? pos.time ?? 'N/A';
+                        const comment = pos.Comment ?? pos.comment ?? '';
+
+                        return (
+                          <tr key={ticket + '-' + idx} className="text-xs text-white">
+                            <td className="px-3 py-4 font-mono font-bold text-blue-300">{ticket}</td>
+                            <td className="px-3 py-4 font-bold">{symbol}</td>
+                            <td className={`px-3 py-4 font-black ${typeVal === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {typeVal}
+                            </td>
+                            <td className="px-3 py-4 font-bold">{volume}</td>
+                            <td className="px-3 py-4 font-mono">{openPrice}</td>
+                            <td className="px-3 py-4 font-mono">{currentPrice}</td>
+                            <td className={`px-3 py-4 font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {formatMoney(profit)}
+                            </td>
+                            <td className="px-3 py-4 font-mono">{formatMoney(swap)}</td>
+                            <td className="px-3 py-4 text-[10px] text-gray-400">{time}</td>
+                            <td className="px-3 py-4 text-[10px] text-gray-400 font-mono">{comment}</td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1010,16 +1162,67 @@ export default function ClientMyInvestPage() {
                     </tr>
                   </thead>
                   <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
-                    <tr>
-                      <td className="px-3 py-5 text-blue-200" colSpan={10}>
-                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
-                            <ArrowRight size={20} />
-                          </span>
-                          <div className={`text-sm font-semibold ${softTextClass}`}>No manager trades found</div>
-                        </div>
-                      </td>
-                    </tr>
+                    {managerPositionsLoading ? (
+                      <tr>
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                            <div className={`text-sm font-semibold mt-2 ${softTextClass}`}>Loading manager positions...</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : managerPositionsError ? (
+                      <tr>
+                        <td className="px-3 py-5 text-red-400" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <div className="text-sm font-semibold">{managerPositionsError}</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : managerPositions.length === 0 ? (
+                      <tr>
+                        <td className="px-3 py-5 text-blue-200" colSpan={10}>
+                          <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+                            <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
+                              <ArrowRight size={20} />
+                            </span>
+                            <div className={`text-sm font-semibold ${softTextClass}`}>No manager trades found</div>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      managerPositions.map((pos, idx) => {
+                        const ticket = pos.Ticket ?? pos.ticket ?? 'N/A';
+                        const symbol = pos.Symbol ?? pos.symbol ?? 'N/A';
+                        const typeVal = pos.Type === 0 || pos.type === 0 || String(pos.Type || pos.type).toLowerCase() === 'buy' ? 'BUY' : 'SELL';
+                        const volume = pos.Volume ?? pos.volume ?? '0.00';
+                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.price_open ?? '0.00000';
+                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.price_current ?? '0.00000';
+                        const profit = toNumber(pos.Profit ?? pos.profit ?? 0);
+                        const swap = toNumber(pos.Swap ?? pos.swap ?? 0);
+                        const time = pos.Time ?? pos.time ?? 'N/A';
+                        const comment = pos.Comment ?? pos.comment ?? '';
+
+                        return (
+                          <tr key={ticket + '-' + idx} className="text-xs text-white">
+                            <td className="px-3 py-4 font-mono font-bold text-blue-300">{ticket}</td>
+                            <td className="px-3 py-4 font-bold">{symbol}</td>
+                            <td className={`px-3 py-4 font-black ${typeVal === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {typeVal}
+                            </td>
+                            <td className="px-3 py-4 font-bold">{volume}</td>
+                            <td className="px-3 py-4 font-mono">{openPrice}</td>
+                            <td className="px-3 py-4 font-mono">{currentPrice}</td>
+                            <td className={`px-3 py-4 font-mono font-bold ${profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {formatMoney(profit)}
+                            </td>
+                            <td className="px-3 py-4 font-mono">{formatMoney(swap)}</td>
+                            <td className="px-3 py-4 text-[10px] text-gray-400">{time}</td>
+                            <td className="px-3 py-4 text-[10px] text-gray-400 font-mono">{comment}</td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>

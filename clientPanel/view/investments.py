@@ -42,6 +42,10 @@ async def get_client_investments(request):
             "status": inv.status or "Active",
             "investor_allow_copy": inv.investor_allow_copy,
             "leverage": f"{inv.leverage}x",
+            "copy_mode": inv.copy_mode or "balance",
+            "copy_factor": float(inv.copy_factor) if inv.copy_factor is not None else 1.0,
+            "multi_trade_count": inv.multi_trade_count,
+            "manager_account_id": inv.mam_master_account.account_id if inv.mam_master_account else None,
         })
 
     return JsonResponse({"status": "ok", "user_id": profile.id, "investments": results})
@@ -138,3 +142,79 @@ async def start_copying_api(request):
             return _error("Failed to start copying in MT5 server", status=500)
     except Exception as e:
         return _error(f"Error starting copying: {str(e)}", status=500)
+
+
+@csrf_exempt
+@permission_required(IsClient)
+async def deploy_coefficient_config_api(request):
+    """Deploy coefficient configuration for an investor account."""
+    if request.method != "POST":
+        return _error("Only POST method is allowed", status=405)
+
+    user_id = await _resolve_client_user_id(request)
+    if user_id is None:
+        return _error("Authenticated session is required", status=401)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+        account_id = body.get("account_id")
+        coefficient_method = body.get("coefficient_method", "balance")  # 'balance' or 'fixed'
+        multiplier = body.get("multiplier", 1.0)
+        multi_execution = body.get("multi_execution", False)
+    except Exception:
+        return _error("Invalid JSON body")
+
+    if not account_id:
+        return _error("account_id/investment ID is required")
+
+    account = None
+    try:
+        db_id = int(account_id)
+        account = await TradingAccount.filter(
+            id=db_id,
+            user_id=user_id,
+            account_type="Investor"
+        ).first()
+    except ValueError:
+        pass
+
+    if not account:
+        account = await TradingAccount.filter(
+            account_id=str(account_id),
+            user_id=user_id,
+            account_type="Investor"
+        ).first()
+
+    if not account:
+        return _error("Trading account not found or access denied", status=404)
+
+    try:
+        if coefficient_method == "fixed":
+            account.copy_mode = "fixed_multiple"
+            try:
+                val = float(multiplier)
+                if val <= 0:
+                    return _error("Multiplier must be greater than 0")
+                account.copy_factor = val
+            except (ValueError, TypeError):
+                return _error("Invalid multiplier value")
+        else:
+            account.copy_mode = "balance"
+            account.copy_factor = 1.0
+
+        if multi_execution:
+            account.multi_trade_count = max(2, account.multi_trade_count)
+        else:
+            account.multi_trade_count = 1
+
+        await account.save()
+        return JsonResponse({
+            "status": "ok",
+            "message": "Coefficient configuration deployed successfully",
+            "copy_mode": account.copy_mode,
+            "copy_factor": float(account.copy_factor) if account.copy_factor is not None else None,
+            "multi_trade_count": account.multi_trade_count
+        })
+    except Exception as e:
+        return _error(f"Error deploying coefficient configuration: {str(e)}", status=500)
+

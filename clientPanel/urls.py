@@ -7,7 +7,12 @@ from clientPanel.view.activity_logs import get_client_activity_logs
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.documents import client_documents
-from clientPanel.view.investments import get_client_investments, pause_copying_api, start_copying_api
+from clientPanel.view.investments import (
+    get_client_investments,
+    pause_copying_api,
+    start_copying_api,
+    deploy_coefficient_config_api,
+)
 from clientPanel.view.logout import logout_client
 from clientPanel.view.reset_password import change_client_password, reset_client_password
 from clientPanel.view.OpenPositions import get_client_open_positions
@@ -39,6 +44,7 @@ urlpatterns = [
     path("my-investments", get_client_investments, name="my-investments"),
     path("my-investments/pause", pause_copying_api, name="pause-copying"),
     path("my-investments/start", start_copying_api, name="start-copying"),
+    path("my-investments/coefficient", deploy_coefficient_config_api, name="deploy-coefficient"),
     path("open-positions/<int:account_id>/", get_client_open_positions, name="open-positions"),
     path("open-positions/<int:account_id>", get_client_open_positions, name="open-positions-no-slash"),
     path("transactions", get_client_transactions, name="transactions"),
