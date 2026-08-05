@@ -556,7 +556,7 @@ export default function ClientMyInvestPage() {
   );
 
   const visibleInvestments = investments;
-  const selectedInvestmentId = selectedInvModal ? String(selectedInvModal.id) : '';
+  const selectedInvestmentId = selectedInvModal ? String(selectedInvModal.accountId) : '';
   const selectedInvestmentProfit = selectedInvModal ? selectedInvModal.currentValue - selectedInvModal.allocated : 0;
   const visibleCount = pagination.total;
   const showingStart = visibleCount > 0 ? (pagination.page - 1) * perPage + 1 : 0;
