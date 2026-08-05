@@ -75,6 +75,9 @@ MAM is a high-performance Multi-Account Management platform powered by Django, U
 - `GET  /api/admin/investors` — List investors
 - `GET  /api/admin/activity` — List system activity logs
 
+- `GET  /api/admin/mails` — List admin mail drafts and sent messages
+- `POST /api/admin/mails` — Compose, save, or send an admin email
+
 ### Client Panel (`/api/client/`)
 - `GET  /api/client/profile?user_id=1` — Client user profile
 - `GET  /api/client/account?user_id=1` — Trading account details

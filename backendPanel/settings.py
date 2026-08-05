@@ -91,6 +91,19 @@ class Settings(BaseSettings):
         alias="UPSTASH_REDIS_REST_TOKEN",
     )
 
+    # Email settings
+    email_backend: str = Field(
+        default="django.core.mail.backends.smtp.EmailBackend",
+        alias="EMAIL_BACKEND",
+    )
+    email_host: str = Field(default="smtp.gmail.com", alias="EMAIL_HOST")
+    email_port: int = Field(default=587, alias="EMAIL_PORT")
+    email_use_tls: bool = Field(default=True, alias="EMAIL_USE_TLS")
+    email_use_ssl: bool = Field(default=False, alias="EMAIL_USE_SSL")
+    email_host_user: str = Field(default="", alias="EMAIL_HOST_USER")
+    email_host_password: str = Field(default="", alias="EMAIL_HOST_PASSWORD")
+    default_from_email: str = Field(default="", alias="DEFAULT_FROM_EMAIL")
+
     @property
     def databases(self) -> dict[str, Any]:
         """Django DATABASES configuration dictionary."""
@@ -117,6 +130,20 @@ class Settings(BaseSettings):
                 "CONN_HEALTH_CHECKS": self.db_conn_health_checks,
                 "ATOMIC_REQUESTS": self.db_atomic_requests,
             }
+        }
+
+    @property
+    def email_settings(self) -> dict[str, Any]:
+        """Django email configuration dictionary."""
+        return {
+            "EMAIL_BACKEND": self.email_backend,
+            "EMAIL_HOST": self.email_host,
+            "EMAIL_PORT": self.email_port,
+            "EMAIL_USE_TLS": self.email_use_tls,
+            "EMAIL_USE_SSL": self.email_use_ssl,
+            "EMAIL_HOST_USER": self.email_host_user,
+            "EMAIL_HOST_PASSWORD": self.email_host_password,
+            "DEFAULT_FROM_EMAIL": self.default_from_email or self.email_host_user,
         }
 
 

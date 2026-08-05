@@ -38,6 +38,7 @@ from clientPanel.view.common import (
     load_admin_login_token,
     serialize_client_document_detail,
 )
+from backendPanel.database import ensure_db_initialized
 
 AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
 
@@ -196,6 +197,7 @@ async def _load_or_create_client_document(user: ClientUser) -> ClientDocument:
 
 async def list_admin_system_users(request):
     """List system admin users from the admin_users table."""
+    await ensure_db_initialized()
     admin_users = await AdminUser.all().order_by("-created_at")
     results = [
         {
@@ -220,6 +222,7 @@ async def list_admin_system_users(request):
 @require_http_methods(["GET", "PUT"])
 async def admin_profile(request):
     """Get or update the currently authenticated admin user's profile."""
+    await ensure_db_initialized()
     user, error_response = await _get_current_admin_user(request)
     if error_response is not None:
         return error_response
@@ -288,6 +291,7 @@ async def admin_profile(request):
 
 async def list_client_users(request):
     """List client users directly from database."""
+    await ensure_db_initialized()
     client_users = await ClientUser.all()
     results = []
     for user in client_users:
@@ -383,6 +387,7 @@ async def list_client_users(request):
 @require_http_methods(["GET", "PUT"])
 async def get_client_user_kyc(request, user_id: str):
     """Return the KYC profile and documents for an admin users-page row."""
+    await ensure_db_initialized()
     user = await _resolve_client_user(user_id)
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
@@ -416,6 +421,7 @@ async def get_client_user_kyc(request, user_id: str):
 @require_http_methods(["PUT", "POST"])
 async def update_client_user_documents(request, user_id: str):
     """Update a client's identity/address document details from the admin modal."""
+    await ensure_db_initialized()
     user = await _resolve_client_user(user_id)
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
@@ -515,6 +521,7 @@ async def update_client_user_documents(request, user_id: str):
 @require_http_methods(["PUT", "POST"])
 async def update_client_user_status(request, user_id: str):
     """Update a client's active/inactive status from the admin users modal."""
+    await ensure_db_initialized()
     user = await _resolve_client_user(user_id)
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
@@ -564,6 +571,7 @@ async def update_client_user_status(request, user_id: str):
 
 async def list_pending_requests(request):
     """List pending admin requests directly from database."""
+    await ensure_db_initialized()
     requests = await PendingRequest.all()
     results = [
         {
@@ -580,6 +588,7 @@ async def list_pending_requests(request):
 
 async def list_managers(request):
     """List MAM managers directly from database with optional search and pagination."""
+    await ensure_db_initialized()
     raw_page = request.GET.get("page")
     raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
     search_q = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
@@ -652,6 +661,7 @@ async def list_managers(request):
 
 async def list_investors(request):
     """List investors directly from database."""
+    await ensure_db_initialized()
     investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
     results = [
         {
@@ -672,6 +682,7 @@ async def list_investors(request):
 
 async def list_activity_logs(request):
     """List system activity logs directly from database."""
+    await ensure_db_initialized()
     logs = await ActivityLog.all().order_by("-created_at")
     results = [
         {
@@ -705,6 +716,8 @@ async def create_admin_user(request):
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    await ensure_db_initialized()
 
     name = body.get("name", "").strip()
     email = body.get("email", "").strip().lower()
@@ -780,6 +793,8 @@ async def create_client_user(request):
         body = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+    await ensure_db_initialized()
 
     name = body.get("name", "").strip()
     email = body.get("email", "").strip()
@@ -862,6 +877,7 @@ async def create_client_user(request):
 async def delete_user(request, user_id):
     """Delete a user from the system."""
     try:
+        await ensure_db_initialized()
         user = await _resolve_client_user(user_id)
         if not user:
             return JsonResponse({"status": "error", "message": "User not found"}, status=404)
@@ -877,6 +893,7 @@ async def delete_user(request, user_id):
 async def get_available_groups(request):
     """Retrieve available groups from mt5_group_config table."""
     try:
+        await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
 
         is_demo_request = "demo" in request.path.lower()
@@ -915,6 +932,7 @@ async def get_available_groups(request):
 async def get_current_group_config(request):
     """Get the current MT5 group default/alias configuration."""
     try:
+        await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
 
         configs = await MT5GroupConfig.all()
@@ -972,6 +990,7 @@ async def get_current_group_config(request):
 async def save_group_configuration(request):
     """Save the real group configurations and set defaults."""
     try:
+        await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
@@ -1026,6 +1045,7 @@ async def save_group_configuration(request):
 async def save_demo_group_configuration(request):
     """Save the demo group configurations and set defaults."""
     try:
+        await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
@@ -1080,6 +1100,7 @@ async def save_demo_group_configuration(request):
 async def update_admin_user(request, user_id):
     """Update an administrator's profile, role, or password (targets admin_users table)."""
     try:
+        await ensure_db_initialized()
         body = json.loads(request.body)
 
         clean_id = user_id

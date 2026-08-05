@@ -5,6 +5,7 @@ import {
   Bold, Italic, Underline, List, Link2, Paperclip, AlertCircle,
   Plus, Minimize2, Maximize2, RotateCcw,
 } from 'lucide-react';
+import proxy from '@/lib/proxy';
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface MailItem {
@@ -19,7 +20,7 @@ interface MailItem {
 type Priority = 'normal' | 'high' | 'urgent';
 
 /* ─── Sample data ────────────────────────────────────────── */
-const mails: MailItem[] = [
+const fallbackMails: MailItem[] = [
   { id: 1, sender: 'Alex Rivera', subject: 'Inquiry regarding Course Valuation module', snippet: 'Hello Admin, I had a quick question regarding module 4 access...', time: '10:45 AM', unread: true },
   { id: 2, sender: 'Apex Education Ventures', subject: 'Q3 Financial Distribution Report', snippet: 'Attached is the quarterly investment summary for review...', time: 'Yesterday', unread: true },
   { id: 3, sender: 'System Audit Bot', subject: 'Weekly Automated Backup Status: Success', snippet: 'All database tables successfully backed up to cloud storage...', time: 'Jul 29', unread: false },
@@ -28,10 +29,14 @@ const mails: MailItem[] = [
 /* ─── Compose Modal ──────────────────────────────────────── */
 interface ComposeModalProps {
   onClose: () => void;
+  onSent: () => void;
 }
 
-function ComposeModal({ onClose }: ComposeModalProps) {
-  const [to, setTo] = useState('');
+function ComposeModal({ onClose, onSent }: ComposeModalProps) {
+  const [manualTo, setManualTo] = useState('');
+  const [recipientEmails, setRecipientEmails] = useState<string[]>([]);
+  const [recipientMode, setRecipientMode] = useState<'manual' | 'client' | 'admin' | 'both'>('manual');
+  const [recipientSummary, setRecipientSummary] = useState('');
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
   const [cc, setCc] = useState('');
@@ -43,6 +48,9 @@ function ComposeModal({ onClose }: ComposeModalProps) {
   const [minimised, setMinimised] = useState(false);
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [recipientLoading, setRecipientLoading] = useState<'client' | 'admin' | 'both' | ''>('');
+  const [recipientMessage, setRecipientMessage] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
@@ -62,11 +70,93 @@ function ComposeModal({ onClose }: ComposeModalProps) {
     document.execCommand(cmd);
   }
 
+  function normalizeEmails(rows: unknown[]): string[] {
+    const emails = (rows as Array<{ email?: unknown }>).map((row) => String(row?.email || '').trim().toLowerCase()).filter(Boolean);
+    return Array.from(new Set(emails));
+  }
+
+  function loadRecipients(kind: 'client' | 'admin' | 'both') {
+    if (recipientLoading) return;
+    setRecipientLoading(kind);
+    setRecipientMessage('');
+
+    const loadClientRecipients = () =>
+      proxy.get('/api/admin/users').then((response) => (
+        Array.isArray(response.data?.users) ? response.data.users : []
+      ));
+
+    const loadAdminRecipients = () =>
+      proxy.get('/api/admin/admin-users').then((response) => (
+        Array.isArray(response.data?.admin_users) ? response.data.admin_users : []
+      ));
+
+    const requests = kind === 'client'
+      ? [loadClientRecipients()]
+      : kind === 'admin'
+        ? [loadAdminRecipients()]
+        : [loadClientRecipients(), loadAdminRecipients()];
+
+    Promise.all(requests)
+      .then((results) => {
+        const emails = normalizeEmails(results.flat());
+        setRecipientEmails(emails);
+        setRecipientMode(kind);
+        setRecipientSummary(
+          emails.length
+            ? `${kind === 'both' ? 'Both' : kind === 'client' ? 'Client' : 'Admin'} recipients loaded: ${emails.length}`
+            : `${kind === 'both' ? 'Both' : kind === 'client' ? 'Client' : 'Admin'} recipients loaded`,
+        );
+        if (kind === 'both') {
+          setRecipientMessage(
+            emails.length
+              ? `Loaded ${emails.length} total recipient(s) from client and admin tables.`
+              : 'No recipients found in client or admin tables.',
+          );
+          return;
+        }
+        const label = kind === 'client' ? 'client' : 'admin';
+        setRecipientMessage(
+          emails.length
+            ? `Loaded ${emails.length} ${label} recipient(s).`
+            : `No ${label} recipients found.`,
+        );
+      })
+      .catch((err) => {
+        setRecipientMessage(err?.message || `Unable to load ${kind} recipients`);
+      })
+      .finally(() => {
+        setRecipientLoading('');
+      });
+  }
+
   function handleSend() {
-    if (!to.trim() || !subject.trim()) return;
+    const resolvedTo = recipientMode === 'manual'
+      ? manualTo
+      : recipientEmails.join(', ');
+
+    if (!resolvedTo.trim() || !subject.trim() || sending || sent) return;
     setSending(true);
-    setTimeout(() => { setSending(false); setSent(true); }, 1800);
-    setTimeout(() => handleClose(), 3000);
+    setErrorMessage('');
+
+    proxy.post('/api/admin/mails', {
+      to: resolvedTo.split(',').map(part => part.trim()).filter(Boolean),
+      cc: cc.split(',').map(part => part.trim()).filter(Boolean),
+      bcc: bcc.split(',').map(part => part.trim()).filter(Boolean),
+      subject,
+      body,
+      html_body: body ? body.replace(/\n/g, '<br />') : '',
+      send_now: true,
+    })
+      .then(() => {
+        setSending(false);
+        setSent(true);
+        onSent();
+        setTimeout(() => handleClose(), 1200);
+      })
+      .catch((err) => {
+        setSending(false);
+        setErrorMessage(err?.message || 'Failed to send message');
+      });
   }
 
   function handleAttach(e: React.ChangeEvent<HTMLInputElement>) {
@@ -82,7 +172,8 @@ function ComposeModal({ onClose }: ComposeModalProps) {
   const { label: prLabel, color: prColor, bg: prBg } = priorityConfig[priority];
 
   const charCount = body.length;
-  const canSend = to.trim() && subject.trim() && !sending && !sent;
+  const resolvedTo = recipientMode === 'manual' ? manualTo : recipientEmails.join(', ');
+  const canSend = resolvedTo.trim() && subject.trim() && !sending && !sent;
 
   return (
     /* Backdrop */
@@ -178,12 +269,57 @@ function ComposeModal({ onClose }: ComposeModalProps) {
               <FieldRow label="To">
                 <input
                   id="compose-to"
-                  value={to}
-                  onChange={e => setTo(e.target.value)}
+                  value={recipientMode === 'manual' ? manualTo : recipientSummary}
+                  onChange={e => {
+                    setRecipientMode('manual');
+                    setRecipientEmails([]);
+                    setRecipientSummary('');
+                    setManualTo(e.target.value);
+                  }}
                   placeholder="Recipients…"
                   style={fieldInputStyle}
                 />
                 <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => loadRecipients('client')}
+                    disabled={recipientLoading === 'admin'}
+                    style={{
+                      ...ccBtnStyle,
+                      opacity: recipientLoading === 'client' ? 0.75 : 1,
+                      cursor: recipientLoading === 'admin' ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {recipientLoading === 'client' ? 'Loading Clients…' : 'Client'}
+                  </button>
+                  <button
+                    onClick={() => loadRecipients('admin')}
+                    disabled={recipientLoading === 'client'}
+                    style={{
+                      ...ccBtnStyle,
+                      opacity: recipientLoading === 'admin' ? 0.75 : 1,
+                      cursor: recipientLoading === 'client' ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {recipientLoading === 'admin' ? 'Loading Admins…' : 'Admin'}
+                  </button>
+                  <button
+                    onClick={() => loadRecipients('both')}
+                    disabled={recipientLoading === 'client' || recipientLoading === 'admin'}
+                    style={{
+                      ...ccBtnStyle,
+                      opacity: recipientLoading === 'both' ? 0.75 : 1,
+                      cursor: recipientLoading === 'client' || recipientLoading === 'admin' ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {recipientLoading === 'both' ? 'Loading Both…' : 'Both'}
+                  </button>
+                </div>
+              </FieldRow>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 8 }}>
+                <span style={{ fontSize: 10, color: '#64748b' }}>
+                  Click Client or Admin to auto-fill all emails from that table.
+                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   {!showCc && (
                     <button onClick={() => setShowCc(true)} style={ccBtnStyle}>Cc</button>
                   )}
@@ -191,7 +327,12 @@ function ComposeModal({ onClose }: ComposeModalProps) {
                     <button onClick={() => setShowBcc(true)} style={ccBtnStyle}>Bcc</button>
                   )}
                 </div>
-              </FieldRow>
+              </div>
+              {recipientMessage && (
+                <div style={{ paddingBottom: 8, fontSize: 10, color: recipientMessage.startsWith('Loaded') ? '#60a5fa' : '#f87171' }}>
+                  {recipientMessage}
+                </div>
+              )}
 
               {/* Cc */}
               {showCc && (
@@ -481,8 +622,79 @@ const toolbarBtnStyle: React.CSSProperties = {
 export default function AdminMailsPage() {
   const [selectedMail, setSelectedMail] = useState<number>(1);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [mails, setMails] = useState<MailItem[]>(fallbackMails);
+  const [loadingMails, setLoadingMails] = useState(false);
+  const [mailError, setMailError] = useState('');
 
   const currentMail = mails.find(m => m.id === selectedMail) || mails[0];
+
+  useEffect(() => {
+    let mounted = true;
+    setLoadingMails(true);
+
+    proxy.get('/api/admin/mails')
+      .then((response) => {
+        if (!mounted) return;
+        const apiMails = Array.isArray(response.data?.messages) ? response.data.messages : [];
+        const normalized: MailItem[] = apiMails.map((mail: any, index: number) => ({
+          id: Number(mail.id || index + 1),
+          sender: Array.isArray(mail.to) && mail.to.length ? mail.to[0] : 'Admin Mail',
+          subject: mail.subject || 'No subject',
+          snippet: (mail.body || '').slice(0, 120) || 'No message body',
+          time: mail.sent_at || mail.created_at || 'Just now',
+          unread: mail.status !== 'sent',
+        }));
+        setMails(normalized.length ? normalized : fallbackMails);
+        setSelectedMail((current) => {
+          if (normalized.some((mail: MailItem) => mail.id === current)) {
+            return current;
+          }
+          return normalized[0]?.id ?? fallbackMails[0].id;
+        });
+        setMailError('');
+      })
+      .catch((err) => {
+        if (!mounted) return;
+        setMailError(err?.message || 'Unable to load mail messages');
+        setMails(fallbackMails);
+      })
+      .finally(() => {
+        if (mounted) setLoadingMails(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function refreshMails() {
+    setLoadingMails(true);
+    proxy.get('/api/admin/mails')
+      .then((response) => {
+        const apiMails = Array.isArray(response.data?.messages) ? response.data.messages : [];
+        const normalized: MailItem[] = apiMails.map((mail: any, index: number) => ({
+          id: Number(mail.id || index + 1),
+          sender: Array.isArray(mail.to) && mail.to.length ? mail.to[0] : 'Admin Mail',
+          subject: mail.subject || 'No subject',
+          snippet: (mail.body || '').slice(0, 120) || 'No message body',
+          time: mail.sent_at || mail.created_at || 'Just now',
+          unread: mail.status !== 'sent',
+        }));
+        setMails(normalized.length ? normalized : fallbackMails);
+        setSelectedMail((current) => {
+          if (normalized.some((mail: MailItem) => mail.id === current)) {
+            return current;
+          }
+          return normalized[0]?.id ?? fallbackMails[0].id;
+        });
+        setMailError('');
+      })
+      .catch((err) => {
+        setMailError(err?.message || 'Unable to load mail messages');
+        setMails(fallbackMails);
+      })
+      .finally(() => setLoadingMails(false));
+  }
 
   return (
     <>
@@ -519,6 +731,14 @@ export default function AdminMailsPage() {
               <Search size={15} className="text-slate-400" />
               <input type="text" placeholder="Search emails..." className="bg-transparent border-none text-xs text-white outline-none w-full" />
             </div>
+
+            {loadingMails && (
+              <div className="text-[11px] text-slate-400 px-1">Loading messages...</div>
+            )}
+
+            {mailError && (
+              <div className="text-[11px] text-red-400 px-1">{mailError}</div>
+            )}
 
             {mails.map((m) => (
               <div
@@ -582,7 +802,12 @@ export default function AdminMailsPage() {
       </div>
 
       {/* ── Compose modal ── */}
-      {composeOpen && <ComposeModal onClose={() => setComposeOpen(false)} />}
+      {composeOpen && (
+        <ComposeModal
+          onClose={() => setComposeOpen(false)}
+          onSent={refreshMails}
+        />
+      )}
     </>
   );
 }

@@ -73,3 +73,4 @@ Recent additions:
 - `adminPanel/models.py` now uses `client` as the unified user table; admin accounts are stored there with `role="Admin"` and the old `admin_users` model/table is no longer used by the code.
 - `adminPanel/models.py` now stores KYC documents in `client_documents.user_id` (linked to `ClientUser`) and startup backfills any legacy `client_profile_id` rows into the new column.
 - Client onboarding now bootstraps a matching `ClientProfile`, and client login backfills a missing profile before issuing a session token.
+- `backendPanel.settings` now carries SMTP fields, and `adminPanel/view/mail.py` exposes `/api/admin/mails` for listing drafts/sends and composing SMTP-backed admin emails.

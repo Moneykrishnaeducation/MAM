@@ -9,6 +9,7 @@ from tortoise import Tortoise
 from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
+    AdminMailMessage,
     ClientProfile,
     ClientDocument,
     ClientTicket,
@@ -684,6 +685,83 @@ class TestAdminPanelModels:
         assert denied_response.status_code == 403
         assert denied_payload["status"] == "error"
         assert denied_payload["required_roles"] == ["admin"]
+
+    async def test_admin_mail_draft_and_send(self, monkeypatch):
+        """Test saving a mail draft and sending a composed admin email."""
+        from adminPanel.view.mail import admin_mails
+
+        draft_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "to": ["client@example.com"],
+                        "subject": "Draft update",
+                        "body": "This is a draft.",
+                        "send_now": False,
+                    }
+                ).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        draft_response = await admin_mails(draft_request)
+        draft_payload = json.loads(draft_response.content)
+
+        assert draft_response.status_code == 201
+        assert draft_payload["status"] == "ok"
+        assert draft_payload["mail"]["status"] == "draft"
+
+        saved_draft = await AdminMailMessage.get(subject="Draft update")
+        assert saved_draft.status == "draft"
+
+        async def fake_send_mail_message(message):
+            return None
+
+        monkeypatch.setattr("adminPanel.view.mail._send_mail_message", fake_send_mail_message)
+
+        send_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "to": ["client@example.com"],
+                        "subject": "Send update",
+                        "body": "This is the sent email body.",
+                        "html_body": "<p>This is the sent email body.</p>",
+                        "send_now": True,
+                    }
+                ).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        send_response = await admin_mails(send_request)
+        send_payload = json.loads(send_response.content)
+
+        assert send_response.status_code == 201
+        assert send_payload["status"] == "ok"
+        assert send_payload["mail"]["status"] == "sent"
+
+        saved_sent = await AdminMailMessage.get(subject="Send update")
+        assert saved_sent.status == "sent"
+        assert saved_sent.sent_at is not None
 
 
 class TestClientPanelModels:

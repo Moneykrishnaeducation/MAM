@@ -203,6 +203,33 @@ class ActivityLog(models.Model):
     class Meta:
         table = "admin_activity_logs"
 
+
+class AdminMailMessage(models.Model):
+    """Stored admin email draft / send log."""
+
+    id = fields.IntField(primary_key=True)
+    created_by = fields.ForeignKeyField(
+        "models.AdminUser",
+        related_name="mail_messages",
+        null=True,
+        on_delete=fields.SET_NULL,
+    )
+    subject = fields.CharField(max_length=255)
+    body = fields.TextField()
+    html_body = fields.TextField(null=True)
+    to_recipients = fields.JSONField(default=list)
+    cc_recipients = fields.JSONField(default=list)
+    bcc_recipients = fields.JSONField(default=list)
+    reply_to = fields.JSONField(default=list)
+    status = fields.CharField(max_length=20, default="draft")
+    error_message = fields.TextField(null=True)
+    sent_at = fields.DatetimeField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "admin_mail_messages"
+
 class ClientDocument(models.Model):
     """Client identity and address documents."""
 

@@ -1,23 +1,33 @@
-"""Django ASGI middleware to activate a TortoiseContext for each async request."""
+"""Django middleware to activate a TortoiseContext for each request."""
 
+from __future__ import annotations
+
+from inspect import iscoroutinefunction
+
+from asgiref.sync import async_to_sync
+from django.utils.decorators import sync_and_async_middleware
+from backendPanel.database import ensure_db_initialized
 from tortoise.context import TortoiseContext
+from tortoise import Tortoise
 
 
-class TortoiseContextMiddleware:
-    """
-    Wrap each ASGI request in a TortoiseContext so Tortoise ORM 1.x queries work.
+@sync_and_async_middleware
+def TortoiseContextMiddleware(get_response):
+    """Wrap each request in a TortoiseContext so ORM calls stay loop-safe."""
+    if iscoroutinefunction(get_response):
 
-    Must be placed LAST in MIDDLEWARE (innermost wrapper, closest to the view).
-    django-cors-headers and other sync middlewares must come before this one.
-    """
+        async def middleware(request):
+            if not Tortoise._inited:
+                await ensure_db_initialized()
+            async with TortoiseContext():
+                return await get_response(request)
 
-    async_capable = True
-    sync_capable = False
+    else:
 
-    def __init__(self, get_response):
-        self.get_response = get_response
+        def middleware(request):
+            if not Tortoise._inited:
+                async_to_sync(ensure_db_initialized)()
+            with TortoiseContext():
+                return get_response(request)
 
-    async def __call__(self, request):
-        async with TortoiseContext():
-            response = await self.get_response(request)
-        return response
+    return middleware

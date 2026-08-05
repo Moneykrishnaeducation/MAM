@@ -37,6 +37,7 @@ if not settings.configured:
         ],
         MIDDLEWARE=[
             "django.middleware.common.CommonMiddleware",
+            "backendPanel.middleware.TortoiseContextMiddleware",
         ],
         MEDIA_URL=_app_settings.media_url,
         MEDIA_ROOT=str(_app_settings.media_root),
