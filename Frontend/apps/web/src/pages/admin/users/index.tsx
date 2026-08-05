@@ -720,6 +720,7 @@ function ProfileModal({
   onSave: (userId: string, data: Partial<UserData>) => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [loadingProfile, setLoadingProfile] = useState(true);
   const [form, setForm] = useState({
     name: user.name,
     email: user.email,        // read-only
@@ -737,6 +738,48 @@ function ProfileModal({
   const avatarRef = useRef<HTMLInputElement>(null);
 
   const set = (key: string, val: string) => setForm((p) => ({ ...p, [key]: val }));
+
+  useEffect(() => {
+    let active = true;
+    setLoadingProfile(true);
+
+    fetch(`/api/admin/users/${user.id}/profile/details`, { credentials: 'include' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Unable to load profile data.');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        const profile = data?.profile ?? {};
+        setForm({
+          name: data?.user?.name ?? profile.full_name ?? user.name,
+          email: data?.user?.email ?? profile.email ?? user.email,
+          phone: data?.user?.phone ?? profile.phone ?? user.phone,
+          country: data?.user?.country ?? profile.country ?? user.country,
+          dateOfBirth: profile.dateOfBirth ?? user.dateOfBirth ?? '',
+          address: profile.address ?? user.address ?? '',
+          city: profile.city ?? user.city ?? '',
+          postalCode: profile.postalCode ?? user.postalCode ?? '',
+          tier: profile.tier ?? user.tier ?? 'Standard',
+          kycStatus: profile.kyc_status ?? user.kycStatus ?? 'Pending',
+          avatar: data?.user?.avatar ?? user.avatar,
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Failed to load profile data:', error);
+      })
+      .finally(() => {
+        if (active) setLoadingProfile(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
 
   const handleAvatarChange = (file: File) => {
     const url = URL.createObjectURL(file);
@@ -756,7 +799,21 @@ function ProfileModal({
       if (!response.ok) {
         throw new Error(data?.message || 'Unable to submit profile update.');
       }
-      onSave(user.id, form);
+      const nextProfile = data?.profile ?? {};
+      onSave(user.id, {
+        ...form,
+        name: data?.user?.name ?? nextProfile.full_name ?? form.name,
+        email: data?.user?.email ?? nextProfile.email ?? form.email,
+        phone: data?.user?.phone ?? nextProfile.phone ?? form.phone,
+        country: data?.user?.country ?? nextProfile.country ?? form.country,
+        dateOfBirth: nextProfile.dateOfBirth ?? form.dateOfBirth,
+        address: nextProfile.address ?? form.address,
+        city: nextProfile.city ?? form.city,
+        postalCode: nextProfile.postalCode ?? form.postalCode,
+        tier: nextProfile.tier ?? form.tier,
+        kycStatus: nextProfile.kyc_status ?? form.kycStatus,
+        avatar: data?.user?.avatar ?? form.avatar,
+      });
       setIsEditing(false);
       window.dispatchEvent(new Event('admin-user-updated'));
     } catch (error) {
@@ -813,6 +870,11 @@ function ProfileModal({
       </div>
 
       {/* Avatar Editor */}
+      {loadingProfile && (
+        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400">
+          Loading profile data...
+        </div>
+      )}
       <div className="flex items-center gap-5 bg-slate-950 border border-slate-800 rounded-2xl p-4">
         <div className="relative group">
           <img
@@ -948,6 +1010,7 @@ const FALLBACK_NETWORKS = Object.keys(NETWORK_META);
 
 function BankCryptoModal({ user }: { user: UserData }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [loadingPayment, setLoadingPayment] = useState(true);
   /* Determine type from backend or legacy field */
   const initType: 'bank' | 'crypto' = (() => {
     if (user.paymentDetails?.paymentType) return user.paymentDetails.paymentType;
@@ -976,6 +1039,55 @@ function BankCryptoModal({ user }: { user: UserData }) {
   const [networks, setNetworks]     = useState<string[]>(FALLBACK_NETWORKS);
   const [netLoading, setNetLoading] = useState(false);
   const [saving, setSaving]         = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingPayment(true);
+
+    fetch(`/api/admin/users/${user.id}/payment/details`, { credentials: 'include' })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) {
+          throw new Error(data?.message || 'Unable to load payment details.');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        const payment = data?.payment_details ?? {};
+        const bankData = payment?.bank ?? {};
+        const cryptoData = payment?.crypto ?? {};
+        const nextType: 'bank' | 'crypto' = payment?.paymentType === 'crypto'
+          ? 'crypto'
+          : payment?.paymentType === 'bank'
+            ? 'bank'
+            : (cryptoData?.wallet_address ? 'crypto' : 'bank');
+        setPayType(nextType);
+        setBank({
+          accountHolder: bankData?.account_holder ?? user.name,
+          accountNumber: bankData?.account_number ?? '',
+          bankName: bankData?.bank_name ?? '',
+          ifscSwift: bankData?.ifsc_swift ?? '',
+          branch: bankData?.branch ?? '',
+          country: bankData?.country ?? user.country,
+        });
+        setCrypto({
+          cryptoAddress: cryptoData?.wallet_address ?? '',
+          network: cryptoData?.network ?? 'USDT-TRC20',
+        });
+      })
+      .catch((error) => {
+        if (!active) return;
+        console.error('Failed to load payment details:', error);
+      })
+      .finally(() => {
+        if (active) setLoadingPayment(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
 
   /* Fetch supported networks from backend on mount */
   useEffect(() => {
@@ -1029,6 +1141,12 @@ function BankCryptoModal({ user }: { user: UserData }) {
           {isEditing ? 'Cancel Edit' : 'Edit Details'}
         </button>
       </div>
+
+      {loadingPayment && (
+        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400">
+          Loading payment details...
+        </div>
+      )}
 
       {/* Type Toggle */}
       <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
@@ -1913,6 +2031,32 @@ export default function AdminUsersPage() {
   };
 
   const handleProfileSave = (userId: string, data: Partial<UserData>) => {
+    setUsers((prev) =>
+      prev.map((u) => {
+        if (u.id !== userId) return u;
+        const updated = {
+          ...u,
+          ...data,
+          profile: u.profile
+            ? {
+                ...u.profile,
+                full_name: data.name ?? u.profile.full_name,
+                email: data.email ?? u.profile.email,
+                phone: data.phone ?? u.profile.phone,
+                country: data.country ?? u.profile.country,
+                dateOfBirth: data.dateOfBirth ?? u.profile.dateOfBirth,
+                address: data.address ?? u.profile.address,
+                city: data.city ?? u.profile.city,
+                postalCode: data.postalCode ?? u.profile.postalCode,
+                tier: data.tier ?? u.profile.tier,
+                kyc_status: data.kycStatus ?? u.profile.kyc_status,
+              }
+            : u.profile,
+        };
+        if (activeModalUser?.id === userId) setActiveModalUser(updated);
+        return updated;
+      }),
+    );
     const user = users.find((u) => u.id === userId);
     showToast(`Profile for ${user?.name || userId} updated successfully`);
   };

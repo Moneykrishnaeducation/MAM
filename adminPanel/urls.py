@@ -3,8 +3,8 @@
 from django.urls import path
 
 from adminPanel.view import mt5_crud
-from adminPanel.view.client_profile import update_client_profile
-from adminPanel.view.client_payment import update_client_payment_details
+from adminPanel.view.client_profile import get_client_profile_details, update_client_profile
+from adminPanel.view.client_payment import get_client_payment_details_api, update_client_payment_details
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
@@ -60,7 +60,9 @@ urlpatterns = [
     path("users/<str:user_id>/kyc", get_client_user_kyc, name="client-kyc"),
     path("users/<str:user_id>/documents", update_client_user_documents, name="update-client-documents"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
+    path("users/<str:user_id>/profile/details", get_client_profile_details, name="get-client-profile-details"),
     path("users/<str:user_id>/payment", update_client_payment_details, name="update-client-payment"),
+    path("users/<str:user_id>/payment/details", get_client_payment_details_api, name="get-client-payment-details"),
     path("users/<str:user_id>/delete", delete_user, name="delete-user"),
     path("users/<str:user_id>/tickets", list_client_tickets, name="client-tickets"),
     path("users/<str:user_id>/transactions", list_client_transactions, name="client-transactions"),
