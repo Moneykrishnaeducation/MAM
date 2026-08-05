@@ -103,3 +103,4 @@ Thumbs.db
 mt5_instances/
 scratch/
 mt5_prop_instances/
+mt5_send_locks/
