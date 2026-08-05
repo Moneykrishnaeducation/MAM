@@ -105,6 +105,20 @@ function getAccountStatusLabel(status?: string | null) {
   return isAccountActive(status) ? 'Active' : 'Inactive';
 }
 
+function getAdminUserApiId(user?: Pick<UserData, 'id' | 'user_id'> | null) {
+  if (!user) return '';
+  if (typeof user.user_id === 'number' && Number.isFinite(user.user_id)) {
+    return String(user.user_id);
+  }
+
+  const match = String(user.id ?? '').match(/(\d+)(?!.*\d)/);
+  if (match?.[1]) {
+    return String(Number(match[1]));
+  }
+
+  return String(user.id ?? '');
+}
+
 function SectionTitle({ icon: Icon, label, color = 'text-blue-400' }: { icon: React.ElementType; label: string; color?: string }) {
   return (
     <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
@@ -401,7 +415,7 @@ function VerifyModal({
     setKycLoading(true);
     setKycError(null);
 
-    fetch(`/api/admin/users/${user.id}/kyc`)
+    fetch(`/api/admin/users/${getAdminUserApiId(user)}/kyc`)
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -486,7 +500,7 @@ function VerifyModal({
         }
       });
 
-      const res = await fetch(`/api/admin/users/${user.id}/documents`, {
+      const res = await fetch(`/api/admin/users/${getAdminUserApiId(user)}/documents`, {
         method: 'POST',
         body: formData,
       });
@@ -861,7 +875,7 @@ function ProfileModal({
     let active = true;
     setLoadingProfile(true);
 
-    fetch(`/api/admin/users/${user.id}/profile/details`, { credentials: 'include' })
+    fetch(`/api/admin/users/${getAdminUserApiId(user)}/profile/details`, { credentials: 'include' })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -907,7 +921,7 @@ function ProfileModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await fetch(`/api/admin/users/${user.id}/profile`, {
+      const response = await fetch(`/api/admin/users/${getAdminUserApiId(user)}/profile`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -1162,7 +1176,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
     let active = true;
     setLoadingPayment(true);
 
-    fetch(`/api/admin/users/${user.id}/payment/details`, { credentials: 'include' })
+    fetch(`/api/admin/users/${getAdminUserApiId(user)}/payment/details`, { credentials: 'include' })
       .then(async (r) => {
         const data = await r.json().catch(() => ({}));
         if (!r.ok) {
@@ -1225,7 +1239,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
       ? { paymentType: 'bank', ...bank }
       : { paymentType: 'crypto', ...crypto };
     try {
-      const response = await fetch(`/api/admin/users/${user.id}/payment`, {
+      const response = await fetch(`/api/admin/users/${getAdminUserApiId(user)}/payment`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -2021,7 +2035,7 @@ export default function AdminUsersPage() {
       },
     }));
 
-    fetch(`/api/admin/users/${expandedRowId}/kyc`, { signal: controller.signal })
+    fetch(`/api/admin/users/${getAdminUserApiId(activeUser)}/kyc`, { signal: controller.signal })
       .then(async (res) => {
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
@@ -2070,7 +2084,9 @@ export default function AdminUsersPage() {
       },
     }));
 
-    fetch(`/api/admin/users/${userId}/transactions/details`, {
+    const apiUserId = getAdminUserApiId(activeModalUser);
+
+    fetch(`/api/admin/users/${apiUserId}/transactions/details`, {
       credentials: 'include',
       signal: controller.signal,
     })
@@ -2131,7 +2147,9 @@ export default function AdminUsersPage() {
       },
     }));
 
-    fetch(`/api/admin/users/${userId}/tickets`, {
+    const apiUserId = getAdminUserApiId(activeModalUser);
+
+    fetch(`/api/admin/users/${apiUserId}/tickets`, {
       credentials: 'include',
       signal: controller.signal,
     })
@@ -2182,7 +2200,9 @@ export default function AdminUsersPage() {
     const controller = new AbortController();
     const userId = activeModalUser.id;
 
-    fetch(`/api/admin/users/${userId}/kyc`, {
+    const apiUserId = getAdminUserApiId(activeModalUser);
+
+    fetch(`/api/admin/users/${apiUserId}/kyc`, {
       credentials: 'include',
       signal: controller.signal,
     })
@@ -2265,7 +2285,8 @@ export default function AdminUsersPage() {
 
     setStatusSavingByUserId((prev) => ({ ...prev, [userId]: true }));
     try {
-      const res = await fetch(`/api/admin/users/${userId}/status`, {
+      const apiUserId = getAdminUserApiId(currentUser);
+      const res = await fetch(`/api/admin/users/${apiUserId}/status`, {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -2310,7 +2331,8 @@ export default function AdminUsersPage() {
   };
 
   const toggleVerification = (userId: string, verified: boolean) => {
-    fetch(`/api/admin/users/${userId}/kyc`, {
+    const apiUserId = getAdminUserApiId(users.find((u) => u.id === userId) ?? activeModalUser);
+    fetch(`/api/admin/users/${apiUserId}/kyc`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verified }),
@@ -2392,10 +2414,28 @@ export default function AdminUsersPage() {
     showToast(`Profile for ${user?.name || userId} updated successfully`);
   };
 
-  const handleDeleteUser = (userId: string, userName: string) => {
-    setUsers((prev) => prev.filter((u) => u.id !== userId));
-    closeModal();
-    showToast(`User ${userName} deleted successfully`);
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    try {
+      const apiUserId = getAdminUserApiId(users.find((u) => u.id === userId) ?? activeModalUser);
+      const res = await fetch(`/api/admin/users/${apiUserId}/delete`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to delete user');
+      }
+
+      setUsers((prev) => prev.filter((u) => u.id !== userId));
+      if (activeModalUser?.id === userId) {
+        setActiveModalUser(null);
+      }
+      closeModal();
+      showToast(`User ${userName} deleted successfully`);
+      refreshUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to delete user');
+    }
   };
 
   const refreshUsers = () => {
@@ -2862,7 +2902,7 @@ export default function AdminUsersPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleDeleteUser(activeModalUser.id, activeModalUser.name)}
+                        onClick={() => { void handleDeleteUser(activeModalUser.id, activeModalUser.name); }}
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all"
                       >
                         <Trash2 size={14} /> Confirm Delete

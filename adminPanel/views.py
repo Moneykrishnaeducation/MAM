@@ -146,6 +146,7 @@ async def _build_client_kyc_payload(user: ClientUser) -> dict:
 
     return {
         "user": {
+            "user_id": user.id,
             "id": user.user_code or f"USR-{user.id:03d}",
             "name": user.name,
             "email": user.email,
@@ -347,6 +348,7 @@ async def list_client_users(request):
 
         results.append({
             "id": user.user_code or f"USR-{user.id:03d}",
+            "user_id": user.id,
             "name": user.name,
             "email": user.email,
             "phone": user.phone,
@@ -546,6 +548,7 @@ async def update_client_user_status(request, user_id: str):
             "status": "ok",
             "message": "Client status updated successfully",
             "user": {
+                "user_id": user.id,
                 "id": user.user_code or f"USR-{user.id:03d}",
                 "name": user.name,
                 "email": user.email,
@@ -807,17 +810,10 @@ async def create_client_user(request):
 async def delete_user(request, user_id):
     """Delete a user from the system."""
     try:
-        clean_id = user_id
-        if "ADM-" in user_id or "USR-" in user_id:
-            try:
-                clean_id = int(user_id.split("-")[-1])
-            except ValueError:
-                pass
-        
-        user = await ClientUser.filter(id=clean_id).first()
+        user = await _resolve_client_user(user_id)
         if not user:
             return JsonResponse({"status": "error", "message": "User not found"}, status=404)
-        
+
         await user.delete()
         return JsonResponse({"status": "ok", "message": "User deleted successfully"})
     except Exception as e:

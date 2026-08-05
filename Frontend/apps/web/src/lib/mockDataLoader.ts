@@ -3,7 +3,14 @@ import mockDataRaw from '@/data/mockData.json';
 export const mockData = mockDataRaw;
 
 export function getAdminUsers() {
-  return mockData.admin.users;
+  return mockData.admin.users.map((user: any) => {
+    const match = String(user?.id ?? '').match(/\d+/);
+    const userId = match ? Number(match[0]) : undefined;
+    return {
+      ...user,
+      user_id: user.user_id ?? userId,
+    };
+  });
 }
 
 export function getAdminSystemUsers() {
