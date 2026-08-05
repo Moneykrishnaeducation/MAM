@@ -187,15 +187,23 @@ def get_shared_manager():
 
     This is a zero-connection-overhead accessor — it returns whatever is
     already stored in ``_real_manager_instance`` without opening a new TCP
-    session.  Call this from background threads (e.g. balance sync) instead
-    of constructing a new ``MT5ManagerActions()`` to avoid exhausting the
-    MT5 Manager connection limit.
+    session when connected. If no singleton exists yet or it is disconnected,
+    it initializes/fetches the singleton via ``get_manager_instance(True)``.
 
     Returns the ManagerAPI object, or None if no live connection exists yet.
     """
     with _manager_lock:
         if _real_manager_instance and getattr(_real_manager_instance, "connected", False):
             return _real_manager_instance.manager
+
+    # If singleton is not yet initialized or was disconnected, attempt to initialize/reconnect once
+    try:
+        instance = get_manager_instance(True)
+        if instance and getattr(instance, "connected", False):
+            return instance.manager
+    except Exception as e:
+        logger.warning(f"[MT5] get_shared_manager could not connect singleton: {e}")
+
     return None
 
 
@@ -349,116 +357,93 @@ def _get_manager_instance_sync(server_type: bool = True):
     """
     Return the live MT5ManagerAPI singleton, connecting only when necessary.
 
-    Connection-replacement lifecycle (settings change or first connect):
-    1. Inside _manager_lock: read current singleton and latest DB settings.
-    2. If replacement is needed, build and connect the NEW instance first.
-    3. If connect succeeds:
-       a. Swap the singleton reference (still inside _manager_lock).
-       b. Release _manager_lock.
-       c. Disconnect the OLD instance outside the lock (no lock inversion).
-    4. If connect fails:
-       a. Mark new instance as disconnected.
-       b. Raise — the existing working singleton is untouched.
+    Lock safety rules:
+    - DB queries (`ServerSetting.filter`) run OUTSIDE `_manager_lock`.
+    - MT5 `.connect()` network call runs OUTSIDE `_manager_lock`.
+    - `_manager_lock` is held ONLY to inspect and update in-memory global pointers.
     """
     global _real_manager_instance, _demo_manager_instance, _current_real_setting, _current_demo_setting
 
-    old_instance_to_disconnect = None   # set only when we successfully replace
+    # 1. Fetch latest DB settings OUTSIDE the lock (no lock held during DB query)
+    async def get_setting():
+        from backendPanel.database import ensure_db_initialized
+        await ensure_db_initialized()
+        return await ServerSetting.filter(server_type=server_type).order_by("-created_at").first()
 
+    try:
+        latest_setting = run_async(get_setting())
+    except Exception as db_err:
+        logger.error(f"Failed to fetch server setting for server_type={server_type}: {db_err}")
+        raise Exception(f"Failed to fetch server setting: {db_err}")
+
+    if not latest_setting:
+        raise Exception(f"No server settings found for server_type={server_type}")
+
+    # 2. Fast-path check under _manager_lock
     with _manager_lock:
-        try:
-            async def get_setting():
-                return await ServerSetting.filter(server_type=server_type).order_by("-created_at").first()
+        if server_type:
+            current_instance = _real_manager_instance
+            current_setting  = _current_real_setting
+        else:
+            current_instance = _demo_manager_instance
+            current_setting  = _current_demo_setting
 
-            latest_setting = run_async(get_setting())
-            if not latest_setting:
-                raise Exception(f"No server settings found for server_type={server_type}")
-
-            if server_type:
-                current_instance = _real_manager_instance
-                current_setting  = _current_real_setting
-            else:
-                current_instance = _demo_manager_instance
-                current_setting  = _current_demo_setting
-
-            if current_instance is None or current_setting != latest_setting:
-                # --- Build and connect the NEW instance first ---
-                new_instance = MT5ManagerAPI()
-                try:
-                    new_instance.connect(
-                        address=latest_setting.get_decrypted_server_ip(),
-                        login=int(latest_setting.real_account_login),
-                        password=latest_setting.get_decrypted_real_account_password(),
-                        mode=MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL,
-                        timeout=120000,
-                    )
-                except Exception as connect_err:
-                    # New connection failed — keep the existing working singleton.
-                    try:
-                        new_instance.connected = False
-                    except Exception:
-                        pass
-                    error_message = f"Failed to connect to MT5 Manager: {connect_err}"
-                    logger.error(error_message)
-                    raise Exception(error_message)
-
-                # --- New connection succeeded: swap singleton atomically ---
-                logger.info(
-                    f"Connected to {'real' if server_type else 'demo'} MT5 server "
-                    f"(login={latest_setting.real_account_login})"
-                )
-                old_instance_to_disconnect = current_instance   # may be None on first connect
-                if server_type:
-                    _real_manager_instance = new_instance
-                    _current_real_setting  = latest_setting
-                else:
-                    _demo_manager_instance = new_instance
-                    _current_demo_setting  = latest_setting
-                current_instance = new_instance
-
+        if (
+            current_instance is not None
+            and getattr(current_instance, "connected", False)
+            and current_setting == latest_setting
+        ):
             return current_instance
 
-        except Exception as e:
-            logger.error(f"Error in get_manager_instance: {str(e)}")
-            raise
+    # 3. Connection is missing, disconnected, or setting changed.
+    # Connect NEW instance OUTSIDE _manager_lock (no lock held during MT5 network connect)
+    new_instance = MT5ManagerAPI()
+    try:
+        new_instance.connect(
+            address=latest_setting.get_decrypted_server_ip(),
+            login=int(latest_setting.real_account_login),
+            password=latest_setting.get_decrypted_real_account_password(),
+            mode=MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL,
+            timeout=120000,
+        )
+    except Exception as connect_err:
+        try:
+            new_instance.connected = False
+        except Exception:
+            pass
+        error_message = f"Failed to connect to MT5 Manager: {connect_err}"
+        logger.error(error_message)
+        raise Exception(error_message)
 
-    # --- Disconnect old instance OUTSIDE _manager_lock ---------------
-    # (unreachable via `return` above, but Python executes this after
-    #  the with-block completes normally — i.e. never, because we always
-    #  return inside the with.  We handle it explicitly below.)
+    # 4. Connect succeeded — atomically swap singleton reference under _manager_lock
+    old_to_disconnect = None
+    with _manager_lock:
+        if server_type:
+            old_to_disconnect = _real_manager_instance
+            _real_manager_instance = new_instance
+            _current_real_setting  = latest_setting
+        else:
+            old_to_disconnect = _demo_manager_instance
+            _demo_manager_instance = new_instance
+            _current_demo_setting  = latest_setting
 
+        logger.info(
+            f"Connected to {'real' if server_type else 'demo'} MT5 server "
+            f"(login={latest_setting.real_account_login})"
+        )
 
-# Wrapper to perform the post-lock disconnect after _get_manager_instance_sync.
-def _get_manager_instance_sync_with_cleanup(server_type: bool = True):
-    """
-    Calls _get_manager_instance_sync and then disconnects any replaced old
-    instance outside of _manager_lock.
-
-    This two-phase approach is required because Python's `with` statement
-    does not allow code to run after `return` but before the context-manager
-    exit — so we cannot disconnect inside the lock block after returning.
-    """
-    # We need to capture the old instance before the swap happens.
-    # Peek at current singleton BEFORE the lock to detect if a swap occurs.
-    if server_type:
-        pre_instance = _real_manager_instance
-    else:
-        pre_instance = _demo_manager_instance
-
-    result = _get_manager_instance_sync(server_type)
-
-    # Check if a replacement occurred: new singleton differs from what we saw.
-    if server_type:
-        post_instance = _real_manager_instance
-    else:
-        post_instance = _demo_manager_instance
-
-    if pre_instance is not None and pre_instance is not post_instance:
-        # Singleton was replaced — cleanly disconnect the old connection.
+    # 5. Cleanly disconnect old instance OUTSIDE _manager_lock
+    if old_to_disconnect is not None and old_to_disconnect is not new_instance:
         label = "real" if server_type else "demo"
         logger.info(f"[MT5] [{label}] Singleton replaced — disconnecting old connection.")
-        _disconnect_instance_safe(pre_instance, label)
+        _disconnect_instance_safe(old_to_disconnect, label)
 
-    return result
+    return new_instance
+
+
+def _get_manager_instance_sync_with_cleanup(server_type: bool = True):
+    """Compatibility wrapper around _get_manager_instance_sync."""
+    return _get_manager_instance_sync(server_type)
 
 
 class MT5ManagerActions:

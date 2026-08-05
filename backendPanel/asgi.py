@@ -75,6 +75,12 @@ async def application(scope, receive, send):
                     await auto_sync_db_schema()
                     set_global_context(ctx)
                     _global_tortoise_ctx = ctx
+                    try:
+                        from adminPanel.view.balance_sync import start_balance_sync_thread
+                        logger.info("[STARTUP] Initializing MT5 Account Balance Sync thread...")
+                        start_balance_sync_thread(interval_seconds=5.0)
+                    except Exception as sync_err:
+                        logger.warning(f"[STARTUP] Could not start balance sync thread: {sync_err}")
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
                     if _global_tortoise_ctx is not None:
