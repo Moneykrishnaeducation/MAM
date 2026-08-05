@@ -50,7 +50,7 @@ async def get_client_dashboard(request):
     investments = await MyInvestment.filter(user_id=profile.id).all()
     transactions = await ClientTransaction.filter(user_id=profile.id).all()
     tickets = await ClientTicket.filter(user_id=profile.id).all()
-    activity_logs = await ActivityLog.filter(user_id=profile.user_id).order_by("-timestamp").limit(5)
+    activity_logs = await ActivityLog.filter(user_id=profile.id).order_by("-timestamp").limit(5)
 
     total_balance = sum(account.balance for account in accounts)
     total_allocated = sum(investment.allocated_amount for investment in investments)
