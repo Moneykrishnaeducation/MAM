@@ -111,6 +111,7 @@ export type PaymentDetails = BankDetails | CryptoDetails;
 
 export interface UserData {
   id: string;
+  user_id?: number;
   name: string;
   email: string;
   phone: string;
