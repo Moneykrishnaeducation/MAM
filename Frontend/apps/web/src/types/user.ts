@@ -115,7 +115,7 @@ export interface UserData {
   email: string;
   phone: string;
   role: string;
-  status: 'Active' | 'Suspended';
+  status: 'Active' | 'Suspended' | 'Inactive';
   verified: boolean;
   joined: string;
   country: string;

@@ -509,6 +509,57 @@ async def update_client_user_documents(request, user_id: str):
     )
 
 
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["PUT", "POST"])
+async def update_client_user_status(request, user_id: str):
+    """Update a client's active/inactive status from the admin users modal."""
+    user = await _resolve_client_user(user_id)
+    if user is None:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        body = {}
+
+    raw_status = str(body.get("status") or "").strip()
+    raw_active = body.get("active")
+
+    if raw_status:
+        normalized = raw_status.lower()
+        if normalized in {"active", "enabled", "enable"}:
+            user.status = "Active"
+        elif normalized in {"inactive", "inactive", "suspended", "disable", "disabled"}:
+            user.status = "Inactive"
+        else:
+            return JsonResponse({"status": "error", "message": "Invalid status value"}, status=400)
+    elif raw_active is not None:
+        user.status = "Active" if bool(raw_active) else "Inactive"
+    else:
+        user.status = "Inactive" if str(user.status or "").strip().lower() == "active" else "Active"
+
+    await user.save(update_fields=["status", "updated_at"])
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Client status updated successfully",
+            "user": {
+                "id": user.user_code or f"USR-{user.id:03d}",
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "country": user.country,
+                "avatar": user.avatar,
+                "status": user.status,
+                "verified": user.verified,
+                "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+            },
+        }
+    )
+
+
 async def list_pending_requests(request):
     """List pending admin requests directly from database."""
     requests = await PendingRequest.all()

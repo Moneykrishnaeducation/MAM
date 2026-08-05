@@ -6,7 +6,7 @@ from adminPanel.view import mt5_crud
 from adminPanel.view.client_profile import get_client_profile_details, update_client_profile
 from adminPanel.view.client_payment import get_client_payment_details_api, update_client_payment_details
 from adminPanel.view.client_tickets import list_client_tickets
-from adminPanel.view.client_transactions import list_client_transactions
+from adminPanel.view.client_transactions import get_client_transactions_details, list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.balance_sync import sync_trading_balances_api
 from adminPanel.view.mam_accounts import create_account_api
@@ -36,6 +36,7 @@ from adminPanel.views import (
     update_admin_user,
     update_client_user_documents,
     delete_user,
+    update_client_user_status,
 )
 
 app_name = "adminPanel"
@@ -59,6 +60,7 @@ urlpatterns = [
     path("users", list_client_users, name="users"),
     path("users/<str:user_id>/kyc", get_client_user_kyc, name="client-kyc"),
     path("users/<str:user_id>/documents", update_client_user_documents, name="update-client-documents"),
+    path("users/<str:user_id>/status", update_client_user_status, name="update-client-status"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
     path("users/<str:user_id>/profile/details", get_client_profile_details, name="get-client-profile-details"),
     path("users/<str:user_id>/payment", update_client_payment_details, name="update-client-payment"),
@@ -67,6 +69,7 @@ urlpatterns = [
     path("users/<str:user_id>/tickets", list_client_tickets, name="client-tickets"),
     path("users/<str:user_id>/transactions", list_client_transactions, name="client-transactions"),
     path("users/<str:user_id>/open-positions", get_admin_user_open_positions, name="client-open-positions"),
+    path("users/<str:user_id>/transactions/details", get_client_transactions_details, name="get-client-transactions-details"),
     path("open-positions/<int:account_id>/", get_admin_open_positions, name="open-positions"),
     path("open-positions/<int:account_id>", get_admin_open_positions, name="open-positions-no-slash"),
     path("managers", list_managers, name="managers"),

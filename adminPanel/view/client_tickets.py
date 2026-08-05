@@ -105,7 +105,7 @@ async def list_client_tickets(request, user_id: str):
     category_filter = _normalize_ticket_category(request.GET.get("category") or request.GET.get("type"))
 
     tickets = (
-        await ClientTicket.filter(client_profile__user_id=user.id)
+        await ClientTicket.filter(user_id=user.id)
         .order_by("-created_at", "-id")
         .all()
     )
