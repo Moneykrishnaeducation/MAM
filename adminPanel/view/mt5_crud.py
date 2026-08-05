@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount, ClientUser
+from backendPanel.database import ensure_db_initialized
 
 # Helper to serialize Decimal/datetime values
 def clean_data(val):
@@ -18,6 +19,7 @@ def clean_data(val):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def server_settings_list_create(request):
+    await ensure_db_initialized()
     if request.method == "GET":
         st_param = request.GET.get("server_type")
         if st_param is not None:
@@ -67,6 +69,7 @@ async def server_settings_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def server_setting_detail_update_delete(request, pk):
+    await ensure_db_initialized()
     setting = await ServerSetting.filter(id=pk).first()
     if not setting:
         return JsonResponse({"status": "error", "message": "Server setting not found"}, status=404)
@@ -123,6 +126,7 @@ async def server_setting_detail_update_delete(request, pk):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def group_configs_list_create(request):
+    await ensure_db_initialized()
     if request.method == "GET":
         configs = await MT5GroupConfig.all().order_by("group_name")
         results = [
@@ -170,6 +174,7 @@ async def group_configs_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def group_config_detail_update_delete(request, pk):
+    await ensure_db_initialized()
     config = await MT5GroupConfig.filter(id=pk).first()
     if not config:
         return JsonResponse({"status": "error", "message": "Group config not found"}, status=404)
@@ -230,6 +235,7 @@ async def group_config_detail_update_delete(request, pk):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def trade_groups_list_create(request):
+    await ensure_db_initialized()
     if request.method == "GET":
         groups = await TradeGroup.all().order_by("name")
         results = [
@@ -288,6 +294,7 @@ async def trade_groups_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def trade_group_detail_update_delete(request, pk):
+    await ensure_db_initialized()
     group = await TradeGroup.filter(id=pk).first()
     if not group:
         return JsonResponse({"status": "error", "message": "Trade group not found"}, status=404)
@@ -363,6 +370,7 @@ async def trade_group_detail_update_delete(request, pk):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def mam_accounts_list_create(request):
+    await ensure_db_initialized()
     if request.method == "GET":
         accounts = await TradingAccount.filter(account_type="MAM").order_by("-created_at")
         results = [
@@ -431,6 +439,7 @@ async def mam_accounts_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def mam_account_detail_update_delete(request, pk):
+    await ensure_db_initialized()
     account = await TradingAccount.filter(id=pk, account_type="MAM").first()
     if not account:
         return JsonResponse({"status": "error", "message": "MAM account not found"}, status=404)
@@ -488,6 +497,7 @@ async def mam_account_detail_update_delete(request, pk):
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def investors_list_create(request):
+    await ensure_db_initialized()
     if request.method == "GET":
         investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account").order_by("-created_at")
         results = [
@@ -559,6 +569,7 @@ async def investors_list_create(request):
 @csrf_exempt
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def investor_detail_update_delete(request, pk):
+    await ensure_db_initialized()
     investor = await TradingAccount.filter(id=pk, account_type="Investor").prefetch_related("user", "mam_master_account").first()
     if not investor:
         return JsonResponse({"status": "error", "message": "MAM Investor not found"}, status=404)
@@ -625,6 +636,7 @@ async def investor_detail_update_delete(request, pk):
 async def sync_groups_from_mt5(request):
     """Trigger synchronization of MT5 groups into the database."""
     try:
+        await ensure_db_initialized()
         from adminPanel.mt5.services import MT5ManagerActions
         
         is_real = True

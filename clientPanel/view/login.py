@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import AdminUser, ClientUser
+from adminPanel.audit import create_audit_log
 from backendPanel.database import ensure_db_initialized
 from clientPanel.view.common import (
     ADMIN_LOGIN_COOKIE_NAME,
@@ -128,6 +129,22 @@ async def login_client(request):
         await admin_user.save(update_fields=["last_login"])
 
         token = create_admin_login_token(admin_user.id, admin_user.email, role_canonical)
+        await create_audit_log(
+            request,
+            user_name=admin_user.name,
+            user_email=admin_user.email,
+            user_role=role_canonical,
+            action_type="Login",
+            module_name="Authentication",
+            record_id=str(admin_user.id),
+            new_values={
+                "email": admin_user.email,
+                "status": admin_user.status,
+                "role": role_canonical,
+                "event": "admin_login",
+            },
+            user_id=admin_user.id,
+        )
         response = JsonResponse(
             {
                 "status": "ok",
@@ -167,8 +184,27 @@ async def login_client(request):
         return _error("Invalid credentials", status=401)
 
     profile = user
+    from django.utils import timezone
+    user.last_login = timezone.now()
+    await user.save(update_fields=["last_login"])
 
     token = create_client_login_token(user.id, user.email)
+    await create_audit_log(
+        request,
+        user_name=user.name,
+        user_email=user.email,
+        user_role="Client",
+        action_type="Login",
+        module_name="Authentication",
+        record_id=str(user.id),
+        new_values={
+            "email": user.email,
+            "status": user.status,
+            "role": "Client",
+            "event": "client_login",
+        },
+        user_id=user.id,
+    )
 
     response = JsonResponse(
         {

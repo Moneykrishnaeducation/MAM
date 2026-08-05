@@ -196,6 +196,9 @@ class ActivityLog(models.Model):
     """Audit activity log entry."""
 
     id = fields.BigIntField(primary_key=True)
+    user_email = fields.CharField(max_length=255)
+    action = fields.CharField(max_length=255)
+    details = fields.TextField(null=True)
     user_name = fields.CharField(max_length=255)
     user_role = fields.CharField(max_length=50)
     action_type = fields.CharField(max_length=100)
@@ -205,22 +208,27 @@ class ActivityLog(models.Model):
     new_values = fields.JSONField(null=True)
     ip_address = fields.CharField(max_length=50, null=True)
     user_agent = fields.TextField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
     timestamp = fields.DatetimeField(auto_now_add=True)
-    user_id = fields.IntField(null=True, index=True)
+    user_id = fields.IntField(null=True)
 
     class Meta:
-        table = "audit_activitylog"
+        table = "admin_activity_logs"
 
     @classmethod
     async def create(cls, **kwargs: Any):
         """Accept both the new audit payload and legacy activity log kwargs."""
         data = dict(kwargs)
 
+        if "user_email" not in data and "user_name" in data:
+            data["user_email"] = data["user_name"]
         if "user_name" not in data and "user_email" in data:
-            data["user_name"] = data.pop("user_email")
+            data["user_name"] = data["user_email"]
 
         if "action_type" not in data and "action" in data:
-            data["action_type"] = data.pop("action")
+            data["action_type"] = data["action"]
+        if "action" not in data and "action_type" in data:
+            data["action"] = data["action_type"]
 
         if "module_name" not in data and "details" in data:
             details = data.pop("details")
@@ -238,26 +246,6 @@ class ActivityLog(models.Model):
             data["timestamp"] = data.pop("created_at")
 
         return await super().create(**data)
-
-    @property
-    def user_email(self) -> str:
-        return self.user_name
-
-    @property
-    def action(self) -> str:
-        return self.action_type
-
-    @property
-    def details(self) -> str:
-        if isinstance(self.new_values, dict) and self.new_values:
-            return json.dumps(self.new_values, default=str)
-        if isinstance(self.old_values, dict) and self.old_values:
-            return json.dumps(self.old_values, default=str)
-        return self.module_name
-
-    @property
-    def created_at(self):
-        return self.timestamp
 
 
 class AdminMailMessage(models.Model):

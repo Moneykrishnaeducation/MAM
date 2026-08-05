@@ -689,12 +689,20 @@ async def list_investors(request):
 def _classify_activity_log(log: ActivityLog) -> str:
     """Infer an activity category from the audit columns."""
     text = f"{log.user_role} {log.action_type} {log.module_name}".lower()
+    role = str(log.user_role or "").strip().lower()
 
     if any(keyword in text for keyword in ("error", "failed", "failure", "exception", "denied", "blocked", "unauthorized", "invalid")):
         return "error"
 
-    if str(log.user_role).strip().lower() == "client" or any(
-        keyword in text for keyword in ("client", "user", "login", "signin", "sign in", "profile", "account", "kyc", "ticket", "deposit", "withdraw", "payment")
+    if role == "client":
+        return "client"
+
+    if role in {"admin", "superadmin", "viewer"}:
+        return "admin"
+
+    if any(
+        keyword in text
+        for keyword in ("client", "user", "login", "signin", "sign in", "profile", "account", "kyc", "ticket", "deposit", "withdraw", "payment")
     ):
         return "client"
 

@@ -140,6 +140,19 @@ async def auto_sync_db_schema() -> None:
     except Exception as e:
         logger.warning(f"[DB AUTO-SYNC] Warning backfilling client_documents.user_id: {e}")
 
+    try:
+        res = await conn.execute_query(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='admin_activity_logs'"
+        )
+        existing_cols = {r["column_name"] for r in res[1]}
+        if "user_id" in existing_cols:
+            await conn.execute_query(
+                'CREATE INDEX IF NOT EXISTS "admin_activity_logs_user_id_idx" ON "admin_activity_logs" ("user_id");'
+            )
+            logger.info("[DB AUTO-SYNC] Ensured index on admin_activity_logs.user_id.")
+    except Exception as e:
+        logger.warning(f"[DB AUTO-SYNC] Warning creating admin_activity_logs.user_id index: {e}")
+
     if modified_count > 0:
         logger.info(f"[DB AUTO-SYNC] Schema sync complete. Applied {modified_count} database modification(s).")
     else:
