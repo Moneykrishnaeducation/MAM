@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientTransaction, ClientUser
@@ -77,7 +78,7 @@ async def list_client_transactions(request, user_id: str):
 
     tab = _normalize_transaction_tab(request.GET.get("tab") or request.GET.get("type"))
     transactions = (
-        await ClientTransaction.filter(client_profile__user_id=user.id)
+        await ClientTransaction.filter(user_id=user.id)
         .order_by("-created_at", "-id")
         .all()
     )
@@ -110,3 +111,11 @@ async def list_client_transactions(request, user_id: str):
             "transactions": [_serialize_transaction(transaction) for transaction in filtered_transactions],
         }
     )
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
+async def get_client_transactions_details(request, user_id: str):
+    """Load a client's transactions for the admin modal."""
+    return await list_client_transactions(request, user_id)

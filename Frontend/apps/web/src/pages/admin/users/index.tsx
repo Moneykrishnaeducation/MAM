@@ -54,6 +54,8 @@ import {
   type AdminUserKycDetails,
   type CreateUserFormData,
   type KycDocument,
+  type UserTicket,
+  type UserTransaction,
   type TradingAccount,
   type UserData,
 } from '@/types/user';
@@ -63,6 +65,7 @@ import { type UserModalType } from '@/types/userModal';
    Small UI helpers
 ───────────────────────────────────────────────────────────── */
 function StatusBadge({ status }: { status: string }) {
+  const normalized = status.toLowerCase();
   const map: Record<string, string> = {
     approved: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     verified: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
@@ -72,8 +75,9 @@ function StatusBadge({ status }: { status: string }) {
     rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
     missing: 'bg-slate-600/20 text-slate-400 border-slate-600/20',
     suspended: 'bg-red-500/10 text-red-400 border-red-500/20',
+    inactive: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  const cls = map[status.toLowerCase()] ?? 'bg-slate-700/20 text-slate-400 border-slate-700/20';
+  const cls = map[normalized] ?? 'bg-slate-700/20 text-slate-400 border-slate-700/20';
   const Icon = {
     approved: CheckCircle2,
     verified: CheckCircle2,
@@ -83,13 +87,22 @@ function StatusBadge({ status }: { status: string }) {
     rejected: Ban,
     missing: AlertCircle,
     suspended: XCircle,
-  }[status.toLowerCase()] ?? AlertCircle;
+    inactive: XCircle,
+  }[normalized] ?? AlertCircle;
   return (
     <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border capitalize ${cls}`}>
       <Icon size={11} />
       {status}
     </span>
   );
+}
+
+function isAccountActive(status?: string | null) {
+  return String(status ?? '').trim().toLowerCase() === 'active';
+}
+
+function getAccountStatusLabel(status?: string | null) {
+  return isAccountActive(status) ? 'Active' : 'Inactive';
 }
 
 function SectionTitle({ icon: Icon, label, color = 'text-blue-400' }: { icon: React.ElementType; label: string; color?: string }) {
@@ -191,6 +204,111 @@ function normalizeKycDetails(payload: unknown, fallback?: AdminUserKycDetails): 
       identity: normalizeKycDoc(mergedIdentity ?? raw.documents?.identity ?? fallback?.documents?.identity),
       address: normalizeKycDoc(mergedAddress ?? raw.documents?.address ?? fallback?.documents?.address),
     },
+  };
+}
+
+type AdminTransactionApiItem = {
+  id: string | number;
+  transaction_type?: string | null;
+  type?: string | null;
+  amount?: number | string | null;
+  payment_method?: string | null;
+  method?: string | null;
+  status?: string | null;
+  created_at?: string | null;
+  date?: string | null;
+};
+
+type AdminTransactionApiSummary = {
+  total_transactions?: number;
+  pending_count?: number;
+  total_volume?: number;
+  deposit_count?: number;
+  withdrawal_count?: number;
+};
+
+type AdminTransactionModalState = {
+  loading: boolean;
+  error: string | null;
+  transactions: UserTransaction[];
+  summary: AdminTransactionApiSummary | null;
+};
+
+type AdminTicketApiItem = {
+  id: string | number;
+  subject?: string | null;
+  category?: string | null;
+  priority?: string | null;
+  status?: string | null;
+  description?: string | null;
+  date?: string | null;
+  created_at?: string | null;
+  attachments?: unknown[];
+};
+
+type AdminTicketApiSummary = {
+  total_tickets?: number;
+  open_count?: number;
+  pending_count?: number;
+  closed_count?: number;
+};
+
+type AdminTicketModalState = {
+  loading: boolean;
+  error: string | null;
+  tickets: UserTicket[];
+  summary: AdminTicketApiSummary | null;
+};
+
+function normalizeTransactionType(type?: string | null): 'Deposit' | 'Withdrawal' {
+  const value = String(type ?? '').trim().toLowerCase();
+  return value === 'withdrawal' || value === 'withdraw' ? 'Withdrawal' : 'Deposit';
+}
+
+function normalizeTransactionStatus(status?: string | null): 'Completed' | 'Pending' {
+  const value = String(status ?? '').trim().toLowerCase();
+  return ['pending', 'processing'].includes(value) ? 'Pending' : 'Completed';
+}
+
+function normalizeTransactionAmount(amount?: number | string | null): string {
+  if (amount === null || amount === undefined || amount === '') {
+    return '0.00';
+  }
+
+  const numeric = Number(amount);
+  if (Number.isFinite(numeric)) {
+    return numeric.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  }
+
+  return String(amount);
+}
+
+function normalizeTransactionRecord(tx: AdminTransactionApiItem): UserTransaction {
+  return {
+    id: String(tx.id),
+    type: normalizeTransactionType(tx.transaction_type ?? tx.type),
+    amount: normalizeTransactionAmount(tx.amount),
+    status: normalizeTransactionStatus(tx.status),
+    date: String(tx.created_at ?? tx.date ?? ''),
+  };
+}
+
+function normalizeTicketStatus(status?: string | null): UserTicket['status'] {
+  const value = String(status ?? '').trim().toLowerCase();
+  if (['closed', 'resolved', 'completed', 'done'].includes(value)) return 'Closed';
+  if (['open', 'new', 'active'].includes(value)) return 'Open';
+  return 'In Progress';
+}
+
+function normalizeTicketRecord(ticket: AdminTicketApiItem): UserTicket {
+  return {
+    id: String(ticket.id),
+    subject: ticket.subject ?? 'No subject',
+    status: normalizeTicketStatus(ticket.status),
+    date: String(ticket.date ?? ticket.created_at ?? ''),
   };
 }
 
@@ -1847,6 +1965,13 @@ export default function AdminUsersPage() {
   const [kycDetailsByUserId, setKycDetailsByUserId] = useState<
     Record<string, { loading: boolean; error: string | null; data: AdminUserKycDetails | null }>
   >({});
+  const [transactionDetailsByUserId, setTransactionDetailsByUserId] = useState<
+    Record<string, AdminTransactionModalState>
+  >({});
+  const [ticketDetailsByUserId, setTicketDetailsByUserId] = useState<
+    Record<string, AdminTicketModalState>
+  >({});
+  const [statusSavingByUserId, setStatusSavingByUserId] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setLoading(true);
@@ -1929,6 +2054,175 @@ export default function AdminUsersPage() {
     return () => controller.abort();
   }, [expandedRowId, users]);
 
+  useEffect(() => {
+    if (activeModalType !== 'transactions' || !activeModalUser) return;
+
+    const controller = new AbortController();
+    const userId = activeModalUser.id;
+
+    setTransactionDetailsByUserId((prev) => ({
+      ...prev,
+      [userId]: {
+        loading: true,
+        error: null,
+        transactions: prev[userId]?.transactions ?? (activeModalUser.transactions ?? []),
+        summary: prev[userId]?.summary ?? null,
+      },
+    }));
+
+    fetch(`/api/admin/users/${userId}/transactions/details`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load transaction history');
+        }
+        return data as {
+          summary?: AdminTransactionApiSummary;
+          transactions?: AdminTransactionApiItem[];
+        };
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const transactions = Array.isArray(data?.transactions)
+          ? data.transactions.map(normalizeTransactionRecord)
+          : [];
+        setTransactionDetailsByUserId((prev) => ({
+          ...prev,
+          [userId]: {
+            loading: false,
+            error: null,
+            transactions,
+            summary: data?.summary ?? null,
+          },
+        }));
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setTransactionDetailsByUserId((prev) => ({
+          ...prev,
+          [userId]: {
+            loading: false,
+            error: err instanceof Error ? err.message : 'Failed to load transaction history',
+            transactions: prev[userId]?.transactions ?? (activeModalUser.transactions ?? []),
+            summary: prev[userId]?.summary ?? null,
+          },
+        }));
+      });
+
+    return () => controller.abort();
+  }, [activeModalType, activeModalUser?.id]);
+
+  useEffect(() => {
+    if (activeModalType !== 'tickets' || !activeModalUser) return;
+
+    const controller = new AbortController();
+    const userId = activeModalUser.id;
+
+    setTicketDetailsByUserId((prev) => ({
+      ...prev,
+      [userId]: {
+        loading: true,
+        error: null,
+        tickets: prev[userId]?.tickets ?? (activeModalUser.tickets ?? []),
+        summary: prev[userId]?.summary ?? null,
+      },
+    }));
+
+    fetch(`/api/admin/users/${userId}/tickets`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load ticket history');
+        }
+        return data as {
+          summary?: AdminTicketApiSummary;
+          tickets?: AdminTicketApiItem[];
+        };
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const tickets = Array.isArray(data?.tickets)
+          ? data.tickets.map(normalizeTicketRecord)
+          : [];
+        setTicketDetailsByUserId((prev) => ({
+          ...prev,
+          [userId]: {
+            loading: false,
+            error: null,
+            tickets,
+            summary: data?.summary ?? null,
+          },
+        }));
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setTicketDetailsByUserId((prev) => ({
+          ...prev,
+          [userId]: {
+            loading: false,
+            error: err instanceof Error ? err.message : 'Failed to load ticket history',
+            tickets: prev[userId]?.tickets ?? (activeModalUser.tickets ?? []),
+            summary: prev[userId]?.summary ?? null,
+          },
+        }));
+      });
+
+    return () => controller.abort();
+  }, [activeModalType, activeModalUser?.id]);
+
+  useEffect(() => {
+    if (activeModalType !== 'account_active' || !activeModalUser) return;
+
+    const controller = new AbortController();
+    const userId = activeModalUser.id;
+
+    fetch(`/api/admin/users/${userId}/kyc`, {
+      credentials: 'include',
+      signal: controller.signal,
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load account status');
+        }
+        return data as { user?: { status?: string | null } };
+      })
+      .then((data) => {
+        if (controller.signal.aborted) return;
+        const nextStatus = data?.user?.status ? String(data.user.status) : activeModalUser.status;
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? {
+                  ...u,
+                  status: nextStatus as UserData['status'],
+                }
+              : u,
+          ),
+        );
+        setActiveModalUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: nextStatus as UserData['status'],
+              }
+            : prev,
+        );
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to refresh account status:', err);
+      });
+
+    return () => controller.abort();
+  }, [activeModalType, activeModalUser?.id]);
+
   const toggleDropdownRow = (userId: string) =>
     setExpandedRowId((prev) => (prev === userId ? null : userId));
 
@@ -1965,17 +2259,54 @@ export default function AdminUsersPage() {
     }
   };
 
-  const toggleUserActiveStatus = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.id !== userId) return u;
-        const nextStatus = u.status === 'Active' ? 'Suspended' : 'Active';
-        const updated = { ...u, status: nextStatus as UserData['status'] };
-        if (activeModalUser?.id === userId) setActiveModalUser(updated);
-        showToast(`User ${u.name} status changed to ${nextStatus}`);
-        return updated;
-      }),
-    );
+  const toggleUserActiveStatus = async (userId: string) => {
+    const currentUser = users.find((u) => u.id === userId) ?? activeModalUser;
+    const nextStatus = isAccountActive(currentUser?.status) ? 'Inactive' : 'Active';
+
+    setStatusSavingByUserId((prev) => ({ ...prev, [userId]: true }));
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: nextStatus }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to update user status');
+      }
+
+      const nextUser = data?.user ?? {};
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === userId
+            ? {
+                ...u,
+                status: (nextUser.status ?? nextStatus) as UserData['status'],
+              }
+            : u,
+        ),
+      );
+      if (activeModalUser?.id === userId) {
+        setActiveModalUser((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: (nextUser.status ?? nextStatus) as UserData['status'],
+              }
+            : prev,
+        );
+      }
+      showToast(`User ${currentUser?.name ?? userId} status updated to ${nextStatus}`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to update user status');
+    } finally {
+      setStatusSavingByUserId((prev) => {
+        const next = { ...prev };
+        delete next[userId];
+        return next;
+      });
+    }
   };
 
   const toggleVerification = (userId: string, verified: boolean) => {
@@ -2293,12 +2624,12 @@ export default function AdminUsersPage() {
                                 <button
                                   onClick={() => openSubRowModal(u, 'account_active')}
                                   className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
-                                    u.status === 'Active'
+                                    isAccountActive(u.status)
                                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                       : 'bg-red-500/10 text-red-400 border-red-500/30'
                                   }`}
                                 >
-                                  <Power size={15} /> {u.status === 'Active' ? 'Active' : 'Suspended'}
+                                  <Power size={15} /> {getAccountStatusLabel(u.status)}
                                 </button>
                                 <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
                                   <Trash2 size={15} /> Delete
@@ -2380,7 +2711,18 @@ export default function AdminUsersPage() {
                   {activeModalType === 'transactions' && (
                     <div className="space-y-4">
                       <SectionTitle icon={ArrowUpRight} label="Transaction History" color="text-teal-400" />
-                      {(activeModalUser.transactions || []).length === 0 ? (
+                      {transactionDetailsByUserId[activeModalUser.id]?.loading && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400 flex items-center gap-2">
+                          <RefreshCw size={13} className="animate-spin text-teal-400" />
+                          Loading transaction history from the database...
+                        </div>
+                      )}
+                      {transactionDetailsByUserId[activeModalUser.id]?.error && !transactionDetailsByUserId[activeModalUser.id]?.loading && (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
+                          {transactionDetailsByUserId[activeModalUser.id]?.error}
+                        </div>
+                      )}
+                      {!transactionDetailsByUserId[activeModalUser.id]?.loading && (transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length === 0 ? (
                         <div className="text-center py-10">
                           <ArrowDownUp size={32} className="mx-auto mb-3 text-slate-700" />
                           <p className="text-slate-500 text-xs">No transactions found.</p>
@@ -2399,7 +2741,7 @@ export default function AdminUsersPage() {
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-800/60 bg-slate-950">
-                                {(activeModalUser.transactions || []).map((tx) => (
+                                {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).map((tx) => (
                                   <tr key={tx.id} className="hover:bg-slate-900/60 transition-colors">
                                     <td className="px-4 py-3 font-mono text-blue-400 font-bold whitespace-nowrap">{tx.id}</td>
                                     <td className="px-4 py-3">
@@ -2426,14 +2768,14 @@ export default function AdminUsersPage() {
                           </div>
                           <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
                             <span className="text-[10px] text-slate-500">
-                              {(activeModalUser.transactions || []).length} transaction{(activeModalUser.transactions || []).length !== 1 ? 's' : ''}
+                              {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length} transaction{(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length !== 1 ? 's' : ''}
                             </span>
                             <span className={`text-[10px] font-bold ${
-                              (activeModalUser.transactions || []).reduce((s, t) =>
+                              (transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).reduce((s, t) =>
                                 t.type === 'Deposit' ? s + 1 : s - 1, 0) >= 0 ? 'text-emerald-400' : 'text-red-400'
                             }`}>
-                              Net: {(activeModalUser.transactions || []).filter(t => t.type === 'Deposit').length}D /
-                              {(activeModalUser.transactions || []).filter(t => t.type === 'Withdrawal').length}W
+                              Net: {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).filter(t => t.type === 'Deposit').length}D /
+                              {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).filter(t => t.type === 'Withdrawal').length}W
                             </span>
                           </div>
                         </div>
@@ -2444,11 +2786,22 @@ export default function AdminUsersPage() {
                   {activeModalType === 'tickets' && (
                     <div className="space-y-4">
                       <SectionTitle icon={Ticket} label="Support Tickets" color="text-indigo-400" />
-                      <div className="space-y-2">
-                        {(!activeModalUser.tickets || activeModalUser.tickets.length === 0) ? (
-                          <p className="text-slate-500 text-xs">No tickets found.</p>
-                        ) : (
-                          activeModalUser.tickets.map((t) => (
+                      {ticketDetailsByUserId[activeModalUser.id]?.loading && (
+                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400 flex items-center gap-2">
+                          <RefreshCw size={13} className="animate-spin text-indigo-400" />
+                          Loading ticket history from the database...
+                        </div>
+                      )}
+                      {ticketDetailsByUserId[activeModalUser.id]?.error && !ticketDetailsByUserId[activeModalUser.id]?.loading && (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
+                          {ticketDetailsByUserId[activeModalUser.id]?.error}
+                        </div>
+                      )}
+                      {!ticketDetailsByUserId[activeModalUser.id]?.loading && (ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).length === 0 ? (
+                        <p className="text-slate-500 text-xs">No tickets found.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).map((t) => (
                             <div key={t.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
                               <div>
                                 <p className="font-mono text-blue-400 font-bold text-xs">{t.id}</p>
@@ -2457,9 +2810,9 @@ export default function AdminUsersPage() {
                               </div>
                               <StatusBadge status={t.status} />
                             </div>
-                          ))
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2480,15 +2833,20 @@ export default function AdminUsersPage() {
                           <StatusBadge status={activeModalUser.status} />
                         </div>
                         <button
-                          onClick={() => { toggleUserActiveStatus(activeModalUser.id); closeModal(); }}
+                          onClick={() => { void toggleUserActiveStatus(activeModalUser.id); }}
+                          disabled={Boolean(statusSavingByUserId[activeModalUser.id])}
                           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                            activeModalUser.status === 'Active'
+                            isAccountActive(activeModalUser.status)
                               ? 'bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30'
                               : 'bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30'
-                          }`}
+                          } disabled:opacity-60 disabled:cursor-not-allowed`}
                         >
-                          <Power size={14} />
-                          {activeModalUser.status === 'Active' ? 'Suspend Account' : 'Activate Account'}
+                          {statusSavingByUserId[activeModalUser.id] ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <Power size={14} />
+                          )}
+                          {isAccountActive(activeModalUser.status) ? 'Set Inactive' : 'Set Active'}
                         </button>
                       </div>
                     </div>
