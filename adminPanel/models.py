@@ -116,10 +116,12 @@ class TradingAccount(models.Model):
 
     # ── Financial snapshot (synced from MT5) ──────────────────────────────
     balance = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    credit = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     equity = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     margin = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     margin_free = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     margin_level = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+
 
     # ── MAM / copy-trade configuration ────────────────────────────────────
     manager_allow_copy = fields.BooleanField(default=False)

@@ -431,6 +431,18 @@ class MT5ManagerActions:
         return self._handle_funds_operation(login_id, -abs(amount), comment, MT5Manager.MTDeal.EnDealAction.DEAL_BALANCE, "Withdrawal")
 
     @ensure_connected
+    def credit_in_funds(self, login_id, amount, comment):
+        if amount <= 0:
+            return False
+        return self._handle_funds_operation(login_id, amount, comment, MT5Manager.MTDeal.EnDealAction.DEAL_CREDIT, "Credit-In")
+
+    @ensure_connected
+    def credit_out_funds(self, login_id, amount, comment):
+        if abs(amount) <= 0:
+            return False
+        return self._handle_funds_operation(login_id, -abs(amount), comment, MT5Manager.MTDeal.EnDealAction.DEAL_CREDIT, "Credit-Out")
+
+    @ensure_connected
     def change_leverage(self, login_id, leverage):
         try:
             login_id = int(login_id)

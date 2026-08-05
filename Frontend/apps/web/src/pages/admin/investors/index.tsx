@@ -39,29 +39,30 @@ export default function AdminInvestorsPage() {
   // Load state from single mockData.json
   const [investors, setInvestors] = useState<InvestorData[]>([]);
 
-  React.useEffect(() => {
-    const loadData = async () => {
-      try {
-        const res = await fetch('/api/admin/investors');
-        const data = await res.json();
-        if (data && data.investors && Array.isArray(data.investors)) {
-          const mapped = data.investors.map((i: any) => ({
-            id: `INV-${i.id}`,
-            name: i.name,
-            email: i.email,
-            managerName: i.allocated_mam_name ? i.allocated_mam_name : 'Not Assigned',
-            managerUserId: i.allocated_mam ? `MGR-${i.allocated_mam}` : 'Not Assigned',
-            accountId: i.account_id || 'Unknown',
-            invested: `$${(i.equity || 0).toLocaleString()}`,
-            profit: '+$0',
-          }));
-          if (mapped.length > 0) {
-            setInvestors(mapped);
-          }
+  const fetchInvestors = async () => {
+    try {
+      const res = await fetch('/api/admin/investors');
+      const data = await res.json();
+      if (data && data.investors && Array.isArray(data.investors)) {
+        const mapped = data.investors.map((i: any) => ({
+          id: `INV-${i.id}`,
+          name: i.name,
+          email: i.email,
+          managerName: i.allocated_mam_name ? i.allocated_mam_name : 'Not Assigned',
+          managerUserId: i.allocated_mam ? `MGR-${i.allocated_mam}` : 'Not Assigned',
+          accountId: i.account_id || 'Unknown',
+          invested: `$${(i.equity || 0).toLocaleString()}`,
+          profit: '+$0',
+        }));
+        if (mapped.length > 0) {
+          setInvestors(mapped);
         }
-      } catch {}
-    };
-    loadData();
+      }
+    } catch {}
+  };
+
+  React.useEffect(() => {
+    fetchInvestors();
   }, []);
 
   const showToast = (msg: string) => {
@@ -86,10 +87,32 @@ export default function AdminInvestorsPage() {
     setIsModalOpen(true);
   };
 
-  const handleConfirmAction = (actionType: string, amount: string, note: string) => {
+  const handleConfirmAction = async (actionType: string, amount: string, note: string) => {
+    if (!targetUser) return;
     setIsModalOpen(false);
-    showToast(`Action "${actionType.toUpperCase()}" of $${amount} processed for ${targetUser?.name}.`);
+    try {
+      const response = await fetch('/api/admin/accounts/financial-action', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accountId: targetUser.accountId,
+          actionType,
+          amount: parseFloat(amount),
+          note,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok || data.status === 'error') {
+        throw new Error(data.message || 'Failed to process financial operation');
+      }
+      showToast(data.message || `Action "${actionType.toUpperCase()}" of $${amount} processed successfully!`);
+      fetchInvestors();
+    } catch (err: any) {
+      showToast(err.message || 'Error executing financial action');
+    }
   };
+
+
 
   const filteredInvestors = investors.filter(i => 
     i.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

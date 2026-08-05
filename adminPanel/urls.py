@@ -10,6 +10,14 @@ from adminPanel.view.client_transactions import get_client_transactions_details,
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.balance_sync import sync_trading_balances_api
 from adminPanel.view.mam_accounts import create_account_api
+from adminPanel.view.manager_fund_actions import (
+    manager_credit_in_api,
+    manager_credit_out_api,
+    manager_deposit_api,
+    manager_history_api,
+    manager_investors_list_api,
+    manager_withdraw_api,
+)
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
     decide_pending_request,
@@ -79,6 +87,12 @@ urlpatterns = [
     path("users/create", create_client_user, name="create-client-user"),
     path("accounts/create", create_account_api, name="create-account"),
     path("accounts/sync-balances", sync_trading_balances_api, name="sync-balances"),
+    path("managers/deposit", manager_deposit_api, name="manager-deposit"),
+    path("managers/withdraw", manager_withdraw_api, name="manager-withdraw"),
+    path("managers/credit-in", manager_credit_in_api, name="manager-credit-in"),
+    path("managers/credit-out", manager_credit_out_api, name="manager-credit-out"),
+    path("managers/<str:account_id>/history", manager_history_api, name="manager-history"),
+    path("managers/<str:account_id>/investors", manager_investors_list_api, name="manager-investors-list"),
     # MT5 CRUD Routes
     path("server-settings", mt5_crud.server_settings_list_create, name="server-settings-list-create"),
     path("server-settings/<int:pk>", mt5_crud.server_setting_detail_update_delete, name="server-setting-detail"),
