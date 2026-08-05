@@ -86,6 +86,8 @@ async def get_client_dashboard(request):
         }
     ]
 
+    trading_accounts = await TradingAccount.filter(user_id=profile.id).all()
+
     return JsonResponse(
         {
             "status": "ok",
@@ -111,6 +113,15 @@ async def get_client_dashboard(request):
                     "currency": accounts[0].currency,
                     "status": accounts[0].status,
                 } if accounts else None,
+                "trading_accounts": [
+                    {
+                        "account_id": acc.account_id,
+                        "account_type": acc.account_type,
+                        "account_name": acc.account_name,
+                        "balance": float(acc.balance),
+                        "status": acc.status,
+                    } for acc in trading_accounts
+                ],
                 "investments": [
                     {
                         "id": inv.id,

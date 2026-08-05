@@ -65,6 +65,13 @@ type ClientDashboardPayload = {
   };
   cards: DashboardCardPayload[];
   recent_activity_logs: DashboardActivityPayload[];
+  trading_accounts?: {
+    account_id: string;
+    account_type: string;
+    account_name: string;
+    balance: number;
+    status: string;
+  }[];
 };
 
 type ClientProfilePayload = {
@@ -378,6 +385,13 @@ type DashboardWithdrawalModalProps = {
   accountCurrency?: string | null;
   accountServer?: string | null;
   accountStatus?: string | null;
+  tradingAccounts?: {
+    account_id: string;
+    account_type: string;
+    account_name: string;
+    balance: number;
+    status: string;
+  }[];
 };
 
 const DashboardWithdrawalModal = ({
@@ -388,6 +402,7 @@ const DashboardWithdrawalModal = ({
   accountCurrency,
   accountServer,
   accountStatus,
+  tradingAccounts,
 }: DashboardWithdrawalModalProps) => {
   const [selectedAccount, setSelectedAccount] = useState(accountNumber || '');
   const [destinationType, setDestinationType] = useState<'bank' | 'crypto'>('bank');
@@ -402,7 +417,13 @@ const DashboardWithdrawalModal = ({
     return null;
   }
 
-  const availableBalance = typeof accountBalance === 'number' && Number.isFinite(accountBalance) ? accountBalance : 0;
+  const selectedTradingAcc = tradingAccounts?.find(acc => acc.account_id === selectedAccount);
+  const availableBalance = selectedTradingAcc 
+    ? selectedTradingAcc.balance 
+    : (typeof accountBalance === 'number' && Number.isFinite(accountBalance) ? accountBalance : 0);
+  const accountStatusLabel = selectedTradingAcc 
+    ? selectedTradingAcc.status 
+    : (accountStatus || 'Active');
   const currencyLabel = accountCurrency && /^[A-Za-z]{3}$/.test(accountCurrency) ? accountCurrency.toUpperCase() : 'USD';
   const parsedAmount = Number(amount);
   const canSubmit =
@@ -556,7 +577,7 @@ const DashboardWithdrawalModal = ({
                     <div className="flex items-center justify-end gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
                       <span className="text-[8px] font-black uppercase tracking-[0.18em]">
-                        {String(accountStatus || 'Active').toUpperCase()}
+                        {String(accountStatusLabel || 'Active').toUpperCase()}
                       </span>
                     </div>
                     <span className="block text-[7px] font-black uppercase tracking-[0.18em] text-blue-100/50">
@@ -582,9 +603,14 @@ const DashboardWithdrawalModal = ({
                   </option>
                   {accountNumber ? (
                     <option value={accountNumber}>
-                      {maskWithdrawalAccount(accountNumber)}
+                      Portal Wallet ({maskWithdrawalAccount(accountNumber)}) — {formatWithdrawalCurrency(accountBalance ?? 0, currencyLabel)}
                     </option>
                   ) : null}
+                  {tradingAccounts?.map((acc) => (
+                    <option key={acc.account_id} value={acc.account_id}>
+                      {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({maskWithdrawalAccount(acc.account_id)}) — {formatWithdrawalCurrency(acc.balance, currencyLabel)}
+                    </option>
+                  ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
               </div>
@@ -724,6 +750,7 @@ export default function ClientDashboardPage() {
   const [cheeseAmount, setCheeseAmount] = useState('');
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
   const [proof, setProof] = useState<File | null>(null);
+  const [selectedDepositAccount, setSelectedDepositAccount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -743,6 +770,9 @@ export default function ClientDashboardPage() {
         setDashboardData(db ? (db as ClientDashboardPayload) : null);
         setClientProfile(db?.client ? (db.client as ClientProfilePayload) : null);
         setClientAccount(db?.account ? (db.account as ClientAccountPayload) : null);
+        if (db?.account?.account_number) {
+          setSelectedDepositAccount(db.account.account_number);
+        }
         setClientInvestments(
           db?.investments && Array.isArray(db.investments)
             ? (db.investments as ClientInvestmentPayload[])
@@ -787,7 +817,7 @@ export default function ClientDashboardPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          account_number: clientAccount.account_number,
+          account_number: selectedDepositAccount,
           amount: Number(cheeseAmount),
           payment_method: 'Manual Deposit',
           proof_name: proof.name,
@@ -1000,11 +1030,11 @@ export default function ClientDashboardPage() {
                         <h3 className="text-2xl font-black tracking-tight" style={{ color: isDarkMode ? WHITE_COL : NAVY }}>
                           Deposit Funds
                         </h3>
-                        {depositAccountNumber ? (
+                        {selectedDepositAccount ? (
                           <div className="flex items-center gap-2 mt-1">
                             <ShieldCheck className="h-4 w-4 text-green-500" />
                             <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
-                              Account: <span className="font-mono text-[#2155C4]">{depositAccountNumber}</span>
+                              Account: <span className="font-mono text-[#2155C4]">{selectedDepositAccount}</span>
                             </span>
                           </div>
                         ) : null}
@@ -1031,24 +1061,23 @@ export default function ClientDashboardPage() {
                       <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
                         Trading Account
                       </label>
-                      <div className={`rounded-2xl border px-4 py-4 ${depositAccountNumber ? 'border-[rgba(26,58,140,0.12)] bg-white' : 'border-dashed border-[rgba(26,58,140,0.18)] bg-[#F4F7FD]'}`}>
-                        {depositAccountNumber ? (
-                          <div className="flex items-center justify-between gap-4">
-                            <div>
-                              <p className="text-sm font-black" style={{ color: NAVY }}>
-                                {depositAccountNumber}
-                              </p>
-                              <p className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: TEXT_SOFT }}>
-                                {clientAccount?.server || 'Live account'} · {depositAccountCurrency} · {clientAccount?.status || 'Active'}
-                              </p>
-                            </div>
-                            <Banknote className="h-5 w-5 text-[#2155C4]" />
-                          </div>
-                        ) : (
-                          <p className="text-sm font-semibold text-slate-500">
-                            No live trading account is available. Sign in to load account details.
-                          </p>
-                        )}
+                      <div className="rounded-2xl border px-4 py-3.5 border-[rgba(26,58,140,0.12)] bg-white">
+                        <select
+                          value={selectedDepositAccount}
+                          onChange={(e) => setSelectedDepositAccount(e.target.value)}
+                          className="w-full bg-transparent text-sm font-black focus:outline-none cursor-pointer text-slate-900"
+                        >
+                          {clientAccount?.account_number && (
+                            <option value={clientAccount.account_number}>
+                              Portal Wallet ({clientAccount.account_number}) — {formatCurrency(clientAccount.balance)}
+                            </option>
+                          )}
+                          {dashboardData?.trading_accounts?.map((acc) => (
+                            <option key={acc.account_id} value={acc.account_id}>
+                              {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({acc.account_id}) — {formatCurrency(acc.balance)}
+                            </option>
+                          ))}
+                        </select>
                       </div>
                     </div>
 
@@ -1162,7 +1191,7 @@ export default function ClientDashboardPage() {
 
                       <button
                         type="submit"
-                        disabled={submitting || !proof || !cheeseAmount || !depositAccountNumber}
+                        disabled={submitting || !proof || !cheeseAmount || !selectedDepositAccount}
                         className="w-full group relative overflow-hidden rounded-2xl bg-[#2155C4] py-4 font-black uppercase tracking-[0.2em] text-white shadow-xl shadow-[#C9A227]/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                       >
                         <span className="relative z-10 flex items-center justify-center gap-3">
@@ -1191,6 +1220,7 @@ export default function ClientDashboardPage() {
             accountCurrency={clientAccount?.currency}
             accountServer={clientAccount?.server}
             accountStatus={clientAccount?.status}
+            tradingAccounts={dashboardData?.trading_accounts}
           />
 
           <AccountOpenModal showModal={showAccountOpenModal} setShowModal={setShowAccountOpenModal} isDarkMode={false} />
