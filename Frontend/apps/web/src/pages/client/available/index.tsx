@@ -17,6 +17,8 @@ import {
   Hash,
   ChevronRight,
   ChevronLeft,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { fetchAdminManagers, fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
 import {
@@ -65,6 +67,8 @@ export default function ClientAvailablePage() {
   const [viewManager, setViewManager] = useState<ManagerViewRow | null>(null);
   const [investmentPassword, setInvestmentPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showInvestmentPassword, setShowInvestmentPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSubmittingInvest, setIsSubmittingInvest] = useState(false);
   const [investSubmitError, setInvestSubmitError] = useState<string | null>(null);
   const [isPageLoading, setIsPageLoading] = useState(true);
@@ -412,28 +416,46 @@ export default function ClientAvailablePage() {
               <div className="space-y-4">
                 <label className="block space-y-2">
                   <span className={`text-xs font-black uppercase tracking-widest ${softTextClass}`}>Investment Password</span>
-                  <input
-                    type="password"
-                    value={investmentPassword}
-                    onChange={(e) => setInvestmentPassword(e.target.value)}
-                    placeholder="Enter password"
-                    required
-                    disabled={isSubmittingInvest}
-                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showInvestmentPassword ? 'text' : 'password'}
+                      value={investmentPassword}
+                      onChange={(e) => setInvestmentPassword(e.target.value)}
+                      placeholder="Enter password"
+                      required
+                      disabled={isSubmittingInvest}
+                      className={`w-full rounded-2xl border pl-4 pr-12 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowInvestmentPassword(!showInvestmentPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      {showInvestmentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
 
                 <label className="block space-y-2">
                   <span className={`text-xs font-black uppercase tracking-widest ${softTextClass}`}>Confirm Password</span>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm password"
-                    required
-                    disabled={isSubmittingInvest}
-                    className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
-                  />
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Confirm password"
+                      required
+                      disabled={isSubmittingInvest}
+                      className={`w-full rounded-2xl border pl-4 pr-12 py-3 text-sm text-slate-100 outline-none transition focus:ring-2 focus:ring-blue-500/15 disabled:cursor-not-allowed disabled:opacity-60 ${inputClass}`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition-colors"
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </label>
               </div>
 

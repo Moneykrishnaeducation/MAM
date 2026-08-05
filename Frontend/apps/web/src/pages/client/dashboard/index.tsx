@@ -113,6 +113,8 @@ type ClientInvestmentPayload = {
   status?: string | null;
 };
 
+const HIDDEN_ACTIVITY_KEYWORDS = ['deposit', 'withdraw', 'reject'];
+
 async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
   if (typeof window === 'undefined') {
     return null;
@@ -848,13 +850,18 @@ export default function ClientDashboardPage() {
   const depositAccountCurrency = clientAccount?.currency || 'USD';
   const dashboardCards = buildDashboardCards(dashboardData, clientAccount, clientInvestments);
   const dashboardActivityRows: ActivityRowView[] =
-    dashboardData?.recent_activity_logs?.map((log) => ({
-      id: log.id,
-      time: formatDashboardTime(log.time),
-      action: log.action,
-      details: log.details,
-      ipAddress: log.ip_address || 'N/A',
-    })) || [];
+    dashboardData?.recent_activity_logs
+      ?.filter((log) => {
+        const haystack = `${log.action} ${log.details || ''}`.toLowerCase();
+        return !HIDDEN_ACTIVITY_KEYWORDS.some((keyword) => haystack.includes(keyword));
+      })
+      .map((log) => ({
+        id: log.id,
+        time: formatDashboardTime(log.time),
+        action: log.action,
+        details: log.details,
+        ipAddress: log.ip_address || 'N/A',
+      })) || [];
 
   if (dashboardLoading) {
     return (
@@ -875,24 +882,24 @@ export default function ClientDashboardPage() {
         
         <div className="p-6 md:p-8">
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+          <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <button
               onClick={() => setShowAccountOpenModal(true)}
-              className="bg-[#C9A227] hover:bg-[#b89d20] text-slate-950 font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-[#a3851d]/20 flex items-center gap-2.5"
+              className="flex w-full items-center justify-center gap-2.5 rounded-[28px] bg-[#C9A227] px-5 py-3.5 font-semibold text-slate-950 transition-colors shadow-lg shadow-[#a3851d]/20 hover:bg-[#b89d20] sm:min-w-0"
             >
               <UserCheck size={18} />
               Open MAM Account
             </button>
             <button
               onClick={() => setShowDepositModal(true)}
-              className="bg-[#C9A227] hover:bg-[#b89d20] text-slate-950 font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-[#a3851d]/20 flex items-center gap-2.5"
+              className="flex w-full items-center justify-center gap-2.5 rounded-[28px] bg-[#C9A227] px-5 py-3.5 font-semibold text-slate-950 transition-colors shadow-lg shadow-[#a3851d]/20 hover:bg-[#b89d20] sm:min-w-0"
             >
               <TrendingUp size={18} />
               Deposit
             </button>
             <button
               onClick={() => setShowWithdrawModal(true)}
-              className="bg-[#C9A227] hover:bg-[#b89d20] text-slate-950 font-semibold py-3 px-7 rounded-[28px] transition-colors shadow-lg shadow-slate-900/20 flex items-center gap-2.5"
+              className="flex w-full items-center justify-center gap-2.5 rounded-[28px] bg-[#C9A227] px-5 py-3.5 font-semibold text-slate-950 transition-colors shadow-lg shadow-slate-900/20 hover:bg-[#b89d20] sm:min-w-0"
             >
               <ArrowUpRight size={18} />
               Withdrawal
@@ -947,40 +954,46 @@ export default function ClientDashboardPage() {
 
           {/* Recent Activity */}
           <div className="mt-10">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-white relative inline-block pb-2">
+            <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="relative inline-block pb-2 text-xl font-bold text-white">
                 Recent Activity Logs
                 <span className="absolute left-0 bottom-0 w-12 h-1 bg-yellow-500 rounded-full"></span>
               </h2>
-              <a href="/client/transaction" className="text-sm text-blue-200 font-semibold flex items-center hover:text-white transition-colors">
-                View Transactions <ChevronRight size={16} className="ml-1" />
+              <a href="/client/transaction" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-200 transition-colors hover:text-white sm:self-auto">
+                View Transactions <ChevronRight size={16} />
               </a>
             </div>
 
-            <div className="bg-blue-950/40 border border-blue-800/60 rounded-xl overflow-hidden shadow-lg">
+            <div className="overflow-hidden rounded-xl border border-blue-800/60 bg-blue-950/40 shadow-lg">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-blue-900/60 text-white font-semibold">
+                <table className="min-w-[680px] sm:min-w-full w-full table-fixed text-left text-sm text-slate-300">
+                  <colgroup>
+                    <col className="w-[22%]" />
+                    <col className="w-[18%]" />
+                    <col className="w-[42%]" />
+                    <col className="w-[18%]" />
+                  </colgroup>
+                  <thead className="bg-blue-900/60 font-semibold text-white">
                     <tr>
-                      <th className="px-6 py-4">Time</th>
-                      <th className="px-6 py-4">Action</th>
-                      <th className="px-6 py-4">Details</th>
-                      <th className="px-6 py-4">IP Address</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Time</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Action</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Details</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">IP Address</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-blue-800/40">
                     {dashboardActivityRows.length > 0 ? (
                       dashboardActivityRows.map((log) => (
                         <tr key={log.id} className="hover:bg-blue-900/30 transition-colors">
-                          <td className="px-6 py-4 whitespace-nowrap text-slate-200">{log.time}</td>
-                          <td className="px-6 py-4 font-medium text-white">{log.action}</td>
-                          <td className="px-6 py-4 text-slate-300">{log.details}</td>
-                          <td className="px-6 py-4 text-blue-200 font-mono text-xs">{log.ipAddress}</td>
+                          <td className="px-3 py-4 align-top whitespace-nowrap text-xs text-slate-200 sm:px-6 sm:text-sm">{log.time}</td>
+                          <td className="px-3 py-4 align-top font-medium text-white sm:px-6">{log.action}</td>
+                          <td className="px-3 py-4 align-top break-words leading-6 text-slate-300 sm:px-6">{log.details}</td>
+                          <td className="px-3 py-4 align-top whitespace-nowrap font-mono text-[11px] text-blue-200 sm:px-6 sm:text-xs">{log.ipAddress}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="px-6 py-10 text-center text-slate-400">
+                        <td colSpan={4} className="px-3 py-10 text-center text-slate-400 sm:px-6">
                           {dashboardLoading ? 'Loading live activity logs...' : 'No recent activity recorded for this client.'}
                         </td>
                       </tr>

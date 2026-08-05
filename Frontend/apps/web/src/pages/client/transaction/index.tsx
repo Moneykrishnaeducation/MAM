@@ -29,6 +29,7 @@ type ClientTransaction = {
 };
 
 const tabs = [
+  { id: 'ALL', label: 'ALL', icon: CircleDollarSign },
   { id: 'PENDING', label: 'PENDING', icon: Clock },
   { id: 'DEPOSIT', label: 'DEPOSIT', icon: ArrowDownCircle },
   { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: ArrowUpCircle },
@@ -109,6 +110,8 @@ const formatDate = (value: string | null) => {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(parsed);
 };
 
@@ -176,6 +179,7 @@ const getTypeIcon = (type: string) => {
 };
 
 const createEmptyTransactionCounts = (): TransactionCounts => ({
+  ALL: 0,
   PENDING: 0,
   DEPOSIT: 0,
   WITHDRAWAL: 0,
@@ -270,7 +274,7 @@ export default function TransactionHistory() {
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
 
-  const [activeTab, setActiveTab] = useState<TransactionTabId>('PENDING');
+  const [activeTab, setActiveTab] = useState<TransactionTabId>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -338,6 +342,7 @@ export default function TransactionHistory() {
         hasPrevious: Boolean(response.pagination?.has_previous),
       });
       setTabCounts({
+        ALL: response.counts?.ALL ?? 0,
         PENDING: response.counts?.PENDING ?? 0,
         DEPOSIT: response.counts?.DEPOSIT ?? 0,
         WITHDRAWAL: response.counts?.WITHDRAWAL ?? 0,
@@ -477,16 +482,6 @@ export default function TransactionHistory() {
       ? 'No transactions match your filters.'
       : 'No live transactions are available for this tab.';
 
-  if (loading) {
-    return (
-      <>
-        <Head>
-          <title>Transactions | Client Portal</title>
-        </Head>
-        <TransactionsSkeleton />
-      </>
-    );
-  }
 
   return (
     <>
@@ -778,14 +773,17 @@ export default function TransactionHistory() {
 
               <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
                 {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-20 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4" />
-                        <p className={`font-bold ${softTextClass}`}>Fetching transactions...</p>
-                      </div>
-                    </td>
-                  </tr>
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <tr key={index} className="animate-pulse">
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-24" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-16" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-28" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-32" /></td>
+                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-16" /></td>
+                    </tr>
+                  ))
                 ) : transactions.length > 0 ? (
                   transactions.map((transaction) => {
                     const TypeIcon = getTypeIcon(transaction.type);
