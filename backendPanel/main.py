@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     # Start MAM copy trading engine in a background thread
     try:
-        from MPIB_DB import run_mam_script
+        from backendPanel.MPIB_DB import run_mam_script
         mam_thread = threading.Thread(target=run_mam_script, name="MAM_Engine", daemon=True)
         mam_thread.start()
         print("🚀 Started MAM copy trading engine background thread.")
