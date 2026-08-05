@@ -102,6 +102,9 @@ _recent_orders = {}
 _recent_orders_lock = Lock()
 RECENT_ORDER_TTL = 2.0  # seconds
 
+# Configurable Agent Code Prefix (default: "426")
+AGENT_CODE_PREFIX = os.getenv("AGENT_CODE_PREFIX", "426")
+
 access_token = None
 _valued_date = None
 # Track last MT5 event time to detect silent periods
@@ -276,6 +279,35 @@ class ActivityLog:
 ActivityLog.objects.model_class = ActivityLog
 
 
+def log_monitored_masters_and_followers(manager):
+    """Diagnostic startup check to log all Master accounts matching AGENT_CODE_PREFIX and their followers."""
+    try:
+        found_masters = 0
+        logger.info(f"[DIAGNOSTIC] Scanning MT5 accounts matching Agent Code prefix '{AGENT_CODE_PREFIX}'...")
+        for i in range(manager.GroupTotal()):
+            group = manager.GroupNext(i).Group
+            if "demo" in group:
+                continue
+            for user in manager.UserGetByGroup(group):
+                if str(user.Agent).startswith(AGENT_CODE_PREFIX):
+                    found_masters += 1
+                    followers = [
+                        u.Login for u in manager.UserGetByGroup(group)
+                        if u.Agent == user.Login
+                    ]
+                    logger.info(
+                        f"[DIAGNOSTIC] Master Account: {user.Login} (Agent Code: {user.Agent}, Group: {user.Group}) "
+                        f"-> Found {len(followers)} follower account(s): {followers}"
+                    )
+        if found_masters == 0:
+            logger.warning(
+                f"[DIAGNOSTIC] No Master accounts found with Agent Code starting with '{AGENT_CODE_PREFIX}'. "
+                f"Please check MT5 user settings or AGENT_CODE_PREFIX in environment."
+            )
+    except Exception as e:
+        logger.warning(f"[DIAGNOSTIC] Could not run diagnostic account scan: {e}")
+
+
 def run_mam_script():
     # Check for existing MAM instance
     if not acquire_process_lock():
@@ -321,7 +353,6 @@ def run_mam_script():
         except Exception:
             return False
 
-    prop_management_lock = threading.Lock()
     while True:
         server_details = ServerSetting.objects.filter(server_type=True).latest('created_at')
         if server_details:
@@ -389,6 +420,7 @@ def run_mam_script():
                     print(f"Connecting to IP: {ip_address}, Login: {login}")
                     if manager.Connect(ip_address, int(login), password, MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL, timeout=120000):
                         print("Connected successfully")
+                        log_monitored_masters_and_followers(manager)
                         break
                     else:
                         print("Connection failed")
@@ -605,6 +637,8 @@ def run_mam_script():
 
         def copy_order_to_followers(self, order, force=False):
             followers = self.get_followers(order.Login)
+            if not followers:
+                return
             logger.info(f"[COPY] copy_order_to_followers: master={order.Login}, active_followers={followers}, count={len(followers)}")
             order_comment = f"{order.Login}_{order.Order}"
 
@@ -753,6 +787,8 @@ def run_mam_script():
 
         def copy_position_to_followers(self, order, force=False):
             followers = self.get_followers(order.Login)
+            if not followers:
+                return
             logger.info(f"[COPY] copy_position_to_followers: master={order.Login}, active_followers={followers}, count={len(followers)}")
             # Build a stable master position id (if available)
             master_pos_id = getattr(order, 'PositionID', None) or getattr(order, 'Position', None)
@@ -1025,7 +1061,7 @@ def run_mam_script():
         def get_followers(self, loginID):
             # Get all potential followers based on agent relationship
             leader = manager.UserGet(loginID)
-            if not leader or not str(leader.Agent).startswith("426"):
+            if not leader or not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
                 return []
             potential_followers = [
                 user.Login for user in manager.UserGetByGroup(leader.Group)
@@ -1062,7 +1098,7 @@ def run_mam_script():
         def OnOrderUpdate(self, order):
             global last_activity_ts
             last_activity_ts = time()
-            if str(manager.UserGet(order.Login).Agent).startswith("426") and order.State == 1:
+            if str(manager.UserGet(order.Login).Agent).startswith(AGENT_CODE_PREFIX) and order.State == 1:
                 # Skip market orders (Type 0 = BUY, Type 1 = SELL).
                 # Market positions are copied via OnOrderDelete → copy_position_to_followers.
                 # Copying them here too causes duplicate trades since both paths fire
@@ -1085,7 +1121,7 @@ def run_mam_script():
         def OnOrderDelete(self, order):
             global last_activity_ts
             last_activity_ts = time()
-            if str(manager.UserGet(order.Login).Agent).startswith("426"):
+            if str(manager.UserGet(order.Login).Agent).startswith(AGENT_CODE_PREFIX):
                 if order.State == 4 and order.ActivationMode == 0:
                     if manager.PositionGetByTicket(order.PositionID):
                         # logger.debug(f"Position {order.PositionID} opened, attempting to copy to followers")
@@ -1099,7 +1135,7 @@ def run_mam_script():
         def OnPositionUpdate(self, position):
             global last_activity_ts
             last_activity_ts = time()
-            if str(manager.UserGet(position.Login).Agent).startswith("426"):
+            if str(manager.UserGet(position.Login).Agent).startswith(AGENT_CODE_PREFIX):
                 # logger.debug(f"Position {position.Position} updated, attempting to modify for followers")
                 for follower in self.get_followers(position.Login):
                     for pos in manager.PositionGet(follower):
@@ -1180,7 +1216,7 @@ def run_mam_script():
         def OnPositionDelete(self, position):
             global last_activity_ts
             last_activity_ts = time()
-            if str(manager.UserGet(position.Login).Agent).startswith("426"):
+            if str(manager.UserGet(position.Login).Agent).startswith(AGENT_CODE_PREFIX):
                 # logger.debug(f"Position {position.Position} deleted, attempting to close for followers")
                 # Mark this master position as recently processed to avoid immediate re-copy/open races
                 try:
@@ -1341,7 +1377,7 @@ def run_mam_script():
         def get_followers(self, loginID):
             # Get all potential followers based on agent relationship
             leader = manager.UserGet(loginID)
-            if not leader or not str(leader.Agent).startswith("426"):
+            if not leader or not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
                 return []
             potential_followers = [
                 user.Login for user in manager.UserGetByGroup(leader.Group)
@@ -1375,74 +1411,6 @@ def run_mam_script():
             
             return active_followers
 
-
-    def prop_management():
-        global access_token
-        # Close stale DB connections before doing prop management work
-        try:
-            close_old_connections()
-        except Exception:
-            pass
-        with prop_management_lock:
-            for i in range(manager.GroupTotal()):
-                if (not checkingu()):
-                    break
-
-                try:
-                    group = manager.GroupNext(i).Group
-                    if "demo" not in group:
-                        none_rights = MT5Manager.MTUser.EnUsersRights.USER_RIGHT_NONE
-                        for user_select in manager.UserGetByGroup(manager.GroupNext(i).Group):
-                            j = manager.UserAccountGet(user_select.Login)
-                            if str(user_select.Agent).startswith("7255"):
-                                min_equity = float(str(user_select.Agent)[9:])
-                                positions = manager.PositionGet(j.Login)
-                                if j.Equity < min_equity and j.Balance != 0 and user_select.Rights != none_rights and len(positions) > 0:
-                                    user_select.Rights = none_rights
-                                    manager.UserUpdate(user_select)
-                                    
-                                    for pos in positions:
-                                        request = MT5Manager.MTRequest(manager)
-                                        request.Action = 200
-                                        request.PriceOrder = pos.PriceCurrent
-                                        request.Symbol = pos.Symbol
-                                        request.Login = pos.Login
-                                        request.Type = int(not pos.Action)
-                                        request.Position = pos.Position
-                                        request.Volume = pos.Volume
-                                        request.TypeFill = 0
-                                        request.Comment = "Prop Stop Out"
-                                        manager.DealerSend(request, sink)
-                                        account_id = str(j.Login)
-                                        account = TradingAccount.objects.filter(account_id=account_id, account_type='prop').first()
-                                        if account:
-                                            account.is_enabled = False
-                                            account.status = "failed"
-                                            account.save()
-                                            ActivityLog.objects.create(
-                                                user=account.user,
-                                                activity=f"Disabled account ID {account_id}",
-                                                ip_address="Prop Connection",
-                                                activity_type='update',
-                                                activity_category='management',
-                                                endpoint="Prop Connection",
-                                                user_agent="Prop Manager",
-                                                related_object_id=account.account_id,
-                                                related_object_type="Prop Account"
-                                            )
-                except:
-                    pass
-            sleep(1)  
-
-    def continuous_prop_management():
-        while True:
-            try:
-                prop_management()
-            except Exception as e:
-                logger.error(f"Error in prop_management: {e}")
-                sleep(5)  
-                
-
     logger.info("Starting subscription and connection process")
     # Use an indefinite retry loop with exponential backoff so the script
     # does not exit on transient failures. This satisfies the "never exit"
@@ -1464,9 +1432,6 @@ def run_mam_script():
                 logger.error(f"Failed to subscribe to deals: {MT5Manager.LastError()}")
                 break  
 
-            # logger.info("Successfully connected to the manager.")
-                prop_management_thread = threading.Thread(target=continuous_prop_management, daemon=True)
-                prop_management_thread.start()
             # Start a watcher thread that triggers a cautious resync when events stop arriving
             def resync_watcher():
                 global _last_resync_ts
@@ -1484,8 +1449,10 @@ def run_mam_script():
                                         if "demo" in group:
                                             continue
                                         for leader in manager.UserGetByGroup(group):
-                                            # only consider leaders (agents that have followers)
-                                            followers = [u.Login for u in manager.UserGetByGroup(group) if u.Agent == leader.Login]
+                                            # only consider leaders whose MT5 Agent code starts with AGENT_CODE_PREFIX
+                                            if not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
+                                                continue
+                                            followers = orderSink.get_followers(leader.Login)
                                             if not followers:
                                                 continue
                                             # scan open positions and pending orders for the leader and attempt to copy
