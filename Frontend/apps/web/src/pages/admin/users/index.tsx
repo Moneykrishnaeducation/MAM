@@ -143,6 +143,17 @@ function mapAdminDocToKycDocument(
   };
 }
 
+function getDocumentPreviewKind(fileName?: string | null, fileUrl?: string | null): 'image' | 'pdf' | 'other' {
+  const source = String(fileName || fileUrl || '').toLowerCase();
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)$/.test(source) || source.startsWith('blob:')) {
+    return 'image';
+  }
+  if (source.endsWith('.pdf')) {
+    return 'pdf';
+  }
+  return 'other';
+}
+
 function mergeAdminDocs(
   primary?: AdminKycDocument | null,
   secondary?: AdminKycDocument | null,
@@ -194,6 +205,7 @@ function KycDocumentCard({
   const status = normalized.status ?? 'missing';
   const fileName = normalized.file_name || 'No document uploaded';
   const filePath = normalized.file_path || null;
+  const previewKind = getDocumentPreviewKind(fileName, filePath);
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 space-y-3">
@@ -204,6 +216,24 @@ function KycDocumentCard({
         </div>
         <StatusBadge status={status} />
       </div>
+      {filePath && previewKind !== 'other' && (
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
+          <div className="border-b border-slate-800 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+            Preview
+          </div>
+          <div className="flex items-center justify-center bg-black/20 p-3">
+            {previewKind === 'image' ? (
+              <img src={filePath} alt={fileName} className="max-h-48 w-full rounded-lg object-contain" />
+            ) : (
+              <iframe
+                src={filePath}
+                title={fileName}
+                className="h-56 w-full rounded-lg bg-slate-950"
+              />
+            )}
+          </div>
+        </div>
+      )}
       <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300">
         <FileText size={13} className="text-blue-400 shrink-0" />
         {filePath ? (
@@ -396,6 +426,7 @@ function VerifyModal({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {docStates.map((doc) => {
           const isUploaded = doc.status === 'uploaded' || doc.status === 'approved' || doc.status === 'rejected';
+          const previewKind = getDocumentPreviewKind(doc.fileName, doc.fileUrl);
           return (
             <div key={doc.type} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
               {/* Header */}
@@ -409,25 +440,57 @@ function VerifyModal({
                 <StatusBadge status={doc.status} />
               </div>
 
-              {/* File info or missing */}
-              {isUploaded ? (
-                <div className="flex items-center gap-2 text-slate-400 bg-slate-900 rounded-xl p-2.5">
-                  <FileText size={13} className="text-blue-400 shrink-0" />
-                  {doc.fileUrl ? (
+              {/* Preview / file info */}
+              {isUploaded && doc.fileUrl ? (
+                <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70">
+                  <div className="border-b border-slate-800 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center justify-between">
+                    <span>Preview</span>
                     <a
                       href={doc.fileUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="truncate text-[11px] text-blue-300 hover:text-blue-200"
+                      className="text-blue-300 hover:text-blue-200 normal-case tracking-normal font-medium"
                     >
-                      {doc.fileName || 'document.pdf'}
+                      Open
                     </a>
-                  ) : (
-                    <span className="truncate text-[11px]">{doc.fileName || 'document.pdf'}</span>
-                  )}
+                  </div>
+                  <div className="p-3 bg-black/20">
+                    {previewKind === 'image' ? (
+                      <img
+                        src={doc.fileUrl}
+                        alt={doc.fileName || doc.type}
+                        className="max-h-56 w-full rounded-lg object-contain"
+                      />
+                    ) : previewKind === 'pdf' ? (
+                      <iframe
+                        src={doc.fileUrl}
+                        title={doc.fileName || doc.type}
+                        className="h-56 w-full rounded-lg bg-slate-950"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <FileText size={13} className="text-blue-400 shrink-0" />
+                        <span className="truncate text-[11px]">{doc.fileName || 'document.pdf'}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="text-slate-500 text-[11px] italic px-1">No document uploaded</div>
+              )}
+
+              {isUploaded && doc.fileUrl && (
+                <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300">
+                  <FileText size={13} className="text-blue-400 shrink-0" />
+                  <a
+                    href={doc.fileUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="truncate text-blue-300 hover:text-blue-200"
+                  >
+                    {doc.fileName || 'document.pdf'}
+                  </a>
+                </div>
               )}
 
               {/* Upload / Re-upload button */}
