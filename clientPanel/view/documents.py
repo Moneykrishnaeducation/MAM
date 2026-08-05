@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import (
     _error,
@@ -41,6 +42,7 @@ def _save_uploaded_document(uploaded_file, profile_id: int, document_type: str) 
 @permission_required(IsClient)
 @require_http_methods(["GET", "POST"])
 async def client_documents(request):
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

@@ -8,6 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import (
     _error,
@@ -27,6 +28,7 @@ from clientPanel.view.common import (
 @require_http_methods(["GET", "PUT"])
 async def get_client_profile(request):
     """Load or submit the authenticated client's profile data."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

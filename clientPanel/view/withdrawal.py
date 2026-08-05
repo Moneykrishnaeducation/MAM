@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
 
@@ -16,6 +17,7 @@ from clientPanel.view.common import _error, _get_client_profile_for_request
 @require_http_methods(["POST"])
 async def create_client_withdrawal(request):
     """Create a withdrawal request for the authenticated client."""
+    await ensure_db_initialized()
     try:
         body = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, ValueError):

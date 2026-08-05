@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientTicket
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
 
@@ -157,6 +158,7 @@ def _save_ticket_attachment(uploaded_file, ticket_id: int) -> dict | None:
 @require_http_methods(["GET"])
 async def get_client_tickets(request):
     """Load all support tickets for the authenticated client."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
@@ -185,6 +187,7 @@ async def get_client_tickets(request):
 @require_http_methods(["POST"])
 async def create_client_ticket(request):
     """Create a support ticket for the authenticated client."""
+    await ensure_db_initialized()
     try:
         body, uploaded_files = _extract_ticket_payload(request)
     except ValueError:
@@ -239,6 +242,7 @@ async def create_client_ticket(request):
 @require_http_methods(["GET"])
 async def get_client_ticket_detail(request, ticket_id: int):
     """Load a single ticket for the authenticated client."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

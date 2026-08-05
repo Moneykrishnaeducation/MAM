@@ -12,6 +12,7 @@ from django.utils import timezone
 from tortoise import Tortoise
 
 from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientDocument, ClientProfile, ClientUser, PendingRequest
+from backendPanel.database import ensure_db_initialized
 
 CLIENT_LOGIN_KEY = "client-panel-login-key"
 CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
@@ -209,6 +210,7 @@ def serialize_client_document_detail(detail: ClientDocument | None) -> dict | No
 
 
 async def get_client_payment_details(owner: ClientProfile | ClientUser) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
+    await ensure_db_initialized()
     user_id = _owner_user_id(owner)
     bank_detail = await ClientBankDetail.filter(user_id=user_id).first()
     crypto_detail = await ClientCryptoDetail.filter(user_id=user_id).first()
@@ -216,6 +218,7 @@ async def get_client_payment_details(owner: ClientProfile | ClientUser) -> tuple
 
 
 async def get_client_document_details(owner: ClientProfile | ClientUser) -> ClientDocument | None:
+    await ensure_db_initialized()
     user_id = _owner_user_id(owner)
     document = await ClientDocument.filter(user_id=user_id).first()
     if document is not None:
@@ -246,6 +249,7 @@ async def get_client_document_details(owner: ClientProfile | ClientUser) -> Clie
 
 
 async def get_latest_payment_request_status(owner: ClientProfile | ClientUser, payment_type: str) -> str | None:
+    await ensure_db_initialized()
     normalized_type = _normalize_payment_request_type(payment_type)
     if normalized_type is None:
         return None
@@ -260,6 +264,7 @@ async def get_latest_payment_request_status(owner: ClientProfile | ClientUser, p
 
 
 async def get_latest_profile_request_status(owner: ClientProfile | ClientUser) -> str | None:
+    await ensure_db_initialized()
     request = await PendingRequest.filter(
         user_id=_owner_user_id(owner),
         request_type__icontains="profile",
@@ -270,6 +275,7 @@ async def get_latest_profile_request_status(owner: ClientProfile | ClientUser) -
 
 
 async def get_latest_document_request_status(owner: ClientProfile | ClientUser, document_type: str) -> str | None:
+    await ensure_db_initialized()
     normalized_type = str(document_type or "").strip().lower()
     if normalized_type not in {"identity", "address"}:
         return None
@@ -281,6 +287,7 @@ async def get_latest_document_request_status(owner: ClientProfile | ClientUser, 
 
 
 async def get_latest_document_request(owner: ClientProfile | ClientUser, document_type: str) -> PendingRequest | None:
+    await ensure_db_initialized()
     normalized_type = str(document_type or "").strip().lower()
     if normalized_type not in {"identity", "address"}:
         return None
@@ -418,6 +425,7 @@ def build_document_submission_payload(
 
 
 async def create_payment_pending_request(profile: ClientProfile | ClientUser, payload: dict) -> PendingRequest:
+    await ensure_db_initialized()
     payment_type = _normalize_payment_request_type(payload.get("paymentType") or payload.get("payment_type"))
     if payment_type is None:
         raise ValueError("paymentType must be either 'bank' or 'crypto'")
@@ -442,6 +450,7 @@ async def create_payment_pending_request(profile: ClientProfile | ClientUser, pa
 
 
 async def create_profile_pending_request(profile: ClientProfile | ClientUser, user: ClientUser, payload: dict) -> PendingRequest:
+    await ensure_db_initialized()
     submission_payload = {
         **payload,
         "user_id": user.id,
@@ -462,6 +471,7 @@ async def create_profile_pending_request(profile: ClientProfile | ClientUser, us
 
 
 async def create_document_pending_request(profile: ClientProfile | ClientUser, payload: dict) -> PendingRequest:
+    await ensure_db_initialized()
     document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
     if document_type not in {"identity", "address"}:
         raise ValueError("documentType must be either 'identity' or 'address'")
@@ -490,6 +500,7 @@ async def apply_approved_payment_request(
     *,
     profile: ClientProfile | ClientUser | None = None,
 ) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
+    await ensure_db_initialized()
     owner_id = _owner_user_id(profile) if profile is not None else request.user_id
     if owner_id is None:
         raise ValueError("Pending request is not linked to a client user")
@@ -527,6 +538,7 @@ async def apply_approved_profile_request(
     user: ClientUser | None = None,
     profile: ClientProfile | None = None,
 ) -> tuple[ClientUser | None, ClientProfile | None]:
+    await ensure_db_initialized()
     payload = request.payload or {}
     if user is None:
         if request.user_id:
@@ -571,6 +583,7 @@ async def apply_approved_document_request(
     *,
     profile: ClientProfile | ClientUser | None = None,
 ) -> ClientDocument:
+    await ensure_db_initialized()
     payload = request.payload or {}
     owner_id = _owner_user_id(profile) if profile is not None else request.user_id
     if owner_id is None:
@@ -688,6 +701,7 @@ def build_document_details_payload(
 
 
 async def upsert_client_bank_detail(owner: ClientProfile | ClientUser, payload: dict) -> ClientBankDetail:
+    await ensure_db_initialized()
     user_id = _owner_user_id(owner)
     detail = await ClientBankDetail.filter(user_id=user_id).first()
     if detail is None:
@@ -720,6 +734,7 @@ async def upsert_client_bank_detail(owner: ClientProfile | ClientUser, payload: 
 
 
 async def upsert_client_crypto_detail(owner: ClientProfile | ClientUser, payload: dict) -> ClientCryptoDetail:
+    await ensure_db_initialized()
     user_id = _owner_user_id(owner)
     detail = await ClientCryptoDetail.filter(user_id=user_id).first()
     if detail is None:
@@ -743,6 +758,7 @@ async def upsert_client_crypto_detail(owner: ClientProfile | ClientUser, payload
 
 
 async def _resolve_client_user_id(request) -> int | None:
+    await ensure_db_initialized()
     token = get_client_request_token(request)
     if token:
         payload = load_client_login_token(token)
@@ -753,6 +769,7 @@ async def _resolve_client_user_id(request) -> int | None:
 
 
 async def _get_client_profile_for_request(request):
+    await ensure_db_initialized()
     user_id = await _resolve_client_user_id(request)
     if user_id is None:
         return None, _error("Authenticated session cookie is required", status=400)

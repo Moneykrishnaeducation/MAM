@@ -11,6 +11,7 @@ from adminPanel.models import (
     TradingAccount,
 )
 from backendPanel.permissions import IsClient, permission_required
+from backendPanel.database import ensure_db_initialized
 from clientPanel.view.common import _get_client_profile_for_request
 
 
@@ -31,6 +32,7 @@ def _serialize_activity_log(log: ActivityLog) -> dict:
 @permission_required(IsClient)
 async def get_client_dashboard(request):
     """Return client dashboard summary cards and recent activity logs."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

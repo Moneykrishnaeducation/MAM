@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import AdminUser, ClientUser
+from backendPanel.database import ensure_db_initialized
 from clientPanel.view.common import (
     ADMIN_LOGIN_COOKIE_NAME,
     ADMIN_LOGIN_MAX_AGE,
@@ -101,6 +102,8 @@ async def login_client(request):
 
     if not email or not access_code:
         return _error("email and access_code are required", status=400)
+
+    await ensure_db_initialized()
 
     # ── 1. Try AdminUser table first ──────────────────────────────────────────
     admin_user = await AdminUser.filter(email=email).first()

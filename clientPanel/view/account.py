@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import ClientAccount, ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
 
@@ -17,6 +18,7 @@ logger = logging.getLogger(__name__)
 @permission_required(IsClient)
 async def get_client_account(request):
     """Load trading account details for a client user directly from database."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
@@ -60,6 +62,8 @@ async def create_client_trading_account(request):
     """Create a MAM Master or Investor trading account on MT5 for the client."""
     if request.method != "POST":
         return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
 
     profile, error = await _get_client_profile_for_request(request)
     if error:

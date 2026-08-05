@@ -13,8 +13,10 @@ from functools import wraps
 from inspect import iscoroutinefunction
 from typing import Any
 
+from asgiref.sync import async_to_sync
 from django.http import JsonResponse
 
+from backendPanel.database import ensure_db_initialized
 from clientPanel.view.common import (
     get_admin_request_token,
     get_client_request_token,
@@ -198,6 +200,7 @@ def permission_required(permission_cls: type[BaseRolePermission]):
 
             @wraps(view_func)
             async def async_wrapped(request, *args, **kwargs):
+                await ensure_db_initialized()
                 if not permission.has_permission(request, view_func):
                     return permission.denied_response()
                 return await view_func(request, *args, **kwargs)
@@ -206,6 +209,7 @@ def permission_required(permission_cls: type[BaseRolePermission]):
 
         @wraps(view_func)
         def sync_wrapped(request, *args, **kwargs):
+            async_to_sync(ensure_db_initialized)()
             if not permission.has_permission(request, view_func):
                 return permission.denied_response()
             return view_func(request, *args, **kwargs)
@@ -234,6 +238,7 @@ def require_role(*roles: str):
 
             @wraps(view_func)
             async def async_wrapped(request, *args, **kwargs):
+                await ensure_db_initialized()
                 role = _extract_role_from_request(request)
                 if role not in allowed:
                     return JsonResponse(
@@ -246,6 +251,7 @@ def require_role(*roles: str):
 
         @wraps(view_func)
         def sync_wrapped(request, *args, **kwargs):
+            async_to_sync(ensure_db_initialized)()
             role = _extract_role_from_request(request)
             if role not in allowed:
                 return JsonResponse(

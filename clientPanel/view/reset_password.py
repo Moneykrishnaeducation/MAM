@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientUser
+from backendPanel.database import ensure_db_initialized
 from clientPanel.view.common import (
     _error,
     _get_client_profile_for_request,
@@ -19,6 +20,7 @@ from clientPanel.view.common import (
 @require_http_methods(["POST"])
 async def reset_client_password(request):
     """Reset a client password using the client's email address."""
+    await ensure_db_initialized()
     try:
         body = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, ValueError):
@@ -59,6 +61,7 @@ async def reset_client_password(request):
 @require_http_methods(["POST"])
 async def change_client_password(request):
     """Change the authenticated client's password using the current password."""
+    await ensure_db_initialized()
     try:
         body = json.loads(request.body or b"{}")
     except (json.JSONDecodeError, ValueError):

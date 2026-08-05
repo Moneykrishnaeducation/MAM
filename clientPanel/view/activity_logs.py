@@ -3,6 +3,7 @@
 from django.http import JsonResponse
 
 from adminPanel.models import ActivityLog
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 
@@ -20,6 +21,7 @@ def _serialize_activity_log(log: ActivityLog) -> dict:
 @permission_required(IsClient)
 async def get_client_activity_logs(request):
     """Return the most recent five activity logs for the authenticated client."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

@@ -6,6 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 
@@ -127,6 +128,7 @@ def _build_transaction_counts(transactions: list[ClientTransaction]) -> dict:
 @require_http_methods(["GET"])
 async def get_client_transactions(request):
     """Load transactions for a client user directly from database."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error

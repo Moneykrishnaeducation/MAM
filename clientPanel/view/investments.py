@@ -7,6 +7,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
+from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
 
@@ -14,6 +15,7 @@ from clientPanel.view.common import _error, _get_client_profile_for_request, _re
 @permission_required(IsClient)
 async def get_client_investments(request):
     """Load allocated investments for a client user based on their investor accounts with optional pagination."""
+    await ensure_db_initialized()
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
@@ -103,6 +105,8 @@ async def pause_copying_api(request):
     if request.method != "POST":
         return _error("Only POST method is allowed", status=405)
 
+    await ensure_db_initialized()
+
     user_id = await _resolve_client_user_id(request)
     if user_id is None:
         return _error("Authenticated session is required", status=401)
@@ -147,6 +151,8 @@ async def start_copying_api(request):
     """Start or resume copying for an investor account in MT5."""
     if request.method != "POST":
         return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
 
     user_id = await _resolve_client_user_id(request)
     if user_id is None:
@@ -195,6 +201,8 @@ async def deploy_coefficient_config_api(request):
     """Deploy coefficient configuration for an investor account."""
     if request.method != "POST":
         return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
 
     user_id = await _resolve_client_user_id(request)
     if user_id is None:
