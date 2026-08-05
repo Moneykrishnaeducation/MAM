@@ -51,12 +51,23 @@ export async function fetchClientUsers() {
   }
 }
 
-export async function fetchAdminManagers() {
+export async function fetchAdminManagers(page?: number, perPage?: number, search?: string) {
   try {
-    const res = await fetch('/api/admin/managers');
+    const searchParams = new URLSearchParams();
+    if (page !== undefined) searchParams.set('page', String(page));
+    if (perPage !== undefined) searchParams.set('per_page', String(perPage));
+    if (search) searchParams.set('search', search);
+
+    const queryString = searchParams.toString();
+    const url = queryString ? `/api/admin/managers?${queryString}` : '/api/admin/managers';
+
+    const res = await fetch(url);
     if (!res.ok) return null;
     const data = await res.json();
-    return data.managers || null;
+    if (page === undefined && perPage === undefined && !search) {
+      return data.managers || null;
+    }
+    return data;
   } catch (_) {
     return null;
   }
@@ -105,9 +116,19 @@ export async function fetchClientAccount() {
   return data?.account || null;
 }
 
-export async function fetchClientInvestments() {
-  const data = await fetchClientEndpoint<{ investments?: any }>('/api/client/my-investments');
-  return data?.investments || null;
+export async function fetchClientInvestments(page?: number, perPage?: number) {
+  const searchParams = new URLSearchParams();
+  if (page !== undefined) searchParams.set('page', String(page));
+  if (perPage !== undefined) searchParams.set('per_page', String(perPage));
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/client/my-investments?${queryString}` : '/api/client/my-investments';
+
+  const data = await fetchClientEndpoint<{ investments?: any[]; pagination?: any; user_id?: string }>(url);
+  if (page === undefined && perPage === undefined) {
+    return data?.investments || null;
+  }
+  return data;
 }
 
 export async function fetchClientTransactions() {

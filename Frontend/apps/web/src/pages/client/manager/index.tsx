@@ -21,7 +21,7 @@ import {
   RefreshCw,
   Wallet,
 } from 'lucide-react';
-import { fetchAdminManagers, fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
+import { fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
 import {
   buildManagerRows,
   DEFAULT_MANAGER_ROW,
@@ -36,6 +36,28 @@ import { ManagerSkeleton } from '@/components/client-page-skeletons';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import AccountOpenModal from '../model/accountopen';
+
+export async function fetchAdminManagers(page?: number, perPage?: number, search?: string) {
+  try {
+    const searchParams = new URLSearchParams();
+    if (page !== undefined) searchParams.set('page', String(page));
+    if (perPage !== undefined) searchParams.set('per_page', String(perPage));
+    if (search) searchParams.set('search', search);
+
+    const queryString = searchParams.toString();
+    const url = queryString ? `/api/admin/managers?${queryString}` : '/api/admin/managers';
+
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (page === undefined && perPage === undefined && !search) {
+      return data.managers || null;
+    }
+    return data;
+  } catch (_) {
+    return null;
+  }
+}
 
 const riskBadge = (risk: string, isDarkMode: boolean) => {
   if (risk === 'Low')
@@ -56,7 +78,7 @@ export default function ClientManagerPage() {
   const isDarkMode = theme === 'dark';
 
   const [query, setQuery] = useState('');
-  const [perPage, setPerPage] = useState(5);
+  const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
   const [showInvestorListModal, setShowInvestorListModal] = useState(false);
@@ -77,56 +99,80 @@ export default function ClientManagerPage() {
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
   const [clientAccount, setClientAccount] = useState<ClientAccountSummary | null>(null);
   const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    perPage: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  });
 
+  // 1. Fetch static client dashboard / investments on mount
   useEffect(() => {
     let active = true;
-
-    const loadLiveData = async () => {
-      setIsPageLoading(true);
-
-      const [dashboardResponse, managersResponse, investmentsResponse] = await Promise.all([
+    const loadStaticData = async () => {
+      const [dashboardResponse, investmentsResponse] = await Promise.all([
         fetchClientDashboard(),
-        fetchAdminManagers(),
         fetchClientInvestments(),
       ]);
-
-      if (!active) {
-        return;
-      }
+      if (!active) return;
 
       const dashboard = dashboardResponse || null;
-      const profile = dashboard?.client || null;
       const account = dashboard?.account || null;
       const investments = Array.isArray(investmentsResponse) ? investmentsResponse : [];
-      const liveManagers = buildManagerRows(Array.isArray(managersResponse) ? managersResponse : [], investments, profile);
-      const assignedManager = pickAssignedManager(liveManagers, investments) || DEFAULT_MANAGER_ROW;
-
       setClientAccount(account);
       setClientInvestments(investments);
-      setAllManagers(liveManagers);
-      setManagerInfo(assignedManager);
-      setSelectedManager((current) => {
-        if (!current) {
-          return null;
-        }
-        return liveManagers.find((manager) => manager.id === current.id) || assignedManager;
-      });
-      setIsPageLoading(false);
     };
 
-    loadLiveData().catch(() => {
-      if (active) {
-        setAllManagers([]);
-        setClientInvestments([]);
-        setManagerInfo(DEFAULT_MANAGER_ROW);
-        setIsPageLoading(false);
-      }
-    });
-
+    loadStaticData();
     return () => {
       active = false;
     };
   }, []);
+
+  // 2. Fetch managers when pagination params or query changes
+  useEffect(() => {
+    let active = true;
+    const loadManagers = async () => {
+      setIsPageLoading(true);
+      try {
+        const res = await fetchAdminManagers(currentPage, perPage, query);
+        if (!active) return;
+
+        if (res && Array.isArray(res.managers)) {
+          const dashboardResponse = await fetchClientDashboard();
+          if (!active) return;
+          const profile = dashboardResponse?.client || null;
+
+          const liveManagers = buildManagerRows(res.managers, clientInvestments, profile);
+          const assignedManager = pickAssignedManager(liveManagers, clientInvestments) || DEFAULT_MANAGER_ROW;
+
+          setAllManagers(liveManagers);
+          setManagerInfo(assignedManager);
+          setPagination({
+            page: Number(res.pagination?.page ?? currentPage),
+            perPage: Number(res.pagination?.per_page ?? perPage),
+            total: Number(res.pagination?.total ?? liveManagers.length),
+            totalPages: Number(res.pagination?.total_pages ?? 1),
+            hasNext: Boolean(res.pagination?.has_next),
+            hasPrevious: Boolean(res.pagination?.has_previous),
+          });
+        }
+      } catch {
+        // Fallback
+      } finally {
+        if (active) {
+          setIsPageLoading(false);
+        }
+      }
+    };
+
+    loadManagers();
+    return () => {
+      active = false;
+    };
+  }, [currentPage, perPage, query, clientInvestments]);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
@@ -140,26 +186,17 @@ export default function ClientManagerPage() {
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
-  const filteredManagers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allManagers;
-    return allManagers.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.id.toLowerCase().includes(q),
-    );
-  }, [query, allManagers]);
-
   const hasQuery = query.trim().length > 0;
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredManagers.length / perPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedManagers = filteredManagers.slice(
-    (safePage - 1) * perPage,
-    safePage * perPage,
-  );
+  // Pagination helper mappings
+  const totalPages = pagination.totalPages;
+  const safePage = pagination.page;
+  const paginatedManagers = allManagers;
+
+  const showingStart = pagination.total > 0 ? (safePage - 1) * perPage + 1 : 0;
+  const showingEnd = pagination.total > 0
+    ? Math.min(showingStart + allManagers.length - 1, pagination.total)
+    : 0;
 
   const handlePerPageChange = (val: number) => {
     setPerPage(val);
@@ -179,7 +216,7 @@ export default function ClientManagerPage() {
 
   // Only show a highlighted card when user is actively searching
   const highlightedManager =
-    hasQuery && filteredManagers.length > 0 ? filteredManagers[0] : null;
+    hasQuery && allManagers.length > 0 ? allManagers[0] : null;
 
   // Active manager may be from an explicit selection (selectedManager)
   // or from the current search highlight (highlightedManager)
@@ -538,7 +575,7 @@ export default function ClientManagerPage() {
               </div>
             </div>
           </div>
-        ) : hasQuery && filteredManagers.length === 0 ? (
+        ) : hasQuery && allManagers.length === 0 ? (
           /* ── No Results — only shown when searching ── */
           <div className={`flex flex-col items-center justify-center py-16 border rounded-[2rem] ${panelClass}`}>
             <Search size={40} className="text-slate-700 mb-3" />
@@ -672,8 +709,8 @@ export default function ClientManagerPage() {
                         </td>
 
                         {/* Actions */}
-                        <td className="px-6 py-5">
-                          <div className="flex flex-wrap items-center gap-2 min-w-[160px]">
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <div className="flex items-center gap-2 whitespace-nowrap">
                             <button
                               type="button"
                               onClick={() => setSelectedManager(mgr)}
@@ -704,32 +741,29 @@ export default function ClientManagerPage() {
           </div>
 
           {/* ── Pagination Footer ── */}
-          <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t ${borderMutedClass}`}>
-            {/* Per-page selector */}
-            <div className="flex items-center gap-2 order-2 sm:order-1">
-              <label htmlFor="per-page" className={`text-xs whitespace-nowrap ${softTextClass}`}>
-                Rows per page:
-              </label>
-              <select
-                id="per-page"
-                value={perPage}
-                onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                className={`border text-xs rounded-lg px-2.5 py-1.5 outline-none transition-all cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-slate-800 border-slate-700 text-blue-200'
-                    : 'bg-[#0e2152] border-blue-900/50 text-blue-200'
-                }`}
-              >
-                {[5, 10, 25, 50, 100, 250, 500].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-              <span className={`text-xs ${softTextClass}`}>
-                — Page{' '}
-                <span className={`font-semibold ${headingTextClass}`}>{safePage}</span>
-                {' '}of{' '}
-                <span className={`font-semibold ${headingTextClass}`}>{totalPages}</span>
-              </span>
+          <div className={`flex flex-col gap-4 border-t ${borderMutedClass} px-6 py-4 lg:flex-row lg:items-center lg:justify-between`}>
+            <div className={`text-xs font-bold uppercase tracking-[0.2em] ${softTextClass}`}>
+              SHOWING {showingStart} TO {showingEnd} OF {pagination.total}
+            </div>
+
+            <div className="flex flex-col items-start gap-3 md:items-end lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex items-center gap-3">
+                <label className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`} htmlFor="per-page">
+                  Rows per page
+                </label>
+                <select
+                  id="per-page"
+                  value={perPage}
+                  onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all ${inputClass}`}
+                >
+                  {[10, 30, 50, 100, 500, 1000].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             {/* Page buttons */}
@@ -738,7 +772,7 @@ export default function ClientManagerPage() {
               <button
                 id="pagination-prev"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safePage === 1}
+                disabled={safePage === 1 || !pagination.hasPrevious}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
               >
                 <ChevronLeft size={13} /> Prev
@@ -781,7 +815,7 @@ export default function ClientManagerPage() {
               <button
                 id="pagination-next"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
+                disabled={safePage === totalPages || !pagination.hasNext}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
               >
                 Next <ChevronRight size={13} />

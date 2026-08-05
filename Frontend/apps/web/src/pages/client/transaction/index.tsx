@@ -630,16 +630,11 @@ export default function TransactionHistory() {
           </div>
 
           <div className="flex flex-col gap-4 border-b border-white/5 px-6 py-5 md:flex-row md:items-center md:justify-between bg-white/[0.02]">
-            <div>
-              <p className={`text-sm ${softTextClass}`}>
-                Showing <span className={`font-semibold ${headingTextClass}`}>{totalTransactions}</span> transactions in{' '}
-                <span className={`font-semibold ${headingTextClass}`}>{activeTabLabel}</span>
-              </p>
-            </div>
+            
             <div className="flex flex-col items-start gap-3 md:items-end">
               <div className="flex items-center gap-3">
                 <label className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`} htmlFor="transactions-per-page">
-                  Rows per page
+                  Rows:
                 </label>
                 <select
                   id="transactions-per-page"
@@ -657,9 +652,7 @@ export default function TransactionHistory() {
                   ))}
                 </select>
               </div>
-              <div className={`text-xs uppercase tracking-[0.18em] ${softTextClass}`}>
-                Page {safePage} of {totalPages} - Last synced {lastUpdatedLabel}
-              </div>
+              
             </div>
           </div>
 
@@ -813,7 +806,17 @@ export default function TransactionHistory() {
                             {formatDate(transaction.date)}
                           </span>
                         </td>
-                        <td className={`px-6 py-5 whitespace-nowrap font-bold ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>{transaction.account_id}</td>
+                        <td className="px-6 py-5 whitespace-nowrap">
+                          <span
+                            className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                              isDarkMode
+                                ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                            }`}
+                          >
+                            {transaction.account_id}
+                          </span>
+                        </td>
                         <td className="px-6 py-5 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}

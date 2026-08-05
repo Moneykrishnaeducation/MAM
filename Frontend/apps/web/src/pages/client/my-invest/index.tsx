@@ -92,9 +92,19 @@ async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {
   }
 }
 
-async function fetchClientInvestments() {
-  const data = await fetchClientEndpoint<{ investments?: ClientInvestmentApi[]; user_id?: string }>('/api/client/my-investments');
-  return data?.investments || null;
+export async function fetchClientInvestments(page?: number, perPage?: number) {
+  const searchParams = new URLSearchParams();
+  if (page !== undefined) searchParams.set('page', String(page));
+  if (perPage !== undefined) searchParams.set('per_page', String(perPage));
+
+  const queryString = searchParams.toString();
+  const url = queryString ? `/api/client/my-investments?${queryString}` : '/api/client/my-investments';
+
+  const data = await fetchClientEndpoint<{ investments?: any[]; pagination?: any; user_id?: string }>(url);
+  if (page === undefined && perPage === undefined) {
+    return data?.investments || null;
+  }
+  return data;
 }
 
 const toNumber = (value: unknown): number => {
@@ -157,6 +167,17 @@ export default function ClientMyInvestPage() {
   const [investments, setInvestments] = useState<ClientInvestment[]>([]);
   const [investmentsLoading, setInvestmentsLoading] = useState<boolean>(true);
   const [investmentsError, setInvestmentsError] = useState<string | null>(null);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    perPage: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  });
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
@@ -177,30 +198,38 @@ export default function ClientMyInvestPage() {
       setInvestmentsLoading(true);
 
       try {
-        const response = await fetchClientInvestments();
-        const normalized = Array.isArray(response)
-          ? response.map((investment: any): ClientInvestment => ({
-              id: investment.id,
-              accountId: String(investment.account_id || ''),
-              strategy: String(investment.strategy || investment.strategy_name || 'Untitled strategy'),
-              manager: String(investment.manager || investment.manager_name || 'Unassigned'),
-              allocated: toNumber(investment.allocated ?? investment.allocated_amount),
-              currentValue: toNumber(investment.current_value),
-              returnPct: toNumber(investment.return_pct),
-              status: String(investment.status || 'Active'),
-              investorAllowCopy: normalizeBool(investment.investor_allow_copy),
-              copyMode: investment.copy_mode || 'balance',
-              copyFactor: toNumber(investment.copy_factor ?? 1.0),
-              multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
-              managerAccountId: String(investment.manager_account_id || ''),
-            }))
-          : [];
+        const response = await fetchClientInvestments(currentPage, perPage);
+        const list = response && Array.isArray((response as any).investments) ? (response as any).investments : [];
+        const normalized = list.map((investment: any): ClientInvestment => ({
+          id: investment.id,
+          accountId: String(investment.account_id || ''),
+          strategy: String(investment.strategy || investment.strategy_name || 'Untitled strategy'),
+          manager: String(investment.manager || investment.manager_name || 'Unassigned'),
+          allocated: toNumber(investment.allocated ?? investment.allocated_amount),
+          currentValue: toNumber(investment.current_value),
+          returnPct: toNumber(investment.return_pct),
+          status: String(investment.status || 'Active'),
+          investorAllowCopy: normalizeBool(investment.investor_allow_copy),
+          copyMode: investment.copy_mode || 'balance',
+          copyFactor: toNumber(investment.copy_factor ?? 1.0),
+          multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
+          managerAccountId: String(investment.manager_account_id || ''),
+        }));
 
         if (!active) {
           return;
         }
 
         setInvestments(normalized);
+        const resAny = response as any;
+        setPagination({
+          page: Number(resAny?.pagination?.page ?? currentPage),
+          perPage: Number(resAny?.pagination?.per_page ?? perPage),
+          total: Number(resAny?.pagination?.total ?? normalized.length),
+          totalPages: Number(resAny?.pagination?.total_pages ?? 1),
+          hasNext: Boolean(resAny?.pagination?.has_next),
+          hasPrevious: Boolean(resAny?.pagination?.has_previous),
+        });
         setInvestmentsError(normalized.length > 0 ? null : 'No live investments are available.');
       } catch {
         if (active) {
@@ -219,7 +248,7 @@ export default function ClientMyInvestPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [currentPage, perPage]);
 
   const openDetailsModal = (inv: ClientInvestment) => {
     setSelectedInvModal(inv);
@@ -529,9 +558,13 @@ export default function ClientMyInvestPage() {
   const visibleInvestments = investments;
   const selectedInvestmentId = selectedInvModal ? String(selectedInvModal.id) : '';
   const selectedInvestmentProfit = selectedInvModal ? selectedInvModal.currentValue - selectedInvModal.allocated : 0;
-  const visibleCount = visibleInvestments.length;
-  const showingStart = visibleCount > 0 ? 1 : 0;
-  const showingEnd = visibleCount;
+  const visibleCount = pagination.total;
+  const showingStart = visibleCount > 0 ? (pagination.page - 1) * perPage + 1 : 0;
+  const showingEnd = visibleCount
+    ? Math.min(showingStart + investments.length - 1, visibleCount)
+    : 0;
+  const totalPages = pagination.totalPages;
+  const safePage = pagination.page;
 
   if (investmentsLoading) {
     return (
@@ -735,19 +768,87 @@ export default function ClientMyInvestPage() {
           </div>
 
           {/* Pagination Footer */}
-          <div className={`flex items-center justify-between px-6 py-5 border-t ${borderMutedClass}`}>
-            <div className={`text-xs font-bold uppercase tracking-widest ${softTextClass}`}>
+          <div className={`flex flex-col gap-4 border-t ${borderMutedClass} px-6 py-4 lg:flex-row lg:items-center lg:justify-between`}>
+            <div className={`text-xs font-bold uppercase tracking-[0.2em] ${softTextClass}`}>
               SHOWING {showingStart} TO {showingEnd} OF {visibleCount}
             </div>
 
-            <div className="flex items-center gap-4">
-              <button className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-800 text-gray-400 hover:bg-white/5 hover:text-white' : 'border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              </button>
-              <span className={`text-xs font-bold ${headingTextClass}`}>Page 1</span>
-              <button className={`w-8 h-8 flex items-center justify-center rounded-full border transition-colors ${isDarkMode ? 'border-slate-800 text-gray-400 hover:bg-white/5 hover:text-white' : 'border-blue-900/60 text-blue-300 hover:bg-[#11255e] hover:text-white'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </button>
+            <div className="flex flex-col items-start gap-3 md:items-end lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex items-center gap-3">
+                <label className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`} htmlFor="per-page">
+                  Rows per page
+                </label>
+                <select
+                  id="per-page"
+                  value={perPage}
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all ${inputClass}`}
+                >
+                  {[10, 30, 50, 100, 500, 1000].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                {/* Prev */}
+                <button
+                  id="pagination-prev"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1 || !pagination.hasPrevious}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg> Prev
+                </button>
+
+                {/* Page number pills */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  const isEllipsis =
+                    totalPages > 5 &&
+                    page !== 1 &&
+                    page !== totalPages &&
+                    Math.abs(page - safePage) > 1;
+                  if (isEllipsis) {
+                    if (page === safePage - 2 || page === safePage + 2) {
+                      return (
+                        <span key={page} className="text-slate-600 px-1 text-xs select-none">
+                          …
+                        </span>
+                      );
+                    }
+                    return null;
+                  }
+                  return (
+                    <button
+                      key={page}
+                      id={`pagination-page-${page}`}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all border ${
+                        page === safePage
+                          ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+
+                {/* Next */}
+                <button
+                  id="pagination-next"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages || !pagination.hasNext}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                >
+                  Next <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
             </div>
           </div>
           {/* Details Modal (opened from table) */}

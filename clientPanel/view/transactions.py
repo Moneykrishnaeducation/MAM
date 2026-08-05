@@ -5,7 +5,7 @@ from datetime import date
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.models import ClientTransaction
+from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 
@@ -98,9 +98,15 @@ def _transaction_matches_filters(
     return True
 
 
-def _serialize_transaction(transaction: ClientTransaction) -> dict:
+def _serialize_transaction(transaction: ClientTransaction, account_map: dict) -> dict:
+    raw_acc = transaction.account_number
+    mapped_acc = account_map.get(raw_acc) if raw_acc else None
+    if not mapped_acc and account_map:
+        mapped_acc = list(account_map.values())[0]
+
     return {
         "id": transaction.id,
+        "account_number": mapped_acc or raw_acc,
         "type": transaction.transaction_type,
         "amount": transaction.amount,
         "method": transaction.payment_method,
@@ -141,6 +147,36 @@ async def get_client_transactions(request):
         .all()
     )
 
+    client_accounts = await ClientAccount.filter(user_id=profile.id).all()
+    trading_accounts = await TradingAccount.filter(user_id=profile.id).all()
+
+    account_map = {}
+    for ca in client_accounts:
+        matching_ta = next((ta for ta in trading_accounts if ta.id == ca.id), None)
+        if matching_ta:
+            account_map[ca.account_number] = matching_ta.account_id
+        else:
+            account_map[ca.account_number] = ca.account_number
+
+    for ta in trading_accounts:
+        account_map[ta.account_id] = ta.account_id
+
+    # If map is empty, fallback to whatever we can find
+    if not account_map:
+        if trading_accounts:
+            account_map[""] = trading_accounts[0].account_id
+        elif client_accounts:
+            account_map[""] = client_accounts[0].account_number
+
+    if account_map:
+        default_acc_num = list(account_map.values())[0]
+        for tx in transactions:
+            raw_acc = tx.account_number
+            mapped_acc = account_map.get(raw_acc) if raw_acc else default_acc_num
+            if mapped_acc and tx.account_number != mapped_acc:
+                tx.account_number = mapped_acc
+                await tx.save()
+
     transaction_counts = _build_transaction_counts(transactions)
     filtered_transactions = [
         transaction
@@ -168,7 +204,7 @@ async def get_client_transactions(request):
         per_page = None
         page_transactions = filtered_transactions
 
-    results = [_serialize_transaction(transaction) for transaction in page_transactions]
+    results = [_serialize_transaction(transaction, account_map) for transaction in page_transactions]
 
     response = {
         "status": "ok",

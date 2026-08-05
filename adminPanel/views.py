@@ -2,7 +2,6 @@
 
 import base64
 import json
-import os
 import random
 import re
 import string
@@ -19,26 +18,26 @@ from tortoise import Tortoise
 from adminPanel.models import (
     ActivityLog,
     AdminUser,
-    ClientUser,
     ClientDocument,
     ClientProfile,
+    ClientUser,
     PendingRequest,
     TradingAccount,
 )
 from backendPanel.permissions import IsAdmin, permission_required
+from clientPanel.crud import create_client_profile
 from clientPanel.view.common import (
     _mask_account_number,
     _serialize_client_profile,
+    build_document_details_payload,
     get_admin_request_token,
     get_client_document_details,
     get_client_payment_details,
     get_latest_document_request,
-    build_document_details_payload,
     hash_client_password,
     load_admin_login_token,
     serialize_client_document_detail,
 )
-from clientPanel.crud import create_client_profile
 
 AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
 
@@ -318,7 +317,7 @@ async def list_client_users(request):
             }
             for acc in t_accs
         ]
-        
+
         # Primary trading account (for backward compatibility / default view)
         primary_acc = trading_accounts_data[0] if trading_accounts_data else None
 
@@ -532,7 +531,7 @@ async def update_client_user_status(request, user_id: str):
         normalized = raw_status.lower()
         if normalized in {"active", "enabled", "enable"}:
             user.status = "Active"
-        elif normalized in {"inactive", "inactive", "suspended", "disable", "disabled"}:
+        elif normalized in {"inactive", "suspended", "disable", "disabled"}:
             user.status = "Inactive"
         else:
             return JsonResponse({"status": "error", "message": "Invalid status value"}, status=400)
@@ -580,22 +579,75 @@ async def list_pending_requests(request):
 
 
 async def list_managers(request):
-    """List MAM managers directly from database."""
-    managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user")
-    results = [
-        {
+    """List MAM managers directly from database with optional search and pagination."""
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    search_q = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
+
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
+
+    managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user").all()
+    results = []
+
+    for m in managers:
+        name = m.account_name or (m.user.name if m.user else "MAM Manager")
+        email = m.user.email if m.user else "manager@mam.com"
+        acc_id = m.account_id or ""
+
+        if search_q:
+            haystack = f"{name} {email} {acc_id}".lower()
+            if search_q not in haystack:
+                continue
+
+        results.append({
             "id": m.id,
-            "account_id": m.account_id,
-            "name": m.account_name or (m.user.name if m.user else "MAM Manager"),
-            "email": m.user.email if m.user else "manager@mam.com",
+            "account_id": acc_id,
+            "name": name,
+            "email": email,
             "strategy": m.risk_level or "Quantitative Grid",
             "aum": float(m.balance),
             "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
             "status": m.status or "Active",
+        })
+
+    total = len(results)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_results = results[start_index:end_index]
+
+        response = {
+            "status": "ok",
+            "managers": paginated_results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            }
         }
-        for m in managers
-    ]
-    return JsonResponse({"status": "ok", "managers": results})
+    else:
+        response = {
+            "status": "ok",
+            "managers": results,
+        }
+
+    return JsonResponse(response)
 
 
 async def list_investors(request):
@@ -826,10 +878,10 @@ async def get_available_groups(request):
     """Retrieve available groups from mt5_group_config table."""
     try:
         from adminPanel.models import MT5GroupConfig, TradeGroup
-        
+
         is_demo_request = "demo" in request.path.lower()
         configs = await MT5GroupConfig.filter(is_demo=is_demo_request)
-        
+
         groups_list = []
         for c in configs:
             groups_list.append({
@@ -841,7 +893,7 @@ async def get_available_groups(request):
                 "is_demo_default": False,
                 "is_demo": c.is_demo,
             })
-            
+
         trade_groups = await TradeGroup.all()
         for tg in trade_groups:
             for g in groups_list:
@@ -849,7 +901,7 @@ async def get_available_groups(request):
                     g["is_default"] = tg.is_default
                     g["is_demo_default"] = tg.is_demo_default
                     g["alias"] = tg.alias or g["alias"]
-                    
+
         return JsonResponse({
             "success": True,
             "groups": groups_list
@@ -864,28 +916,28 @@ async def get_current_group_config(request):
     """Get the current MT5 group default/alias configuration."""
     try:
         from adminPanel.models import MT5GroupConfig, TradeGroup
-        
+
         configs = await MT5GroupConfig.all()
         trade_groups = await TradeGroup.all()
-        
+
         real_groups = []
         demo_groups = []
         default_group = None
         demo_group = None
-        
+
         # Build map of trade groups for quick lookup
         tg_map = {tg.name: tg for tg in trade_groups}
-        
+
         for c in configs:
             tg = tg_map.get(c.group_name)
             alias = tg.alias if tg else (c.description or "")
-            
+
             group_item = {
                 "id": c.group_name,
                 "name": c.group_name,
                 "alias": alias
             }
-            
+
             if c.is_demo:
                 demo_groups.append(group_item)
                 if tg and tg.is_demo_default:
@@ -894,13 +946,13 @@ async def get_current_group_config(request):
                 real_groups.append(group_item)
                 if tg and tg.is_default:
                     default_group = {"id": c.group_name}
-                    
+
         # Fallbacks if default is not set
         if not default_group and real_groups:
             default_group = {"id": real_groups[0]["id"]}
         if not demo_group and demo_groups:
             demo_group = {"id": demo_groups[0]["id"]}
-            
+
         return JsonResponse({
             "success": True,
             "configuration": {
@@ -923,31 +975,31 @@ async def save_group_configuration(request):
         from adminPanel.models import MT5GroupConfig, TradeGroup
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
-        
+
         # Determine default group id
         default_id = None
         for g in groups_input:
             if g.get("default") is True:
                 default_id = g.get("id")
                 break
-                
+
         # Clear previous defaults
         if default_id:
             await TradeGroup.filter(type="real").update(is_default=False)
-            
+
         for g in groups_input:
             group_name = g.get("id")
             enabled = g.get("enabled", True)
             alias = g.get("alias", "")
             is_default = (group_name == default_id) if default_id else g.get("default", False)
-            
+
             # Update/Create MT5GroupConfig
             config = await MT5GroupConfig.filter(group_name=group_name).first()
             if config:
                 config.is_enabled = enabled
                 config.description = alias
                 await config.save()
-                
+
             # Update/Create TradeGroup
             tg = await TradeGroup.filter(name=group_name).first()
             if tg:
@@ -963,7 +1015,7 @@ async def save_group_configuration(request):
                     is_default=is_default,
                     type="real"
                 )
-                
+
         return JsonResponse({"success": True})
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
@@ -977,31 +1029,31 @@ async def save_demo_group_configuration(request):
         from adminPanel.models import MT5GroupConfig, TradeGroup
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
-        
+
         # Determine default group id
         demo_default_id = None
         for g in groups_input:
             if g.get("demo_default") is True:
                 demo_default_id = g.get("id")
                 break
-                
+
         # Clear previous defaults
         if demo_default_id:
             await TradeGroup.filter(type="demo").update(is_demo_default=False)
-            
+
         for g in groups_input:
             group_name = g.get("id")
             enabled = g.get("enabled", True)
             alias = g.get("alias", "")
             is_demo_default = (group_name == demo_default_id) if demo_default_id else g.get("demo_default", False)
-            
+
             # Update/Create MT5GroupConfig
             config = await MT5GroupConfig.filter(group_name=group_name).first()
             if config:
                 config.is_enabled = enabled
                 config.description = alias
                 await config.save()
-                
+
             # Update/Create TradeGroup
             tg = await TradeGroup.filter(name=group_name).first()
             if tg:
@@ -1017,7 +1069,7 @@ async def save_demo_group_configuration(request):
                     is_demo_default=is_demo_default,
                     type="demo"
                 )
-                
+
         return JsonResponse({"success": True, "demo_default_group": demo_default_id})
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)

@@ -57,7 +57,7 @@ export default function ClientAvailablePage() {
   const isDarkMode = theme === 'dark';
 
   const [query, setQuery] = useState('');
-  const [perPage, setPerPage] = useState(5);
+  const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -71,60 +71,92 @@ export default function ClientAvailablePage() {
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
   const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    perPage: 10,
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  });
 
+  const toViewRow = (manager: ManagerRow): ManagerViewRow => ({
+    ...manager,
+    loginId: manager.accountId,
+    equity: manager.strategy,
+    age: manager.status,
+    growth: `${manager.investorsCount} linked`,
+  });
+
+  // 1. Load static investments on mount
   useEffect(() => {
     let active = true;
-
-    const loadLiveData = async () => {
-      setIsPageLoading(true);
-
-      const [dashboardResponse, managersResponse, investmentsResponse] = await Promise.all([
-        fetchClientDashboard(),
-        fetchAdminManagers(),
-        fetchClientInvestments(),
-      ]);
-
-      if (!active) {
-        return;
-      }
-
-      const dashboard = dashboardResponse || null;
-      const profile = dashboard?.client || null;
-      const investments = Array.isArray(investmentsResponse) ? investmentsResponse : [];
-      const liveManagers = buildManagerRows(Array.isArray(managersResponse) ? managersResponse : [], investments, profile);
-      const assignedManager = pickAssignedManager(liveManagers, investments) || DEFAULT_MANAGER_ROW;
-
-      setClientInvestments(investments);
-      setAllManagers(liveManagers);
-      setManagerInfo(assignedManager);
-      setSelectedManager((current) => {
-        if (!current) {
-          return null;
-        }
-        return toViewRow(liveManagers.find((manager) => manager.id === current.id) || assignedManager);
-      });
-      setViewManager((current) => {
-        if (!current) {
-          return null;
-        }
-        return toViewRow(liveManagers.find((manager) => manager.id === current.id) || assignedManager);
-      });
-      setIsPageLoading(false);
+    const loadStaticData = async () => {
+      const investmentsResponse = await fetchClientInvestments();
+      if (!active) return;
+      setClientInvestments(Array.isArray(investmentsResponse) ? investmentsResponse : []);
     };
-
-    loadLiveData().catch(() => {
-      if (active) {
-        setAllManagers([]);
-        setClientInvestments([]);
-        setManagerInfo(DEFAULT_MANAGER_ROW);
-        setIsPageLoading(false);
-      }
-    });
-
+    loadStaticData();
     return () => {
       active = false;
     };
   }, []);
+
+  // 2. Load paginated managers when page, limit, or query changes
+  useEffect(() => {
+    let active = true;
+    const loadManagers = async () => {
+      setIsPageLoading(true);
+      try {
+        const res = await fetchAdminManagers(currentPage, perPage, query);
+        if (!active) return;
+
+        if (res && Array.isArray(res.managers)) {
+          const dashboardResponse = await fetchClientDashboard();
+          if (!active) return;
+          const profile = dashboardResponse?.client || null;
+
+          const liveManagers = buildManagerRows(res.managers, clientInvestments, profile);
+          const assignedManager = pickAssignedManager(liveManagers, clientInvestments) || DEFAULT_MANAGER_ROW;
+
+          setAllManagers(liveManagers);
+          setManagerInfo(assignedManager);
+
+          setPagination({
+            page: Number(res.pagination?.page ?? currentPage),
+            perPage: Number(res.pagination?.per_page ?? perPage),
+            total: Number(res.pagination?.total ?? liveManagers.length),
+            totalPages: Number(res.pagination?.total_pages ?? 1),
+            hasNext: Boolean(res.pagination?.has_next),
+            hasPrevious: Boolean(res.pagination?.has_previous),
+          });
+
+          // Refresh selected/view managers if they are active
+          setSelectedManager((current) => {
+            if (!current) return null;
+            const updated = liveManagers.find((m) => m.id === current.id) || assignedManager;
+            return toViewRow(updated);
+          });
+          setViewManager((current) => {
+            if (!current) return null;
+            const updated = liveManagers.find((m) => m.id === current.id) || assignedManager;
+            return toViewRow(updated);
+          });
+        }
+      } catch {
+        // Fallback
+      } finally {
+        if (active) {
+          setIsPageLoading(false);
+        }
+      }
+    };
+
+    loadManagers();
+    return () => {
+      active = false;
+    };
+  }, [currentPage, perPage, query, clientInvestments]);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
@@ -138,39 +170,21 @@ export default function ClientAvailablePage() {
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
-  const toViewRow = (manager: ManagerRow): ManagerViewRow => ({
-    ...manager,
-    loginId: manager.accountId,
-    equity: manager.strategy,
-    age: manager.status,
-    growth: `${manager.investorsCount} linked`,
-  });
-
-  const filteredManagers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allManagers;
-    return allManagers.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.email.toLowerCase().includes(q) ||
-        m.id.toLowerCase().includes(q) ||
-        m.accountId.toLowerCase().includes(q),
-    );
-  }, [query, allManagers]);
-
   const displayManagers = useMemo(() => {
-    return filteredManagers.map((manager) => toViewRow(manager));
-  }, [filteredManagers]);
+    return allManagers.map((manager) => toViewRow(manager));
+  }, [allManagers]);
 
   const hasQuery = query.trim().length > 0;
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(displayManagers.length / perPage));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedManagers = displayManagers.slice(
-    (safePage - 1) * perPage,
-    safePage * perPage,
-  );
+  // Pagination helper mappings
+  const totalPages = pagination.totalPages;
+  const safePage = pagination.page;
+  const paginatedManagers = displayManagers;
+
+  const showingStart = pagination.total > 0 ? (safePage - 1) * perPage + 1 : 0;
+  const showingEnd = pagination.total > 0
+    ? Math.min(showingStart + displayManagers.length - 1, pagination.total)
+    : 0;
 
   const handlePerPageChange = (val: number) => {
     setPerPage(val);
@@ -301,7 +315,7 @@ export default function ClientAvailablePage() {
 
   // Only show a highlighted card when user is actively searching
   const highlightedManager =
-    hasQuery && filteredManagers.length > 0 ? filteredManagers[0] : null;
+    hasQuery && allManagers.length > 0 ? allManagers[0] : null;
 
   // Check if the highlighted manager is the client's assigned manager
   const isAssigned =
@@ -722,19 +736,19 @@ export default function ClientAvailablePage() {
               </div>
             </div>
           </div>
-        ) : hasQuery && filteredManagers.length === 0 ? (
+        ) : hasQuery && allManagers.length === 0 ? (
           /* ── No Results — only shown when searching ── */
           <div className={`flex flex-col items-center justify-center py-16 border rounded-[2rem] ${panelClass}`}>
             <Search size={40} className="text-slate-700 mb-3" />
             <p className={`font-semibold text-sm ${headingTextClass}`}>
-              No available manager found for &quot;{query}&quot;
+               No available manager found for &quot;{query}&quot;
             </p>
             <p className={`text-xs mt-1 ${softTextClass}`}>
               Try a different name or email address.
             </p>
           </div>
         ) : null}
-
+ 
         {/* ── Manager Details Table ── */}
         <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden mt-8`}>
           {/* Table header */}
@@ -746,16 +760,13 @@ export default function ClientAvailablePage() {
               <p className={`text-xs mt-1 ${softTextClass}`}>
                 Showing{' '}
                 <span className={`font-semibold ${headingTextClass}`}>
-                  {filteredManagers.length === 0
-                    ? 0
-                    : (safePage - 1) * perPage + 1}
-                  –{Math.min(safePage * perPage, filteredManagers.length)}
+                  {showingStart}–{showingEnd}
                 </span>{' '}
                 of{' '}
                 <span className={`font-semibold ${headingTextClass}`}>
-                  {filteredManagers.length}
+                  {pagination.total}
                 </span>{' '}
-                available manager{filteredManagers.length !== 1 ? 's' : ''}
+                available manager{pagination.total !== 1 ? 's' : ''}
               </p>
             </div>
             <div className={`flex items-center gap-1.5 text-xs ${softTextClass}`}>
@@ -874,88 +885,85 @@ export default function ClientAvailablePage() {
           </div>
 
           {/* ── Pagination Footer ── */}
-          <div className={`flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t ${borderMutedClass}`}>
-            {/* Per-page selector */}
-            <div className="flex items-center gap-2 order-2 sm:order-1">
-              <label htmlFor="per-page" className={`text-xs whitespace-nowrap ${softTextClass}`}>
-                Rows per page:
-              </label>
-              <select
-                id="per-page"
-                value={perPage}
-                onChange={(e) => handlePerPageChange(Number(e.target.value))}
-                className={`border text-xs rounded-lg px-2.5 py-1.5 outline-none transition-all cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-slate-800 border-slate-700 text-blue-200'
-                    : 'bg-[#0e2152] border-blue-900/50 text-blue-200'
-                }`}
-              >
-                {[5, 10, 25, 50, 100, 250, 500].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-              <span className={`text-xs ${softTextClass}`}>
-                — Page{' '}
-                <span className={`font-semibold ${headingTextClass}`}>{safePage}</span>
-                {' '}of{' '}
-                <span className={`font-semibold ${headingTextClass}`}>{totalPages}</span>
-              </span>
+          <div className={`flex flex-col gap-4 border-t ${borderMutedClass} px-6 py-4 lg:flex-row lg:items-center lg:justify-between`}>
+            <div className={`text-xs font-bold uppercase tracking-[0.2em] ${softTextClass}`}>
+              SHOWING {showingStart} TO {showingEnd} OF {pagination.total}
             </div>
 
-            {/* Page buttons */}
-            <div className="flex items-center gap-1.5 order-1 sm:order-2">
-              {/* Prev */}
-              <button
-                id="pagination-prev"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={safePage === 1}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
-              >
-                <ChevronLeft size={13} /> Prev
-              </button>
+            <div className="flex flex-col items-start gap-3 md:items-end lg:flex-row lg:items-center lg:gap-6">
+              <div className="flex items-center gap-3">
+                <label className={`text-[11px] font-bold uppercase tracking-[0.2em] ${softTextClass}`} htmlFor="per-page">
+                  Rows per page
+                </label>
+                <select
+                  id="per-page"
+                  value={perPage}
+                  onChange={(e) => handlePerPageChange(Number(e.target.value))}
+                  className={`rounded-xl border px-3 py-2 text-xs font-bold outline-none transition-all ${inputClass}`}
+                >
+                  {[10, 30, 50, 100, 500, 1000].map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-              {/* Page number pills */}
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-                const isEllipsis =
-                  totalPages > 5 &&
-                  page !== 1 &&
-                  page !== totalPages &&
-                  Math.abs(page - safePage) > 1;
-                if (isEllipsis) {
-                  if (page === safePage - 2 || page === safePage + 2) {
-                    return (
-                      <span key={page} className="text-slate-600 px-1 text-xs select-none">
-                        …
-                      </span>
-                    );
+              {/* Page buttons */}
+              <div className="flex items-center gap-1.5 order-1 sm:order-2">
+                {/* Prev */}
+                <button
+                  id="pagination-prev"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage === 1 || !pagination.hasPrevious}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                >
+                  <ChevronLeft size={13} /> Prev
+                </button>
+
+                {/* Page number pills */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  const isEllipsis =
+                    totalPages > 5 &&
+                    page !== 1 &&
+                    page !== totalPages &&
+                    Math.abs(page - safePage) > 1;
+                  if (isEllipsis) {
+                    if (page === safePage - 2 || page === safePage + 2) {
+                      return (
+                        <span key={page} className="text-slate-600 px-1 text-xs select-none">
+                          …
+                        </span>
+                      );
+                    }
+                    return null;
                   }
-                  return null;
-                }
-                return (
-                  <button
-                    key={page}
-                    id={`pagination-page-${page}`}
-                    onClick={() => setCurrentPage(page)}
-                    className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all border ${
-                      page === safePage
-                        ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
-                    }`}
-                  >
-                    {page}
-                  </button>
-                );
-              })}
+                  return (
+                    <button
+                      key={page}
+                      id={`pagination-page-${page}`}
+                      onClick={() => setCurrentPage(page)}
+                      className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all border ${
+                        page === safePage
+                          ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                          : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
 
-              {/* Next */}
-              <button
-                id="pagination-next"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={safePage === totalPages}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
-              >
-                Next <ChevronRight size={13} />
-              </button>
+                {/* Next */}
+                <button
+                  id="pagination-next"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage === totalPages || !pagination.hasNext}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                >
+                  Next <ChevronRight size={13} />
+                </button>
+              </div>
             </div>
           </div>
 

@@ -66,6 +66,7 @@ async def create_client_deposit(request):
 
     transaction = await ClientTransaction.create(
         user_id=profile.id,
+        account_number=account.account_number,
         transaction_type="Deposit",
         amount=amount,
         payment_method=payment_method,

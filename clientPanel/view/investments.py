@@ -1,21 +1,37 @@
 """Client investments endpoint."""
 
 import json
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from adminPanel.models import MyInvestment, TradingAccount
+from adminPanel.models import TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsClient, permission_required
-from clientPanel.view.common import _get_client_profile_for_request, _resolve_client_user_id, _error
+from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
 
 
 @permission_required(IsClient)
 async def get_client_investments(request):
-    """Load allocated investments for a client user based on their investor accounts."""
+    """Load allocated investments for a client user based on their investor accounts with optional pagination."""
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
+
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
 
     investments = await TradingAccount.filter(
         user_id=profile.id,
@@ -48,7 +64,36 @@ async def get_client_investments(request):
             "manager_account_id": inv.mam_master_account.account_id if inv.mam_master_account else None,
         })
 
-    return JsonResponse({"status": "ok", "user_id": profile.id, "investments": results})
+    total = len(results)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_results = results[start_index:end_index]
+
+        response = {
+            "status": "ok",
+            "user_id": profile.id,
+            "investments": paginated_results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            }
+        }
+    else:
+        response = {
+            "status": "ok",
+            "user_id": profile.id,
+            "investments": results,
+        }
+
+    return JsonResponse(response)
 
 
 @csrf_exempt

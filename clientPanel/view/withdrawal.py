@@ -68,6 +68,7 @@ async def create_client_withdrawal(request):
 
     transaction = await ClientTransaction.create(
         user_id=profile.id,
+        account_number=account.account_number,
         transaction_type="Withdrawal",
         amount=amount,
         payment_method=payment_method,
