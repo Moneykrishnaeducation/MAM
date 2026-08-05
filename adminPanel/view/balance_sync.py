@@ -24,6 +24,24 @@ def update_account_balances_in_db(manager=None, target_account_id=None):
         connection.close()
         connection.connect()
 
+        # Ensure Tortoise ORM models are initialized for MT5ManagerActions
+        try:
+            from asgiref.sync import async_to_sync
+            from backendPanel.database import ensure_db_initialized
+            async_to_sync(ensure_db_initialized)()
+        except Exception:
+            pass
+
+        # If manager instance is not passed, attempt to acquire via MT5ManagerActions
+        if not manager:
+            try:
+                from adminPanel.mt5.services import MT5ManagerActions
+                actions = MT5ManagerActions()
+                if actions.manager:
+                    manager = actions.manager
+            except Exception as ex:
+                logger.debug(f"[BALANCE-SYNC] Could not acquire MT5ManagerActions: {ex}")
+
         # Query trading accounts to sync
         with connection.cursor() as cursor:
             if target_account_id:
@@ -62,8 +80,8 @@ def update_account_balances_in_db(manager=None, target_account_id=None):
                                 pass
 
                     if user_acct:
-                        balance = float(user_acct.Balance)
-                        equity = float(user_acct.Equity)
+                        balance = float(getattr(user_acct, "Balance", 0.0))
+                        equity = float(getattr(user_acct, "Equity", balance))
                         margin = float(getattr(user_acct, "Margin", 0.0))
                         margin_free = float(getattr(user_acct, "MarginFree", 0.0))
                         margin_level = float(getattr(user_acct, "MarginLevel", 0.0))
@@ -78,14 +96,15 @@ def update_account_balances_in_db(manager=None, target_account_id=None):
                         )
                         updated_count += 1
                     elif user_info:
-                        balance = float(user_info.Balance)
+                        balance = float(getattr(user_info, "Balance", 0.0))
+                        equity = float(getattr(user_info, "Equity", balance))
                         cursor.execute(
                             """
                             UPDATE "trading_accounts"
-                            SET balance = %s
+                            SET balance = %s, equity = %s
                             WHERE account_id = %s
                             """,
-                            [balance, acct_id_str]
+                            [balance, equity, acct_id_str]
                         )
                         updated_count += 1
                 except Exception as ex:
