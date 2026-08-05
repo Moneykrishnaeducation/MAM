@@ -69,6 +69,7 @@ MAM is a high-performance Multi-Account Management platform powered by Django, U
 - `POST /api/admin/users/create` — Create a new client user
 - `GET  /api/admin/open-positions/<account_id>/` — Fetch open positions for a trading account
 - `GET  /api/admin/users/<user_id>/open-positions` — Fetch open positions for all trading accounts of a user
+- `POST /api/admin/accounts/sync-balances` — Trigger MT5 balance sync into DB for all or specific trading accounts
 - `GET  /api/admin/requests` — List pending system requests
 - `GET  /api/admin/managers` — List MAM managers
 - `GET  /api/admin/investors` — List investors

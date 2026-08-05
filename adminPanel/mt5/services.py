@@ -327,6 +327,62 @@ class MT5ManagerActions:
                 closed_deals.append(d)
         return closed_deals
 
+    def get_open_positions(self, login_id: int):
+        """Fetch all live open positions for a given MT5 trading account ID."""
+        if not self.manager:
+            raise Exception("MT5 Manager not connected")
+
+        try:
+            numeric_login_id = int(login_id)
+        except (ValueError, TypeError):
+            logger.warning(f"Skipping non-numeric account ID for positions: {login_id}")
+            return []
+
+        raw_positions = self.manager.PositionGet(numeric_login_id)
+        if not raw_positions or isinstance(raw_positions, bool):
+            return []
+
+        positions = []
+        for pos in raw_positions:
+            try:
+                ticket = str(getattr(pos, "Position", getattr(pos, "Ticket", "")))
+                symbol = str(getattr(pos, "Symbol", ""))
+                action = getattr(pos, "Action", 0)
+                pos_type = "Buy" if action == 0 else "Sell"
+                volume_raw = float(getattr(pos, "Volume", 0))
+                volume = volume_raw / 10000.0 if volume_raw > 100 else volume_raw
+                price_open = float(getattr(pos, "PriceOpen", 0.0))
+                price_current = float(getattr(pos, "PriceCurrent", price_open))
+                sl = float(getattr(pos, "PriceSL", 0.0))
+                tp = float(getattr(pos, "PriceTP", 0.0))
+                profit = float(getattr(pos, "Profit", 0.0))
+                swap = float(getattr(pos, "Storage", getattr(pos, "Swap", 0.0)))
+                time_create = getattr(pos, "TimeCreate", 0)
+                if time_create:
+                    open_time = datetime.fromtimestamp(time_create).strftime("%Y-%m-%d %H:%M:%S")
+                else:
+                    open_time = ""
+                comment = str(getattr(pos, "Comment", ""))
+
+                positions.append({
+                    "ticket": ticket,
+                    "symbol": symbol,
+                    "type": pos_type,
+                    "volume": volume,
+                    "open_price": price_open,
+                    "current_price": price_current,
+                    "sl": sl,
+                    "tp": tp,
+                    "profit": profit,
+                    "swap": swap,
+                    "open_time": open_time,
+                    "comment": comment,
+                })
+            except Exception as e:
+                logger.debug(f"Error parsing position object for account {login_id}: {e}")
+
+        return positions
+
     def add_new_account(self, group_name=None, leverage=100, client=None, master_password=None, investor_password=None, agent=0):
         effective_group = group_name if group_name else DEFAULT_GROUP
         if not self.manager:

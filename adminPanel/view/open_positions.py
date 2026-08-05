@@ -23,12 +23,15 @@ async def fetch_open_positions_for_account(account_id: int):
     if not account and str(account_id).isdigit():
         account = await TradingAccount.filter(id=int(account_id)).first()
 
-    mt5_status = "online"
-    # Try fetching positions from MT5 if available
+    mt5_status = "offline"
     try:
-        from MT5Manager import ManagerAPI
-    except Exception:
-        pass
+        from adminPanel.mt5.services import MT5ManagerActions
+        mt5_actions = MT5ManagerActions()
+        if mt5_actions.manager:
+            positions = mt5_actions.get_open_positions(int(account_id))
+            mt5_status = "online"
+    except Exception as e:
+        logger.warning(f"Could not fetch MT5 positions for account {account_id}: {e}")
 
     return positions, mt5_status
 

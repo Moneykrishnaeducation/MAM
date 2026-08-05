@@ -8,6 +8,7 @@ from adminPanel.view.client_payment import update_client_payment_details
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
+from adminPanel.view.balance_sync import sync_trading_balances_api
 from adminPanel.view.mam_accounts import create_account_api
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
@@ -72,6 +73,7 @@ urlpatterns = [
     path("admin-users/create", create_admin_user, name="create-admin-user"),
     path("users/create", create_client_user, name="create-client-user"),
     path("accounts/create", create_account_api, name="create-account"),
+    path("accounts/sync-balances", sync_trading_balances_api, name="sync-balances"),
     # MT5 CRUD Routes
     path("server-settings", mt5_crud.server_settings_list_create, name="server-settings-list-create"),
     path("server-settings/<int:pk>", mt5_crud.server_setting_detail_update_delete, name="server-setting-detail"),
