@@ -9,9 +9,12 @@ import string
 from pathlib import Path
 
 from django.conf import settings
+from django.core.files.storage import default_storage
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from tortoise import Tortoise
 
 from adminPanel.models import (
     ActivityLog,
@@ -62,6 +65,14 @@ def _save_avatar_data(avatar_base64: str, admin_id: int) -> str | None:
         f.write(decoded)
 
     return f"{settings.MEDIA_URL.rstrip('/')}/avatars/{filename}"
+
+
+def _save_uploaded_document(uploaded_file, user_id: int, document_type: str) -> tuple[str, str]:
+    original_name = Path(getattr(uploaded_file, "name", "") or "document").name
+    relative_path = f"client_documents/{user_id}/{document_type}/{original_name}"
+    saved_path = default_storage.save(relative_path, uploaded_file)
+    file_url = default_storage.url(saved_path)
+    return saved_path, file_url
 
 # Valid roles for AdminUser records (canonical title-case)
 _VALID_ADMIN_ROLES: frozenset[str] = frozenset({"Admin", "SuperAdmin", "Viewer"})
@@ -154,6 +165,32 @@ async def _build_client_kyc_payload(user: ClientUser) -> dict:
             "address": kyc_documents["address"]["status"],
         },
     }
+
+
+async def _load_or_create_client_document(user: ClientUser) -> ClientDocument:
+    document = await ClientDocument.filter(user_id=user.id).first()
+    if document is not None:
+        return document
+
+    legacy_profile = await ClientProfile.filter(user_id=user.id).first()
+    if legacy_profile is not None:
+        conn = Tortoise.get_connection("default")
+        rows = await conn.execute_query_dict(
+            "SELECT id FROM client_documents WHERE client_profile_id = $1 LIMIT 1",
+            [legacy_profile.id],
+        )
+        if rows:
+            document_id = rows[0].get("id")
+            if document_id is not None:
+                await conn.execute_query(
+                    "UPDATE client_documents SET user_id = $1 WHERE id = $2",
+                    [user.id, document_id],
+                )
+                existing = await ClientDocument.filter(id=document_id).first()
+                if existing is not None:
+                    return existing
+
+    return await ClientDocument.create(user_id=user.id)
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
@@ -257,7 +294,7 @@ async def list_client_users(request):
         bank_detail = None
         crypto_detail = None
         bank_detail, crypto_detail = await get_client_payment_details(user)
-        document_detail = await ClientDocument.filter(user_id=user.id).first()
+        document_detail = await get_client_document_details(user)
         identity_request = await get_latest_document_request(user, "identity")
         address_request = await get_latest_document_request(user, "address")
 
@@ -342,15 +379,134 @@ async def list_client_users(request):
 
 @csrf_exempt
 @permission_required(IsAdmin)
-@require_http_methods(["GET"])
+@require_http_methods(["GET", "PUT"])
 async def get_client_user_kyc(request, user_id: str):
     """Return the KYC profile and documents for an admin users-page row."""
     user = await _resolve_client_user(user_id)
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
 
+    if request.method == "PUT":
+        try:
+            body = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+
+        verified = body.get("verified")
+        if verified is not None:
+            user.verified = bool(verified)
+
+        kyc_status = body.get("kyc_status") or body.get("status")
+        if kyc_status is not None:
+            user.kyc_status = str(kyc_status).strip() or user.kyc_status
+        elif verified is not None:
+            user.kyc_status = "Verified" if user.verified else "Pending"
+
+        await user.save(update_fields=["verified", "kyc_status", "updated_at"])
+        payload = await _build_client_kyc_payload(user)
+        return JsonResponse({"status": "ok", "message": "KYC status updated", **payload})
+
     payload = await _build_client_kyc_payload(user)
     return JsonResponse({"status": "ok", **payload})
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["PUT", "POST"])
+async def update_client_user_documents(request, user_id: str):
+    """Update a client's identity/address document details from the admin modal."""
+    user = await _resolve_client_user(user_id)
+    if user is None:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    document = await _load_or_create_client_document(user)
+
+    payload: dict = {}
+    if request.content_type and request.content_type.startswith("multipart/form-data"):
+        raw_documents = request.POST.get("documents") or request.POST.get("payload") or "[]"
+        try:
+            docs = json.loads(raw_documents)
+        except (json.JSONDecodeError, ValueError):
+            docs = []
+        if isinstance(docs, dict):
+            docs = [docs]
+        if not isinstance(docs, list):
+            docs = []
+        payload = {"documents": docs}
+    else:
+        try:
+            payload = json.loads(request.body or b"{}")
+        except (json.JSONDecodeError, ValueError):
+            payload = {}
+
+    documents = payload.get("documents") if isinstance(payload, dict) else []
+    if not isinstance(documents, list):
+        documents = []
+
+    slot_map = {
+        "id_proof": ("identity_file_name", "identity_file_path", "identity_status", "identity_uploaded_at"),
+        "address_proof": ("address_file_name", "address_file_path", "address_status", "address_uploaded_at"),
+    }
+    file_map = {
+        "id_proof": request.FILES.get("id_proof") or request.FILES.get("identity") or request.FILES.get("identityFile"),
+        "address_proof": request.FILES.get("address_proof") or request.FILES.get("address") or request.FILES.get("addressFile"),
+    }
+
+    updated_slots: list[str] = []
+    for item in documents:
+        if not isinstance(item, dict):
+            continue
+        doc_type = str(item.get("type") or "").strip().lower()
+        if doc_type not in slot_map:
+            continue
+
+        file_field_name, file_path_field, status_field, uploaded_at_field = slot_map[doc_type]
+        status = str(item.get("status") or "pending").strip().lower()
+        if status not in {"pending", "approved", "rejected", "uploaded"}:
+            status = "pending"
+        if status == "uploaded":
+            status = "pending"
+
+        uploaded_file = file_map.get(doc_type)
+        if uploaded_file is not None:
+            file_name, file_path = _save_uploaded_document(uploaded_file, user.id, "identity" if doc_type == "id_proof" else "address")
+            setattr(document, file_field_name, file_name)
+            setattr(document, file_path_field, file_path)
+            setattr(document, uploaded_at_field, timezone.now())
+        elif item.get("fileUrl") or item.get("file_url"):
+            file_path_value = str(item.get("fileUrl") or item.get("file_url") or "").strip() or None
+            file_name_value = str(item.get("fileName") or item.get("file_name") or "").strip() or None
+            if file_name_value:
+                setattr(document, file_field_name, file_name_value)
+            if file_path_value:
+                setattr(document, file_path_field, file_path_value)
+
+        setattr(document, status_field, status)
+        updated_slots.append(doc_type)
+
+    await document.save()
+
+    identity_status = str(document.identity_status or "pending").strip().lower()
+    address_status = str(document.address_status or "pending").strip().lower()
+    if identity_status == "approved" and address_status == "approved":
+        user.verified = True
+        user.kyc_status = "Verified"
+    elif identity_status == "rejected" or address_status == "rejected":
+        user.verified = False
+        user.kyc_status = "Rejected"
+    else:
+        user.verified = False
+        user.kyc_status = "Pending"
+    await user.save(update_fields=["verified", "kyc_status", "updated_at"])
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Client documents updated successfully",
+            "updated_slots": updated_slots,
+            "kyc": await _build_client_kyc_payload(user),
+        }
+    )
 
 
 async def list_pending_requests(request):

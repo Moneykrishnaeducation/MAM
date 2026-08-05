@@ -32,6 +32,7 @@ from adminPanel.views import (
     list_investors,
     list_managers,
     update_admin_user,
+    update_client_user_documents,
     delete_user,
 )
 
@@ -55,6 +56,7 @@ urlpatterns = [
     path("profile", admin_profile, name="profile"),
     path("users", list_client_users, name="users"),
     path("users/<str:user_id>/kyc", get_client_user_kyc, name="client-kyc"),
+    path("users/<str:user_id>/documents", update_client_user_documents, name="update-client-documents"),
     path("users/<str:user_id>/profile", update_client_profile, name="update-client-profile"),
     path("users/<str:user_id>/payment", update_client_payment_details, name="update-client-payment"),
     path("users/<str:user_id>/delete", delete_user, name="delete-user"),

@@ -9,6 +9,7 @@ import time
 
 from django.http import JsonResponse
 from django.utils import timezone
+from tortoise import Tortoise
 
 from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientDocument, ClientProfile, ClientUser, PendingRequest
 
@@ -215,7 +216,33 @@ async def get_client_payment_details(owner: ClientProfile | ClientUser) -> tuple
 
 
 async def get_client_document_details(owner: ClientProfile | ClientUser) -> ClientDocument | None:
-    return await ClientDocument.filter(user_id=_owner_user_id(owner)).first()
+    user_id = _owner_user_id(owner)
+    document = await ClientDocument.filter(user_id=user_id).first()
+    if document is not None:
+        return document
+
+    legacy_profile = await ClientProfile.filter(user_id=user_id).first()
+    if legacy_profile is None:
+        return None
+
+    conn = Tortoise.get_connection("default")
+    rows = await conn.execute_query_dict(
+        """
+        SELECT id
+        FROM client_documents
+        WHERE client_profile_id = $1
+        LIMIT 1
+        """,
+        [legacy_profile.id],
+    )
+    if not rows:
+        return None
+
+    legacy_id = rows[0].get("id")
+    if legacy_id is None:
+        return None
+
+    return await ClientDocument.filter(id=legacy_id).first()
 
 
 async def get_latest_payment_request_status(owner: ClientProfile | ClientUser, payment_type: str) -> str | None:

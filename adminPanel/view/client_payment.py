@@ -13,8 +13,9 @@ from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     build_payment_submission_payload,
     build_payment_details_payload,
-    create_payment_pending_request,
     get_client_payment_details,
+    upsert_client_bank_detail,
+    upsert_client_crypto_detail,
 )
 from adminPanel.view.client_profile import _resolve_client_user
 
@@ -63,13 +64,22 @@ async def update_client_payment_details(request, user_id: str):
         bank_detail=bank_detail,
         crypto_detail=crypto_detail,
     )
-    pending_request = await create_payment_pending_request(user, submission_payload)
+
+    if payment_type == "bank":
+        await upsert_client_bank_detail(user, submission_payload)
+    else:
+        await upsert_client_crypto_detail(user, submission_payload)
+
+    bank_detail, crypto_detail = await get_client_payment_details(user)
 
     return JsonResponse(
         {
             "status": "ok",
-            "message": "Client payment details submitted for approval",
-            "request_id": pending_request.id,
-                "payment_details": build_payment_details_payload(profile=user, bank_detail=bank_detail, crypto_detail=crypto_detail),
-            }
-        )
+            "message": "Client payment details updated successfully",
+            "payment_details": build_payment_details_payload(
+                profile=user,
+                bank_detail=bank_detail,
+                crypto_detail=crypto_detail,
+            ),
+        }
+    )

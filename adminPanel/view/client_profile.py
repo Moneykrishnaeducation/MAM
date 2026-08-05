@@ -13,7 +13,6 @@ from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     _serialize_client_profile,
     build_profile_submission_payload,
-    create_profile_pending_request,
 )
 
 
@@ -79,13 +78,23 @@ async def update_client_profile(request, user_id: str):
     except ValueError as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=400)
 
-    pending_request = await create_profile_pending_request(user, user, submission_payload)
+    user.name = submission_payload["full_name"]
+    user.full_name = submission_payload["full_name"]
+    user.phone = submission_payload.get("phone")
+    user.country = submission_payload["country"]
+    user.date_of_birth = submission_payload.get("date_of_birth")
+    user.address = submission_payload.get("address")
+    user.city = submission_payload.get("city")
+    user.postal_code = submission_payload.get("postal_code")
+    user.tier = submission_payload["tier"]
+    user.kyc_status = submission_payload["kyc_status"]
+    user.avatar = submission_payload.get("avatar")
+    await user.save()
 
     return JsonResponse(
         {
             "status": "ok",
-            "message": "Client profile submitted for approval",
-            "request_id": pending_request.id,
+            "message": "Client profile updated successfully",
             "user": _serialize_admin_client_user(user),
             "profile": _serialize_client_profile(user),
         }

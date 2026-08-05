@@ -143,23 +143,42 @@ function mapAdminDocToKycDocument(
   };
 }
 
+function mergeAdminDocs(
+  primary?: AdminKycDocument | null,
+  secondary?: AdminKycDocument | null,
+): AdminKycDocument | null {
+  if (!primary && !secondary) {
+    return null;
+  }
+
+  return {
+    file_name: primary?.file_name ?? secondary?.file_name ?? null,
+    file_path: primary?.file_path ?? secondary?.file_path ?? null,
+    status: primary?.status ?? secondary?.status ?? null,
+    uploaded_at: primary?.uploaded_at ?? secondary?.uploaded_at ?? null,
+  };
+}
+
 function normalizeKycDetails(payload: unknown, fallback?: AdminUserKycDetails): AdminUserKycDetails {
   const raw = (payload ?? {}) as AdminUserKycDetails;
   const documentDetail = raw.document_detail ?? fallback?.document_detail;
+  const mergedIdentity = mergeAdminDocs(documentDetail?.identity, raw.documents?.identity ?? fallback?.documents?.identity);
+  const mergedAddress = mergeAdminDocs(documentDetail?.address, raw.documents?.address ?? fallback?.documents?.address);
   return {
     status: fallback?.status ?? undefined,
     kyc_status: raw.kyc_status ?? raw.profile?.kyc_status ?? fallback?.kyc_status ?? fallback?.profile?.kyc_status ?? undefined,
+    user: raw.user ?? fallback?.user,
     profile: raw.profile ?? fallback?.profile,
-    document_detail: documentDetail
+    document_detail: mergedIdentity || mergedAddress
       ? {
-          identity: normalizeKycDoc(documentDetail.identity),
-          address: normalizeKycDoc(documentDetail.address),
+          identity: normalizeKycDoc(mergedIdentity),
+          address: normalizeKycDoc(mergedAddress),
         }
       : undefined,
     document_status: raw.document_status ?? fallback?.document_status,
     documents: {
-      identity: normalizeKycDoc(raw.documents?.identity ?? fallback?.documents?.identity),
-      address: normalizeKycDoc(raw.documents?.address ?? fallback?.documents?.address),
+      identity: normalizeKycDoc(mergedIdentity ?? raw.documents?.identity ?? fallback?.documents?.identity),
+      address: normalizeKycDoc(mergedAddress ?? raw.documents?.address ?? fallback?.documents?.address),
     },
   };
 }
@@ -218,9 +237,11 @@ const DOC_TYPES: { type: KycDocument['type']; label: string }[] = [
 function VerifyModal({
   user,
   onVerify,
+  onSaved,
 }: {
   user: UserData;
   onVerify: (userId: string, verified: boolean) => void;
+  onSaved: (userId: string, payload: AdminUserKycDetails) => void;
 }) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [kycPayload, setKycPayload] = useState<AdminUserKycDetails | null>(user.kyc ?? null);
@@ -259,9 +280,10 @@ function VerifyModal({
   }, [user.id]);
 
   /* Build display doc list from the live KYC payload */
-  const sourceDocs = kycPayload?.document_detail?.identity?.file_name || kycPayload?.document_detail?.address?.file_name
-    ? kycPayload.document_detail
-    : kycPayload?.documents;
+  const sourceDocs = {
+    identity: mergeAdminDocs(kycPayload?.document_detail?.identity, kycPayload?.documents?.identity),
+    address: mergeAdminDocs(kycPayload?.document_detail?.address, kycPayload?.documents?.address),
+  };
   const docs: KycDocument[] = DOC_TYPES.map((dt) => {
     const fallback: KycDocument = {
       id: `${dt.type}-new`,
@@ -270,9 +292,9 @@ function VerifyModal({
       status: 'missing',
     };
     if (dt.type === 'id_proof') {
-      return mapAdminDocToKycDocument(sourceDocs?.identity, fallback);
+      return mapAdminDocToKycDocument(sourceDocs.identity, fallback);
     }
-    return mapAdminDocToKycDocument(sourceDocs?.address, fallback);
+    return mapAdminDocToKycDocument(sourceDocs.address, fallback);
   });
 
   const [docStates, setDocStates] = useState<KycDocument[]>(docs);
@@ -287,7 +309,7 @@ function VerifyModal({
     setDocStates((prev) =>
       prev.map((d) =>
         d.type === type
-          ? { ...d, status: 'uploaded', fileUrl: url, fileName: file.name, uploadedAt: new Date().toLocaleString() }
+          ? { ...d, status: 'uploaded', fileUrl: url, fileName: file.name, uploadedAt: new Date().toLocaleString(), file }
           : d,
       ),
     );
@@ -300,13 +322,39 @@ function VerifyModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(`/api/admin/users/${user.id}/documents`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documents: docStates }),
+      const formData = new FormData();
+      formData.append(
+        'documents',
+        JSON.stringify(
+          docStates.map(({ file, ...doc }) => ({
+            ...doc,
+            file: undefined,
+          })),
+        ),
+      );
+      docStates.forEach((doc) => {
+        if (doc.file) {
+          formData.append(doc.type, doc.file);
+        }
       });
-    } catch {}
-    finally { setSaving(false); }
+
+      const res = await fetch(`/api/admin/users/${user.id}/documents`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || 'Failed to save document status');
+      }
+
+      const nextKyc = normalizeKycDetails(data?.kyc ?? data, kycPayload ?? user.kyc ?? undefined);
+      setKycPayload(nextKyc);
+      onSaved(user.id, nextKyc);
+    } catch (err) {
+      setKycError(err instanceof Error ? err.message : 'Failed to save document status');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const allApproved = docStates.every((d) => d.status === 'approved');
@@ -647,6 +695,7 @@ function ProfileModal({
       }
       onSave(user.id, form);
       setIsEditing(false);
+      window.dispatchEvent(new Event('admin-user-updated'));
     } catch (error) {
       console.error('Failed to submit profile update:', error);
     } finally {
@@ -894,6 +943,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
         throw new Error(data?.message || 'Unable to submit payment details.');
       }
       setIsEditing(false);
+      window.dispatchEvent(new Event('admin-user-updated'));
     } catch (error) {
       console.error('Failed to submit payment details:', error);
     } finally {
@@ -1748,12 +1798,52 @@ export default function AdminUsersPage() {
   };
 
   const toggleVerification = (userId: string, verified: boolean) => {
+    fetch(`/api/admin/users/${userId}/kyc`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verified }),
+    })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to update KYC status');
+        }
+        return data;
+      })
+      .then((data) => {
+        const nextKyc = normalizeKycDetails(data?.kyc ?? data, activeModalUser?.kyc ?? undefined);
+        setUsers((prev) =>
+          prev.map((u) => {
+            if (u.id !== userId) return u;
+            const updated = {
+              ...u,
+              verified: Boolean(data?.user?.verified ?? verified),
+              kycStatus: data?.kyc?.kyc_status ?? data?.kyc_status ?? (verified ? 'Verified' : 'Pending'),
+              kyc: nextKyc,
+            };
+            if (activeModalUser?.id === userId) setActiveModalUser(updated);
+            showToast(`User ${u.name} KYC ${verified ? 'Verified' : 'Revoked'}`);
+            return updated;
+          }),
+        );
+      })
+      .catch((err) => {
+        showToast(err instanceof Error ? err.message : 'Failed to update KYC status');
+      });
+  };
+
+  const handleDocumentsSaved = (userId: string, kyc: AdminUserKycDetails) => {
     setUsers((prev) =>
       prev.map((u) => {
         if (u.id !== userId) return u;
-        const updated = { ...u, verified };
+        const updated = {
+          ...u,
+          verified: Boolean(kyc.user?.verified ?? u.verified),
+          kycStatus: kyc.kyc_status ?? u.kycStatus,
+          kyc,
+        };
         if (activeModalUser?.id === userId) setActiveModalUser(updated);
-        showToast(`User ${u.name} KYC ${verified ? 'Verified' : 'Revoked'}`);
+        showToast(`Document status for ${u.name} saved successfully`);
         return updated;
       }),
     );
@@ -1761,7 +1851,7 @@ export default function AdminUsersPage() {
 
   const handleProfileSave = (userId: string, data: Partial<UserData>) => {
     const user = users.find((u) => u.id === userId);
-    showToast(`Profile for ${user?.name || userId} submitted for approval`);
+    showToast(`Profile for ${user?.name || userId} updated successfully`);
   };
 
   const handleDeleteUser = (userId: string, userName: string) => {
@@ -2065,7 +2155,7 @@ export default function AdminUsersPage() {
               {activeModalUser && (
                 <>
                   {activeModalType === 'verifi' && (
-                    <VerifyModal user={activeModalUser} onVerify={toggleVerification} />
+                    <VerifyModal user={activeModalUser} onVerify={toggleVerification} onSaved={handleDocumentsSaved} />
                   )}
 
                   {activeModalType === 'trading' && (
