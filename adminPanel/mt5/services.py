@@ -515,7 +515,7 @@ class MT5ManagerActions:
                 action = getattr(pos, "Action", 0)
                 pos_type = "Buy" if action == 0 else "Sell"
                 volume_raw = float(getattr(pos, "Volume", 0))
-                volume = volume_raw / 10000.0 if volume_raw > 100 else volume_raw
+                volume = round(volume_raw / 10000.0, 4) if volume_raw >= 1.0 else volume_raw
                 price_open = float(getattr(pos, "PriceOpen", 0.0))
                 price_current = float(getattr(pos, "PriceCurrent", price_open))
                 sl = float(getattr(pos, "PriceSL", 0.0))

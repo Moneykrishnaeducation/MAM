@@ -53,10 +53,6 @@ def get_client_open_positions(request, account_id: int):
         return JsonResponse({
             "success": True,
             "account_id": str(account_id),
-            "data": {
-                "positions": positions,
-                "mt5_status": mt5_status,
-            },
             "positions": positions,
             "mt5_status": mt5_status,
         })

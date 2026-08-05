@@ -108,6 +108,11 @@ export default function ClientManagerPage() {
     hasPrevious: false,
   });
 
+  const [openPositions, setOpenPositions] = useState<any[]>([]);
+  const [positionsLoading, setPositionsLoading] = useState<boolean>(false);
+  const [positionsError, setPositionsError] = useState<string | null>(null);
+  const [mt5Status, setMt5Status] = useState<string>('offline');
+
   // 1. Fetch static client dashboard / investments on mount
   useEffect(() => {
     let active = true;
@@ -249,6 +254,43 @@ export default function ClientManagerPage() {
     ).size,
   );
   const currentAccountLabel = activeManager?.accountId || managerInfo.accountId || clientAccount?.account_number || 'N/A';
+
+  const loadOpenPositions = async () => {
+    const targetAccountId = activeManager?.accountId || currentAccountLabel;
+    if (!targetAccountId || targetAccountId === 'N/A') {
+      setPositionsError('No account ID available to fetch open positions.');
+      return;
+    }
+
+    setPositionsLoading(true);
+    setPositionsError(null);
+    try {
+      const res = await fetch(`/api/client/open-positions/${targetAccountId}`, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) {
+        throw new Error(`Server returned status ${res.status}`);
+      }
+      const data = await res.json();
+      if (data.success) {
+        setOpenPositions(data.positions || []);
+        setMt5Status(data.mt5_status || 'online');
+      } else {
+        setPositionsError(data.message || 'Failed to load open positions.');
+      }
+    } catch (err: any) {
+      setPositionsError(err?.message || 'Error loading open positions.');
+    } finally {
+      setPositionsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showPerformanceModal) {
+      loadOpenPositions();
+    }
+  }, [showPerformanceModal, activeManager]);
 
   if (isPageLoading) {
     return (
@@ -1005,11 +1047,11 @@ export default function ClientManagerPage() {
 
       {showPerformanceModal && activeManager && (
         <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
-          <div className={`w-full max-w-3xl rounded-[2rem] border shadow-2xl overflow-hidden ${panelClass}`}>
+          <div className={`w-full max-w-5xl rounded-[2rem] border shadow-2xl overflow-hidden ${panelClass}`}>
             <div className={`flex items-center justify-between gap-4 px-6 py-5 border-b ${borderMutedClass}`}>
               <div>
                 <h3 className="text-xl font-black text-white">Open Positions</h3>
-                <p className={`text-sm mt-1 ${softTextClass}`}>Real-time trading activity for Account #{clientAccount?.account_number || activeManager.accountId}</p>
+                <p className={`text-sm mt-1 ${softTextClass}`}>Real-time trading activity for Account #{activeManager.accountId || currentAccountLabel}</p>
               </div>
               <button
                 type="button"
@@ -1024,40 +1066,89 @@ export default function ClientManagerPage() {
               </button>
             </div>
             <div className="p-6">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
-                      {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
-                        <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
-                    <tr>
-                      <td className="px-3 py-5 text-blue-200" colSpan={10}>
-                        <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
-                          <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800 text-blue-200">
-                            <TrendingUp size={20} />
-                          </span>
-                          <div className={`text-sm font-semibold ${softTextClass}`}>No open positions found</div>
-                        </div>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              {positionsLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="w-10 h-10 border-4 border-blue-500 border-t-amber-400 rounded-full animate-spin mb-4" />
+                  <p className={`font-bold text-sm ${softTextClass}`}>Fetching open positions from MT5...</p>
+                </div>
+              ) : positionsError ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <p className="text-rose-400 font-bold text-sm mb-3">{positionsError}</p>
+                  <button
+                    type="button"
+                    onClick={loadOpenPositions}
+                    className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : openPositions.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-12 text-center">
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-800/40 text-blue-200 border border-blue-500/20">
+                    <TrendingUp size={20} />
+                  </span>
+                  <div className={`text-sm font-semibold ${softTextClass}`}>No open positions found for account #{activeManager.accountId || currentAccountLabel}</div>
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-[60vh]">
+                  <table className="w-full">
+                    <thead className="sticky top-0 z-10">
+                      <tr className={isDarkMode ? 'bg-slate-950' : 'bg-[#0b226a]'}>
+                        {['TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                          <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className={isDarkMode ? 'divide-y divide-white/5' : 'divide-y divide-[#153d9f]'}>
+                      {openPositions.map((pos: any) => {
+                        const isBuy = String(pos.type).toLowerCase() === 'buy';
+                        const isProfit = Number(pos.profit) >= 0;
+                        return (
+                          <tr key={pos.ticket} className={`hover:bg-white/5 transition-colors ${isDarkMode ? '' : 'text-white'}`}>
+                            <td className="px-3 py-3 font-mono text-xs font-bold text-amber-400">{pos.ticket}</td>
+                            <td className="px-3 py-3 font-bold text-sm">{pos.symbol}</td>
+                            <td className="px-3 py-3">
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-black uppercase tracking-wider ${isBuy ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
+                                {pos.type}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 font-bold text-xs">{pos.volume}</td>
+                            <td className="px-3 py-3 font-mono text-xs">{pos.open_price}</td>
+                            <td className="px-3 py-3 font-mono text-xs">{pos.current_price}</td>
+                            <td className={`px-3 py-3 font-bold text-xs ${isProfit ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {pos.profit >= 0 ? `+${pos.profit}` : pos.profit}
+                            </td>
+                            <td className="px-3 py-3 font-mono text-xs">{pos.swap}</td>
+                            <td className="px-3 py-3 text-xs text-slate-300 whitespace-nowrap">{pos.open_time}</td>
+                            <td className="px-3 py-3 text-xs text-slate-400 font-mono">{pos.comment || '-'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <div className="mt-6 flex items-center justify-between text-xs text-blue-200">
                 <div className={`inline-flex items-center gap-2 ${softTextClass}`}>
-                  <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" /> LIVE FEED
+                  <span className={`h-2 w-2 rounded-full ${mt5Status === 'online' ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]' : 'bg-amber-400'}`} />
+                  {mt5Status === 'online' ? 'LIVE FEED (MT5 Online)' : 'MT5 Offline'}
                 </div>
-                <button
-                  type="button"
-                  className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
-                  onClick={() => setShowPerformanceModal(false)}
-                >
-                  Close Panel
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={loadOpenPositions}
+                    className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition flex items-center gap-1.5 ${isDarkMode ? 'border-white/10 bg-white/5 hover:bg-white/10 text-white' : 'border-blue-500/30 bg-blue-900/50 hover:bg-blue-800/50 text-white'}`}
+                  >
+                    <RefreshCw size={14} className={positionsLoading ? 'animate-spin' : ''} /> Refresh
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full bg-blue-600 px-4 py-2 text-white font-semibold hover:bg-blue-700 transition shadow-[0_10px_30px_-20px_rgba(59,130,246,0.7)]"
+                    onClick={() => setShowPerformanceModal(false)}
+                  >
+                    Close Panel
+                  </button>
+                </div>
               </div>
             </div>
           </div>

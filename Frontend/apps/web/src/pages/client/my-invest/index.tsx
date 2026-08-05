@@ -1145,7 +1145,7 @@ export default function ClientMyInvestPage() {
                 <table className="w-full">
                   <thead>
                     <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
-                      {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                      {['TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
                         <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
                       ))}
                     </tr>
@@ -1185,11 +1185,11 @@ export default function ClientMyInvestPage() {
                         const symbol = pos.Symbol ?? pos.symbol ?? 'N/A';
                         const typeVal = pos.Type === 0 || pos.type === 0 || String(pos.Type || pos.type).toLowerCase() === 'buy' ? 'BUY' : 'SELL';
                         const volume = pos.Volume ?? pos.volume ?? '0.00';
-                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.price_open ?? '0.00000';
-                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.price_current ?? '0.00000';
+                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.open_price ?? '0.00000';
+                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.current_price ?? '0.00000';
                         const profit = toNumber(pos.Profit ?? pos.profit ?? 0);
                         const swap = toNumber(pos.Swap ?? pos.swap ?? 0);
-                        const time = pos.Time ?? pos.time ?? 'N/A';
+                        const time = pos.Time ?? pos.open_time ?? 'N/A';
                         const comment = pos.Comment ?? pos.comment ?? '';
 
                         return (
@@ -1257,7 +1257,7 @@ export default function ClientMyInvestPage() {
                 <table className="w-full">
                   <thead>
                     <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
-                      {['# TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
+                      {['TICKET','SYMBOL','TYPE','VOLUME','OPEN PRICE','CURRENT','PROFIT','SWAP','OPEN TIME','COMMENT'].map((label) => (
                         <th key={label} className={`px-3 py-3 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>{label}</th>
                       ))}
                     </tr>
@@ -1297,11 +1297,11 @@ export default function ClientMyInvestPage() {
                         const symbol = pos.Symbol ?? pos.symbol ?? 'N/A';
                         const typeVal = pos.Type === 0 || pos.type === 0 || String(pos.Type || pos.type).toLowerCase() === 'buy' ? 'BUY' : 'SELL';
                         const volume = pos.Volume ?? pos.volume ?? '0.00';
-                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.price_open ?? '0.00000';
-                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.price_current ?? '0.00000';
+                        const openPrice = pos.PriceOpen ?? pos.Price_Open ?? pos.open_price ?? '0.00000';
+                        const currentPrice = pos.PriceCurrent ?? pos.Price_Current ?? pos.current_price ?? '0.00000';
                         const profit = toNumber(pos.Profit ?? pos.profit ?? 0);
                         const swap = toNumber(pos.Swap ?? pos.swap ?? 0);
-                        const time = pos.Time ?? pos.time ?? 'N/A';
+                        const time = pos.Time ?? pos.open_time ?? 'N/A';
                         const comment = pos.Comment ?? pos.comment ?? '';
 
                         return (

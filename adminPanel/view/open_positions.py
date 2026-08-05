@@ -71,10 +71,6 @@ def get_admin_open_positions(request, account_id: int):
         return JsonResponse({
             "success": True,
             "account_id": str(account_id),
-            "data": {
-                "positions": positions,
-                "mt5_status": mt5_status,
-            },
             "positions": positions,
             "mt5_status": mt5_status,
         })
@@ -105,10 +101,6 @@ def get_admin_user_open_positions(request, user_id: str):
         return JsonResponse({
             "success": True,
             "user_id": str(user_id),
-            "data": {
-                "positions": positions,
-                "mt5_status": mt5_status,
-            },
             "positions": positions,
             "mt5_status": mt5_status,
         })
