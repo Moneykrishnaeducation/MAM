@@ -360,11 +360,14 @@ def run_mam_script():
                     except Exception as e2:
                         logger.error(f"Failed to create fallback instance directory: {e2}")
                         raise
-                MT5Manager.InitializeManagerAPIPath(module_path=instance_directory, work_path=instance_directory)
+                # `module_path` must point at the native MT5Manager package location, not the
+                # ephemeral instance directory. The instance directory is only for runtime state.
+                module_path = os.path.dirname(MT5Manager.__file__)
+                MT5Manager.InitializeManagerAPIPath(module_path=module_path, work_path=instance_directory)
 
                 try:
                     manager = ManagerAPI()
-                except SystemError as e:
+                except (SystemError, OSError, ImportError) as e:
                     # Provide richer diagnostics when the C-extension type fails to initialize.
                     logger.error("ManagerAPI() raised SystemError: %s", e)
                     try:
@@ -379,7 +382,9 @@ def run_mam_script():
                     except Exception:
                         pass
                     logger.error("Common causes: missing native DLLs, missing Visual C++ runtime, or 32/64-bit mismatch.")
-                    raise RuntimeError("ManagerAPI() initialization failed; see logs for details") from e
+                    logger.error("Will retry MT5 Manager initialization after a short delay.")
+                    sleep(10)
+                    continue
                 try:
                     print(f"Connecting to IP: {ip_address}, Login: {login}")
                     if manager.Connect(ip_address, int(login), password, MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL, timeout=120000):
