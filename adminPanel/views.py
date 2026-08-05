@@ -663,19 +663,25 @@ async def list_investors(request):
     """List investors directly from database."""
     await ensure_db_initialized()
     investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
-    results = [
-        {
+    results = []
+    for i in investors:
+        # `mam_master_account` is an async relation in Tortoise — await it to get the related object.
+        try:
+            mam_master = await i.mam_master_account
+        except Exception:
+            mam_master = None
+
+        results.append({
             "id": i.id,
             "account_id": i.account_id,
             "name": i.user.name if i.user else "Investor User",
             "email": i.user.email if i.user else "investor@mam.com",
             "equity": float(i.equity),
-            "allocated_mam_name": i.mam_master_account.account_name if i.mam_master_account else None,
-            "allocated_mam": i.mam_master_account.account_id if i.mam_master_account else None,
+            "allocated_mam_name": mam_master.account_name if mam_master else None,
+            "allocated_mam": mam_master.account_id if mam_master else None,
             "status": i.status or "Active",
-        }
-        for i in investors
-    ]
+        })
+
     return JsonResponse({"status": "ok", "investors": results})
 
 
