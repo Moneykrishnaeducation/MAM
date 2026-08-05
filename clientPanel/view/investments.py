@@ -17,9 +17,8 @@ async def get_client_investments(request):
     if error:
         return error
 
-    user_id = await _resolve_client_user_id(request)
     investments = await TradingAccount.filter(
-        user_id=user_id,
+        user_id=profile.id,
         account_type="Investor"
     ).prefetch_related("mam_master_account", "mam_master_account__user").all()
 
@@ -45,7 +44,7 @@ async def get_client_investments(request):
             "leverage": f"{inv.leverage}x",
         })
 
-    return JsonResponse({"status": "ok", "user_id": profile.user_id, "investments": results})
+    return JsonResponse({"status": "ok", "user_id": profile.id, "investments": results})
 
 
 @csrf_exempt

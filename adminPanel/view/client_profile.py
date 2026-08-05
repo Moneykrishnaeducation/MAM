@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.models import ClientProfile, ClientUser
+from adminPanel.models import ClientUser
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     _serialize_client_profile,
@@ -17,7 +17,7 @@ from clientPanel.view.common import (
 )
 
 
-def _serialize_admin_client_user(user: ClientUser, profile: ClientProfile | None = None) -> dict:
+def _serialize_admin_client_user(user: ClientUser) -> dict:
     return {
         "id": user.user_code or f"USR-{user.id:03d}",
         "name": user.name,
@@ -29,7 +29,7 @@ def _serialize_admin_client_user(user: ClientUser, profile: ClientProfile | None
         "country": user.country,
         "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
         "avatar": user.avatar,
-        "profile": _serialize_client_profile(profile) if profile else None,
+        "profile": _serialize_client_profile(user),
     }
 
 
@@ -74,29 +74,19 @@ async def update_client_profile(request, user_id: str):
             {"status": "error", "message": "Client email cannot be changed"},
             status=400,
         )
-    profile = await ClientProfile.filter(user_id=user.id).first()
-    if profile is None:
-        profile = await ClientProfile.create(
-            user_id=user.id,
-            full_name=user.name,
-            email=user.email,
-            phone=user.phone,
-            country=user.country,
-        )
-
     try:
-        submission_payload = build_profile_submission_payload(body=body, user=user, profile=profile)
+        submission_payload = build_profile_submission_payload(body=body, user=user, profile=user)
     except ValueError as exc:
         return JsonResponse({"status": "error", "message": str(exc)}, status=400)
 
-    pending_request = await create_profile_pending_request(profile, user, submission_payload)
+    pending_request = await create_profile_pending_request(user, user, submission_payload)
 
     return JsonResponse(
         {
             "status": "ok",
             "message": "Client profile submitted for approval",
             "request_id": pending_request.id,
-            "user": _serialize_admin_client_user(user, profile),
-            "profile": _serialize_client_profile(profile),
+            "user": _serialize_admin_client_user(user),
+            "profile": _serialize_client_profile(user),
         }
     )

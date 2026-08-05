@@ -17,6 +17,7 @@ from adminPanel.models import (
     ActivityLog,
     AdminUser,
     ClientUser,
+    ClientDocument,
     ClientProfile,
     PendingRequest,
     TradingAccount,
@@ -24,10 +25,15 @@ from adminPanel.models import (
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     _mask_account_number,
+    _serialize_client_profile,
     get_admin_request_token,
+    get_client_document_details,
     get_client_payment_details,
+    get_latest_document_request,
+    build_document_details_payload,
     hash_client_password,
     load_admin_login_token,
+    serialize_client_document_detail,
 )
 from clientPanel.crud import create_client_profile
 
@@ -91,6 +97,63 @@ async def _get_current_admin_user(request):
         return None, JsonResponse({"status": "error", "message": "Admin user not found."}, status=404)
 
     return user, None
+
+
+async def _resolve_client_user(user_id: str) -> ClientUser | None:
+    """Resolve a client user by either `USR-...` code or numeric id."""
+    lookup = str(user_id or "").strip()
+    if not lookup:
+        return None
+
+    user = await ClientUser.filter(user_code=lookup).first()
+    if user is not None:
+        return user
+
+    if lookup.upper().startswith("USR-"):
+        suffix = lookup.split("-", 1)[1]
+        if suffix.isdigit():
+            return await ClientUser.filter(id=int(suffix)).first()
+
+    if lookup.isdigit():
+        return await ClientUser.filter(id=int(lookup)).first()
+
+    return None
+
+
+async def _build_client_kyc_payload(user: ClientUser) -> dict:
+    """Load the stored KYC/profile document data for a client user."""
+    document_detail = await get_client_document_details(user)
+    identity_request = await get_latest_document_request(user, "identity")
+    address_request = await get_latest_document_request(user, "address")
+
+    kyc_documents = build_document_details_payload(
+        profile=user,
+        document_detail=document_detail,
+        identity_request=identity_request,
+        address_request=address_request,
+    )
+
+    return {
+        "user": {
+            "id": user.user_code or f"USR-{user.id:03d}",
+            "name": user.name,
+            "email": user.email,
+            "phone": user.phone,
+            "country": user.country,
+            "avatar": user.avatar,
+            "status": user.status,
+            "verified": user.verified,
+            "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+        },
+        "profile": _serialize_client_profile(user),
+        "document_detail": serialize_client_document_detail(document_detail),
+        "documents": kyc_documents,
+        "kyc_status": user.kyc_status,
+        "document_status": {
+            "identity": kyc_documents["identity"]["status"],
+            "address": kyc_documents["address"]["status"],
+        },
+    }
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
@@ -191,11 +254,12 @@ async def list_client_users(request):
     client_users = await ClientUser.all()
     results = []
     for user in client_users:
-        profile = await ClientProfile.filter(user_id=user.id).first()
         bank_detail = None
         crypto_detail = None
-        if profile is not None:
-            bank_detail, crypto_detail = await get_client_payment_details(profile)
+        bank_detail, crypto_detail = await get_client_payment_details(user)
+        document_detail = await ClientDocument.filter(user_id=user.id).first()
+        identity_request = await get_latest_document_request(user, "identity")
+        address_request = await get_latest_document_request(user, "address")
 
         # Fetch associated TradingAccount entries
         t_accs = await TradingAccount.filter(user_id=user.id)
@@ -257,12 +321,36 @@ async def list_client_users(request):
             "avatar": user.avatar,
             "tradingAccount": primary_acc,
             "tradingAccounts": trading_accounts_data,
+            "profile": _serialize_client_profile(user),
+            "kyc": {
+                "status": user.kyc_status,
+                "document_detail": serialize_client_document_detail(document_detail),
+                "documents": build_document_details_payload(
+                    profile=user,
+                    document_detail=document_detail,
+                    identity_request=identity_request,
+                    address_request=address_request,
+                ),
+            },
             "paymentDetails": payment_details,
             "bankCrypto": bank_crypto,
             "transactions": [],
             "tickets": [],
         })
     return JsonResponse({"status": "ok", "users": results})
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
+async def get_client_user_kyc(request, user_id: str):
+    """Return the KYC profile and documents for an admin users-page row."""
+    user = await _resolve_client_user(user_id)
+    if user is None:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    payload = await _build_client_kyc_payload(user)
+    return JsonResponse({"status": "ok", **payload})
 
 
 async def list_pending_requests(request):

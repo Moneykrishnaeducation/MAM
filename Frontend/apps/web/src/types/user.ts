@@ -39,6 +39,45 @@ export interface KycDocument {
   note?: string;
 }
 
+export interface AdminKycDocument {
+  file_name?: string | null;
+  file_path?: string | null;
+  status?: string | null;
+  uploaded_at?: string | null;
+}
+
+export interface AdminProfileData {
+  user_id: number;
+  full_name: string;
+  email: string;
+  phone?: string | null;
+  country?: string | null;
+  dateOfBirth?: string | null;
+  address?: string | null;
+  city?: string | null;
+  postalCode?: string | null;
+  tier?: string | null;
+  kyc_status?: string | null;
+}
+
+export interface AdminUserKycDetails {
+  status?: string;
+  kyc_status?: string;
+  profile?: AdminProfileData;
+  document_detail?: {
+    identity?: AdminKycDocument;
+    address?: AdminKycDocument;
+  };
+  documents?: {
+    identity?: AdminKycDocument;
+    address?: AdminKycDocument;
+  };
+  document_status?: {
+    identity?: string;
+    address?: string;
+  };
+}
+
 export interface BankDetails {
   paymentType: 'bank';
   accountHolder: string;
@@ -76,6 +115,8 @@ export interface UserData {
   address?: string;
   city?: string;
   postalCode?: string;
+  profile?: AdminProfileData;
+  kyc?: AdminUserKycDetails;
   /** Trading accounts list (manager + investor combined) */
   tradingAccounts?: TradingAccount[];
   /** Legacy single account — kept for backward compat */

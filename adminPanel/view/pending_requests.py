@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
-from adminPanel.models import ClientProfile, PendingRequest
+from adminPanel.models import ClientProfile, ClientUser, PendingRequest
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
@@ -90,15 +90,14 @@ def _pending_payload(request: PendingRequest) -> dict:
     return payload if isinstance(payload, dict) else {}
 
 
-async def _resolve_profile_for_pending_request(pending_request: PendingRequest) -> ClientProfile | None:
-    if pending_request.client_profile_id:
-        profile = await ClientProfile.filter(id=pending_request.client_profile_id).first()
-        if profile is not None:
-            return profile
+async def _resolve_user_for_pending_request(pending_request: PendingRequest) -> ClientUser | None:
+    if pending_request.user_id:
+        user = await ClientUser.filter(id=pending_request.user_id).first()
+        if user is not None:
+            return user
 
     payload = _pending_payload(pending_request)
     candidate_user_ids = [
-        payload.get("client_profile_id"),
         payload.get("profile_id"),
         payload.get("user_id"),
     ]
@@ -107,21 +106,21 @@ async def _resolve_profile_for_pending_request(pending_request: PendingRequest) 
             user_id = int(raw_user_id)
         except (TypeError, ValueError):
             continue
-        profile = await ClientProfile.filter(user_id=user_id).first()
-        if profile is not None:
-            pending_request.client_profile = profile
-            await pending_request.save(update_fields=["client_profile"])
-            return profile
+        user = await ClientUser.filter(id=user_id).first()
+        if user is not None:
+            pending_request.user = user
+            await pending_request.save(update_fields=["user"])
+            return user
 
     for key in ("client_email", "email"):
         email = str(payload.get(key) or "").strip().lower()
         if not email:
             continue
-        profile = await ClientProfile.filter(email=email).first()
-        if profile is not None:
-            pending_request.client_profile = profile
-            await pending_request.save(update_fields=["client_profile"])
-            return profile
+        user = await ClientUser.filter(email=email).first()
+        if user is not None:
+            pending_request.user = user
+            await pending_request.save(update_fields=["user"])
+            return user
 
     candidate_names = [
         str(payload.get("client_name") or "").strip(),
@@ -132,11 +131,11 @@ async def _resolve_profile_for_pending_request(pending_request: PendingRequest) 
     for name in candidate_names:
         if not name:
             continue
-        profile = await ClientProfile.filter(full_name__iexact=name).first()
-        if profile is not None:
-            pending_request.client_profile = profile
-            await pending_request.save(update_fields=["client_profile"])
-            return profile
+        user = await ClientUser.filter(name__iexact=name).first()
+        if user is not None:
+            pending_request.user = user
+            await pending_request.save(update_fields=["user"])
+            return user
 
     return None
 
@@ -320,8 +319,8 @@ async def decide_pending_request(request, request_id: str):
     if decision == "approved":
         request_type = _sanitize_request_type(pending_request.request_type)
         if request_type in {"bank", "crypto"}:
-            profile = await _resolve_profile_for_pending_request(pending_request)
-            if profile is None:
+            user = await _resolve_user_for_pending_request(pending_request)
+            if user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -329,10 +328,10 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_payment_request(pending_request, profile=profile)
+            await apply_approved_payment_request(pending_request, profile=user)
         elif request_type == "profile":
-            profile = await _resolve_profile_for_pending_request(pending_request)
-            if profile is None:
+            user = await _resolve_user_for_pending_request(pending_request)
+            if user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -340,10 +339,10 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_profile_request(pending_request, profile=profile)
+            await apply_approved_profile_request(pending_request, user=user)
         elif request_type in {"document", "documents"}:
-            profile = await _resolve_profile_for_pending_request(pending_request)
-            if profile is None:
+            user = await _resolve_user_for_pending_request(pending_request)
+            if user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -351,7 +350,7 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_document_request(pending_request, profile=profile)
+            await apply_approved_document_request(pending_request, profile=user)
         else:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()

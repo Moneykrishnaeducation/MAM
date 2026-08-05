@@ -91,6 +91,54 @@ async def auto_sync_db_schema() -> None:
             except Exception as e:
                 logger.warning(f"[DB AUTO-SYNC] Warning checking table '{table_name}': {e}")
 
+    legacy_nullable_columns = {
+        "client_accounts": ["client_profile_id"],
+        "client_bank_details": ["client_profile_id"],
+        "client_crypto_details": ["client_profile_id"],
+        "client_documents": ["client_profile_id"],
+        "client_investments": ["client_profile_id"],
+        "client_transactions": ["client_profile_id"],
+        "client_tickets": ["client_profile_id"],
+        "admin_pending_requests": ["client_profile_id"],
+    }
+
+    for table_name, columns in legacy_nullable_columns.items():
+        try:
+            res = await conn.execute_query(
+                f"SELECT column_name, is_nullable FROM information_schema.columns WHERE table_name='{table_name}'"
+            )
+            column_info = {r["column_name"]: r["is_nullable"] for r in res[1]}
+            for col_name in columns:
+                if column_info.get(col_name) == "NO":
+                    await conn.execute_query(
+                        f'ALTER TABLE "{table_name}" ALTER COLUMN "{col_name}" DROP NOT NULL;'
+                    )
+                    logger.info(
+                        f"[DB AUTO-SYNC] Relaxed legacy constraint on '{table_name}.{col_name}' to allow user-based rows."
+                    )
+        except Exception as e:
+            logger.warning(f"[DB AUTO-SYNC] Warning relaxing legacy constraints on '{table_name}': {e}")
+
+    try:
+        res = await conn.execute_query(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='client_documents'"
+        )
+        existing_cols = {r["column_name"] for r in res[1]}
+        if {"client_profile_id", "user_id"}.issubset(existing_cols):
+            await conn.execute_query(
+                """
+                UPDATE client_documents AS cd
+                SET user_id = cp.user_id
+                FROM client_profiles AS cp
+                WHERE cd.user_id IS NULL
+                  AND cd.client_profile_id = cp.id
+                  AND cp.user_id IS NOT NULL
+                """
+            )
+            logger.info("[DB AUTO-SYNC] Backfilled client_documents.user_id from client_profile_id.")
+    except Exception as e:
+        logger.warning(f"[DB AUTO-SYNC] Warning backfilling client_documents.user_id: {e}")
+
     if modified_count > 0:
         logger.info(f"[DB AUTO-SYNC] Schema sync complete. Applied {modified_count} database modification(s).")
     else:

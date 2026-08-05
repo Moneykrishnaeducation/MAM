@@ -136,7 +136,7 @@ async def get_client_transactions(request):
     per_page = _parse_positive_int(request.GET.get("per_page") or request.GET.get("limit"), 10, maximum=1000) if paginate else 0
 
     transactions = (
-        await ClientTransaction.filter(client_profile_id=profile.id)
+        await ClientTransaction.filter(user_id=profile.id)
         .order_by("-created_at", "-id")
         .all()
     )
@@ -172,7 +172,7 @@ async def get_client_transactions(request):
 
     response = {
         "status": "ok",
-        "user_id": profile.user_id,
+        "user_id": profile.id,
         "tab": requested_tab or "all",
         "counts": transaction_counts,
         "summary": summary,

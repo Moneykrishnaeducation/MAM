@@ -9,7 +9,6 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from backendPanel.permissions import IsClient, permission_required
-from adminPanel.models import ClientUser
 from clientPanel.view.common import (
     _error,
     _get_client_profile_for_request,
@@ -62,16 +61,14 @@ async def get_client_profile(request):
     except (json.JSONDecodeError, ValueError):
         return _error("Invalid JSON body", status=400)
 
-    user = await ClientUser.filter(id=profile.user_id).first()
-    if user is None:
-        return _error("Client user not found", status=404)
+    user = profile
 
     try:
         submission_payload = build_profile_submission_payload(body=body, user=user, profile=profile)
     except ValueError as exc:
         return _error(str(exc), status=400)
 
-    pending_request = await create_profile_pending_request(profile, user, submission_payload)
+    pending_request = await create_profile_pending_request(user, user, submission_payload)
 
     return JsonResponse(
         {

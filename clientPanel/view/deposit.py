@@ -42,14 +42,14 @@ async def create_client_deposit(request):
         return error
 
     account = await ClientAccount.filter(
-        client_profile_id=profile.id,
+        user_id=profile.id,
         account_number=account_number,
     ).first()
     if account is None:
         return _error("Account not found for this client", status=404)
 
     transaction = await ClientTransaction.create(
-        client_profile=profile,
+        user_id=profile.id,
         transaction_type="Deposit",
         amount=amount,
         payment_method=payment_method,
@@ -62,7 +62,7 @@ async def create_client_deposit(request):
             "message": "Deposit request submitted successfully",
             "deposit": {
                 "id": transaction.id,
-                "user_id": profile.user_id,
+                "user_id": profile.id,
                 "account_number": account.account_number,
                 "amount": transaction.amount,
                 "payment_method": transaction.payment_method,

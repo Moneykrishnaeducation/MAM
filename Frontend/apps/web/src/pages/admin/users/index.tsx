@@ -49,7 +49,14 @@ import {
 } from 'lucide-react';
 import { getAdminUsers } from '@/lib/mockDataLoader';
 import CreateUserModalForm from '@/components/Admin/CreateUserModalForm';
-import { type CreateUserFormData, type UserData, type KycDocument, type TradingAccount } from '@/types/user';
+import {
+  type AdminKycDocument,
+  type AdminUserKycDetails,
+  type CreateUserFormData,
+  type KycDocument,
+  type TradingAccount,
+  type UserData,
+} from '@/types/user';
 import { type UserModalType } from '@/types/userModal';
 
 /* ─────────────────────────────────────────────────────────────
@@ -105,6 +112,101 @@ function InfoRow({ label, value, mono = false }: { label: string; value?: string
   );
 }
 
+function normalizeKycDoc(doc?: AdminKycDocument | null) {
+  return {
+    file_name: doc?.file_name ?? null,
+    file_path: doc?.file_path ?? null,
+    status: (doc?.status ?? 'missing').toLowerCase(),
+    uploaded_at: doc?.uploaded_at ?? null,
+  };
+}
+
+function mapAdminDocToKycDocument(
+  doc: AdminKycDocument | null | undefined,
+  fallback: KycDocument,
+): KycDocument {
+  const normalized = normalizeKycDoc(doc);
+  const statusMap: Record<string, KycDocument['status']> = {
+    approved: 'approved',
+    pending: 'pending',
+    rejected: 'rejected',
+    uploaded: 'uploaded',
+    missing: 'missing',
+  };
+
+  return {
+    ...fallback,
+    status: statusMap[normalized.status] ?? fallback.status,
+    fileName: normalized.file_name ?? fallback.fileName,
+    fileUrl: normalized.file_path ?? fallback.fileUrl,
+    uploadedAt: normalized.uploaded_at ?? fallback.uploadedAt,
+  };
+}
+
+function normalizeKycDetails(payload: unknown, fallback?: AdminUserKycDetails): AdminUserKycDetails {
+  const raw = (payload ?? {}) as AdminUserKycDetails;
+  const documentDetail = raw.document_detail ?? fallback?.document_detail;
+  return {
+    status: fallback?.status ?? undefined,
+    kyc_status: raw.kyc_status ?? raw.profile?.kyc_status ?? fallback?.kyc_status ?? fallback?.profile?.kyc_status ?? undefined,
+    profile: raw.profile ?? fallback?.profile,
+    document_detail: documentDetail
+      ? {
+          identity: normalizeKycDoc(documentDetail.identity),
+          address: normalizeKycDoc(documentDetail.address),
+        }
+      : undefined,
+    document_status: raw.document_status ?? fallback?.document_status,
+    documents: {
+      identity: normalizeKycDoc(raw.documents?.identity ?? fallback?.documents?.identity),
+      address: normalizeKycDoc(raw.documents?.address ?? fallback?.documents?.address),
+    },
+  };
+}
+
+function KycDocumentCard({
+  title,
+  doc,
+}: {
+  title: string;
+  doc?: AdminKycDocument | null;
+}) {
+  const normalized = normalizeKycDoc(doc);
+  const status = normalized.status ?? 'missing';
+  const fileName = normalized.file_name || 'No document uploaded';
+  const filePath = normalized.file_path || null;
+
+  return (
+    <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <FileText size={14} className="text-slate-400" />
+          <span className="text-sm font-semibold text-slate-100">{title}</span>
+        </div>
+        <StatusBadge status={status} />
+      </div>
+      <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300">
+        <FileText size={13} className="text-blue-400 shrink-0" />
+        {filePath ? (
+          <a href={filePath} target="_blank" rel="noreferrer" className="truncate text-blue-300 hover:text-blue-200">
+            {fileName}
+          </a>
+        ) : (
+          <span className="truncate text-slate-400">{fileName}</span>
+        )}
+      </div>
+      <div className="flex items-center justify-between gap-2 text-[10px] text-slate-500">
+        <span className="uppercase tracking-wider font-semibold">Path</span>
+        <span className="truncate max-w-[180px] text-slate-400">{filePath || 'Not configured'}</span>
+      </div>
+      {normalized.uploaded_at && (
+        <div className="text-[10px] text-slate-500">Uploaded: {normalized.uploaded_at}</div>
+      )}
+    </div>
+  );
+}
+
+
 /* ─────────────────────────────────────────────────────────────
    MODAL 1 — Verify / KYC Documents
 ───────────────────────────────────────────────────────────── */
@@ -121,16 +223,64 @@ function VerifyModal({
   onVerify: (userId: string, verified: boolean) => void;
 }) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [kycPayload, setKycPayload] = useState<AdminUserKycDetails | null>(user.kyc ?? null);
+  const [kycLoading, setKycLoading] = useState(true);
+  const [kycError, setKycError] = useState<string | null>(null);
 
-  /* Build display doc list — merge backend docs with required set */
+  useEffect(() => {
+    let active = true;
+    setKycLoading(true);
+    setKycError(null);
+
+    fetch(`/api/admin/users/${user.id}/kyc`)
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load KYC data');
+        }
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        setKycPayload(normalizeKycDetails(data, user.kyc ?? undefined));
+      })
+      .catch((err) => {
+        if (!active) return;
+        setKycError(err instanceof Error ? err.message : 'Failed to load KYC data');
+        setKycPayload(user.kyc ?? null);
+      })
+      .finally(() => {
+        if (active) setKycLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user.id]);
+
+  /* Build display doc list from the live KYC payload */
+  const sourceDocs = kycPayload?.document_detail?.identity?.file_name || kycPayload?.document_detail?.address?.file_name
+    ? kycPayload.document_detail
+    : kycPayload?.documents;
   const docs: KycDocument[] = DOC_TYPES.map((dt) => {
-    const existing = (user.documents || []).find((d) => d.type === dt.type);
-    return existing ?? { id: `${dt.type}-new`, type: dt.type, label: dt.label, status: 'missing' };
+    const fallback: KycDocument = {
+      id: `${dt.type}-new`,
+      type: dt.type,
+      label: dt.label,
+      status: 'missing',
+    };
+    if (dt.type === 'id_proof') {
+      return mapAdminDocToKycDocument(sourceDocs?.identity, fallback);
+    }
+    return mapAdminDocToKycDocument(sourceDocs?.address, fallback);
   });
 
   const [docStates, setDocStates] = useState<KycDocument[]>(docs);
   const [saving, setSaving] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    setDocStates(docs);
+  }, [user.id, kycPayload]);
 
   const handleFileChange = (type: KycDocument['type'], file: File) => {
     const url = URL.createObjectURL(file);
@@ -164,12 +314,23 @@ function VerifyModal({
   return (
     <div className="space-y-5 text-xs">
       <SectionTitle icon={ShieldCheck} label="Identity Verification & KYC Documents" color="text-blue-400" />
+      {kycLoading && (
+        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-400 text-[11px]">
+          <RefreshCw size={13} className="animate-spin text-blue-400" />
+          Loading verified KYC data from the database...
+        </div>
+      )}
+      {kycError && !kycLoading && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
+          {kycError}
+        </div>
+      )}
 
       {/* Overall KYC Status */}
       <div className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-2xl p-4">
         <div>
           <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Overall KYC Status</p>
-          <StatusBadge status={user.verified ? 'Verified' : 'Pending'} />
+          <StatusBadge status={String(kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus ?? (user.verified ? 'Verified' : 'Pending'))} />
         </div>
         <button
           onClick={() => onVerify(user.id, !user.verified)}
@@ -204,14 +365,17 @@ function VerifyModal({
               {isUploaded ? (
                 <div className="flex items-center gap-2 text-slate-400 bg-slate-900 rounded-xl p-2.5">
                   <FileText size={13} className="text-blue-400 shrink-0" />
-                  <span className="truncate text-[11px]">{doc.fileName || 'document.pdf'}</span>
-                  {doc.fileUrl && (
-                    <button
-                      onClick={() => setPreviewUrl(doc.fileUrl!)}
-                      className="ml-auto shrink-0 text-blue-400 hover:text-blue-300"
+                  {doc.fileUrl ? (
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="truncate text-[11px] text-blue-300 hover:text-blue-200"
                     >
-                      <Eye size={13} />
-                    </button>
+                      {doc.fileName || 'document.pdf'}
+                    </a>
+                  ) : (
+                    <span className="truncate text-[11px]">{doc.fileName || 'document.pdf'}</span>
                   )}
                 </div>
               ) : (
@@ -277,22 +441,6 @@ function VerifyModal({
           );
         })}
       </div>
-
-      {/* Preview modal */}
-      {previewUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
-          <div className="relative max-w-3xl w-full" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setPreviewUrl(null)} className="absolute -top-10 right-0 text-white hover:text-slate-300">
-              <X size={24} />
-            </button>
-            {previewUrl.endsWith('.pdf') ? (
-              <iframe src={previewUrl} className="w-full h-[70vh] rounded-2xl" />
-            ) : (
-              <img src={previewUrl} alt="Document Preview" className="w-full max-h-[70vh] object-contain rounded-2xl" />
-            )}
-          </div>
-        </div>
-      )}
 
       <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
         {allApproved && !user.verified && (
@@ -1465,6 +1613,9 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [kycDetailsByUserId, setKycDetailsByUserId] = useState<
+    Record<string, { loading: boolean; error: string | null; data: AdminUserKycDetails | null }>
+  >({});
 
   useEffect(() => {
     setLoading(true);
@@ -1497,6 +1648,55 @@ export default function AdminUsersPage() {
     const timer = setTimeout(() => setToastMessage(null), 4000);
     return () => clearTimeout(timer);
   }, [toastMessage]);
+
+  useEffect(() => {
+    if (!expandedRowId) return;
+
+    const activeUser = users.find((user) => user.id === expandedRowId);
+    if (!activeUser) return;
+
+    const controller = new AbortController();
+    setKycDetailsByUserId((prev) => ({
+      ...prev,
+      [expandedRowId]: {
+        loading: true,
+        error: null,
+        data: prev[expandedRowId]?.data ?? activeUser.kyc ?? null,
+      },
+    }));
+
+    fetch(`/api/admin/users/${expandedRowId}/kyc`, { signal: controller.signal })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data?.message || 'Failed to load KYC data');
+        }
+        return data;
+      })
+      .then((data) => {
+        setKycDetailsByUserId((prev) => ({
+          ...prev,
+          [expandedRowId]: {
+            loading: false,
+            error: null,
+            data: normalizeKycDetails(data, activeUser.kyc),
+          },
+        }));
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        setKycDetailsByUserId((prev) => ({
+          ...prev,
+          [expandedRowId]: {
+            loading: false,
+            error: err instanceof Error ? err.message : 'Failed to load KYC data',
+            data: prev[expandedRowId]?.data ?? activeUser.kyc ?? null,
+          },
+        }));
+      });
+
+    return () => controller.abort();
+  }, [expandedRowId, users]);
 
   const toggleDropdownRow = (userId: string) =>
     setExpandedRowId((prev) => (prev === userId ? null : userId));
@@ -1720,6 +1920,8 @@ export default function AdminUsersPage() {
                 ) : (
                   filteredUsers.map((u) => {
                     const isExpanded = expandedRowId === u.id;
+                    const kycState = kycDetailsByUserId[u.id];
+                    const rowKyc = kycState?.data ?? u.kyc ?? null;
                     return (
                       <React.Fragment key={u.id}>
                         <tr
@@ -1742,7 +1944,7 @@ export default function AdminUsersPage() {
                           </td>
                           <td className="py-4 text-slate-300 font-medium">{u.role}</td>
                           <td className="py-4">
-                            <StatusBadge status={u.verified ? 'Verified' : 'Pending'} />
+                            <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
                           </td>
                           <td className="py-4">
                             <StatusBadge status={u.status} />

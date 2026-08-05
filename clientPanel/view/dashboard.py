@@ -34,10 +34,10 @@ async def get_client_dashboard(request):
     if error:
         return error
 
-    accounts = await ClientAccount.filter(client_profile_id=profile.id).all()
-    investments = await MyInvestment.filter(client_profile_id=profile.id).all()
-    transactions = await ClientTransaction.filter(client_profile_id=profile.id).all()
-    tickets = await ClientTicket.filter(client_profile_id=profile.id).all()
+    accounts = await ClientAccount.filter(user_id=profile.id).all()
+    investments = await MyInvestment.filter(user_id=profile.id).all()
+    transactions = await ClientTransaction.filter(user_id=profile.id).all()
+    tickets = await ClientTicket.filter(user_id=profile.id).all()
     activity_logs = await ActivityLog.filter(user_email__iexact=profile.email).order_by("-created_at").limit(5)
 
     total_balance = sum(account.balance for account in accounts)
@@ -89,7 +89,7 @@ async def get_client_dashboard(request):
             "status": "ok",
             "dashboard": {
                 "client": {
-                    "user_id": profile.user_id,
+                    "user_id": profile.id,
                     "full_name": profile.full_name,
                     "email": profile.email,
                     "country": profile.country,
@@ -99,7 +99,7 @@ async def get_client_dashboard(request):
                 "cards": cards,
                 "recent_activity_logs": [_serialize_activity_log(log) for log in activity_logs],
                 "account": {
-                    "user_id": accounts[0].client_profile_id if accounts else profile.id,
+                    "user_id": accounts[0].user_id if accounts else profile.id,
                     "account_number": accounts[0].account_number,
                     "server": accounts[0].server,
                     "balance": float(accounts[0].balance),

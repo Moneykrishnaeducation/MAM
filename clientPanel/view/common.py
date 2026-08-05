@@ -32,19 +32,23 @@ def _error(message: str, status: int = 400, **extra):
     return JsonResponse(payload, status=status)
 
 
-def _serialize_client_profile(profile: ClientProfile) -> dict:
+def _owner_user_id(owner: ClientProfile | ClientUser) -> int:
+    return int(getattr(owner, "user_id", None) or getattr(owner, "id"))
+
+
+def _serialize_client_profile(profile: ClientProfile | ClientUser) -> dict:
     return {
-        "user_id": profile.user_id,
-        "full_name": profile.full_name,
-        "email": profile.email,
-        "phone": profile.phone,
-        "country": profile.country,
-        "dateOfBirth": profile.date_of_birth,
-        "address": profile.address,
-        "city": profile.city,
-        "postalCode": profile.postal_code,
-        "tier": profile.tier,
-        "kyc_status": profile.kyc_status,
+        "user_id": getattr(profile, "user_id", None) or getattr(profile, "id", None),
+        "full_name": getattr(profile, "full_name", None) or getattr(profile, "name", None),
+        "email": getattr(profile, "email", None),
+        "phone": getattr(profile, "phone", None),
+        "country": getattr(profile, "country", None),
+        "dateOfBirth": getattr(profile, "date_of_birth", None),
+        "address": getattr(profile, "address", None),
+        "city": getattr(profile, "city", None),
+        "postalCode": getattr(profile, "postal_code", None),
+        "tier": getattr(profile, "tier", None),
+        "kyc_status": getattr(profile, "kyc_status", None),
     }
 
 
@@ -203,23 +207,24 @@ def serialize_client_document_detail(detail: ClientDocument | None) -> dict | No
     }
 
 
-async def get_client_payment_details(profile: ClientProfile) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
-    bank_detail = await ClientBankDetail.filter(client_profile=profile).first()
-    crypto_detail = await ClientCryptoDetail.filter(client_profile=profile).first()
+async def get_client_payment_details(owner: ClientProfile | ClientUser) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
+    user_id = _owner_user_id(owner)
+    bank_detail = await ClientBankDetail.filter(user_id=user_id).first()
+    crypto_detail = await ClientCryptoDetail.filter(user_id=user_id).first()
     return bank_detail, crypto_detail
 
 
-async def get_client_document_details(profile: ClientProfile) -> ClientDocument | None:
-    return await ClientDocument.filter(client_profile=profile).first()
+async def get_client_document_details(owner: ClientProfile | ClientUser) -> ClientDocument | None:
+    return await ClientDocument.filter(user_id=_owner_user_id(owner)).first()
 
 
-async def get_latest_payment_request_status(profile: ClientProfile, payment_type: str) -> str | None:
+async def get_latest_payment_request_status(owner: ClientProfile | ClientUser, payment_type: str) -> str | None:
     normalized_type = _normalize_payment_request_type(payment_type)
     if normalized_type is None:
         return None
 
     request = await PendingRequest.filter(
-        client_profile=profile,
+        user_id=_owner_user_id(owner),
         request_type=normalized_type,
     ).order_by("-created_at").first()
     if request is None:
@@ -227,9 +232,9 @@ async def get_latest_payment_request_status(profile: ClientProfile, payment_type
     return _normalize_review_status(request.status)
 
 
-async def get_latest_profile_request_status(profile: ClientProfile) -> str | None:
+async def get_latest_profile_request_status(owner: ClientProfile | ClientUser) -> str | None:
     request = await PendingRequest.filter(
-        client_profile=profile,
+        user_id=_owner_user_id(owner),
         request_type__icontains="profile",
     ).order_by("-created_at").first()
     if request is None:
@@ -237,24 +242,24 @@ async def get_latest_profile_request_status(profile: ClientProfile) -> str | Non
     return _normalize_review_status(request.status)
 
 
-async def get_latest_document_request_status(profile: ClientProfile, document_type: str) -> str | None:
+async def get_latest_document_request_status(owner: ClientProfile | ClientUser, document_type: str) -> str | None:
     normalized_type = str(document_type or "").strip().lower()
     if normalized_type not in {"identity", "address"}:
         return None
 
-    request = await get_latest_document_request(profile, normalized_type)
+    request = await get_latest_document_request(owner, normalized_type)
     if request is None:
         return None
     return _normalize_review_status(request.status)
 
 
-async def get_latest_document_request(profile: ClientProfile, document_type: str) -> PendingRequest | None:
+async def get_latest_document_request(owner: ClientProfile | ClientUser, document_type: str) -> PendingRequest | None:
     normalized_type = str(document_type or "").strip().lower()
     if normalized_type not in {"identity", "address"}:
         return None
 
     requests = await PendingRequest.filter(
-        client_profile=profile,
+        user_id=_owner_user_id(owner),
         request_type__icontains="document",
     ).order_by("-created_at")
     for request in requests:
@@ -358,7 +363,7 @@ def build_profile_submission_payload(*, body: dict, user: ClientUser, profile: C
 
 def build_document_submission_payload(
     *,
-    profile: ClientProfile,
+    profile: ClientProfile | ClientUser,
     body: dict,
     file_name: str,
     file_path: str,
@@ -377,31 +382,31 @@ def build_document_submission_payload(
         "file_url": file_url,
         "content_type": content_type,
         "file_size": file_size,
-        "client_profile_id": profile.id,
-        "user_id": profile.user_id,
-        "client_name": profile.full_name,
+        "client_profile_id": getattr(profile, "id", None),
+        "user_id": _owner_user_id(profile),
+        "client_name": getattr(profile, "full_name", None) or getattr(profile, "name", None),
         "client_email": profile.email,
         "status": "pending",
     }
 
 
-async def create_payment_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
+async def create_payment_pending_request(profile: ClientProfile | ClientUser, payload: dict) -> PendingRequest:
     payment_type = _normalize_payment_request_type(payload.get("paymentType") or payload.get("payment_type"))
     if payment_type is None:
         raise ValueError("paymentType must be either 'bank' or 'crypto'")
 
     payload = {
         **payload,
-        "client_profile_id": profile.id,
-        "user_id": profile.user_id,
-        "client_name": profile.full_name,
+        "client_profile_id": getattr(profile, "id", None),
+        "user_id": _owner_user_id(profile),
+        "client_name": getattr(profile, "full_name", None) or getattr(profile, "name", None),
         "client_email": profile.email,
     }
 
     pending_request = await PendingRequest.create(
         request_type=payment_type,
-        client_name=profile.full_name,
-        client_profile=profile,
+        client_name=getattr(profile, "full_name", None) or getattr(profile, "name", None),
+        user_id=_owner_user_id(profile),
         amount=0.0,
         status="Pending",
         payload=payload,
@@ -409,19 +414,19 @@ async def create_payment_pending_request(profile: ClientProfile, payload: dict) 
     return pending_request
 
 
-async def create_profile_pending_request(profile: ClientProfile, user: ClientUser, payload: dict) -> PendingRequest:
+async def create_profile_pending_request(profile: ClientProfile | ClientUser, user: ClientUser, payload: dict) -> PendingRequest:
     submission_payload = {
         **payload,
         "user_id": user.id,
         "user_code": user.user_code,
-        "client_profile_id": profile.id if profile else None,
+        "client_profile_id": getattr(profile, "id", None),
         "client_name": payload.get("full_name") or payload.get("name") or user.name,
         "client_email": user.email,
     }
     pending_request = await PendingRequest.create(
         request_type="profile",
         client_name=str(submission_payload.get("client_name") or user.name).strip() or user.name,
-        client_profile=profile,
+        user_id=user.id,
         amount=0.0,
         status="Pending",
         payload=submission_payload,
@@ -429,7 +434,7 @@ async def create_profile_pending_request(profile: ClientProfile, user: ClientUse
     return pending_request
 
 
-async def create_document_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
+async def create_document_pending_request(profile: ClientProfile | ClientUser, payload: dict) -> PendingRequest:
     document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
     if document_type not in {"identity", "address"}:
         raise ValueError("documentType must be either 'identity' or 'address'")
@@ -437,15 +442,15 @@ async def create_document_pending_request(profile: ClientProfile, payload: dict)
     submission_payload = {
         **payload,
         "document_type": document_type,
-        "user_id": profile.user_id,
-        "client_profile_id": profile.id,
-        "client_name": profile.full_name,
+        "user_id": _owner_user_id(profile),
+        "client_profile_id": getattr(profile, "id", None),
+        "client_name": getattr(profile, "full_name", None) or getattr(profile, "name", None),
         "client_email": profile.email,
     }
     pending_request = await PendingRequest.create(
         request_type="documents",
-        client_name=profile.full_name,
-        client_profile=profile,
+        client_name=getattr(profile, "full_name", None) or getattr(profile, "name", None),
+        user_id=_owner_user_id(profile),
         amount=0.0,
         status="Pending",
         payload=submission_payload,
@@ -456,11 +461,11 @@ async def create_document_pending_request(profile: ClientProfile, payload: dict)
 async def apply_approved_payment_request(
     request: PendingRequest,
     *,
-    profile: ClientProfile | None = None,
+    profile: ClientProfile | ClientUser | None = None,
 ) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
-    profile = profile or request.client_profile
-    if profile is None:
-        raise ValueError("Pending request is not linked to a client profile")
+    owner_id = _owner_user_id(profile) if profile is not None else request.user_id
+    if owner_id is None:
+        raise ValueError("Pending request is not linked to a client user")
 
     payload = request.payload or {}
     request_type = _normalize_payment_request_type(request.request_type)
@@ -470,10 +475,16 @@ async def apply_approved_payment_request(
 
     if request_type == "bank":
         payload = {**payload, "status": "approved"}
-        bank_detail = await upsert_client_bank_detail(profile, payload)
+        user = await ClientUser.filter(id=owner_id).first()
+        if user is None:
+          raise ValueError("Pending request is not linked to a client user")
+        bank_detail = await upsert_client_bank_detail(user, payload)
     elif request_type == "crypto":
         payload = {**payload, "status": "approved"}
-        crypto_detail = await upsert_client_crypto_detail(profile, payload)
+        user = await ClientUser.filter(id=owner_id).first()
+        if user is None:
+          raise ValueError("Pending request is not linked to a client user")
+        crypto_detail = await upsert_client_crypto_detail(user, payload)
     else:
         raise ValueError(f"Unsupported payment request type: {request.request_type}")
 
@@ -490,43 +501,35 @@ async def apply_approved_profile_request(
     profile: ClientProfile | None = None,
 ) -> tuple[ClientUser | None, ClientProfile | None]:
     payload = request.payload or {}
-    profile = profile or request.client_profile
-    if profile is None and request.client_profile_id:
-        profile = await ClientProfile.filter(id=request.client_profile_id).first()
-    if profile is None:
-        raise ValueError("Pending request is not linked to a client profile")
-
     if user is None:
-        user = await ClientUser.filter(id=profile.user_id).first()
+        if request.user_id:
+            user = await ClientUser.filter(id=request.user_id).first()
+        elif profile is not None:
+            user = await ClientUser.filter(id=getattr(profile, "user_id", None)).first()
     if user is None:
         raise ValueError("Pending request is not linked to a client user")
 
-    full_name = str(payload.get("full_name") or payload.get("name") or profile.full_name).strip() or profile.full_name
-    phone = str(payload.get("phone") or profile.phone or "").strip() or None
-    country = str(payload.get("country") or profile.country).strip() or profile.country
-    date_of_birth = str(payload.get("date_of_birth") or payload.get("dateOfBirth") or profile.date_of_birth or "").strip() or None
-    address = str(payload.get("address") or profile.address or "").strip() or None
-    city = str(payload.get("city") or profile.city or "").strip() or None
-    postal_code = str(payload.get("postal_code") or payload.get("postalCode") or profile.postal_code or "").strip() or None
-    tier = str(payload.get("tier") or profile.tier).strip() or profile.tier
-    kyc_status = str(payload.get("kyc_status") or payload.get("kycStatus") or profile.kyc_status).strip() or profile.kyc_status
+    full_name = str(payload.get("full_name") or payload.get("name") or user.full_name or user.name).strip() or user.name
+    phone = str(payload.get("phone") or user.phone or "").strip() or None
+    country = str(payload.get("country") or user.country).strip() or user.country
+    date_of_birth = str(payload.get("date_of_birth") or payload.get("dateOfBirth") or user.date_of_birth or "").strip() or None
+    address = str(payload.get("address") or user.address or "").strip() or None
+    city = str(payload.get("city") or user.city or "").strip() or None
+    postal_code = str(payload.get("postal_code") or payload.get("postalCode") or user.postal_code or "").strip() or None
+    tier = str(payload.get("tier") or user.tier).strip() or user.tier
+    kyc_status = str(payload.get("kyc_status") or payload.get("kycStatus") or user.kyc_status).strip() or user.kyc_status
     avatar = str(payload.get("avatar") or user.avatar or "").strip() or None
 
-    profile.full_name = full_name
-    profile.email = user.email
-    profile.phone = phone
-    profile.country = country
-    profile.date_of_birth = date_of_birth
-    profile.address = address
-    profile.city = city
-    profile.postal_code = postal_code
-    profile.tier = tier
-    profile.kyc_status = kyc_status
-    await profile.save()
-
     user.name = full_name
+    user.full_name = full_name
     user.phone = phone
     user.country = country
+    user.date_of_birth = date_of_birth
+    user.address = address
+    user.city = city
+    user.postal_code = postal_code
+    user.tier = tier
+    user.kyc_status = kyc_status
     user.avatar = avatar
     await user.save()
 
@@ -539,22 +542,20 @@ async def apply_approved_profile_request(
 async def apply_approved_document_request(
     request: PendingRequest,
     *,
-    profile: ClientProfile | None = None,
+    profile: ClientProfile | ClientUser | None = None,
 ) -> ClientDocument:
     payload = request.payload or {}
-    profile = profile or request.client_profile
-    if profile is None and request.client_profile_id:
-        profile = await ClientProfile.filter(id=request.client_profile_id).first()
-    if profile is None:
-        raise ValueError("Pending request is not linked to a client profile")
+    owner_id = _owner_user_id(profile) if profile is not None else request.user_id
+    if owner_id is None:
+        raise ValueError("Pending request is not linked to a client user")
 
     document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
     if document_type not in {"identity", "address"}:
         raise ValueError(f"Unsupported document request type: {request.request_type}")
 
-    detail = await ClientDocument.filter(client_profile=profile).first()
+    detail = await ClientDocument.filter(user_id=owner_id).first()
     if detail is None:
-        detail = await ClientDocument.create(client_profile=profile)
+        detail = await ClientDocument.create(user_id=owner_id)
 
     file_name = str(payload.get("file_name") or payload.get("fileName") or "").strip() or None
     file_path = str(payload.get("file_path") or payload.get("filePath") or "").strip() or None
@@ -659,38 +660,44 @@ def build_document_details_payload(
     return document_data
 
 
-async def upsert_client_bank_detail(profile: ClientProfile, payload: dict) -> ClientBankDetail:
-    detail = await ClientBankDetail.filter(client_profile=profile).first()
+async def upsert_client_bank_detail(owner: ClientProfile | ClientUser, payload: dict) -> ClientBankDetail:
+    user_id = _owner_user_id(owner)
+    detail = await ClientBankDetail.filter(user_id=user_id).first()
     if detail is None:
         detail = await ClientBankDetail.create(
-            client_profile=profile,
-            account_holder=str(payload.get("account_holder") or profile.full_name).strip() or profile.full_name,
+            user_id=user_id,
+            account_holder=str(payload.get("account_holder") or getattr(owner, "full_name", None) or getattr(owner, "name", "")).strip()
+            or getattr(owner, "full_name", None)
+            or getattr(owner, "name", ""),
             bank_name=str(payload.get("bank_name") or "").strip(),
             account_number=str(payload.get("account_number") or "").strip(),
             ifsc_swift=str(payload.get("ifsc_swift") or "").strip(),
             branch=str(payload.get("branch") or "").strip() or None,
-            country=str(payload.get("country") or profile.country).strip() or profile.country,
+            country=str(payload.get("country") or getattr(owner, "country", "United States")).strip() or getattr(owner, "country", "United States"),
             status=_normalize_payment_status(payload.get("status")),
         )
         return detail
 
-    detail.account_holder = str(payload.get("account_holder") or profile.full_name).strip() or profile.full_name
+    owner_name = getattr(owner, "full_name", None) or getattr(owner, "name", "")
+    owner_country = getattr(owner, "country", "United States")
+    detail.account_holder = str(payload.get("account_holder") or owner_name).strip() or owner_name
     detail.bank_name = str(payload.get("bank_name") or detail.bank_name).strip()
     detail.account_number = str(payload.get("account_number") or detail.account_number).strip()
     detail.ifsc_swift = str(payload.get("ifsc_swift") or detail.ifsc_swift).strip()
     detail.branch = str(payload.get("branch") or detail.branch or "").strip() or None
-    detail.country = str(payload.get("country") or detail.country or profile.country).strip() or profile.country
+    detail.country = str(payload.get("country") or detail.country or owner_country).strip() or owner_country
     if "status" in payload:
         detail.status = _normalize_payment_status(payload.get("status"), default=detail.status)
     await detail.save()
     return detail
 
 
-async def upsert_client_crypto_detail(profile: ClientProfile, payload: dict) -> ClientCryptoDetail:
-    detail = await ClientCryptoDetail.filter(client_profile=profile).first()
+async def upsert_client_crypto_detail(owner: ClientProfile | ClientUser, payload: dict) -> ClientCryptoDetail:
+    user_id = _owner_user_id(owner)
+    detail = await ClientCryptoDetail.filter(user_id=user_id).first()
     if detail is None:
         detail = await ClientCryptoDetail.create(
-            client_profile=profile,
+            user_id=user_id,
             network=str(payload.get("network") or "USDT-TRC20").strip() or "USDT-TRC20",
             wallet_address=str(payload.get("wallet_address") or "").strip(),
             currency=str(payload.get("currency") or "USDT").strip() or "USDT",
@@ -698,6 +705,7 @@ async def upsert_client_crypto_detail(profile: ClientProfile, payload: dict) -> 
         )
         return detail
 
+    owner_network = getattr(owner, "network", "USDT-TRC20")
     detail.network = str(payload.get("network") or detail.network or "USDT-TRC20").strip() or "USDT-TRC20"
     detail.wallet_address = str(payload.get("wallet_address") or detail.wallet_address).strip()
     detail.currency = str(payload.get("currency") or detail.currency or "USDT").strip() or "USDT"
@@ -722,10 +730,11 @@ async def _get_client_profile_for_request(request):
     if user_id is None:
         return None, _error("Authenticated session cookie is required", status=400)
 
-    profile = await ClientProfile.filter(user_id=user_id).first()
-    if profile is None:
+    user = await ClientUser.filter(id=user_id).first()
+    if user is None:
         return None, _error("Profile not found", status=404)
-    return profile, None
+
+    return user, None
 
 
 def create_client_login_token(user_id: int, email: str) -> str:

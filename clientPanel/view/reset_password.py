@@ -81,8 +81,8 @@ async def change_client_password(request):
     if new_password != confirm_password:
         return _error("confirm_password does not match new_password", status=400)
 
-    user = await ClientUser.filter(id=profile.user_id).first()
-    if user is None or str(user.role or "").strip().lower() == "admin":
+    user = profile
+    if str(user.role or "").strip().lower() == "admin":
         return _error("Client not found", status=404)
 
     current_password_login = bool(user.user_code) and current_password == str(user.user_code).strip()

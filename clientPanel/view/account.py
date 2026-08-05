@@ -19,14 +19,14 @@ async def get_client_account(request):
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
-    account = await ClientAccount.filter(client_profile_id=profile.id).first()
+    account = await ClientAccount.filter(user_id=profile.id).first()
     if account is None:
         return _error("Account not found", status=404, account=None)
     return JsonResponse(
         {
             "status": "ok",
             "account": {
-                "user_id": profile.user_id,
+                "user_id": profile.id,
                 "account_number": account.account_number,
                 "server": account.server,
                 "balance": account.balance,

@@ -10,6 +10,7 @@ from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
     ClientProfile,
+    ClientDocument,
     ClientTicket,
     ClientTransaction,
     ClientUser,
@@ -399,6 +400,75 @@ class TestAdminPanelModels:
         assert refreshed_profile.address == "123 King Street"
         assert refreshed_profile.city == "Toronto"
         assert refreshed_profile.postal_code == "M5H 2N2"
+
+    async def test_admin_client_kyc_payload(self):
+        """Test loading KYC data for an admin users-page row from the database."""
+        user = await ClientUser.create(
+            user_code="USR-KYC100",
+            name="Kyla Stone",
+            email="kyla.kyc@example.com",
+            phone="+1 555 0400",
+            country="Canada",
+            verified=True,
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Kyla Stone",
+            email="kyla.kyc@example.com",
+            phone="+1 555 0400",
+            country="Canada",
+            address="88 Queen Street",
+            city="Toronto",
+            postal_code="M5H 2N2",
+            tier="VIP",
+            kyc_status="Pending",
+        )
+        await ClientDocument.create(
+            user_id=user.id,
+            identity_file_name="passport.pdf",
+            identity_file_path="/media/client_documents/kyla/passport.pdf",
+            identity_status="approved",
+            address_file_name="utility-bill.pdf",
+            address_file_path="/media/client_documents/kyla/utility-bill.pdf",
+            address_status="pending",
+        )
+
+        request = type(
+            "Request",
+            (object,),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (object,),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        from adminPanel.views import get_client_user_kyc, list_client_users
+
+        response = await get_client_user_kyc(request, user_id="USR-KYC100")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["user"]["id"] == "USR-KYC100"
+        assert payload["profile"]["kyc_status"] == "Pending"
+        assert payload["document_detail"]["identity"]["file_name"] == "passport.pdf"
+        assert payload["documents"]["identity"]["file_name"] == "passport.pdf"
+        assert payload["documents"]["address"]["status"] == "pending"
+
+        list_response = await list_client_users(request)
+        list_payload = json.loads(list_response.content)
+        user_row = next(row for row in list_payload["users"] if row["id"] == "USR-KYC100")
+
+        assert user_row["kyc"]["status"] == "Pending"
+        assert user_row["kyc"]["document_detail"]["identity"]["file_name"] == "passport.pdf"
+        assert user_row["kyc"]["documents"]["identity"]["file_name"] == "passport.pdf"
 
     async def test_admin_client_transactions(self):
         """Test the admin client transaction history endpoint."""

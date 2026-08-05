@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.models import ClientProfile, ClientUser
+from adminPanel.models import ClientUser
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     build_payment_submission_payload,
@@ -17,19 +17,6 @@ from clientPanel.view.common import (
     get_client_payment_details,
 )
 from adminPanel.view.client_profile import _resolve_client_user
-
-
-async def _resolve_profile_for_user(user: ClientUser) -> ClientProfile:
-    profile = await ClientProfile.filter(user_id=user.id).first()
-    if profile is None:
-        profile = await ClientProfile.create(
-            user_id=user.id,
-            full_name=user.name,
-            email=user.email,
-            phone=user.phone,
-            country=user.country,
-        )
-    return profile
 
 
 @csrf_exempt
@@ -42,8 +29,7 @@ async def update_client_payment_details(request, user_id: str):
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
 
-    profile = await _resolve_profile_for_user(user)
-    bank_detail, crypto_detail = await get_client_payment_details(profile)
+    bank_detail, crypto_detail = await get_client_payment_details(user)
 
     if request.method == "GET":
         return JsonResponse(
@@ -54,7 +40,7 @@ async def update_client_payment_details(request, user_id: str):
                     "name": user.name,
                 },
                 "payment_details": build_payment_details_payload(
-                    profile=profile,
+                    profile=user,
                     bank_detail=bank_detail,
                     crypto_detail=crypto_detail,
                 ),
@@ -71,23 +57,19 @@ async def update_client_payment_details(request, user_id: str):
         return JsonResponse({"status": "error", "message": "paymentType must be either 'bank' or 'crypto'"}, status=400)
 
     submission_payload = build_payment_submission_payload(
-        profile=profile,
+        profile=user,
         payment_type=payment_type,
         body=body,
         bank_detail=bank_detail,
         crypto_detail=crypto_detail,
     )
-    pending_request = await create_payment_pending_request(profile, submission_payload)
+    pending_request = await create_payment_pending_request(user, submission_payload)
 
     return JsonResponse(
         {
             "status": "ok",
             "message": "Client payment details submitted for approval",
             "request_id": pending_request.id,
-            "payment_details": build_payment_details_payload(
-                profile=profile,
-                bank_detail=bank_detail,
-                crypto_detail=crypto_detail,
-            ),
-        }
-    )
+                "payment_details": build_payment_details_payload(profile=user, bank_detail=bank_detail, crypto_detail=crypto_detail),
+            }
+        )

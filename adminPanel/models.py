@@ -42,6 +42,13 @@ class ClientUser(models.Model):
     status = fields.CharField(max_length=50, default="Active")
     verified = fields.BooleanField(default=True)
     country = fields.CharField(max_length=100, default="United States")
+    full_name = fields.CharField(max_length=255, null=True)
+    date_of_birth = fields.CharField(max_length=50, null=True)
+    address = fields.CharField(max_length=255, null=True)
+    city = fields.CharField(max_length=100, null=True)
+    postal_code = fields.CharField(max_length=50, null=True)
+    tier = fields.CharField(max_length=50, default="VIP Premium")
+    kyc_status = fields.CharField(max_length=50, default="Verified")
     avatar = fields.CharField(max_length=500, null=True)
     last_login = fields.DatetimeField(null=True)
     joined = fields.DatetimeField(auto_now_add=True)
@@ -165,8 +172,8 @@ class PendingRequest(models.Model):
     id = fields.IntField(primary_key=True)
     request_type = fields.CharField(max_length=100)
     client_name = fields.CharField(max_length=255)
-    client_profile = fields.ForeignKeyField(
-        "models.ClientProfile",
+    user = fields.ForeignKeyField(
+        "models.ClientUser",
         related_name="pending_requests",
         null=True,
         on_delete=fields.SET_NULL,
@@ -198,8 +205,8 @@ class ClientDocument(models.Model):
     """Client identity and address documents."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.OneToOneField(
-        "models.ClientProfile",
+    user = fields.OneToOneField(
+        "models.ClientUser",
         related_name="document_detail",
         on_delete=fields.CASCADE,
     )
@@ -246,8 +253,8 @@ class ClientBankDetail(models.Model):
     """Client bank payment details used for funding and withdrawal requests."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.OneToOneField(
-        "models.ClientProfile",
+    user = fields.OneToOneField(
+        "models.ClientUser",
         related_name="bank_detail",
         on_delete=fields.CASCADE,
     )
@@ -269,8 +276,8 @@ class ClientCryptoDetail(models.Model):
     """Client crypto wallet details used for funding and withdrawal requests."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.OneToOneField(
-        "models.ClientProfile",
+    user = fields.OneToOneField(
+        "models.ClientUser",
         related_name="crypto_detail",
         on_delete=fields.CASCADE,
     )
@@ -289,7 +296,7 @@ class ClientAccount(models.Model):
     """Client Trading Account details model."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.ForeignKeyField("models.ClientProfile", related_name="accounts")
+    user = fields.ForeignKeyField("models.ClientUser", related_name="accounts")
     account_number = fields.CharField(max_length=100, unique=True)
     server = fields.CharField(max_length=100, default="VTIndex-Live01")
     balance = fields.FloatField(default=0.0)
@@ -308,7 +315,7 @@ class MyInvestment(models.Model):
     """Client MAM Investments allocation model."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.ForeignKeyField("models.ClientProfile", related_name="investments")
+    user = fields.ForeignKeyField("models.ClientUser", related_name="investments")
     strategy_name = fields.CharField(max_length=255)
     manager_name = fields.CharField(max_length=255)
     allocated_amount = fields.FloatField(default=0.0)
@@ -325,7 +332,8 @@ class ClientTransaction(models.Model):
     """Client Deposits & Withdrawals history model."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.ForeignKeyField("models.ClientProfile", related_name="transactions")
+    user = fields.ForeignKeyField("models.ClientUser", related_name="transactions")
+    account_number = fields.CharField(max_length=100, null=True)
     transaction_type = fields.CharField(max_length=50)
     amount = fields.FloatField(default=0.0)
     payment_method = fields.CharField(max_length=100, default="Wire Transfer")
@@ -340,7 +348,7 @@ class ClientTicket(models.Model):
     """Client Support Ticket model."""
 
     id = fields.IntField(primary_key=True)
-    client_profile = fields.ForeignKeyField("models.ClientProfile", related_name="tickets")
+    user = fields.ForeignKeyField("models.ClientUser", related_name="tickets")
     subject = fields.CharField(max_length=255)
     category = fields.CharField(max_length=100, default="General Question")
     priority = fields.CharField(max_length=50, default="Normal")

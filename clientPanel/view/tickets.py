@@ -163,7 +163,7 @@ async def get_client_tickets(request):
 
     requested_status = _normalize_ticket_status(request.GET.get("status") or request.GET.get("tab"))
     tickets = (
-        await ClientTicket.filter(client_profile_id=profile.id)
+        await ClientTicket.filter(user_id=profile.id)
         .order_by("-created_at")
         .all()
     )
@@ -173,7 +173,7 @@ async def get_client_tickets(request):
     return JsonResponse(
         {
             "status": "ok",
-            "user_id": profile.user_id,
+            "user_id": profile.id,
             "status_filter": requested_status or "all",
             "tickets": [_serialize_ticket(ticket, request) for ticket in filtered_tickets],
         }
@@ -205,7 +205,7 @@ async def create_client_ticket(request):
         return error
 
     ticket = await ClientTicket.create(
-        client_profile=profile,
+        user_id=profile.id,
         subject=subject,
         category=category,
         priority=priority,
@@ -229,7 +229,7 @@ async def create_client_ticket(request):
             "status": "ok",
             "message": "Ticket created successfully",
             "ticket": _serialize_ticket(ticket, request),
-            "user_id": profile.user_id,
+            "user_id": profile.id,
         },
         status=201,
     )
@@ -243,14 +243,14 @@ async def get_client_ticket_detail(request, ticket_id: int):
     if error:
         return error
 
-    ticket = await ClientTicket.filter(id=ticket_id, client_profile_id=profile.id).first()
+    ticket = await ClientTicket.filter(id=ticket_id, user_id=profile.id).first()
     if ticket is None:
         return _error("Ticket not found", status=404)
 
     return JsonResponse(
         {
             "status": "ok",
-            "user_id": profile.user_id,
+            "user_id": profile.id,
             "ticket": _serialize_ticket(ticket, request),
         }
     )
