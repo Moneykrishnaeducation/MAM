@@ -688,7 +688,7 @@ export default function ClientMyInvestPage() {
                         {/* Investment ID */}
                         <td className="px-6 py-5 whitespace-nowrap">
                           <span className={`font-mono font-bold px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-white/5 text-royal-400' : 'border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]'}`}>
-                            #{String(inv.id)}
+                            {String(inv.accountId).toUpperCase()}
                           </span>
                         </td>
 
