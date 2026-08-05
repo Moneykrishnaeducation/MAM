@@ -351,6 +351,40 @@ async def decide_pending_request(request, request_id: str):
                     status=400,
                 )
             await apply_approved_document_request(pending_request, profile=user)
+        elif request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
+            pending_request.status = "Approved"
+            pending_request.reviewed_at = timezone.now()
+            await pending_request.save()
+
+            from adminPanel.models import ClientTransaction, ClientAccount, TradingAccount
+            payload = _pending_payload(pending_request)
+            tx_id = payload.get("transaction_id")
+            if tx_id:
+                tx = await ClientTransaction.filter(id=tx_id).first()
+                if tx:
+                    tx.status = "Approved"
+                    await tx.save()
+
+                    amount = float(tx.amount)
+                    account_number = tx.account_number
+
+                    # 1. Update ClientAccount
+                    acc = await ClientAccount.filter(user_id=pending_request.user_id, account_number=account_number).first()
+                    if acc:
+                        if request_type in {"deposit", "deposits"}:
+                            acc.balance = float(acc.balance or 0.0) + amount
+                        else:
+                            acc.balance = float(acc.balance or 0.0) - amount
+                        await acc.save()
+
+                    # 2. Update TradingAccount
+                    t_acc = await TradingAccount.filter(user_id=pending_request.user_id, account_id=account_number).first()
+                    if t_acc:
+                        if request_type in {"deposit", "deposits"}:
+                            t_acc.balance = float(t_acc.balance or 0.0) + amount
+                        else:
+                            t_acc.balance = float(t_acc.balance or 0.0) - amount
+                        await t_acc.save()
         else:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()
@@ -359,6 +393,17 @@ async def decide_pending_request(request, request_id: str):
         pending_request.status = "Rejected"
         pending_request.reviewed_at = timezone.now()
         await pending_request.save()
+
+        request_type = _sanitize_request_type(pending_request.request_type)
+        if request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
+            from adminPanel.models import ClientTransaction
+            payload = _pending_payload(pending_request)
+            tx_id = payload.get("transaction_id")
+            if tx_id:
+                tx = await ClientTransaction.filter(id=tx_id).first()
+                if tx:
+                    tx.status = "Rejected"
+                    await tx.save()
 
     return JsonResponse(
         {

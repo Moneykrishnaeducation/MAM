@@ -73,6 +73,23 @@ async def create_client_deposit(request):
         status="Pending",
     )
 
+    from adminPanel.models import PendingRequest
+    await PendingRequest.create(
+        request_type="deposit",
+        client_name=profile.full_name or profile.email or "Client",
+        user_id=profile.id,
+        amount=amount,
+        status="Pending",
+        payload={
+            "transaction_id": transaction.id,
+            "account_number": account.account_number,
+            "amount": amount,
+            "payment_method": payment_method,
+            "proof_name": proof_name,
+            "notes": notes,
+        },
+    )
+
     return JsonResponse(
         {
             "status": "ok",

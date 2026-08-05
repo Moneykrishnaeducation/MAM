@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowUpRight, Wallet, ShieldCheck, User, ChevronRight, 
@@ -88,36 +89,105 @@ export default function WithdrawalModal({
 }: any) {
   const router = useRouter();
   
-  // Example State (adjust to match your actual logic)
   const [selectedAccount, setSelectedAccount] = useState(currentAccount || "");
   const [activeTab, setActiveTab] = useState("bank");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Example Data (replace with real props/context data)
-  const availableBalance = 5000;
-  const accounts = [
-    { account_id: "ACC-123", balance: 5000 },
-    { account_id: "ACC-456", balance: 1200 }
-  ];
-  const bankDetails = { account_number: "123456789", bank_name: "Global Bank" };
-  const cryptoDetails = { wallet_address: "0xABC123...", currency: "USDT" };
+  const [bankDetails, setBankDetails] = useState<any>(null);
+  const [cryptoDetails, setCryptoDetails] = useState<any>(null);
+  const [availableBalance, setAvailableBalance] = useState<number>(0);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const withdrawalInfo = { minimum_withdrawal: 10 };
+
+  useEffect(() => {
+    let active = true;
+
+    const loadData = async () => {
+      try {
+        const accRes = await fetch("/api/client/account", { credentials: "include" });
+        if (accRes.ok && active) {
+          const data = await accRes.json();
+          if (data && data.account) {
+            const accList = [{
+              account_id: data.account.account_number,
+              balance: Number(data.account.balance || 0)
+            }];
+            setAccounts(accList);
+            if (!selectedAccount) {
+              setSelectedAccount(data.account.account_number);
+              setAvailableBalance(Number(data.account.balance || 0));
+            }
+          }
+        }
+
+        const payRes = await fetch("/api/client/payment-details", { credentials: "include" });
+        if (payRes.ok && active) {
+          const data = await payRes.json();
+          if (data && data.payment_details) {
+            setBankDetails(data.payment_details.bank || null);
+            setCryptoDetails(data.payment_details.crypto || null);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load withdrawal resources:", err);
+      }
+    };
+
+    loadData();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const acc = accounts.find(a => a.account_id === selectedAccount);
+    if (acc) {
+      setAvailableBalance(acc.balance);
+    }
+  }, [selectedAccount, accounts]);
 
   const handleAccountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedAccount(e.target.value);
   };
 
   const handleWithdraw = async () => {
+    if (!selectedAccount || !amount || parseFloat(amount) <= 0) {
+      toast.error("Please enter a valid account and amount.");
+      return;
+    }
+
     setSubmitting(true);
-    // Add withdrawal logic here
-    setTimeout(() => {
-      setSubmitting(false);
+    try {
+      const response = await fetch("/api/client/withdrawal", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          account_number: selectedAccount,
+          amount: Number(amount),
+          payment_method: activeTab === "bank" ? "Bank Transfer" : "Crypto USDT",
+          destination_type: activeTab,
+          notes: `Withdrawal request submitted from modal via ${activeTab === 'bank' ? 'Bank' : 'Crypto'}`,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to submit withdrawal request");
+      }
+
+      toast.success(data?.message || "Withdrawal request submitted successfully!");
+      setAmount("");
       onClose();
-    }, 2000);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to submit withdrawal request");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // Note: Ensure `ACCENT` and `sharedUtils` are defined or imported above.
   const ACCENT = "#2563EB";
   const sharedUtils = {
     formatCurrency: (val: number) => `$${val.toFixed(2)}`
