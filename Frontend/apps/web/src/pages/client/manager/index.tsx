@@ -35,6 +35,7 @@ import {
 import { ManagerSkeleton } from '@/components/client-page-skeletons';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
+import AccountOpenModal from '../model/accountopen';
 
 const riskBadge = (risk: string, isDarkMode: boolean) => {
   if (risk === 'Low')
@@ -62,6 +63,7 @@ export default function ClientManagerPage() {
   const [showPerformanceModal, setShowPerformanceModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showAccountOpenModal, setShowAccountOpenModal] = useState(false);
   const [activeDepositTab, setActiveDepositTab] = useState('cheesepay');
   const [cheeseAmount, setCheeseAmount] = useState('');
   const [currency, setCurrency] = useState('USD');
@@ -209,7 +211,7 @@ export default function ClientManagerPage() {
         .filter(Boolean),
     ).size,
   );
-  const currentAccountLabel = clientAccount?.account_number || activeManager?.accountId || 'N/A';
+  const currentAccountLabel = activeManager?.accountId || clientAccount?.account_number || 'N/A';
 
   if (isPageLoading) {
     return (
@@ -234,6 +236,19 @@ export default function ClientManagerPage() {
           <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/5 blur-[90px]" />
         </div>
 
+
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6 border-b border-white/5 pb-6">
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight">MAM Managers</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAccountOpenModal(true)}
+            className={`px-6 py-3.5 rounded-xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] ${goldButtonClass}`}
+          >
+            Open Account
+          </button>
+        </div>
 
         {/* Search controls */}
         <div className="flex flex-col lg:flex-row gap-6 items-stretch lg:items-center justify-between mb-8">
@@ -544,25 +559,9 @@ export default function ClientManagerPage() {
               <h3 className={`text-xl font-bold ${headingTextClass}`}>
                 All Manager Details
               </h3>
-              <p className={`text-xs mt-1 ${softTextClass}`}>
-                Showing{' '}
-                <span className={`font-semibold ${headingTextClass}`}>
-                  {filteredManagers.length === 0
-                    ? 0
-                    : (safePage - 1) * perPage + 1}
-                  –{Math.min(safePage * perPage, filteredManagers.length)}
-                </span>{' '}
-                of{' '}
-                <span className={`font-semibold ${headingTextClass}`}>
-                  {filteredManagers.length}
-                </span>{' '}
-                manager{filteredManagers.length !== 1 ? 's' : ''}
-              </p>
+              
             </div>
-            <div className={`flex items-center gap-1.5 text-xs ${softTextClass}`}>
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Live Data
-            </div>
+           
           </div>
 
           {/* Scrollable table */}
@@ -1052,6 +1051,12 @@ export default function ClientManagerPage() {
           currentAccount={currentAccountLabel}
         />
       )}
+
+      <AccountOpenModal
+        showModal={showAccountOpenModal}
+        setShowModal={setShowAccountOpenModal}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 }

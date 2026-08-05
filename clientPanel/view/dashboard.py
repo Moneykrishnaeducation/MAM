@@ -8,6 +8,7 @@ from adminPanel.models import (
     ClientTicket,
     ClientTransaction,
     MyInvestment,
+    TradingAccount,
 )
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
@@ -42,45 +43,46 @@ async def get_client_dashboard(request):
 
     total_balance = sum(account.balance for account in accounts)
     total_allocated = sum(investment.allocated_amount for investment in investments)
-    manager_names = list({inv.manager_name for inv in investments if inv.manager_name})
-    manager_name = manager_names[0] if manager_names else "-"
-    manager_subtitle = f"{len(manager_names)} linked manager{'s' if len(manager_names) != 1 else ''}" if manager_names else None
-    
+
+    my_mam_count = await TradingAccount.filter(user_id=profile.id, account_type="MAM").count()
+    my_investor_count = await TradingAccount.filter(user_id=profile.id, account_type="Investor").count()
+    all_manager_count = await TradingAccount.filter(account_type="MAM", status="Active").count()
+
     cards = [
         {
             "key": "manager_account",
             "title": "MAM Manager Account",
-            "value": manager_name,
-            "raw_value": manager_name,
-            "subtitle": manager_subtitle,
+            "value": f"{my_mam_count} " if my_mam_count > 0 else "0 ",
+            "raw_value": my_mam_count,
+           
         },
         {
-            "key": "funds_invested",
-            "title": "MAM Funds Invested",
+            "key": "investor_account",
+            "title": "MAM Investor Account",
+            "value": f"{my_investor_count} " if my_investor_count > 0 else "0 ",
+            "raw_value": my_investor_count,
+           
+        },
+        {
+            "key": "Total_Investments",
+            "title": "Total Investments",
             "value": _format_currency(total_allocated),
             "raw_value": total_allocated,
-            "subtitle": f"{len(investments)} active allocation{'s' if len(investments) != 1 else ''}" if investments else None,
+            # "subtitle": f"{len(investments)} active allocation{'s' if len(investments) != 1 else ''}" if investments else None,
         },
         {
             "key": "balance",
             "title": "MAM Balance",
             "value": _format_currency(total_balance),
             "raw_value": total_balance,
-            "subtitle": f"Account {accounts[0].account_number}" if accounts else None,
+            # "subtitle": f"Account {accounts[0].account_number}" if accounts else None,
         },
         {
             "key": "available_managers",
             "title": "Available MAM Managers",
-            "value": str(len(manager_names)),
-            "raw_value": len(manager_names),
-            "subtitle": f"Managers: {', '.join(manager_names)}" if manager_names else None,
-        },
-        {
-            "key": "total_investments",
-            "title": "Total Investments",
-            "value": str(len(investments)),
-            "raw_value": len(investments),
-            "subtitle": f"Investments: {', '.join(str(inv.id) for inv in investments)}" if investments else None,
+            "value": str(all_manager_count),
+            "raw_value": all_manager_count,
+            # "subtitle": None,
         }
     ]
 
