@@ -35,7 +35,7 @@ import { ProfileSkeleton } from '@/components/client-page-skeletons';
 type ProfileTab = 'personal' | 'security' | 'activity' | 'documents' | 'payments';
 
 type DocumentSlotId = 'identity' | 'address';
-type DocumentStatus = 'verified' | 'pending' | 'uploaded';
+type DocumentStatus = 'approved' | 'pending' | 'rejected';
 
 type DocumentCard = {
   id: DocumentSlotId;
@@ -68,16 +68,16 @@ const INITIAL_DOCUMENTS: Record<DocumentSlotId, DocumentCard> = {
 };
 
 const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
-  verified: 'Approved',
+  approved: 'Approved',
   pending: 'Pending Review',
-  uploaded: 'Uploaded',
+  rejected: 'Rejected',
 };
 
 const DOCUMENT_STATUS_CLASSES = (status: DocumentStatus, isDarkMode: boolean): string => {
   const mapping: Record<DocumentStatus, string> = {
-    verified: isDarkMode ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
+    approved: isDarkMode ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
     pending: isDarkMode ? 'border-slate-800 bg-slate-800 text-slate-400' : 'border-slate-500/20 bg-slate-500/10 text-slate-300',
-    uploaded: isDarkMode ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-400' : 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+    rejected: isDarkMode ? 'border-red-500/20 bg-red-500/10 text-red-400' : 'border-red-500/20 bg-red-500/10 text-red-300',
   };
   return mapping[status];
 };
@@ -144,6 +144,18 @@ type ClientPaymentDetailsApi = {
   } | null;
 };
 
+type ClientDocumentApi = {
+  file_name?: string | null;
+  file_path?: string | null;
+  status?: string | null;
+  uploaded_at?: string | null;
+};
+
+type ClientDocumentsApi = {
+  identity?: ClientDocumentApi | null;
+  address?: ClientDocumentApi | null;
+};
+
 type ActivityLogEntry = {
   id: number | string;
   action: string;
@@ -203,6 +215,33 @@ const normalizePaymentDetails = (details: ClientPaymentDetailsApi | null | undef
   },
 });
 
+const normalizeDocumentStatus = (value: unknown): DocumentStatus => {
+  const normalized = String(value || 'pending').trim().toLowerCase();
+  if (normalized === 'approved' || normalized === 'pending' || normalized === 'rejected') {
+    return normalized;
+  }
+  return 'pending';
+};
+
+const normalizeDocumentCards = (documents: ClientDocumentsApi | null | undefined): Record<DocumentSlotId, DocumentCard> => ({
+  identity: {
+    ...EMPTY_DOCUMENT_CARD('identity'),
+    fileName: String(documents?.identity?.file_name || '') || null,
+    fileSize: null,
+    uploadedAt: String(documents?.identity?.uploaded_at || '') || null,
+    status: normalizeDocumentStatus(documents?.identity?.status),
+    helperText: 'No document uploaded yet.',
+  },
+  address: {
+    ...EMPTY_DOCUMENT_CARD('address'),
+    fileName: String(documents?.address?.file_name || '') || null,
+    fileSize: null,
+    uploadedAt: String(documents?.address?.uploaded_at || '') || null,
+    status: normalizeDocumentStatus(documents?.address?.status),
+    helperText: 'No document uploaded yet.',
+  },
+});
+
 const formatFileSize = (size: number) => {
   if (!Number.isFinite(size) || size <= 0) {
     return '0 B'; 
@@ -250,6 +289,7 @@ export default function ClientProfilePage() {
   });
   const [documents, setDocuments] = useState<Record<DocumentSlotId, DocumentCard>>(INITIAL_DOCUMENTS);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
+  const [isDocumentSaving, setIsDocumentSaving] = useState(false);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails>(INITIAL_PAYMENT_DETAILS);
   const [paymentEditTarget, setPaymentEditTarget] = useState<PaymentEditTarget | null>(null);
   const [isPaymentSaving, setIsPaymentSaving] = useState(false);
@@ -320,18 +360,27 @@ export default function ClientProfilePage() {
       setProfileLoading(true);
 
       try {
-        const response = await fetch('/api/client/profile', {
-          credentials: 'include',
-          headers: {
-            Accept: 'application/json',
-          },
-        });
+        const [profileResponse, documentsResponse] = await Promise.all([
+          fetch('/api/client/profile', {
+            credentials: 'include',
+            headers: {
+              Accept: 'application/json',
+            },
+          }),
+          fetch('/api/client/documents', {
+            credentials: 'include',
+            headers: {
+              Accept: 'application/json',
+            },
+          }),
+        ]);
 
-        if (!response.ok) {
+        if (!profileResponse.ok) {
           return;
         }
 
-        const data = (await response.json()) as { profile?: ClientProfileApi; payment_details?: ClientPaymentDetailsApi };
+        const data = (await profileResponse.json()) as { profile?: ClientProfileApi; payment_details?: ClientPaymentDetailsApi };
+        const documentData = documentsResponse.ok ? ((await documentsResponse.json()) as { documents?: ClientDocumentsApi }) : null;
         const profile = data.profile ?? null;
 
         if (!isMounted || !profile) {
@@ -355,6 +404,9 @@ export default function ClientProfilePage() {
         setProfileTier(String(profile.tier || ''));
         setProfileKycStatus(String(profile.kyc_status || ''));
         setPaymentDetails(normalizePaymentDetails(data.payment_details));
+        if (documentData?.documents) {
+          setDocuments(normalizeDocumentCards(documentData.documents));
+        }
         setPaymentForm((prev) => ({
           ...prev,
           bankName: String(data.payment_details?.bank?.bank_name || prev.bankName),
@@ -372,6 +424,7 @@ export default function ClientProfilePage() {
           setProfileTier('');
           setProfileKycStatus('');
           setPaymentDetails(INITIAL_PAYMENT_DETAILS);
+          setDocuments(INITIAL_DOCUMENTS);
         }
       } finally {
         if (isMounted) {
@@ -657,12 +710,12 @@ export default function ClientProfilePage() {
       .map((part) => part[0]?.toUpperCase())
       .join('') || 'U';
 
-  const handleDocumentChange = (slot: DocumentSlotId, file: File | undefined) => {
+  const handleDocumentChange = async (slot: DocumentSlotId, file: File | undefined) => {
     if (!file) {
       return;
     }
 
-    const uploadedAt = formatUploadedAt();
+    setIsDocumentSaving(true);
     setDocuments((prev) => ({
       ...prev,
       [slot]: {
@@ -670,12 +723,43 @@ export default function ClientProfilePage() {
         status: 'pending',
         fileName: file.name,
         fileSize: formatFileSize(file.size),
-        uploadedAt,
+        uploadedAt: formatUploadedAt(),
         helperText: 'Uploaded successfully. Waiting for admin review.',
       },
     }));
 
-    setUploadNotice(`${file.name} uploaded and sent for review.`);
+    try {
+      const formData = new FormData();
+      formData.append('documentType', slot);
+      formData.append('documentFile', file);
+
+      const response = await fetch('/api/client/documents', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to submit document.');
+      }
+
+      if (data?.documents) {
+        setDocuments(normalizeDocumentCards(data.documents));
+      }
+
+      setUploadNotice(`${file.name} uploaded and sent for review.`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to submit document.';
+      showProfileToast(message);
+      setDocuments((prev) => ({
+        ...prev,
+        [slot]: EMPTY_DOCUMENT_CARD(slot),
+      }));
+    } finally {
+      setIsDocumentSaving(false);
+    }
   };
 
   const documentStats = DOCUMENT_ORDER.reduce(
@@ -687,7 +771,7 @@ export default function ClientProfilePage() {
       stats[document.status] += document.fileName || document.uploadedAt ? 1 : 0;
       return stats;
     },
-    { total: 0, verified: 0, pending: 0, uploaded: 0 },
+    { total: 0, approved: 0, pending: 0, rejected: 0 },
   );
   const paymentMethodsCount = [
     paymentDetails.bank.bankName,
@@ -1141,6 +1225,7 @@ export default function ClientProfilePage() {
                           <button
                             type="button"
                             onClick={() => openDocumentPicker('identity')}
+                            disabled={isDocumentSaving}
                             className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
                           >
                             Update Document
@@ -1160,7 +1245,7 @@ export default function ClientProfilePage() {
                             accept={DOCUMENT_ACCEPT}
                             className="hidden"
                             onChange={(event) => {
-                              handleDocumentChange('identity', event.target.files?.[0]);
+                              void handleDocumentChange('identity', event.target.files?.[0]);
                               event.target.value = '';
                             }}
                           />
@@ -1187,6 +1272,7 @@ export default function ClientProfilePage() {
                           <button
                             type="button"
                             onClick={() => openDocumentPicker('address')}
+                            disabled={isDocumentSaving}
                             className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
                           >
                             Update Document
@@ -1206,7 +1292,7 @@ export default function ClientProfilePage() {
                             accept={DOCUMENT_ACCEPT}
                             className="hidden"
                             onChange={(event) => {
-                              handleDocumentChange('address', event.target.files?.[0]);
+                              void handleDocumentChange('address', event.target.files?.[0]);
                               event.target.value = '';
                             }}
                           />

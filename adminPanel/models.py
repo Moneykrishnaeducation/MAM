@@ -194,6 +194,28 @@ class ActivityLog(models.Model):
     class Meta:
         table = "admin_activity_logs"
 
+class ClientDocument(models.Model):
+    """Client identity and address documents."""
+
+    id = fields.IntField(primary_key=True)
+    client_profile = fields.OneToOneField(
+        "models.ClientProfile",
+        related_name="document_detail",
+        on_delete=fields.CASCADE,
+    )
+    identity_file_name = fields.CharField(max_length=255, null=True)
+    identity_file_path = fields.CharField(max_length=500, null=True)
+    identity_status = fields.CharField(max_length=50, default="pending")
+    identity_uploaded_at = fields.DatetimeField(null=True)
+    address_file_name = fields.CharField(max_length=255, null=True)
+    address_file_path = fields.CharField(max_length=500, null=True)
+    address_status = fields.CharField(max_length=50, default="pending")
+    address_uploaded_at = fields.DatetimeField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "client_documents"
 
 class ClientProfile(models.Model):
     """Client Profile model for client user personal and KYC data."""

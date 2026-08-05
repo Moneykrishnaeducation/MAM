@@ -17,6 +17,7 @@ from adminPanel.view.pending_requests import (
     list_pending_documents,
     list_pending_profiles,
     list_pending_requests,
+    list_pending_requests_summary,
     list_pending_withdrawals,
 )
 from adminPanel.view.logout import logout_admin
@@ -38,6 +39,7 @@ app_name = "adminPanel"
 urlpatterns = [
     path("dashboard", get_admin_dashboard, name="dashboard"),
     path("requests", list_pending_requests, name="requests"),
+    path("requests/summary", list_pending_requests_summary, name="requests-summary"),
     path("requests/deposits", list_pending_deposits, name="requests-deposits"),
     path("requests/withdrawals", list_pending_withdrawals, name="requests-withdrawals"),
     path("requests/documents", list_pending_documents, name="requests-documents"),

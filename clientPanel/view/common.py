@@ -10,7 +10,7 @@ import time
 from django.http import JsonResponse
 from django.utils import timezone
 
-from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientProfile, ClientUser, PendingRequest
+from adminPanel.models import ClientBankDetail, ClientCryptoDetail, ClientDocument, ClientProfile, ClientUser, PendingRequest
 
 CLIENT_LOGIN_KEY = "client-panel-login-key"
 CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
@@ -181,10 +181,36 @@ def serialize_client_crypto_detail(detail: ClientCryptoDetail | None) -> dict | 
     }
 
 
+def serialize_client_document_detail(detail: ClientDocument | None) -> dict | None:
+    if detail is None:
+        return None
+    return {
+        "id": detail.id,
+        "identity": {
+            "file_name": detail.identity_file_name,
+            "file_path": detail.identity_file_path,
+            "status": _normalize_review_status(detail.identity_status),
+            "uploaded_at": detail.identity_uploaded_at.strftime("%Y-%m-%d %H:%M:%S") if detail.identity_uploaded_at else None,
+        },
+        "address": {
+            "file_name": detail.address_file_name,
+            "file_path": detail.address_file_path,
+            "status": _normalize_review_status(detail.address_status),
+            "uploaded_at": detail.address_uploaded_at.strftime("%Y-%m-%d %H:%M:%S") if detail.address_uploaded_at else None,
+        },
+        "created_at": detail.created_at.strftime("%Y-%m-%d %H:%M:%S") if detail.created_at else None,
+        "updated_at": detail.updated_at.strftime("%Y-%m-%d %H:%M:%S") if detail.updated_at else None,
+    }
+
+
 async def get_client_payment_details(profile: ClientProfile) -> tuple[ClientBankDetail | None, ClientCryptoDetail | None]:
     bank_detail = await ClientBankDetail.filter(client_profile=profile).first()
     crypto_detail = await ClientCryptoDetail.filter(client_profile=profile).first()
     return bank_detail, crypto_detail
+
+
+async def get_client_document_details(profile: ClientProfile) -> ClientDocument | None:
+    return await ClientDocument.filter(client_profile=profile).first()
 
 
 async def get_latest_payment_request_status(profile: ClientProfile, payment_type: str) -> str | None:
@@ -209,6 +235,33 @@ async def get_latest_profile_request_status(profile: ClientProfile) -> str | Non
     if request is None:
         return None
     return _normalize_review_status(request.status)
+
+
+async def get_latest_document_request_status(profile: ClientProfile, document_type: str) -> str | None:
+    normalized_type = str(document_type or "").strip().lower()
+    if normalized_type not in {"identity", "address"}:
+        return None
+
+    request = await get_latest_document_request(profile, normalized_type)
+    if request is None:
+        return None
+    return _normalize_review_status(request.status)
+
+
+async def get_latest_document_request(profile: ClientProfile, document_type: str) -> PendingRequest | None:
+    normalized_type = str(document_type or "").strip().lower()
+    if normalized_type not in {"identity", "address"}:
+        return None
+
+    requests = await PendingRequest.filter(
+        client_profile=profile,
+        request_type__icontains="document",
+    ).order_by("-created_at")
+    for request in requests:
+        payload = request.payload if isinstance(request.payload, dict) else {}
+        if str(payload.get("document_type") or payload.get("documentType") or "").strip().lower() == normalized_type:
+            return request
+    return None
 
 
 def _normalize_payment_request_type(value: str | None) -> str | None:
@@ -303,6 +356,35 @@ def build_profile_submission_payload(*, body: dict, user: ClientUser, profile: C
     }
 
 
+def build_document_submission_payload(
+    *,
+    profile: ClientProfile,
+    body: dict,
+    file_name: str,
+    file_path: str,
+    file_url: str | None = None,
+    content_type: str | None = None,
+    file_size: int | None = None,
+) -> dict:
+    document_type = str(body.get("documentType") or body.get("document_type") or "").strip().lower()
+    if document_type not in {"identity", "address"}:
+        raise ValueError("documentType must be either 'identity' or 'address'")
+
+    return {
+        "document_type": document_type,
+        "file_name": file_name,
+        "file_path": file_path,
+        "file_url": file_url,
+        "content_type": content_type,
+        "file_size": file_size,
+        "client_profile_id": profile.id,
+        "user_id": profile.user_id,
+        "client_name": profile.full_name,
+        "client_email": profile.email,
+        "status": "pending",
+    }
+
+
 async def create_payment_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
     payment_type = _normalize_payment_request_type(payload.get("paymentType") or payload.get("payment_type"))
     if payment_type is None:
@@ -339,6 +421,30 @@ async def create_profile_pending_request(profile: ClientProfile, user: ClientUse
     pending_request = await PendingRequest.create(
         request_type="profile",
         client_name=str(submission_payload.get("client_name") or user.name).strip() or user.name,
+        client_profile=profile,
+        amount=0.0,
+        status="Pending",
+        payload=submission_payload,
+    )
+    return pending_request
+
+
+async def create_document_pending_request(profile: ClientProfile, payload: dict) -> PendingRequest:
+    document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
+    if document_type not in {"identity", "address"}:
+        raise ValueError("documentType must be either 'identity' or 'address'")
+
+    submission_payload = {
+        **payload,
+        "document_type": document_type,
+        "user_id": profile.user_id,
+        "client_profile_id": profile.id,
+        "client_name": profile.full_name,
+        "client_email": profile.email,
+    }
+    pending_request = await PendingRequest.create(
+        request_type="documents",
+        client_name=profile.full_name,
         client_profile=profile,
         amount=0.0,
         status="Pending",
@@ -430,6 +536,49 @@ async def apply_approved_profile_request(
     return user, profile
 
 
+async def apply_approved_document_request(
+    request: PendingRequest,
+    *,
+    profile: ClientProfile | None = None,
+) -> ClientDocument:
+    payload = request.payload or {}
+    profile = profile or request.client_profile
+    if profile is None and request.client_profile_id:
+        profile = await ClientProfile.filter(id=request.client_profile_id).first()
+    if profile is None:
+        raise ValueError("Pending request is not linked to a client profile")
+
+    document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
+    if document_type not in {"identity", "address"}:
+        raise ValueError(f"Unsupported document request type: {request.request_type}")
+
+    detail = await ClientDocument.filter(client_profile=profile).first()
+    if detail is None:
+        detail = await ClientDocument.create(client_profile=profile)
+
+    file_name = str(payload.get("file_name") or payload.get("fileName") or "").strip() or None
+    file_path = str(payload.get("file_path") or payload.get("filePath") or "").strip() or None
+    status = "approved"
+
+    if document_type == "identity":
+        detail.identity_file_name = file_name
+        detail.identity_file_path = file_path
+        detail.identity_status = status
+        detail.identity_uploaded_at = timezone.now()
+    else:
+        detail.address_file_name = file_name
+        detail.address_file_path = file_path
+        detail.address_status = status
+        detail.address_uploaded_at = timezone.now()
+
+    await detail.save()
+
+    request.status = "Approved"
+    request.reviewed_at = timezone.now()
+    await request.save()
+    return detail
+
+
 def build_payment_details_payload(
     *,
     profile: ClientProfile,
@@ -467,6 +616,47 @@ def build_payment_details_payload(
         "bank": bank_data,
         "crypto": crypto_data,
     }
+
+
+def build_document_details_payload(
+    *,
+    profile: ClientProfile,
+    document_detail: ClientDocument | None = None,
+    identity_request: PendingRequest | None = None,
+    address_request: PendingRequest | None = None,
+) -> dict:
+    document_data = serialize_client_document_detail(document_detail) or {
+        "id": None,
+        "identity": {
+            "file_name": None,
+            "file_path": None,
+            "status": "pending",
+            "uploaded_at": None,
+        },
+        "address": {
+            "file_name": None,
+            "file_path": None,
+            "status": "pending",
+            "uploaded_at": None,
+        },
+        "created_at": None,
+        "updated_at": None,
+    }
+
+    def _merge_pending(slot: str, request: PendingRequest | None) -> None:
+        if request is None:
+            return
+        payload = request.payload or {}
+        slot_payload = document_data[slot]
+        slot_payload["file_name"] = str(payload.get("file_name") or payload.get("fileName") or slot_payload.get("file_name") or "").strip() or None
+        slot_payload["file_path"] = str(payload.get("file_path") or payload.get("filePath") or slot_payload.get("file_path") or "").strip() or None
+        slot_payload["status"] = _normalize_review_status(request.status)
+        slot_payload["uploaded_at"] = request.created_at.strftime("%Y-%m-%d %H:%M:%S") if request.created_at else slot_payload.get("uploaded_at")
+
+    _merge_pending("identity", identity_request)
+    _merge_pending("address", address_request)
+
+    return document_data
 
 
 async def upsert_client_bank_detail(profile: ClientProfile, payload: dict) -> ClientBankDetail:

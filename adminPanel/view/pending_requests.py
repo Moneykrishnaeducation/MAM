@@ -14,7 +14,11 @@ from tortoise.expressions import Q
 
 from adminPanel.models import ClientProfile, PendingRequest
 from backendPanel.permissions import IsAdmin, permission_required
-from clientPanel.view.common import apply_approved_payment_request, apply_approved_profile_request
+from clientPanel.view.common import (
+    apply_approved_document_request,
+    apply_approved_payment_request,
+    apply_approved_profile_request,
+)
 
 TAB_ALIASES: dict[str, tuple[str, ...]] = {
     "deposits": ("deposit", "deposits"),
@@ -149,12 +153,15 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     title = TAB_DEFAULT_TITLES[tab]
     payload = _pending_payload(request)
     request_type = _sanitize_request_type(request.request_type)
+    document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
     bank_name = payload.get("bank_name") or payload.get("bankName") or f"{title} Bank"
     account_holder = payload.get("account_holder") or payload.get("accountHolder") or request.client_name
     account_number = payload.get("account_number") or payload.get("accountNumber") or f"**** {request.id:04d}"
     swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
     network = payload.get("network") or "USDT-TRC20"
     wallet_address = payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
+    file_name = payload.get("file_name") or payload.get("fileName")
+    file_url = payload.get("file_url") or payload.get("fileUrl")
     requested_value = request.client_name
     if request_type == "profile":
         requested_value = (
@@ -166,6 +173,8 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         requested_value = payload.get("bank_name") or payload.get("bankName") or request.client_name
     elif request_type == "crypto":
         requested_value = payload.get("wallet_address") or payload.get("cryptoAddress") or request.client_name
+    elif request_type in {"document", "documents"}:
+        requested_value = file_name or request.client_name
     return {
         "id": f"{tab[:3].upper()}-{request.id}",
         "requesterName": request.client_name,
@@ -180,9 +189,10 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "proofUrl": None,
         "availableBalance": None,
         "payoutDestination": None,
-        "documentType": title,
+        "documentType": "Identity Document" if document_type == "identity" else "Address Document" if document_type == "address" else title,
         "docNumber": f"{title[:3].upper()}-{request.id}",
-        "fileName": f"{tab}_{request.id}.pdf",
+        "fileName": file_name or f"{tab}_{request.id}.pdf",
+        "previewUrl": file_url,
         "fieldToUpdate": title,
         "currentValue": request.client_name,
         "requestedValue": requested_value,
@@ -331,6 +341,17 @@ async def decide_pending_request(request, request_id: str):
                     status=400,
                 )
             await apply_approved_profile_request(pending_request, profile=profile)
+        elif request_type in {"document", "documents"}:
+            profile = await _resolve_profile_for_pending_request(pending_request)
+            if profile is None:
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "Unable to resolve client profile for this document request",
+                    },
+                    status=400,
+                )
+            await apply_approved_document_request(pending_request, profile=profile)
         else:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()

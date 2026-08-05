@@ -6,6 +6,7 @@ from clientPanel.view.account import get_client_account, create_client_trading_a
 from clientPanel.view.activity_logs import get_client_activity_logs
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
+from clientPanel.view.documents import client_documents
 from clientPanel.view.investments import get_client_investments, pause_copying_api, start_copying_api
 from clientPanel.view.logout import logout_client
 from clientPanel.view.reset_password import change_client_password, reset_client_password
@@ -31,6 +32,7 @@ urlpatterns = [
     path("withdrawal", create_client_withdrawal, name="withdrawal"),
     path("profile", get_client_profile, name="profile"),
     path("payment-details", client_payment_details, name="payment-details"),
+    path("documents", client_documents, name="documents"),
     path("account", get_client_account, name="account"),
     path("accounts/create", create_client_trading_account, name="create-account"),
     path("my-investments", get_client_investments, name="my-investments"),

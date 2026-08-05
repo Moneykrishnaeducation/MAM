@@ -49,9 +49,10 @@ interface WithdrawRequest extends BaseRequest {
 }
 
 interface DocumentRequest extends BaseRequest {
-  documentType: 'Passport' | 'National ID' | 'Utility Bill' | 'Proof of Address';
+  documentType: string;
   docNumber: string;
   fileName: string;
+  previewUrl?: string | null;
 }
 
 interface ProfileRequest extends BaseRequest {
@@ -109,6 +110,17 @@ export default function AdminPendingRequestsPage() {
 
   // Selected Detail Modal State
   const [selectedDetail, setSelectedDetail] = useState<SelectedRequestUnion>(null);
+
+  const getDocumentPreviewKind = (value: string | null | undefined) => {
+    const lower = String(value || '').toLowerCase();
+    if (lower.endsWith('.pdf')) {
+      return 'pdf';
+    }
+    if (/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(lower)) {
+      return 'image';
+    }
+    return 'other';
+  };
 
   const loadActiveTabData = async (tab: RequestTab = activeTab) => {
     try {
@@ -877,12 +889,59 @@ export default function AdminPendingRequestsPage() {
                     </div>
                   </div>
 
-                  <div className="p-8 rounded-2xl bg-slate-950 border border-slate-800 border-dashed text-center flex flex-col items-center justify-center gap-2">
-                    <FileCheck size={36} className="text-purple-400" />
-                    <span className="font-semibold text-slate-200">KYC Document Attachment Loaded</span>
-                    <button className="flex items-center gap-1.5 text-blue-400 hover:underline text-xs font-semibold mt-1">
-                      <ExternalLink size={14} /> Open High Resolution Document
-                    </button>
+                  <div className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileCheck size={16} className="text-purple-400" />
+                        <span className="text-sm font-semibold text-slate-200">Document Preview</span>
+                      </div>
+                      {selectedDetail.data.previewUrl && (
+                        <a
+                          href={selectedDetail.data.previewUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-blue-400 hover:underline text-xs font-semibold"
+                        >
+                          <ExternalLink size={14} /> Open Full Size
+                        </a>
+                      )}
+                    </div>
+
+                    {selectedDetail.data.previewUrl ? (
+                      getDocumentPreviewKind(selectedDetail.data.previewUrl) === 'image' ? (
+                        <div className="bg-slate-900 p-3">
+                          <img
+                            src={selectedDetail.data.previewUrl}
+                            alt={selectedDetail.data.fileName}
+                            className="w-full max-h-[520px] object-contain rounded-xl border border-slate-800 bg-black/20"
+                          />
+                        </div>
+                      ) : getDocumentPreviewKind(selectedDetail.data.previewUrl) === 'pdf' ? (
+                        <iframe
+                          src={selectedDetail.data.previewUrl}
+                          title={selectedDetail.data.fileName}
+                          className="h-[520px] w-full bg-slate-900"
+                        />
+                      ) : (
+                        <div className="p-8 rounded-2xl text-center flex flex-col items-center justify-center gap-2">
+                          <FileCheck size={36} className="text-purple-400" />
+                          <span className="font-semibold text-slate-200">Preview is not available for this file type.</span>
+                          <a
+                            href={selectedDetail.data.previewUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-1.5 text-blue-400 hover:underline text-xs font-semibold mt-1"
+                          >
+                            <ExternalLink size={14} /> Open File
+                          </a>
+                        </div>
+                      )
+                    ) : (
+                      <div className="p-8 rounded-2xl border-t border-slate-800 border-dashed text-center flex flex-col items-center justify-center gap-2">
+                        <FileCheck size={36} className="text-purple-400" />
+                        <span className="font-semibold text-slate-200">No preview file available.</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
