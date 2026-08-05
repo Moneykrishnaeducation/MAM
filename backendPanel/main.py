@@ -50,6 +50,19 @@ if not settings.configured:
 if __name__ == "__main__":
     import uvicorn
     import threading
+    import sys
+
+    # Acquire process lock on the main thread to prevent starting if another instance is running
+    try:
+        from backendPanel.MPIB_DB import acquire_process_lock, LOCK_FILE
+        if not acquire_process_lock():
+            print("❌ Another MAM instance is already running!")
+            print("   Only one MAM copy trading engine can run at a time.")
+            print("   If you're sure no other instance is running, delete the lock file:")
+            print(f"   {LOCK_FILE}")
+            sys.exit(1)
+    except Exception as e:
+        print(f"⚠️ Failed to check process lock: {e}")
 
     # Start MAM copy trading engine in a background thread
     try:

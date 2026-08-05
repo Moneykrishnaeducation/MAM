@@ -35,6 +35,9 @@ def acquire_process_lock():
             try:
                 with open(LOCK_FILE, 'r') as f:
                     old_pid = int(f.read().strip())
+                # If it's the current process, we already hold the lock
+                if old_pid == os.getpid():
+                    return True
                 # Try to check if the process is still running on Windows
                 if sys.platform == 'win32':
                     import subprocess
