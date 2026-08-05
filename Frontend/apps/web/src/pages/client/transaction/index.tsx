@@ -499,7 +499,7 @@ export default function TransactionHistory() {
         {/* Controls Row */}
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
           {/* Left: Tabs */}
-          <div className={`grid grid-cols-3 gap-2 p-2 rounded-[2rem] border ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)]'} shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto`}>
+          <div className={`grid grid-cols-2 gap-2 p-2 rounded-[2rem] border ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)]'} shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto`}>
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -657,88 +657,8 @@ export default function TransactionHistory() {
             </div>
           )}
 
-          <div className="space-y-4 px-4 pb-4 md:hidden">
-            {loading ? (
-              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-5 shadow-[0_20px_60px_rgba(2,6,23,0.22)]">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="h-4 w-28 animate-pulse rounded-full bg-white/10" />
-                  <div className="h-6 w-20 animate-pulse rounded-full bg-white/10" />
-                </div>
-                <div className="mt-5 grid grid-cols-2 gap-3">
-                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
-                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
-                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
-                  <div className="h-16 animate-pulse rounded-2xl bg-white/5" />
-                </div>
-              </div>
-            ) : transactions.length > 0 ? (
-              transactions.map((transaction) => {
-                const TypeIcon = getTypeIcon(transaction.type);
-                const amountClass =
-                  transaction.type.toLowerCase() === 'withdrawal'
-                    ? 'text-rose-400'
-                    : transaction.type.toLowerCase() === 'deposit'
-                      ? 'text-emerald-400'
-                      : isDarkMode ? 'text-white' : 'text-white';
-
-                return (
-                  <article
-                    key={String(transaction.id)}
-                    className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-4 shadow-[0_20px_60px_rgba(2,6,23,0.22)]"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-slate-400">Reference</p>
-                        <p className="mt-1 font-mono text-sm font-bold text-slate-50">{`TXN-${transaction.id}`}</p>
-                      </div>
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold ${getStatusStyles(transaction.status, isDarkMode)}`}
-                      >
-                        {transaction.status}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Date</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">{formatDate(transaction.date)}</p>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Type</p>
-                        <span
-                          className={`mt-1 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}
-                        >
-                          <TypeIcon size={12} />
-                          {transaction.type}
-                        </span>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Method</p>
-                        <p className="mt-1 text-sm font-semibold text-slate-100">{transaction.method}</p>
-                      </div>
-
-                      <div className="rounded-2xl border border-white/8 bg-white/5 px-3 py-3">
-                        <p className="text-[9px] font-black uppercase tracking-[0.24em] text-slate-400">Amount</p>
-                        <p className={`mt-1 text-sm font-black ${amountClass}`}>{formatMoney(transaction.amount)}</p>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })
-            ) : (
-              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,35,88,0.95)_0%,rgba(8,22,59,0.98)_100%)] p-8 text-center shadow-[0_20px_60px_rgba(2,6,23,0.22)]">
-                <div className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-[#0b226a]'}`}>
-                  <Search className={isDarkMode ? 'text-gray-400' : 'text-[#8db5ff]'} size={26} />
-                </div>
-                <p className={`text-base font-bold ${softTextClass}`}>{emptyMessage}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full">
+          <div className="overflow-x-auto">
+            <table className="min-w-[760px] w-full">
               <thead>
                 <tr className={isDarkMode ? 'bg-white/5' : 'bg-[#0b226a]'}>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>

@@ -2,23 +2,30 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'
-import { 
-  LayoutDashboard, 
-  UserCheck, 
-  Wallet, 
-  Compass, 
+import { usePathname } from 'next/navigation';
+import {
+  type LucideIcon,
+  LayoutDashboard,
+  UserCheck,
+  Wallet,
+  Compass,
   Shield,
   LogOut,
   X,
   Activity,
   LifeBuoy,
   ArrowRightLeft,
-  TrendingUp
+  TrendingUp,
+  ChevronRight,
 } from 'lucide-react';
 
-export default function ClientSidebar() {
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
 
+export default function ClientSidebar() {
   const currentPath = usePathname();
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === 'undefined') {
@@ -61,7 +68,7 @@ export default function ClientSidebar() {
     return () => window.removeEventListener('client-logout-confirm-toggle', handleLogoutConfirmToggle);
   }, []);
 
-  const navItems = [
+  const navItems: NavItem[] = [
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
     { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
@@ -70,7 +77,7 @@ export default function ClientSidebar() {
     { href: '/client/technical-analysis', label: 'Technical Analysis', icon: TrendingUp },
     { href: '/client/tickets', label: 'Tickets', icon: LifeBuoy },
     { href: '/client/transaction', label: 'Transactions', icon: ArrowRightLeft },
-    { href: '/client/privacy', label: 'Policies', icon: Shield  },
+    { href: '/client/privacy', label: 'Policies', icon: Shield },
   ];
 
   const requestLogout = () => {
@@ -91,7 +98,7 @@ export default function ClientSidebar() {
     <>
       {/* Mobile Sidebar Overlay Backdrop */}
       {isOpen && (
-        <div 
+        <div
           onClick={() =>
             window.dispatchEvent(
               new CustomEvent('client-sidebar-state-change', {
@@ -99,28 +106,30 @@ export default function ClientSidebar() {
               }),
             )
           }
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-300"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 md:hidden"
         />
       )}
 
-      <aside 
-        className={`flex justify-between flex-col h-screen z-50 transition-all duration-300 shadow-2xl
-          fixed md:sticky top-0 left-0 bg-[#0e2250] border-r border-blue-900/40
-          ${isOpen 
-            ? 'w-64 p-5 translate-x-0 opacity-100 ' 
-            : 'w-0 p-0 overflow-hidden opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:p-0'
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen flex-col justify-between border-r border-white/10 shadow-[12px_0_40px_rgba(7,16,39,0.28)] transition-all duration-300 md:sticky
+          ${isOpen
+            ? 'w-68 translate-x-0 p-2 opacity-100'
+            : 'w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0'
           }
-          ${isModalOpen ? 'blur-sm brightness-50 pointer-events-none' : ''}
-          ${isLogoutConfirmOpen ? 'blur-md brightness-50 pointer-events-none' : ''}
-        `} 
+          ${isModalOpen ? 'pointer-events-none brightness-50 blur-sm' : ''}
+          ${isLogoutConfirmOpen ? 'pointer-events-none brightness-50 blur-md' : ''}
+        `}
+        style={{
+          background: 'linear-gradient(180deg, #081530 0%, #0d2456 45%, #173d8d 100%)',
+        }}
       >
-        <div className="flex-1 overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+        <div className="flex-1 overflow-y-auto [-ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
           {/* Brand Header */}
-          <div className="flex items-center justify-between gap-3 px-2 mb-10 mt-2">
+          <div className="mb-8 mt-2 flex items-center justify-between gap-3 px-2">
             <img
               src="/Vt.png"
               alt="VTIndex Logo"
-              className="drop-shadow-[0_0_15px_rgba(201,162,39,0.4)] transition-transform hover:scale-[1.05] w-32"
+              className="w-32 transition-transform drop-shadow-[0_0_15px_rgba(201,162,39,0.4)] hover:scale-[1.05]"
             />
             <button
               type="button"
@@ -131,7 +140,7 @@ export default function ClientSidebar() {
                   }),
                 )
               }
-              className="flex items-center justify-center h-9 w-9 rounded-xl border border-blue-800/40 text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-slate-200/70 transition-colors hover:bg-white/10 hover:text-white"
               title="Close menu"
               aria-label="Close menu"
             >
@@ -141,33 +150,46 @@ export default function ClientSidebar() {
 
           {/* Navigation */}
           <nav className="space-y-2">
-            <div className="px-4 mb-3 text-[10px] font-extrabold tracking-[0.2em] text-blue-400/60 uppercase">
+            <div className="mb-3 px-4 text-[10px] font-extrabold uppercase tracking-[0.24em] text-blue-100/55">
               Client Menu
             </div>
             {navItems.map((item) => {
               const isActive = currentPath === item.href || (item.href === '/client/dashboard' && currentPath === '/client');
               const Icon = item.icon;
+
+              const itemBaseClasses =
+                'group relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] px-4 py-3.5 text-[12px] font-extrabold uppercase tracking-[0.22em] transition-all duration-300';
+              const itemStateClasses = isActive
+                ? 'border border-[#4d65bf]/55 bg-[linear-gradient(180deg,#2b4086_0%,#22356f_100%)] text-[#f5c84b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_32px_rgba(0,0,0,0.28)] translate-x-1'
+                : 'border border-transparent text-slate-100/86 hover:bg-white/10 hover:text-white';
+              const iconStateClasses = isActive
+                ? 'text-[#f5c84b]'
+                : 'text-slate-300/75 group-hover:text-white';
+
               return (
                 <Link
                   key={item.href}
                   href={item.href as any}
                   prefetch={true}
                   onClick={handleNavClick}
-                  className={`flex items-center gap-4 px-4 py-3.5 rounded-2xl font-bold text-[13px] transition-all duration-300 group ${
-                    isActive
-                      ? 'bg-white text-[#0a1435] shadow-[0_8px_30px_rgba(255,255,255,0.15)] translate-x-1 border border-white relative overflow-hidden'
-                      : 'text-[#d9aa2b] hover:text-[#fcd34d] hover:bg-[#1a2c5b] hover:translate-x-1 border border-transparent'
-                  }`}
+                  className={`${itemBaseClasses} ${itemStateClasses}`}
                 >
                   {isActive && (
-                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-blue-600 rounded-l-2xl"></div>
+                    <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-white" />
                   )}
-                  <Icon 
-                    size={20} 
-                    strokeWidth={isActive ? 2.5 : 2}
-                    className={`transition-colors duration-300 z-10 ${isActive ? 'text-blue-700 ml-1' : 'text-blue-200 group-hover:text-blue-100'}`} 
+                  <Icon
+                    size={20}
+                    strokeWidth={isActive ? 2.4 : 2}
+                    className={`shrink-0 transition-colors duration-300 ${iconStateClasses} ${isActive ? 'ml-0.5' : ''}`}
                   />
-                  <span className="z-10">{item.label}</span>
+                  <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  {isActive && (
+                    <ChevronRight
+                      size={15}
+                      strokeWidth={2.5}
+                      className="shrink-0 text-[#f5c84b]/75"
+                    />
+                  )}
                 </Link>
               );
             })}
@@ -175,19 +197,19 @@ export default function ClientSidebar() {
         </div>
 
         {/* Client User Card at bottom */}
-        <div className="pt-5 mt-2 border-t border-blue-900/40">
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#0d1a40] border border-blue-800/30 hover:bg-[#122359] hover:border-blue-700/50 transition-all shadow-inner group">
+        <div className="mt-2 border-t border-white/10 pt-5">
+          <div className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0b1740]/90 p-3 shadow-inner transition-all hover:border-blue-400/20 hover:bg-[#111d4d]">
             <div className="relative">
               <img
                 src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80"
                 alt="Client Avatar"
-                className="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-500/20 group-hover:ring-blue-400/40 transition-all"
+                className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-500/20 transition-all group-hover:ring-blue-400/40"
               />
-              <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-[#0d1a40]" />
+              <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-[#0b1740] bg-emerald-500" />
             </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-extrabold text-white truncate">Alex Rivera</h4>
-              <div className="text-[10px] font-bold text-blue-300 uppercase tracking-wider truncate mt-0.5">
+            <div className="min-w-0 flex-1">
+              <h4 className="truncate text-sm font-extrabold text-white">Alex Rivera</h4>
+              <div className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-wider text-blue-100/70">
                 Premium Client
               </div>
             </div>
