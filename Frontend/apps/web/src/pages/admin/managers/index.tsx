@@ -255,15 +255,32 @@ export default function AdminManagersPage() {
 
         </div>
 
-        {/* TOAST ALERT */}
-        {toastMessage && (
-          <div className="p-4 rounded-2xl bg-blue-600/20 border border-blue-500/40 text-white text-xs font-semibold flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
-            <span className="flex items-center gap-2">
-              <CheckCircle2 size={16} className="text-blue-400" /> {toastMessage}
-            </span>
-            <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white">&times;</button>
-          </div>
-        )}
+{/* MODERN SUCCESS TOAST */}
+{toastMessage && (
+  <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-right-5 fade-in duration-300">
+    <div className="relative flex items-center gap-4 overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900/95 px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl min-w-[340px]">
+
+      {/* Left Accent */}
+      <div className="absolute left-0 top-0 h-full w-1 bg-emerald-400" />
+
+      {/* Icon */}
+      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15">
+        <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+      </div>
+
+      {/* Message */}
+      <div>
+        <p className="text-sm font-semibold text-white">
+          Success
+        </p>
+        <p className="mt-1 text-xs text-slate-300">
+          {toastMessage}
+        </p>
+      </div>
+    </div>
+  </div>
+)}
+
 
         {/* MAIN DATA TABLE CONTAINER - DARK BLUE 80% */}
         <div className="bg-[#111c38]/90 border border-blue-900/60 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
