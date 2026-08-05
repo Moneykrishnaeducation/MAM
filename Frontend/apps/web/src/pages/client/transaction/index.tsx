@@ -25,6 +25,7 @@ type ClientTransaction = {
   method: string;
   status: string;
   date: string | null;
+  account_id?: string;
 };
 
 const tabs = [
@@ -118,6 +119,7 @@ const normalizeTransaction = (transaction: any): ClientTransaction => ({
   method: String(transaction.method || 'Wire Transfer'),
   status: String(transaction.status || 'Completed'),
   date: transaction.date ? String(transaction.date) : null,
+  account_id: transaction.account_number || transaction.account_id || 'N/A',
 });
 
 const getStatusStyles = (status: string, isDarkMode: boolean) => {
@@ -411,20 +413,6 @@ export default function TransactionHistory() {
         valueClassName: 'text-3xl font-black text-white',
         subtitleClassName: isDarkMode ? 'text-xs font-semibold uppercase tracking-[0.2em] text-amber-400/80' : 'text-xs font-semibold uppercase tracking-[0.2em] text-amber-200/70',
       },
-      {
-        title: 'Total Volume',
-        value: formatMoney(summary.totalVolume),
-        subtitle: 'All transactions',
-        icon: CircleDollarSign,
-        accentClassName: isDarkMode
-          ? 'relative overflow-hidden rounded-3xl border border-emerald-900/45 bg-slate-900 p-6 shadow-xl'
-          : 'relative overflow-hidden rounded-3xl border border-emerald-800/50 bg-gradient-to-br from-emerald-900/30 via-[#0b183f] to-[#0b183f] p-6 shadow-2xl',
-        iconClassName: isDarkMode
-          ? 'flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-          : 'flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/20 text-emerald-300',
-        valueClassName: 'text-3xl font-black text-white flex items-baseline gap-2',
-        subtitleClassName: isDarkMode ? 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400/80' : 'text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/70',
-      },
     ],
     [summary, isDarkMode],
   );
@@ -609,7 +597,7 @@ export default function TransactionHistory() {
         </div>
 
         {/* Summary Cards Grid */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {summaryCards.map((card) => {
             const Icon = card.icon;
 
@@ -771,6 +759,7 @@ export default function TransactionHistory() {
                       Date
                     </div>
                   </th>
+                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Account</th>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Type</th>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Method</th>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
@@ -824,6 +813,7 @@ export default function TransactionHistory() {
                             {formatDate(transaction.date)}
                           </span>
                         </td>
+                        <td className={`px-6 py-5 whitespace-nowrap font-bold ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>{transaction.account_id}</td>
                         <td className="px-6 py-5 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}

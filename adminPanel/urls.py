@@ -9,6 +9,7 @@ from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_account_api
+from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
     decide_pending_request,
     list_pending_banks,
@@ -64,6 +65,9 @@ urlpatterns = [
     path("users/<str:user_id>/delete", delete_user, name="delete-user"),
     path("users/<str:user_id>/tickets", list_client_tickets, name="client-tickets"),
     path("users/<str:user_id>/transactions", list_client_transactions, name="client-transactions"),
+    path("users/<str:user_id>/open-positions", get_admin_user_open_positions, name="client-open-positions"),
+    path("open-positions/<int:account_id>/", get_admin_open_positions, name="open-positions"),
+    path("open-positions/<int:account_id>", get_admin_open_positions, name="open-positions-no-slash"),
     path("managers", list_managers, name="managers"),
     path("investors", list_investors, name="investors"),
     path("activity", list_activity_logs, name="activity"),

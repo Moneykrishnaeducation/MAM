@@ -10,6 +10,7 @@ from clientPanel.view.documents import client_documents
 from clientPanel.view.investments import get_client_investments, pause_copying_api, start_copying_api
 from clientPanel.view.logout import logout_client
 from clientPanel.view.reset_password import change_client_password, reset_client_password
+from clientPanel.view.OpenPositions import get_client_open_positions
 from clientPanel.view.payment_details import client_payment_details
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.tickets import (
@@ -38,6 +39,8 @@ urlpatterns = [
     path("my-investments", get_client_investments, name="my-investments"),
     path("my-investments/pause", pause_copying_api, name="pause-copying"),
     path("my-investments/start", start_copying_api, name="start-copying"),
+    path("open-positions/<int:account_id>/", get_client_open_positions, name="open-positions"),
+    path("open-positions/<int:account_id>", get_client_open_positions, name="open-positions-no-slash"),
     path("transactions", get_client_transactions, name="transactions"),
     path("tickets", get_client_tickets, name="tickets"),
     path("tickets/create", create_client_ticket, name="ticket-create"),

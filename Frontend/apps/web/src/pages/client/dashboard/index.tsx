@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
 import {
   BookOpen, 
   Clock, 
@@ -191,9 +192,20 @@ const dashboardCardIcons: Record<
   React.ComponentType<{ className?: string; size?: number; strokeWidth?: number }>
 > = {
   manager_account: UserCheck,
+  investor_account: User,
   Total_Investments: TrendingUp,
   balance: Banknote,
   available_managers: Users,
+};
+
+const cardRedirectRoutes: Record<string, string> = {
+  manager_account: '/client/manager',
+  investor_account: '/client/my-invest',
+  funds_invested: '/client/my-invest',
+  total_investments: '/client/my-invest',
+  Total_Investments: '/client/my-invest',
+  balance: '/client/transaction',
+  available_managers: '/client/available',
 };
 
 const buildDashboardCards = (
@@ -243,35 +255,35 @@ const buildDashboardCards = (
       title: 'MAM Manager Account',
       value: managerName,
       raw_value: managerName,
-      subtitle: managerSubtitle,
+     
     },
     {
       key: 'Total_Investments',
       title: 'Total Investments',
       value: formatCurrency(totalInvested),
       raw_value: totalInvested,
-      subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
+      // subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
     },
     {
       key: 'balance',
       title: 'MAM Balance',
       value: formatCurrency(totalBalance),
       raw_value: totalBalance,
-      subtitle: balanceCard?.subtitle || (account ? `Account ${account.account_number}` : undefined),
+      // subtitle: balanceCard?.subtitle || (account ? `Account ${account.account_number}` : undefined),
     },
     {
       key: 'available_managers',
       title: 'Available MAM Managers',
       value: investmentManagerNames.length > 0 ? `${investmentManagerNames.length}` : '0',    
       raw_value: investmentManagerNames.length,    
-      subtitle: investmentManagerNames.length > 0 ? `Managers: ${investmentManagerNames.join(', ')}` : undefined,
+      // subtitle: investmentManagerNames.length > 0 ? `Managers: ${investmentManagerNames.join(', ')}` : undefined,
     },
     {
       key: 'Total_Investments',
       title: 'Total Investments',
       value: formatCurrency(liveInvestmentTotal),
       raw_value: liveInvestmentTotal,
-      subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
+      // subtitle: allocationCount > 0 ? `${allocationCount} active allocation${allocationCount === 1 ? '' : 's'}` : undefined,
     }
   ];
 };
@@ -700,6 +712,7 @@ const DashboardWithdrawalModal = ({
 };
 
 export default function ClientDashboardPage() {
+  const router = useRouter();
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showAccountOpenModal, setShowAccountOpenModal] = useState(false);
@@ -860,11 +873,13 @@ export default function ClientDashboardPage() {
             {dashboardCards.map((st, idx) => {
               const IconComp = dashboardCardIcons[st.key] || BookOpen;
               const isFallbackCard = !dashboardData?.cards?.length;
+              const targetRoute = cardRedirectRoutes[st.key];
 
               return (
                 <div
                   key={st.key || idx}
-                  className={`relative overflow-hidden rounded-3xl border p-6 shadow-2xl group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 ${
+                  onClick={() => targetRoute && router.push(targetRoute)}
+                  className={`relative overflow-hidden rounded-3xl border p-6 shadow-2xl group transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_-10px_rgba(59,130,246,0.3)] hover:border-blue-500/50 cursor-pointer ${
                     isFallbackCard ? 'bg-[#081737]/90 border-blue-800/30' : 'bg-[#0b183f]/80 border-blue-800/40 backdrop-blur-sm'
                   }`}
                 >
