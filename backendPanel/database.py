@@ -1,9 +1,10 @@
-"""Database connection and initialization logic for Tortoise ORM in backendPanel."""
-
 import logging
+import warnings
 from typing import Any
 
 from tortoise import Tortoise
+
+warnings.filterwarnings("ignore", message=".*Tortoise connection.*")
 
 from backendPanel.settings import get_settings
 

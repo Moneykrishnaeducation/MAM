@@ -136,6 +136,25 @@ def reset_manager_instance():
        
         logger.info("MT5 Manager connection has been reset")
 
+
+def get_shared_manager():
+    """
+    Return the raw ManagerAPI object from the cached real-server singleton.
+
+    This is a zero-connection-overhead accessor — it returns whatever is
+    already stored in ``_real_manager_instance`` without opening a new TCP
+    session.  Call this from background threads (e.g. balance sync) instead
+    of constructing a new ``MT5ManagerActions()`` to avoid exhausting the
+    MT5 Manager connection limit.
+
+    Returns the ManagerAPI object, or None if no live connection exists yet.
+    """
+    with _manager_lock:
+        if _real_manager_instance and getattr(_real_manager_instance, "connected", False):
+            return _real_manager_instance.manager
+    return None
+
+
 def force_refresh_trading_groups():
     try:
         async def clear_groups():
