@@ -78,4 +78,4 @@ async def get_pending_requests(skip: int = 0, limit: int = 100) -> list[PendingR
 
 async def get_activity_logs(skip: int = 0, limit: int = 100) -> list[ActivityLog]:
     """Get list of activity logs."""
-    return await ActivityLog.all().offset(skip).limit(limit)
+    return await ActivityLog.all().order_by("-timestamp").offset(skip).limit(limit)

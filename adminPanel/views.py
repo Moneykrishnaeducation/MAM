@@ -686,21 +686,85 @@ async def list_investors(request):
 
 
 
+def _classify_activity_log(log: ActivityLog) -> str:
+    """Infer an activity category from the audit columns."""
+    text = f"{log.user_role} {log.action_type} {log.module_name}".lower()
+
+    if any(keyword in text for keyword in ("error", "failed", "failure", "exception", "denied", "blocked", "unauthorized", "invalid")):
+        return "error"
+
+    if str(log.user_role).strip().lower() == "client" or any(
+        keyword in text for keyword in ("client", "user", "login", "signin", "sign in", "profile", "account", "kyc", "ticket", "deposit", "withdraw", "payment")
+    ):
+        return "client"
+
+    return "admin"
+
+
+def _format_activity_details(log: ActivityLog) -> str:
+    """Build a compact readable description for UI cards and tables."""
+    parts: list[str] = [log.module_name]
+    if log.record_id:
+        parts.append(f"Record {log.record_id}")
+    if log.action_type:
+        parts.append(log.action_type)
+    return " · ".join(part for part in parts if part)
+
+
+def _serialize_activity_log(log: ActivityLog) -> dict:
+    """Serialize a single activity log row for activity APIs."""
+    return {
+        "id": log.id,
+        "user_name": log.user_name,
+        "user_role": log.user_role,
+        "action_type": log.action_type,
+        "module_name": log.module_name,
+        "record_id": log.record_id,
+        "old_values": log.old_values,
+        "new_values": log.new_values,
+        "ip_address": log.ip_address,
+        "user_agent": log.user_agent,
+        "timestamp": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else None,
+        "user_id": log.user_id,
+        "action": log.action_type,
+        "user": log.user_name,
+        "details": _format_activity_details(log),
+        "time": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else None,
+        "category": _classify_activity_log(log),
+    }
+
+
+async def _list_activity_logs_by_category(category: str | None = None):
+    """Return serialized activity logs filtered by category when requested."""
+    await ensure_db_initialized()
+    logs = await ActivityLog.all().order_by("-timestamp")
+    results = [_serialize_activity_log(log) for log in logs]
+
+    if category and category != "all":
+        results = [log for log in results if log["category"] == category]
+
+    return JsonResponse({"status": "ok", "activities": results})
+
+
 async def list_activity_logs(request):
     """List system activity logs directly from database."""
-    await ensure_db_initialized()
-    logs = await ActivityLog.all().order_by("-created_at")
-    results = [
-        {
-            "id": log.id,
-            "action": log.action,
-            "user": log.user_email,
-            "ip_address": log.ip_address,
-            "time": log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else None,
-        }
-        for log in logs
-    ]
-    return JsonResponse({"status": "ok", "activities": results})
+    return await _list_activity_logs_by_category("all")
+
+
+async def list_admin_activity_logs(request):
+    """List admin-category activity logs directly from database."""
+    return await _list_activity_logs_by_category("admin")
+
+
+async def list_client_activity_logs(request):
+    """List client-category activity logs directly from database."""
+    return await _list_activity_logs_by_category("client")
+
+
+async def list_error_activity_logs(request):
+    """List error-category activity logs directly from database."""
+    return await _list_activity_logs_by_category("error")
+
 
 
 # ── POST views ─────────────────────────────────────────────────────────────────

@@ -58,7 +58,7 @@ async def get_admin_dashboard(request):
     pending_requests = await PendingRequest.all().order_by("-created_at").limit(5)
 
     pending_count = await PendingRequest.filter(status__iexact="pending").count()
-    recent_activity_logs = await ActivityLog.all().order_by("-created_at").limit(5)
+    recent_activity_logs = await ActivityLog.all().order_by("-timestamp").limit(5)
     recent_clients = await ClientUser.all().order_by("-joined").limit(5)
 
     total_aum = sum(float(manager.balance) for manager in managers)
@@ -151,11 +151,20 @@ async def get_admin_dashboard(request):
                 "recent_activity_logs": [
                     {
                         "id": log.id,
-                        "action": log.action,
-                        "user": log.user_email,
+                        "action": log.action_type,
+                        "user": log.user_name,
+                        "user_name": log.user_name,
+                        "user_role": log.user_role,
+                        "action_type": log.action_type,
+                        "module_name": log.module_name,
+                        "record_id": log.record_id,
+                        "old_values": log.old_values,
+                        "new_values": log.new_values,
                         "ip_address": log.ip_address,
-                        "details": log.details,
-                        "time": _format_timestamp(log.created_at),
+                        "user_agent": log.user_agent,
+                        "details": f"{log.module_name}{f' #{log.record_id}' if log.record_id else ''}",
+                        "time": _format_timestamp(log.timestamp),
+                        "timestamp": _format_timestamp(log.timestamp),
                     }
                     for log in recent_activity_logs
                 ],

@@ -11,10 +11,19 @@ from clientPanel.view.common import _get_client_profile_for_request
 def _serialize_activity_log(log: ActivityLog) -> dict:
     return {
         "id": log.id,
-        "action": log.action,
-        "details": log.details,
+        "action": log.action_type,
+        "details": f"{log.module_name}{f' #{log.record_id}' if log.record_id else ''}",
+        "user_name": log.user_name,
+        "user_role": log.user_role,
+        "action_type": log.action_type,
+        "module_name": log.module_name,
+        "record_id": log.record_id,
+        "old_values": log.old_values,
+        "new_values": log.new_values,
         "ip_address": log.ip_address,
-        "time": log.created_at.strftime("%Y-%m-%d %H:%M:%S") if log.created_at else None,
+        "user_agent": log.user_agent,
+        "timestamp": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else None,
+        "time": log.timestamp.strftime("%Y-%m-%d %H:%M:%S") if log.timestamp else None,
     }
 
 
@@ -26,7 +35,7 @@ async def get_client_activity_logs(request):
     if error:
         return error
 
-    activity_logs = await ActivityLog.filter(user_email__iexact=profile.email).order_by("-created_at").limit(5)
+    activity_logs = await ActivityLog.filter(user_id=profile.user_id).order_by("-timestamp").limit(5)
 
     return JsonResponse(
         {

@@ -69,6 +69,8 @@ Recent additions:
 - `adminPanel/view/client_transactions.py` provides the admin-only client transaction history API under `/api/admin/users/<user_id>/transactions`.
 - `adminPanel/view/client_tickets.py` provides the admin-only client support ticket history API under `/api/admin/users/<user_id>/tickets`.
 - `adminPanel/views.py` now includes KYC/document payloads in `/api/admin/users` and exposes `/api/admin/users/<user_id>/kyc` for lazy-loading the row expansion data from `client_profiles` and `client_documents`.
+- `adminPanel/views.py` now exposes category-specific activity APIs under `/api/admin/activity/admin`, `/api/admin/activity/client`, and `/api/admin/activity/error`, while `/api/admin/activity` remains the full activity feed.
+- `adminPanel/models.py` now maps `ActivityLog` to the `audit_activitylog` table with `user_name`, `user_role`, `action_type`, `module_name`, `record_id`, `old_values`, `new_values`, `ip_address`, `user_agent`, `timestamp`, and `user_id`.
 - `adminPanel/models.py` now includes `ClientBankDetail` and `ClientCryptoDetail`, and the payment detail endpoints live at `/api/client/payment-details` and `/api/admin/users/<user_id>/payment`.
 - `adminPanel/models.py` now uses `client` as the unified user table; admin accounts are stored there with `role="Admin"` and the old `admin_users` model/table is no longer used by the code.
 - `adminPanel/models.py` now stores KYC documents in `client_documents.user_id` (linked to `ClientUser`) and startup backfills any legacy `client_profile_id` rows into the new column.

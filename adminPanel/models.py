@@ -1,6 +1,8 @@
 """Models for adminPanel: Users, TradingAccount (MAM + Investor unified), Pending Requests, Activity Logs, Client Profiles & Accounts."""
 
+import json
 import logging
+from typing import Any
 
 from tortoise import fields, models
 
@@ -191,17 +193,71 @@ class PendingRequest(models.Model):
 
 
 class ActivityLog(models.Model):
-    """System activity log entry."""
+    """Audit activity log entry."""
 
-    id = fields.IntField(primary_key=True)
-    user_email = fields.CharField(max_length=255)
-    action = fields.CharField(max_length=255)
-    details = fields.TextField(null=True)
-    ip_address = fields.CharField(max_length=50)
-    created_at = fields.DatetimeField(auto_now_add=True)
+    id = fields.BigIntField(primary_key=True)
+    user_name = fields.CharField(max_length=255)
+    user_role = fields.CharField(max_length=50)
+    action_type = fields.CharField(max_length=100)
+    module_name = fields.CharField(max_length=100)
+    record_id = fields.CharField(max_length=100, null=True)
+    old_values = fields.JSONField(null=True)
+    new_values = fields.JSONField(null=True)
+    ip_address = fields.CharField(max_length=50, null=True)
+    user_agent = fields.TextField(null=True)
+    timestamp = fields.DatetimeField(auto_now_add=True)
+    user_id = fields.IntField(null=True, index=True)
 
     class Meta:
-        table = "admin_activity_logs"
+        table = "audit_activitylog"
+
+    @classmethod
+    async def create(cls, **kwargs: Any):
+        """Accept both the new audit payload and legacy activity log kwargs."""
+        data = dict(kwargs)
+
+        if "user_name" not in data and "user_email" in data:
+            data["user_name"] = data.pop("user_email")
+
+        if "action_type" not in data and "action" in data:
+            data["action_type"] = data.pop("action")
+
+        if "module_name" not in data and "details" in data:
+            details = data.pop("details")
+            if isinstance(details, dict):
+                data["old_values"] = data.get("old_values") or details
+                data["module_name"] = str(details.get("module_name") or details.get("module") or "legacy")
+            else:
+                data["module_name"] = "legacy"
+                data["old_values"] = data.get("old_values") or {"details": details}
+
+        data.setdefault("user_role", "Admin")
+        data.setdefault("module_name", "general")
+
+        if "created_at" in data and "timestamp" not in data:
+            data["timestamp"] = data.pop("created_at")
+
+        return await super().create(**data)
+
+    @property
+    def user_email(self) -> str:
+        return self.user_name
+
+    @property
+    def action(self) -> str:
+        return self.action_type
+
+    @property
+    def details(self) -> str:
+        if isinstance(self.new_values, dict) and self.new_values:
+            return json.dumps(self.new_values, default=str)
+        if isinstance(self.old_values, dict) and self.old_values:
+            return json.dumps(self.old_values, default=str)
+        return self.module_name
+
+    @property
+    def created_at(self):
+        return self.timestamp
 
 
 class AdminMailMessage(models.Model):
