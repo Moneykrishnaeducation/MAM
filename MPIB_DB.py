@@ -362,7 +362,24 @@ def run_mam_script():
                         raise
                 MT5Manager.InitializeManagerAPIPath(module_path=instance_directory, work_path=instance_directory)
 
-                manager = ManagerAPI()
+                try:
+                    manager = ManagerAPI()
+                except SystemError as e:
+                    # Provide richer diagnostics when the C-extension type fails to initialize.
+                    logger.error("ManagerAPI() raised SystemError: %s", e)
+                    try:
+                        logger.error("Instance directory: %s", instance_directory)
+                        logger.error("Contents: %s", os.listdir(instance_directory))
+                    except Exception as ex:
+                        logger.error("Could not list instance directory: %s", ex)
+                    try:
+                        logger.error("sys.executable: %s", sys.executable)
+                        logger.error("Python version: %s", sys.version)
+                        logger.error("Environment PATH: %s", os.environ.get('PATH'))
+                    except Exception:
+                        pass
+                    logger.error("Common causes: missing native DLLs, missing Visual C++ runtime, or 32/64-bit mismatch.")
+                    raise RuntimeError("ManagerAPI() initialization failed; see logs for details") from e
                 try:
                     print(f"Connecting to IP: {ip_address}, Login: {login}")
                     if manager.Connect(ip_address, int(login), password, MT5Manager.ManagerAPI.EnPumpModes.PUMP_MODE_FULL, timeout=120000):
@@ -1002,8 +1019,11 @@ def run_mam_script():
 
         def get_followers(self, loginID):
             # Get all potential followers based on agent relationship
+            leader = manager.UserGet(loginID)
+            if not leader or not str(leader.Agent).startswith("426"):
+                return []
             potential_followers = [
-                user.Login for user in manager.UserGetByGroup(manager.UserGet(loginID).Group)
+                user.Login for user in manager.UserGetByGroup(leader.Group)
                 if user.Agent == loginID
             ]
             
@@ -1315,8 +1335,11 @@ def run_mam_script():
 
         def get_followers(self, loginID):
             # Get all potential followers based on agent relationship
+            leader = manager.UserGet(loginID)
+            if not leader or not str(leader.Agent).startswith("426"):
+                return []
             potential_followers = [
-                user.Login for user in manager.UserGetByGroup(manager.UserGet(loginID).Group)
+                user.Login for user in manager.UserGetByGroup(leader.Group)
                 if user.Agent == loginID
             ]
             
