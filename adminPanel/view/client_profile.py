@@ -54,13 +54,41 @@ async def _resolve_client_user(user_id: str) -> ClientUser | None:
 
 @csrf_exempt
 @permission_required(IsAdmin)
-@require_http_methods(["PUT"])
-async def update_client_profile(request, user_id: str):
-    """Submit the admin users-page client profile modal payload for approval."""
+@require_http_methods(["GET"])
+async def get_client_profile_details(request, user_id: str):
+    """Load the admin users-page client profile modal payload."""
 
     user = await _resolve_client_user(user_id)
     if user is None:
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "user": _serialize_admin_client_user(user),
+            "profile": _serialize_client_profile(user),
+        }
+    )
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET", "PUT"])
+async def update_client_profile(request, user_id: str):
+    """Update the admin users-page client profile modal payload directly."""
+
+    user = await _resolve_client_user(user_id)
+    if user is None:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    if request.method == "GET":
+        return JsonResponse(
+            {
+                "status": "ok",
+                "user": _serialize_admin_client_user(user),
+                "profile": _serialize_client_profile(user),
+            }
+        )
 
     try:
         body = json.loads(request.body or b"{}")

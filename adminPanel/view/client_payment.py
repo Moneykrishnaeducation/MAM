@@ -83,3 +83,30 @@ async def update_client_payment_details(request, user_id: str):
             ),
         }
     )
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
+async def get_client_payment_details_api(request, user_id: str):
+    """Load a client's bank/crypto payment details for the admin modal."""
+
+    user = await _resolve_client_user(user_id)
+    if user is None:
+        return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
+
+    bank_detail, crypto_detail = await get_client_payment_details(user)
+    return JsonResponse(
+        {
+            "status": "ok",
+            "user": {
+                "id": user.user_code or f"USR-{user.id:03d}",
+                "name": user.name,
+            },
+            "payment_details": build_payment_details_payload(
+                profile=user,
+                bank_detail=bank_detail,
+                crypto_detail=crypto_detail,
+            ),
+        }
+    )
