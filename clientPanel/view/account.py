@@ -2,10 +2,11 @@
 
 import json
 import logging
+
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from adminPanel.models import ClientAccount, TradingAccount, ClientUser
+from adminPanel.models import ClientAccount, ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
@@ -21,7 +22,20 @@ async def get_client_account(request):
         return error
     account = await ClientAccount.filter(user_id=profile.id).first()
     if account is None:
-        return _error("Account not found", status=404, account=None)
+        trading_acc = await TradingAccount.filter(user_id=profile.id).first()
+        if trading_acc is not None:
+            account = await ClientAccount.create(
+                user_id=profile.id,
+                account_number=trading_acc.account_id,
+                balance=float(trading_acc.balance),
+                equity=float(trading_acc.equity),
+                margin_free=float(trading_acc.margin_free),
+                leverage=f"1:{trading_acc.leverage}",
+                currency="USD",
+                status=trading_acc.status or "Active",
+            )
+        else:
+            return _error("Account not found", status=404, account=None)
     return JsonResponse(
         {
             "status": "ok",

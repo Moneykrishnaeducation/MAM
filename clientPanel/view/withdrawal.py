@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.models import ClientAccount, ClientTransaction
+from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
 
@@ -48,7 +48,23 @@ async def create_client_withdrawal(request):
         account_number=account_number,
     ).first()
     if account is None:
-        return _error("Account not found for this client", status=404)
+        trading_acc = await TradingAccount.filter(
+            user_id=profile.id,
+            account_id=account_number,
+        ).first()
+        if trading_acc is None:
+            return _error("Account not found for this client", status=404)
+
+        account = await ClientAccount.create(
+            user_id=profile.id,
+            account_number=trading_acc.account_id,
+            balance=float(trading_acc.balance),
+            equity=float(trading_acc.equity),
+            margin_free=float(trading_acc.margin_free),
+            leverage=f"1:{trading_acc.leverage}",
+            currency="USD",
+            status=trading_acc.status or "Active",
+        )
 
     transaction = await ClientTransaction.create(
         user_id=profile.id,

@@ -211,7 +211,7 @@ export default function ClientManagerPage() {
         .filter(Boolean),
     ).size,
   );
-  const currentAccountLabel = activeManager?.accountId || clientAccount?.account_number || 'N/A';
+  const currentAccountLabel = activeManager?.accountId || managerInfo.accountId || clientAccount?.account_number || 'N/A';
 
   if (isPageLoading) {
     return (
@@ -685,6 +685,7 @@ export default function ClientManagerPage() {
                             <button
                               type="button"
                               onClick={() => {
+                                setSelectedManager(mgr);
                                 setShowDepositModal(true);
                               }}
                               className={`px-4 py-2 rounded-xl font-black text-xs transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}

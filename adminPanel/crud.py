@@ -4,9 +4,6 @@ from adminPanel.models import (
     ActivityLog,
     AdminUser,
     ClientUser,
-    Investor,
-    MamAccount,
-    Manager,
     PendingRequest,
 )
 
@@ -39,32 +36,7 @@ async def create_admin_user(
     )
 
 
-# Client User CRUD Operations
-async def get_client_user(user_id: int) -> ClientUser | None:
-    """Get client user by ID."""
-    return await ClientUser.filter(id=user_id).first()
 
-
-async def get_client_users(skip: int = 0, limit: int = 100) -> list[ClientUser]:
-    """Get list of client users."""
-    return await ClientUser.all().offset(skip).limit(limit)
-
-
-async def create_admin_user(
-    name: str,
-    email: str,
-    role: str = "admin",
-    department: str = "Operations",
-    permissions: list[str] | None = None,
-) -> ClientUser:
-    """Create a new system admin user."""
-    return await ClientUser.create(
-        name=name,
-        email=email,
-        role=role,
-        department=department,
-        permissions=permissions or ["User Approvals", "View Reports"],
-    )
 
 
 # Client User CRUD Operations
@@ -96,19 +68,7 @@ async def create_client_user(
     )
 
 
-async def get_managers(skip: int = 0, limit: int = 100) -> list[Manager]:
-    """Get list of managers."""
-    return await Manager.all().offset(skip).limit(limit)
 
-
-async def get_investors(skip: int = 0, limit: int = 100) -> list[Investor]:
-    """Get list of investors."""
-    return await Investor.all().offset(skip).limit(limit)
-
-
-async def get_mam_accounts(skip: int = 0, limit: int = 100) -> list[MamAccount]:
-    """Get list of MAM accounts."""
-    return await MamAccount.all().offset(skip).limit(limit)
 
 
 async def get_pending_requests(skip: int = 0, limit: int = 100) -> list[PendingRequest]:

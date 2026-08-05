@@ -96,7 +96,7 @@ export default function DepositModal({
   setShowDepositModal,
   cheeseAmount = "",
   setCheeseAmount,
-  selectedDepositAccount = "MAM-84930",
+  selectedDepositAccount = "",
 }: {
   showDepositModal: boolean;
   setShowDepositModal: (show: boolean) => void;
@@ -196,12 +196,14 @@ export default function DepositModal({
                   <h3 className="text-2xl font-black tracking-tight" style={{ color: isDarkMode ? WHITE : NAVY }}>
                     Deposit Funds
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <ShieldCheck className="h-4 w-4 text-green-500" />
-                    <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
-                      Account: <span className="font-mono text-[#2155C4]">{selectedDepositAccount}</span>
-                    </span>
-                  </div>
+                  {selectedDepositAccount ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
+                        Account ID: <span className="font-mono text-[#2155C4]">{selectedDepositAccount}</span>
+                      </span>
+                    </div>
+                  ) : null}
                 </div>
               </div>
               
