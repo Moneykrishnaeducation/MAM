@@ -85,10 +85,29 @@ requests.packages.urllib3.disable_warnings()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Shared executor used for copying positions/orders to followers to improve throughput
-# Use a reasonably large pool to allow many follower sends in parallel without
-# creating/destroying executors for every master position.
-COPY_EXECUTOR = ThreadPoolExecutor(max_workers=64)
+# Shared executor pool (128 parallel workers) for multi-manager parallel execution
+COPY_EXECUTOR = ThreadPoolExecutor(max_workers=128)
+
+class ManagerEventRouter:
+    """Routes master manager events (Manager A, B, C...) concurrently to COPY_EXECUTOR pool."""
+
+    @staticmethod
+    def route_position_copy(order_sink_inst, order_obj, force_flag=False):
+        """Asynchronously routes manager position copy event in parallel."""
+        logger.info(f"[ROUTER] Routing position event for Manager {getattr(order_obj, 'Login', 'Unknown')} in parallel to worker pool")
+        COPY_EXECUTOR.submit(order_sink_inst.copy_position_to_followers, order_obj, force_flag)
+
+    @staticmethod
+    def route_order_copy(order_sink_inst, order_obj, force_flag=False):
+        """Asynchronously routes manager order copy event in parallel."""
+        logger.info(f"[ROUTER] Routing order event for Manager {getattr(order_obj, 'Login', 'Unknown')} in parallel to worker pool")
+        COPY_EXECUTOR.submit(order_sink_inst.copy_order_to_followers, order_obj, force_flag)
+
+    @staticmethod
+    def route_position_close(position_sink_inst, pos_obj):
+        """Asynchronously routes manager position close event in parallel."""
+        logger.info(f"[ROUTER] Routing position close for Manager {getattr(pos_obj, 'Login', 'Unknown')} in parallel to worker pool")
+        COPY_EXECUTOR.submit(position_sink_inst.execute_manager_position_close, pos_obj)
 
 # In-memory recent copy registry to avoid noisy repeated attempts
 from threading import Lock
@@ -881,7 +900,7 @@ def run_mam_script():
                 return
             logger.info(f"[COPY] copy_position_to_followers: master={order.Login}, active_followers={followers}, count={len(followers)}")
             # Build a stable master position id (if available)
-            master_pos_id = getattr(order, 'PositionID', None) or getattr(order, 'Position', None)
+            master_pos_id = getattr(order, 'PositionID', None) or getattr(order, 'Position', None) or getattr(order, 'Order', None)
             # If the master position has already been fully processed recently, skip the entire function
             if master_pos_id:
                 now_ts = datetime.now().timestamp()
@@ -957,13 +976,8 @@ def run_mam_script():
 
                     # If follower is configured for fixed multiple, override with base_volume * copy_factor
                     try:
-                        # Close any stale DB connections before lookup
                         close_old_connections()
-                        # Force raw SQL query to completely bypass Django ORM cache
                         from django.db import connection
-                        # Force connection to close any active transaction and start fresh
-                        connection.close()
-                        connection.connect()
                         with connection.cursor() as cursor:
                             # Ensure we read the latest committed data
                             cursor.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
@@ -1227,11 +1241,11 @@ def run_mam_script():
             last_activity_ts = time()
             if str(manager.UserGet(order.Login).Agent).startswith(AGENT_CODE_PREFIX):
                 if order.State == 4 and order.ActivationMode == 0:
-                    # Execute instant copy on market order fill without waiting for PositionGetByTicket index latency
-                    self.copy_position_to_followers(order)
+                    # Parallel Event Router: Dispatch Manager A, B, C... concurrently to COPY_EXECUTOR
+                    ManagerEventRouter.route_position_copy(self, order)
                 elif order.State in {1, 2}:
                     # logger.debug(f"Pending order {order.Order} deleted, attempting to remove from followers")
-                    self.delete_order_to_followers(order)
+                    COPY_EXECUTOR.submit(self.delete_order_to_followers, order)
 
     class PositionSink:
         
@@ -1255,13 +1269,8 @@ def run_mam_script():
 
                             # If follower account is configured for fixed_multiple, override with factor
                             try:
-                                # Close any stale DB connections before lookup
                                 close_old_connections()
-                                # Force raw SQL query to completely bypass Django ORM cache
                                 from django.db import connection
-                                # Force connection to close any active transaction and start fresh
-                                connection.close()
-                                connection.connect()
                                 with connection.cursor() as cursor:
                                     # Ensure we read the latest committed data
                                     cursor.execute('SET TRANSACTION ISOLATION LEVEL READ COMMITTED')
@@ -1320,53 +1329,49 @@ def run_mam_script():
             global last_activity_ts
             last_activity_ts = time()
             if str(manager.UserGet(position.Login).Agent).startswith(AGENT_CODE_PREFIX):
-                # logger.debug(f"Position {position.Position} deleted, attempting to close for followers")
-                # Mark this master position as recently processed to avoid immediate re-copy/open races
-                try:
-                    master_pos_id = getattr(position, 'Position', None)
-                    if master_pos_id:
-                        with _recent_positions_lock:
-                            _recent_positions[master_pos_id] = datetime.now().timestamp()
-                        # Best-effort DB marker so other processes see the master as recently processed
+                ManagerEventRouter.route_position_close(self, position)
+
+        def execute_manager_position_close(self, position):
+            try:
+                master_pos_id = getattr(position, 'Position', None)
+                if master_pos_id:
+                    with _recent_positions_lock:
+                        _recent_positions[master_pos_id] = datetime.now().timestamp()
+                    try:
+                        from adminPanel.models import MT5SendDedup
+                        safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in f"master_closed_{master_pos_id}"])
                         try:
-                            from adminPanel.models import MT5SendDedup
-                            safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in f"master_closed_{master_pos_id}"])
-                            try:
-                                obj, created = MT5SendDedup.objects.get_or_create(key=safe_key)
-                                # Only log when a new DB marker was actually created to avoid noisy repeated logs
-                                if created:
-                                    logger.debug(f"DB master_closed marker created for master_pos {master_pos_id}")
-                            except Exception:
-                                pass
+                            obj, created = MT5SendDedup.objects.get_or_create(key=safe_key)
+                            if created:
+                                logger.debug(f"DB master_closed marker created for master_pos {master_pos_id}")
                         except Exception:
                             pass
-                except Exception:
-                    pass
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
-                for follower in self.get_followers(position.Login):
-                    for pos in manager.PositionGet(follower):
-                        # Match the comment format used when copying positions
-                        # Standard: "{leader}_{position_id}"
-                        # Dual trade: "{leader}_{position_id}_trade1" or "{leader}_{position_id}_trade2"
-                        expected_comment = f"{position.Login}_{position.Position}"
-                        is_match = (pos.Comment == expected_comment or 
-                                   pos.Comment.startswith(f"{expected_comment}_trade"))
-                        
-                        if is_match:
-                            logger.info(f"[CLOSE] Closing follower position: {follower} position={pos.Position} comment={pos.Comment}")
-                            request = MT5Manager.MTRequest(manager)
-                            request.Action = 200
-                            request.PriceOrder = pos.PriceCurrent
-                            request.Symbol = position.Symbol
-                            request.Login = follower
-                            request.Type = int(not pos.Action)
-                            request.Position = pos.Position
-                            request.Volume = pos.Volume
-                            try:
-                                request.Comment = pos.Comment
-                            except Exception:
-                                pass
-                            self.execute_close_with_retry(request, follower, max_retries=5)
+            for follower in self.get_followers(position.Login):
+                for pos in manager.PositionGet(follower):
+                    expected_comment = f"{position.Login}_{position.Position}"
+                    is_match = (pos.Comment == expected_comment or 
+                               pos.Comment.startswith(f"{expected_comment}_trade"))
+                    
+                    if is_match:
+                        logger.info(f"[CLOSE] Closing follower position: {follower} position={pos.Position} comment={pos.Comment}")
+                        request = MT5Manager.MTRequest(manager)
+                        request.Action = 200
+                        request.PriceOrder = pos.PriceCurrent
+                        request.Symbol = position.Symbol
+                        request.Login = follower
+                        request.Type = int(not pos.Action)
+                        request.Position = pos.Position
+                        request.Volume = pos.Volume
+                        try:
+                            request.Comment = pos.Comment
+                        except Exception:
+                            pass
+                        self.execute_close_with_retry(request, follower, max_retries=5)
 
         def execute_close_with_retry(self, request, follower_id: int, max_retries: int = 5):
             """Reliable close retry handler for transient broker/dealer failures."""
@@ -1595,10 +1600,16 @@ def run_mam_script():
                                                 master_positions = manager.PositionGet(leader.Login)
                                                 for pos in master_positions:
                                                     try:
-                                                        master_pos_id = getattr(pos, 'Position', getattr(pos, 'PositionID', None))
+                                                        master_pos_id = getattr(pos, 'Position', getattr(pos, 'PositionID', getattr(pos, 'Order', None)))
                                                         if not master_pos_id:
                                                             continue
                                                         
+                                                        now_ts = datetime.now().timestamp()
+                                                        with _recent_positions_lock:
+                                                            prev_processed = _recent_positions.get(master_pos_id)
+                                                            if prev_processed and now_ts - prev_processed < RECENT_POSITION_TTL:
+                                                                continue
+
                                                         expected_prefix = f"{leader.Login}_{master_pos_id}"
                                                         for follower in followers:
                                                             try:
