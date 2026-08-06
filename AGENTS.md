@@ -69,7 +69,7 @@ Recent additions:
 - `Frontend/apps/web/src/lib/authApiInterceptor.ts` installs a browser-wide API fetch interceptor that logs out the current admin or client session on `403`/`404` responses from browser API calls, using the current app area or request path to choose the logout endpoint.
 - `backendPanel/mail_queue.py` now stores outbound mail in the database-backed `admin_mail_messages` queue, and `adminPanel/management/commands/process_mail_queue.py` can be run as a separate worker to flush queued mail.
 - `adminPanel/management/commands/mail_worker.py` is the continuous mail queue worker you can run as a separate process, while `process_mail_queue` remains a one-shot manual flush command.
-- `backendPanel/asgi.py` no longer starts the mail queue automatically, so the main web server stays separate from mail delivery.
+- `backendPanel/asgi.py` now starts the mail queue worker thread on startup again, so the main web server also processes queued mail automatically.
 - `adminPanel/view/mam_accounts.py` now sends branded MT5 credential emails to the related client after MAM or investor account creation, including the login, group, and generated passwords.
 - `templates/emails/mam_credentials_email.html` and `templates/emails/mam_credentials_email.txt` hold the standalone MAM credential email templates rendered by `adminPanel/view/mam_accounts.py`.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.

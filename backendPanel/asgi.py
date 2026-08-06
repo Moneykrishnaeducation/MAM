@@ -92,6 +92,12 @@ async def application(scope, receive, send):
                         start_balance_sync_thread(interval_seconds=5.0)
                     except Exception as sync_err:
                         logger.warning(f"[STARTUP] Could not start balance sync thread: {sync_err}")
+                    try:
+                        from backendPanel.mail_queue import start_mail_queue_thread
+                        logger.info("[STARTUP] Initializing mail queue worker thread...")
+                        start_mail_queue_thread(interval_seconds=5.0, batch_size=100)
+                    except Exception as mail_err:
+                        logger.warning(f"[STARTUP] Could not start mail queue thread: {mail_err}")
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
                     if _global_tortoise_ctx is not None:
