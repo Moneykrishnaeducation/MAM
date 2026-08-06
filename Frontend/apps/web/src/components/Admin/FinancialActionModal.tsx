@@ -7,11 +7,7 @@ import {
   MinusCircle, 
   History, 
   Users, 
-  CheckCircle2, 
-  DollarSign, 
-  Building, 
-  ShieldAlert,
-  Wallet
+  DollarSign
 } from 'lucide-react';
 
 export type FinancialModalType = 'deposit' | 'withdraw' | 'credit-in' | 'credit-out' | 'history' | 'investors_list' | null;
@@ -43,6 +39,52 @@ export default function FinancialActionModal({
 }: FinancialActionModalProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
+  const [historyLogs, setHistoryLogs] = useState<Array<{ id: string; type: string; amount: string; status: string; date: string }>>([]);
+  const [investorsList, setInvestorsList] = useState<Array<{ id: string; name: string; email: string; invested: string; profit: string }>>([]);
+  const [fetchingData, setFetchingData] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!isOpen || !targetUser || !modalType) return;
+
+    if (modalType === 'history') {
+      setFetchingData(true);
+      setFetchError(null);
+      fetch(`/api/admin/managers/${targetUser.accountId}/history`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'ok' && Array.isArray(data.history)) {
+            setHistoryLogs(data.history);
+          } else {
+            setHistoryLogs([]);
+            if (data.message) setFetchError(data.message);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch history:", err);
+          setFetchError("Failed to load history.");
+        })
+        .finally(() => setFetchingData(false));
+    } else if (modalType === 'investors_list') {
+      setFetchingData(true);
+      setFetchError(null);
+      fetch(`/api/admin/managers/${targetUser.accountId}/investors`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === 'ok' && Array.isArray(data.investors)) {
+            setInvestorsList(data.investors);
+          } else {
+            setInvestorsList(targetUser.investors || []);
+            if (data.message) setFetchError(data.message);
+          }
+        })
+        .catch(err => {
+          console.error("Failed to fetch investors list:", err);
+          setInvestorsList(targetUser.investors || []);
+        })
+        .finally(() => setFetchingData(false));
+    }
+  }, [isOpen, targetUser, modalType]);
 
   if (!isOpen || !targetUser || !modalType) return null;
 
@@ -80,13 +122,6 @@ export default function FinancialActionModal({
       default: return null;
     }
   };
-
-  const dummyHistory = [
-    { id: 'TX-101', type: 'Deposit', amount: '+$5,000.00', status: 'Completed', date: 'Jul 20, 2026' },
-    { id: 'TX-102', type: 'Credit-In', amount: '+$500.00', status: 'Approved', date: 'Jul 24, 2026' },
-    { id: 'TX-103', type: 'Withdrawal', amount: '-$1,200.00', status: 'Completed', date: 'Jul 28, 2026' },
-    { id: 'TX-104', type: 'Profit Share', amount: '+$850.00', status: 'Processed', date: 'Jul 30, 2026' },
-  ];
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
@@ -129,20 +164,28 @@ export default function FinancialActionModal({
           {modalType === 'history' && (
             <div className="space-y-3">
               <h4 className="font-bold text-slate-200">Recent Transaction & Credit Logs</h4>
-              <div className="divide-y divide-slate-800/80 max-h-72 overflow-y-auto pr-1">
-                {dummyHistory.map((item) => (
-                  <div key={item.id} className="py-3 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-slate-200">{item.type} <span className="text-[11px] text-slate-400 font-mono">({item.id})</span></div>
-                      <div className="text-[11px] text-slate-400">{item.date}</div>
+              {fetchingData ? (
+                <div className="py-8 text-center text-slate-400 font-medium">Loading history from backend...</div>
+              ) : fetchError ? (
+                <div className="py-4 text-center text-rose-400 font-medium">{fetchError}</div>
+              ) : historyLogs.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 font-medium">No history logs found for this account.</div>
+              ) : (
+                <div className="divide-y divide-slate-800/80 max-h-72 overflow-y-auto pr-1">
+                  {historyLogs.map((item) => (
+                    <div key={item.id} className="py-3 flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-slate-200">{item.type} <span className="text-[11px] text-slate-400 font-mono">({item.id})</span></div>
+                        <div className="text-[11px] text-slate-400">{item.date}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`font-bold ${item.amount.startsWith('+') ? 'text-emerald-400' : 'text-blue-400'}`}>{item.amount}</div>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">{item.status}</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className={`font-bold ${item.amount.startsWith('+') ? 'text-emerald-400' : 'text-blue-400'}`}>{item.amount}</div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">{item.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -152,34 +195,39 @@ export default function FinancialActionModal({
               <h4 className="font-bold text-slate-200 flex items-center gap-2">
                 <Users size={16} className="text-teal-400" /> Assigned Investors under {targetUser.name}
               </h4>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-slate-400 border-b border-slate-800">
-                      <th className="pb-2 font-semibold">Investor ID</th>
-                      <th className="pb-2 font-semibold">Name & Email</th>
-                      <th className="pb-2 font-semibold">Invested</th>
-                      <th className="pb-2 text-right font-semibold">Profit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800">
-                    {(targetUser.investors || [
-                      { id: 'INV-101', name: 'Elena Rostova', email: 'elena.r@example.com', invested: '$25,000', profit: '+$3,400' },
-                      { id: 'INV-102', name: 'Apex Edu Capital', email: 'apex@example.com', invested: '$50,000', profit: '+$7,200' },
-                    ]).map((inv) => (
-                      <tr key={inv.id} className="hover:bg-slate-800/40">
-                        <td className="py-2.5 font-mono text-blue-400">{inv.id}</td>
-                        <td className="py-2.5">
-                          <div className="font-bold text-slate-200">{inv.name}</div>
-                          <div className="text-[11px] text-slate-400">{inv.email}</div>
-                        </td>
-                        <td className="py-2.5 text-slate-200 font-semibold">{inv.invested}</td>
-                        <td className="py-2.5 text-right font-bold text-emerald-400">{inv.profit}</td>
+              {fetchingData ? (
+                <div className="py-8 text-center text-slate-400 font-medium">Loading investors from backend...</div>
+              ) : fetchError && investorsList.length === 0 ? (
+                <div className="py-4 text-center text-rose-400 font-medium">{fetchError}</div>
+              ) : investorsList.length === 0 ? (
+                <div className="py-8 text-center text-slate-500 font-medium">No assigned investors found for this manager.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-slate-400 border-b border-slate-800">
+                        <th className="pb-2 font-semibold">Investor ID</th>
+                        <th className="pb-2 font-semibold">Name & Email</th>
+                        <th className="pb-2 font-semibold">Invested</th>
+                        <th className="pb-2 text-right font-semibold">Profit</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {investorsList.map((inv) => (
+                        <tr key={inv.id} className="hover:bg-slate-800/40">
+                          <td className="py-2.5 font-mono text-blue-400">{inv.id}</td>
+                          <td className="py-2.5">
+                            <div className="font-bold text-slate-200">{inv.name}</div>
+                            <div className="text-[11px] text-slate-400">{inv.email}</div>
+                          </td>
+                          <td className="py-2.5 text-slate-200 font-semibold">{inv.invested}</td>
+                          <td className="py-2.5 text-right font-bold text-emerald-400">{inv.profit}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

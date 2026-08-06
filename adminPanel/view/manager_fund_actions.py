@@ -5,8 +5,9 @@ import logging
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from tortoise.expressions import Q
 
-from adminPanel.models import TradingAccount
+from adminPanel.models import TradingAccount, ClientTransaction
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
 
@@ -49,15 +50,27 @@ async def manager_credit_out_api(request):
 @permission_required(IsAdmin)
 @require_http_methods(["GET"])
 async def manager_history_api(request, account_id: str):
-    """Fetch transaction history & logs for a specific manager account."""
-    trading_acc = await TradingAccount.filter(account_id=str(account_id)).first()
+    """Fetch real transaction history directly from DB for a specific manager account."""
+    trading_acc = await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
     if not trading_acc:
         return JsonResponse({"status": "error", "message": f"Trading account {account_id} not found"}, status=404)
 
-    # Sample transaction history payload for account
+    # Build Q filter for account_number OR user_id if user is associated
+    q_filter = Q(account_number=str(account_id))
+    if trading_acc.user:
+        q_filter = q_filter | Q(user_id=trading_acc.user.id)
+
+    transactions = await ClientTransaction.filter(q_filter).order_by("-created_at").limit(50)
+
     history_records = [
-        {"id": f"TX-{trading_acc.account_id}-01", "type": "Deposit", "amount": f"+${trading_acc.balance:,.2f}", "status": "Completed", "date": "Recent"},
-        {"id": f"TX-{trading_acc.account_id}-02", "type": "Credit-In", "amount": f"+${getattr(trading_acc, 'credit', 0.0):,.2f}", "status": "Approved", "date": "Active"},
+        {
+            "id": f"TX-{tx.id}",
+            "type": tx.transaction_type.capitalize(),
+            "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",
+            "status": tx.status or "Completed",
+            "date": tx.created_at.strftime("%b %d, %Y %H:%M") if tx.created_at else "N/A"
+        }
+        for tx in transactions
     ]
 
     return JsonResponse({
@@ -84,7 +97,7 @@ async def manager_investors_list_api(request, account_id: str):
             "name": inv.user.name if inv.user else inv.account_name,
             "email": inv.user.email if inv.user else "",
             "invested": f"${inv.equity:,.2f}",
-            "profit": "+$0.00"
+            "profit": f"${(inv.equity - inv.balance):+,.2f}" if getattr(inv, "equity", 0) != getattr(inv, "balance", 0) else "+$0.00"
         }
         for inv in investors
     ]
@@ -156,6 +169,23 @@ async def _process_financial_action(request, action_type: str):
 
     trading_acc.equity = float(trading_acc.balance) + float(trading_acc.credit)
     await trading_acc.save()
+
+    # Log real transaction to transactions table
+    user_obj = trading_acc.user if trading_acc.user else None
+    user_email = user_obj.email if user_obj else None
+    user_role = user_obj.role if user_obj else "Manager"
+
+    await ClientTransaction.create(
+        user=user_obj,
+        account_number=str(trading_acc.account_id),
+        transaction_type=action_type.capitalize(),
+        amount=amount,
+        payment_method="Admin Manual Adjustment",
+        role=user_role,
+        email=user_email,
+        description=comment,
+        status="Completed"
+    )
 
     logger.info(f"[MANAGER FINANCIAL ACTION] {action_type.upper()} of ${amount} applied to account {account_id} by admin.")
 
