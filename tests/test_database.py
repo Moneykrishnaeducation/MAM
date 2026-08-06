@@ -1,6 +1,7 @@
 """Tests for Tortoise ORM models and CRUD operations in adminPanel and clientPanel."""
 
 import json
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 import pytest
@@ -27,7 +28,7 @@ from adminPanel.view.client_profile import update_client_profile
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
-from adminPanel.view.mam_accounts import create_mam_account
+from adminPanel.view.mam_accounts import create_mam_account, _render_credentials_email_body
 from adminPanel.view.pending_requests import (
     list_pending_banks,
     list_pending_cryptos,
@@ -43,6 +44,7 @@ from clientPanel.models import ClientAccount
 from clientPanel.view.common import create_client_login_token, hash_client_password
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
+from clientPanel.view.account import create_client_trading_account
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import request_client_password_reset, reset_client_password
@@ -54,7 +56,20 @@ from clientPanel.view.withdrawal import create_client_withdrawal
 async def initialize_tests():
     """Initialize Tortoise ORM for testing."""
     if not settings.configured:
-        settings.configure(DEFAULT_CHARSET="utf-8")
+        templates_dir = Path(__file__).resolve().parent.parent / "templates"
+        settings.configure(
+            DEFAULT_CHARSET="utf-8",
+            TEMPLATES=[
+                {
+                    "BACKEND": "django.template.backends.django.DjangoTemplates",
+                    "DIRS": [str(templates_dir)],
+                    "APP_DIRS": True,
+                    "OPTIONS": {
+                        "context_processors": [],
+                    },
+                }
+            ],
+        )
     await Tortoise.init(
         db_url="sqlite://:memory:",
         modules={
@@ -130,6 +145,30 @@ class TestAdminPanelModels:
 
         saved = await MamAccount.get(master_strategy="Balanced Growth")
         assert saved.total_balance == 150000.0
+
+    async def test_mam_credentials_email_template(self):
+        """Test the MAM credentials email template contains the account login and passwords."""
+        subject, plain_body, html_body = _render_credentials_email_body(
+            user_name="Taylor Morgan",
+            account_type="MAM",
+            login="12345678",
+            group="MAM-Group",
+            account_name="Taylor Morgan MAM Master",
+            leverage=500,
+            master_password="MasterPass123!",
+            investor_password="InvestorPass123!",
+        )
+
+        assert subject == "MAM account credentials"
+        assert "Taylor Morgan" in plain_body
+        assert "12345678" in plain_body
+        assert "MAM-Group" in plain_body
+        assert "MasterPass123!" in plain_body
+        assert "InvestorPass123!" in plain_body
+        assert "Taylor Morgan MAM Master" in plain_body
+        assert "Reset password" not in html_body
+        assert "MasterPass123!" in html_body
+        assert "InvestorPass123!" in html_body
 
     async def test_admin_dashboard(self):
         """Test admin dashboard summary payload and admin-only access."""
@@ -923,6 +962,93 @@ class TestClientPanelModels:
         assert payload["status"] == "ok"
         assert len(payload["activity_logs"]) == 1
         assert payload["activity_logs"][0]["user_name"] == "Morgan Lane"
+
+    async def test_client_mam_account_creation_sends_credentials_email(self, monkeypatch):
+        """Test client-side MAM account creation sends the credential email."""
+        user = await ClientUser.create(
+            user_code="USR-MAM1",
+            name="Jamie Stone",
+            email="jamie.mam@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jamie Stone",
+            email="jamie.mam@example.com",
+            country="United States",
+        )
+
+        account = await TradingAccount.create(
+            account_id="99887766",
+            account_type="MAM",
+            account_name="Jamie Stone MAM Master",
+            user=user,
+            leverage=500,
+            is_enabled=True,
+            is_trading_enabled=True,
+            is_algo_enabled=False,
+            algo_enabled=False,
+            is_pending=False,
+            manager_allow_copy=True,
+            investor_allow_copy=False,
+            copy_trade_enabled=False,
+            dual_trade_enabled=False,
+            copy_multiplier_mode="Fixed",
+            fixed_copy_multiplier=1,
+            max_copy_multiplier=1,
+            multi_trade_count=1,
+            status="Active",
+        )
+
+        captured: dict[str, str] = {}
+
+        class FakeMT5:
+            connection_error = None
+
+            def create_mam_account(self, **kwargs):
+                return {
+                    "login": "99887766",
+                    "group": "MAM-Group",
+                    "master_password": "MasterPass123!",
+                    "investor_password": "InvestorPass123!",
+                    "trading_account_id": account.id,
+                }
+
+        async def fake_send_credentials_email(**kwargs):
+            captured["email"] = kwargs["user"].email
+            captured["login"] = str(kwargs["login"])
+            captured["group"] = kwargs["group"]
+
+        monkeypatch.setattr("clientPanel.view.account.MT5ManagerActions", FakeMT5)
+        monkeypatch.setattr("clientPanel.view.account._send_credentials_email", fake_send_credentials_email)
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "type": "manager",
+                        "accountName": "Jamie Stone MAM Master",
+                        "leverage": "500x",
+                        "masterPassword": "MasterPass123!",
+                        "investorPassword": "InvestorPass123!",
+                    }
+                ).encode(),
+            },
+        )()
+
+        response = await create_client_trading_account(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert captured["email"] == "jamie.mam@example.com"
+        assert captured["login"] == "99887766"
+        assert captured["group"] == "MAM-Group"
 
     async def test_admin_login_and_dashboard_token_lookup(self):
         """Test admin login response and bearer-token access to the admin dashboard."""

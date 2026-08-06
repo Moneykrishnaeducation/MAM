@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import ClientAccount, ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
+from adminPanel.view.mam_accounts import _send_credentials_email
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
@@ -131,6 +132,20 @@ async def create_client_trading_account(request):
         trading_account.payout_frequency = body.get("payoutFrequency", "Weekly")
         await trading_account.save()
 
+        try:
+            await _send_credentials_email(
+                user=user,
+                account_type="MAM",
+                login=result["login"],
+                group=result["group"],
+                master_password=result.get("master_password"),
+                investor_password=result.get("investor_password"),
+                account_name=account_name,
+                leverage=leverage,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to send client MAM credentials email to {user.email}: {exc}")
+
         return JsonResponse({
             "status": "ok",
             "message": "MAM master account created successfully",
@@ -172,6 +187,20 @@ async def create_client_trading_account(request):
         trading_account.user = user
         trading_account.mam_master_account = mam_master
         await trading_account.save()
+
+        try:
+            await _send_credentials_email(
+                user=user,
+                account_type="Investor",
+                login=result["login"],
+                group=result["group"],
+                master_password=result.get("master_password"),
+                investor_password=result.get("investor_password"),
+                account_name=f"Investor for {mam_master.account_name or mam_master.account_id}",
+                leverage=mam_master.leverage,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to send client investor credentials email to {user.email}: {exc}")
 
         return JsonResponse({
             "status": "ok",

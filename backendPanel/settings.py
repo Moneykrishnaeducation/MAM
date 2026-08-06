@@ -65,6 +65,10 @@ class Settings(BaseSettings):
         alias="MEDIA_ROOT",
     )
     data_upload_max_memory_size: int = 10485760
+    templates_dir: Path = Field(
+        default_factory=lambda: BASE_DIR / "templates",
+        alias="TEMPLATES_DIR",
+    )
 
     # Database settings
     db_engine: str = Field(

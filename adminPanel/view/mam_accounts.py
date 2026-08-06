@@ -2,15 +2,80 @@
 
 import json
 import logging
+
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
+from adminPanel.view.mail import _mail_from_address
 
 logger = logging.getLogger(__name__)
+
+
+def _render_credentials_email_body(
+    *,
+    user_name: str,
+    account_type: str,
+    login: str | int,
+    group: str,
+    master_password: str | None = None,
+    investor_password: str | None = None,
+    account_name: str | None = None,
+    leverage: int | None = None,
+) -> tuple[str, str, str]:
+    display_account_type = "MAM" if account_type.strip().lower() == "mam" else account_type.title()
+    context = {
+        "user_name": user_name or "there",
+        "account_type": display_account_type,
+        "account_name": account_name or "",
+        "login": str(login),
+        "group": group,
+        "master_password": master_password or "",
+        "investor_password": investor_password or "",
+        "leverage": leverage,
+    }
+
+    subject = f"{display_account_type} account credentials"
+    plain_body = render_to_string("emails/mam_credentials_email.txt", context).strip()
+    html_body = render_to_string("emails/mam_credentials_email.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_credentials_email(
+    *,
+    user: ClientUser,
+    account_type: str,
+    login: str | int,
+    group: str,
+    master_password: str | None = None,
+    investor_password: str | None = None,
+    account_name: str | None = None,
+    leverage: int | None = None,
+) -> None:
+    subject, plain_body, html_body = _render_credentials_email_body(
+        user_name=user.name or user.email or "there",
+        account_type=account_type,
+        login=login,
+        group=group,
+        master_password=master_password,
+        investor_password=investor_password,
+        account_name=account_name,
+        leverage=leverage,
+    )
+    email_message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    email_message.attach_alternative(html_body, "text/html")
+    await sync_to_async(email_message.send, thread_sensitive=True)(fail_silently=False)
 
 @csrf_exempt
 @permission_required(IsAdmin)
@@ -100,6 +165,20 @@ async def create_account_api(request):
         trading_account.risk_level = body.get("riskLevel", "Medium")
         trading_account.payout_frequency = body.get("payoutFrequency", "Weekly")
         await trading_account.save()
+
+        try:
+            await _send_credentials_email(
+                user=user,
+                account_type="MAM",
+                login=result["login"],
+                group=result["group"],
+                master_password=result.get("master_password"),
+                investor_password=result.get("investor_password"),
+                account_name=account_name,
+                leverage=leverage,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to send MAM credentials email to {user.email}: {exc}")
         
         return JsonResponse({
             "status": "ok",
@@ -138,6 +217,20 @@ async def create_account_api(request):
         trading_account.user = user
         trading_account.mam_master_account = mam_master
         await trading_account.save()
+
+        try:
+            await _send_credentials_email(
+                user=user,
+                account_type="Investor",
+                login=result["login"],
+                group=result["group"],
+                master_password=result.get("master_password"),
+                investor_password=result.get("investor_password"),
+                account_name=f"Investor for {mam_master.account_name or mam_master.account_id}",
+                leverage=mam_master.leverage,
+            )
+        except Exception as exc:
+            logger.error(f"Failed to send investor credentials email to {user.email}: {exc}")
         
         return JsonResponse({
             "status": "ok",

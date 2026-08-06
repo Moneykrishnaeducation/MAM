@@ -26,6 +26,16 @@ if not settings.configured:
         STATIC_URL=_app_settings.static_url,
         STATIC_ROOT=str(_app_settings.static_root),
         STATICFILES_DIRS=[str(d) for d in _app_settings.staticfiles_dirs],
+        TEMPLATES=[
+            {
+                "BACKEND": "django.template.backends.django.DjangoTemplates",
+                "DIRS": [str(_app_settings.templates_dir)],
+                "APP_DIRS": True,
+                "OPTIONS": {
+                    "context_processors": [],
+                },
+            }
+        ],
         DATA_UPLOAD_MAX_MEMORY_SIZE=_app_settings.data_upload_max_memory_size,
         INSTALLED_APPS=[
             "django.contrib.contenttypes",
