@@ -99,12 +99,12 @@ export default function ClientHeader() {
 
     const loadClientData = async () => {
       try {
-        const [profileRes, logsRes] = await Promise.all([
+        const [profileRes, notifRes] = await Promise.all([
           fetch('/api/client/profile', {
             credentials: 'include',
             headers: { Accept: 'application/json' },
           }),
-          fetch('/api/client/activity-logs', {
+          fetch('/api/notifications/?unread_only=true', {
             credentials: 'include',
             headers: { Accept: 'application/json' },
           }),
@@ -126,16 +126,15 @@ export default function ClientHeader() {
           }
         }
 
-        if (logsRes.ok) {
-          const logsData = await logsRes.json();
-          if (isMounted && Array.isArray(logsData?.activity_logs)) {
-            const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
-            const mapped = logsData.activity_logs.map((log: any) => ({
-              id: log.id,
-              title: log.action || 'Activity Alert',
-              message: log.details || 'Recent activity recorded.',
-              time: formatRelativeTime(log.timestamp || log.time),
-              read: seenIds.has(log.id),
+        if (notifRes.ok) {
+          const notifData = await notifRes.json();
+          if (isMounted && Array.isArray(notifData?.notifications)) {
+            const mapped = notifData.notifications.map((n: any) => ({
+              id: n.id,
+              title: n.title || 'Notification',
+              message: n.message || '',
+              time: formatRelativeTime(n.created_at),
+              read: !!n.is_read,
             }));
             setNotifications(mapped);
           }
@@ -152,22 +151,34 @@ export default function ClientHeader() {
     };
   }, []);
 
-  // Update seen status when opening notifications
-  useEffect(() => {
-    if (isNotificationsOpen && notifications.length > 0) {
-      const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
-      notifications.forEach((n) => seenIds.add(n.id));
-      localStorage.setItem('seen-notifications', JSON.stringify(Array.from(seenIds)));
-
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAsRead = async (id: string | number) => {
+    try {
+      const response = await fetch(`/api/notifications/${id}/mark-read/`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (response.ok) {
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+      }
+    } catch (err) {
+      console.error('Error marking notification as read:', err);
     }
-  }, [isNotificationsOpen]);
+  };
 
-  const markAllAsRead = () => {
-    const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
-    notifications.forEach((n) => seenIds.add(n.id));
-    localStorage.setItem('seen-notifications', JSON.stringify(Array.from(seenIds)));
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications/mark-all-read/', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (response.ok) {
+        setNotifications([]);
+      }
+    } catch (err) {
+      console.error('Error marking all notifications as read:', err);
+    }
   };
 
   const toggleSidebar = () => {
@@ -246,7 +257,7 @@ export default function ClientHeader() {
           >
             <Bell size={16} />
             {notifications.some(n => !n.read) && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-blue-900 animate-pulse" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[#C9A227] ring-2 ring-blue-900 animate-pulse" />
             )}
           </button>
 
@@ -262,7 +273,7 @@ export default function ClientHeader() {
                   <span className="text-sm font-extrabold text-white">Notifications</span>
                   <button 
                     onClick={markAllAsRead}
-                    className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                    className="text-[10px] font-bold text-[#C9A227] hover:text-[#dcb63b] transition-colors"
                   >
                     Mark all read
                   </button>
@@ -274,10 +285,11 @@ export default function ClientHeader() {
                     notifications.map((n) => (
                       <div 
                         key={n.id} 
+                        onClick={() => !n.read && markAsRead(n.id)}
                         className={`p-2.5 rounded-xl border transition-all ${
                           n.read 
                             ? (isDarkMode ? 'border-slate-800/80 bg-slate-950/20 text-slate-400' : 'border-blue-900/10 bg-blue-950/10 text-slate-400')
-                            : 'border-emerald-500/10 bg-emerald-500/5 text-slate-200'
+                            : 'border-[#C9A227]/20 bg-[#C9A227]/5 text-slate-200 cursor-pointer hover:bg-[#C9A227]/10'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2 mb-1">
@@ -301,7 +313,7 @@ export default function ClientHeader() {
           <img 
             src={avatarUrl} 
             alt="Client Profile" 
-            className="w-8 h-8 rounded-xl border-2 border-emerald-500/60 object-cover shadow-sm"
+            className="w-8 h-8 rounded-xl border-2 border-[#C9A227]/60 object-cover shadow-sm"
           />
           
         </Link>

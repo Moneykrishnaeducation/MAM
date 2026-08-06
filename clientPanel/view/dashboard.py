@@ -10,8 +10,8 @@ from adminPanel.models import (
     MyInvestment,
     TradingAccount,
 )
-from backendPanel.permissions import IsClient, permission_required
 from backendPanel.database import ensure_db_initialized
+from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _get_client_profile_for_request
 
 
@@ -56,7 +56,9 @@ async def get_client_dashboard(request):
     total_allocated = sum(investment.allocated_amount for investment in investments)
 
     my_mam_count = await TradingAccount.filter(user_id=profile.id, account_type="MAM").count()
-    my_investor_count = await TradingAccount.filter(user_id=profile.id, account_type="Investor").count()
+    my_investor_count = await TradingAccount.filter(
+        user_id=profile.id, account_type="Investor"
+    ).count()
     all_manager_count = await TradingAccount.filter(account_type="MAM", status="Active").count()
 
     cards = [
@@ -65,14 +67,12 @@ async def get_client_dashboard(request):
             "title": "MAM Manager Account",
             "value": f"{my_mam_count} " if my_mam_count > 0 else "0 ",
             "raw_value": my_mam_count,
-           
         },
         {
             "key": "investor_account",
             "title": "MAM Investor Account",
             "value": f"{my_investor_count} " if my_investor_count > 0 else "0 ",
             "raw_value": my_investor_count,
-           
         },
         {
             "key": "Total_Investments",
@@ -94,10 +94,41 @@ async def get_client_dashboard(request):
             "value": str(all_manager_count),
             "raw_value": all_manager_count,
             # "subtitle": None,
-        }
+        },
     ]
 
     trading_accounts = await TradingAccount.filter(user_id=profile.id).all()
+
+    # Map raw account numbers to MT5 account IDs if possible
+    account_map = {}
+    for ca in accounts:
+        matching_ta = next((ta for ta in trading_accounts if ta.id == ca.id), None)
+        if matching_ta:
+            account_map[ca.account_number] = matching_ta.account_id
+        else:
+            account_map[ca.account_number] = ca.account_number
+
+    for ta in trading_accounts:
+        account_map[ta.account_id] = ta.account_id
+
+    # Fallback default
+    default_acc_num = list(account_map.values())[0] if account_map else ""
+
+    serialized_txs = []
+    for tx in transactions[:5]:  # Get the latest 5 transactions
+        raw_acc = tx.account_number
+        mapped_acc = account_map.get(raw_acc) if raw_acc else default_acc_num
+        serialized_txs.append(
+            {
+                "id": tx.id,
+                "account_number": mapped_acc or raw_acc,
+                "type": tx.transaction_type,
+                "amount": tx.amount,
+                "method": tx.payment_method,
+                "status": tx.status,
+                "date": tx.created_at.strftime("%Y-%m-%d %H:%M:%S") if tx.created_at else None,
+            }
+        )
 
     return JsonResponse(
         {
@@ -113,6 +144,7 @@ async def get_client_dashboard(request):
                 },
                 "cards": cards,
                 "recent_activity_logs": [_serialize_activity_log(log) for log in activity_logs],
+                "recent_transactions": serialized_txs,
                 "account": {
                     "user_id": accounts[0].user_id if accounts else profile.id,
                     "account_number": accounts[0].account_number,
@@ -123,7 +155,9 @@ async def get_client_dashboard(request):
                     "leverage": accounts[0].leverage,
                     "currency": accounts[0].currency,
                     "status": accounts[0].status,
-                } if accounts else None,
+                }
+                if accounts
+                else None,
                 "trading_accounts": [
                     {
                         "account_id": acc.account_id,
@@ -131,7 +165,8 @@ async def get_client_dashboard(request):
                         "account_name": acc.account_name,
                         "balance": float(acc.balance),
                         "status": acc.status,
-                    } for acc in trading_accounts
+                    }
+                    for acc in trading_accounts
                 ],
                 "investments": [
                     {
@@ -139,8 +174,9 @@ async def get_client_dashboard(request):
                         "manager_name": inv.manager_name,
                         "allocated_amount": float(inv.allocated_amount),
                         "status": inv.status,
-                    } for inv in investments
-                ]
+                    }
+                    for inv in investments
+                ],
             },
         }
     )

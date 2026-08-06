@@ -442,6 +442,43 @@ async def decide_pending_request(request, request_id: str):
                     tx.status = "Rejected"
                     await tx.save()
 
+    # Create notification for target user
+    target_user = None
+    if pending_request.user_id:
+        from adminPanel.models import ClientUser
+
+        target_user = await ClientUser.filter(id=pending_request.user_id).first()
+    if not target_user:
+        target_user = await _resolve_user_for_pending_request(pending_request)
+
+    if target_user:
+        request_type_display = str(pending_request.request_type).capitalize()
+        title = f"{request_type_display} Request {decision.capitalize()}"
+        message = f"Your request for {pending_request.request_type} of amount ${pending_request.amount:,.2f} has been {decision}."
+
+        req_type_clean = _sanitize_request_type(pending_request.request_type)
+        if req_type_clean in {"document", "documents"}:
+            message = f"Your document submission has been {decision}."
+        elif req_type_clean in {"bank", "crypto"}:
+            message = f"Your payment details update request has been {decision}."
+        elif req_type_clean == "profile":
+            message = f"Your profile details update request has been {decision}."
+
+        from adminPanel.models import Notification
+
+        await Notification.create_notification(
+            user=target_user,
+            notification_type="system",
+            status="unread",
+            title=title,
+            message=message,
+            metadata={
+                "request_id": pending_request.id,
+                "request_type": pending_request.request_type,
+                "decision": decision,
+            },
+        )
+
     return JsonResponse(
         {
             "status": "ok",

@@ -75,15 +75,12 @@ async def log_post_activity(request, response=None) -> ActivityLog | None:
                     user_name = payload.get("email", "Client User")
                     user_role = "Client"
 
-        # Determine module name and action from URL path
-        parts = [p for p in path.strip("/").split("/") if p]
-        module = parts[1] if len(parts) > 1 else (parts[0] if parts else "general")
-
         # Parse request body payload
         new_values = None
         try:
             if request.body:
                 import json
+
                 body_data = json.loads(request.body.decode("utf-8"))
                 if isinstance(body_data, dict):
                     # Mask sensitive keys
@@ -94,12 +91,46 @@ async def log_post_activity(request, response=None) -> ActivityLog | None:
         except Exception:
             pass
 
+        # Determine module name and action from URL path
+        parts = [p for p in path.strip("/").split("/") if p]
+        module = parts[1] if len(parts) > 1 else (parts[0] if parts else "general")
+
+        action_name = f"{request.method} {path}"
+        if "/requests/" in path and path.endswith("/decision"):
+            decision_val = "Processed"
+            if new_values and isinstance(new_values, dict):
+                decision_val = str(
+                    new_values.get("status") or new_values.get("decision") or "Processed"
+                ).capitalize()
+
+            req_id_part = ""
+            for part in parts:
+                if "-" in part:
+                    req_id_part = part
+                    break
+
+            req_type_prefix = req_id_part.split("-")[0].upper() if "-" in req_id_part else ""
+            if req_type_prefix == "DEP":
+                action_name = f"Deposit Request {decision_val}"
+            elif req_type_prefix in ("WTH", "WIT"):
+                action_name = f"Withdrawal Request {decision_val}"
+            elif req_type_prefix == "DOC":
+                action_name = f"Document Submission {decision_val}"
+            elif req_type_prefix == "BNK":
+                action_name = f"Bank Details Request {decision_val}"
+            elif req_type_prefix == "CRY":
+                action_name = f"Crypto Details Request {decision_val}"
+            elif req_type_prefix == "PRF":
+                action_name = f"Profile Update Request {decision_val}"
+            elif req_id_part:
+                action_name = f"Request {req_id_part} {decision_val}"
+
         return await create_audit_log(
             request,
             user_name=user_name,
             user_email=user_email,
             user_role=user_role,
-            action_type=f"{request.method} {path}",
+            action_type=action_name,
             module_name=module,
             new_values=new_values,
             user_id=user_id,

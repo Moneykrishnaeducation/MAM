@@ -65,6 +65,15 @@ type ClientDashboardPayload = {
   };
   cards: DashboardCardPayload[];
   recent_activity_logs: DashboardActivityPayload[];
+  recent_transactions?: {
+    id: number | string;
+    account_number: string;
+    type: string;
+    amount: number;
+    method: string;
+    status: string;
+    date: string;
+  }[];
   trading_accounts?: {
     account_id: string;
     account_type: string;
@@ -849,19 +858,15 @@ export default function ClientDashboardPage() {
   const depositAccountNumber = clientAccount?.account_number || '';
   const depositAccountCurrency = clientAccount?.currency || 'USD';
   const dashboardCards = buildDashboardCards(dashboardData, clientAccount, clientInvestments);
-  const dashboardActivityRows: ActivityRowView[] =
-    dashboardData?.recent_activity_logs
-      ?.filter((log) => {
-        const haystack = `${log.action} ${log.details || ''}`.toLowerCase();
-        return !HIDDEN_ACTIVITY_KEYWORDS.some((keyword) => haystack.includes(keyword));
-      })
-      .map((log) => ({
-        id: log.id,
-        time: formatDashboardTime(log.time),
-        action: log.action,
-        details: log.details,
-        ipAddress: log.ip_address || 'N/A',
-      })) || [];
+  const dashboardActivityRows =
+    dashboardData?.recent_transactions?.map((tx: any) => ({
+      id: tx.id,
+      time: formatDashboardTime(tx.date),
+      action: `Account ID: ${tx.account_number} via ${tx.method}`,
+      details: tx.type,
+      amount: formatCurrency(tx.amount),
+      status: tx.status,
+    })) || [];
 
   if (dashboardLoading) {
     return (
@@ -956,11 +961,11 @@ export default function ClientDashboardPage() {
           <div className="mt-10">
             <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="relative inline-block pb-2 text-xl font-bold text-white">
-                Recent Activity Logs
+                Recent Activity
                 <span className="absolute left-0 bottom-0 w-12 h-1 bg-yellow-500 rounded-full"></span>
               </h2>
               <a href="/client/transaction" className="inline-flex items-center gap-1 text-sm font-semibold text-blue-200 transition-colors hover:text-white sm:self-auto">
-                View Transactions <ChevronRight size={16} />
+                View All<ChevronRight size={16} />
               </a>
             </div>
 
@@ -968,33 +973,50 @@ export default function ClientDashboardPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-[680px] sm:min-w-full w-full table-fixed text-left text-sm text-slate-300">
                   <colgroup>
-                    <col className="w-[22%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[30%]" />
+                    <col className="w-[15%]" />
                     <col className="w-[18%]" />
-                    <col className="w-[42%]" />
-                    <col className="w-[18%]" />
+                    <col className="w-[17%]" />
                   </colgroup>
                   <thead className="bg-blue-900/60 font-semibold text-white">
                     <tr>
                       <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Time</th>
-                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Action</th>
-                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Details</th>
-                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">IP Address</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Description</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Type</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Amount (USD)</th>
+                      <th className="px-3 py-4 text-[10px] uppercase tracking-widest sm:px-6 sm:text-xs">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-blue-800/40">
                     {dashboardActivityRows.length > 0 ? (
-                      dashboardActivityRows.map((log) => (
+                      dashboardActivityRows.map((log: any) => (
                         <tr key={log.id} className="hover:bg-blue-900/30 transition-colors">
                           <td className="px-3 py-4 align-top whitespace-nowrap text-xs text-slate-200 sm:px-6 sm:text-sm">{log.time}</td>
                           <td className="px-3 py-4 align-top font-medium text-white sm:px-6">{log.action}</td>
-                          <td className="px-3 py-4 align-top break-words leading-6 text-slate-300 sm:px-6">{log.details}</td>
-                          <td className="px-3 py-4 align-top whitespace-nowrap font-mono text-[11px] text-blue-200 sm:px-6 sm:text-xs">{log.ipAddress}</td>
+                          <td className="px-3 py-4 align-top break-words leading-6 text-slate-300 sm:px-6">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              log.details === "Deposit" ? "bg-emerald-500/10 text-emerald-400" : "bg-rose-500/10 text-rose-400"
+                            }`}>
+                              {log.details}
+                            </span>
+                          </td>
+                          <td className="px-3 py-4 align-top whitespace-nowrap font-mono text-[11px] text-blue-200 sm:px-6 sm:text-xs">{log.amount}</td>
+                          <td className="px-3 py-4 align-top sm:px-6">
+                            <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              log.status === "Approved" ? "bg-green-500/10 text-green-400" :
+                              log.status === "Rejected" ? "bg-red-500/10 text-red-400" :
+                              "bg-amber-500/10 text-amber-400"
+                            }`}>
+                              {log.status}
+                            </span>
+                          </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="px-3 py-10 text-center text-slate-400 sm:px-6">
-                          {dashboardLoading ? 'Loading live activity logs...' : 'No recent activity recorded for this client.'}
+                        <td colSpan={5} className="px-3 py-10 text-center text-slate-400 sm:px-6">
+                          {dashboardLoading ? "Loading live transactions..." : "No recent transactions recorded for this client."}
                         </td>
                       </tr>
                     )}

@@ -7,6 +7,15 @@ from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.urls import include, path, re_path
 
+from adminPanel.view.notifications import (
+    create_notification,
+    delete_notification,
+    get_notifications,
+    get_unread_count,
+    mark_all_notifications_read,
+    mark_notification_read,
+)
+from adminPanel.view.symbol_timing import symbol_timing
 from adminPanel.views import (
     get_available_groups,
     get_current_group_config,
@@ -19,7 +28,6 @@ from backendPanel.static_frontend import (
     get_frontend_static_dirs,
     iter_frontend_candidates,
 )
-from adminPanel.view.symbol_timing import symbol_timing
 from clientPanel.view.login import login_client
 
 
@@ -174,6 +182,24 @@ urlpatterns = [
     path("api/save-demo-group-configuration/", save_demo_group_configuration),
     path("api/admin/", include("adminPanel.urls")),
     path("api/client/", include("clientPanel.urls")),
+    path("api/notifications/", get_notifications, name="api-client-notifications"),
+    path(
+        "api/notifications/<int:notification_id>/mark-read/",
+        mark_notification_read,
+        name="api-mark-notification-read",
+    ),
+    path(
+        "api/notifications/mark-all-read/",
+        mark_all_notifications_read,
+        name="api-mark-all-notifications-read",
+    ),
+    path(
+        "api/notifications/<int:notification_id>/delete/",
+        delete_notification,
+        name="api-delete-notification",
+    ),
+    path("api/notifications/unread-count/", get_unread_count, name="api-notification-unread-count"),
+    path("api/notifications/create/", create_notification, name="api-create-notification"),
     re_path(r"^_next/data/(?P<path>.*)$", serve_next_data),
     re_path(r"^_next/(?P<path>.*)$", serve_next_static),
     re_path(r"^media/(?P<path>.*)$", serve_media_file),

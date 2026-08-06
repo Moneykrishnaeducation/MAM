@@ -514,3 +514,69 @@ class MT5SendDedup(models.Model):
 
     class Meta:
         table = "mt5_send_dedup"
+
+
+class Notification(models.Model):
+    """Notification model for user alerts."""
+
+    id = fields.IntField(primary_key=True)
+    user = fields.ForeignKeyField("models.ClientUser", related_name="notifications")
+    notification_type = fields.CharField(max_length=100, default="info")
+    status = fields.CharField(max_length=50, default="unread")
+    title = fields.CharField(max_length=255)
+    message = fields.TextField()
+    action_url = fields.CharField(max_length=500, null=True)
+    is_read = fields.BooleanField(default=False)
+    read_at = fields.DatetimeField(null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    metadata = fields.JSONField(default=dict, null=True)
+    related_object_type = fields.CharField(max_length=100, null=True)
+    related_object_id = fields.IntField(null=True)
+
+    class Meta:
+        table = "notifications"
+
+    async def mark_as_read(self):
+        import datetime
+
+        self.is_read = True
+        self.status = "read"
+        self.read_at = datetime.datetime.now(datetime.UTC)
+        await self.save()
+
+    @classmethod
+    async def get_unread_count(cls, user):
+        return await cls.filter(user=user, is_read=False).count()
+
+    @classmethod
+    async def mark_all_read(cls, user):
+        import datetime
+
+        await cls.filter(user=user, is_read=False).update(
+            is_read=True, status="read", read_at=datetime.datetime.now(datetime.UTC)
+        )
+
+    @classmethod
+    async def create_notification(
+        cls,
+        user,
+        notification_type,
+        status,
+        title,
+        message,
+        action_url=None,
+        metadata=None,
+        related_object_type=None,
+        related_object_id=None,
+    ):
+        return await cls.create(
+            user=user,
+            notification_type=notification_type,
+            status=status,
+            title=title,
+            message=message,
+            action_url=action_url,
+            metadata=metadata or {},
+            related_object_type=related_object_type,
+            related_object_id=related_object_id,
+        )
