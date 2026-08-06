@@ -31,6 +31,7 @@ from adminPanel.view.pending_requests import (
     list_pending_requests_summary,
     list_pending_withdrawals,
 )
+from adminPanel.view.transactions import list_admin_transactions
 from adminPanel.view.logout import logout_admin
 from adminPanel.view.mail import admin_mails
 from adminPanel.views import (
@@ -93,6 +94,7 @@ urlpatterns = [
     path("activity/client", list_client_activity_logs, name="activity-client"),
     path("activity/error", list_error_activity_logs, name="activity-error"),
     path("mails", admin_mails, name="mails"),
+    path("transactions", list_admin_transactions, name="transactions"),
     path("admin-users/create", create_admin_user, name="create-admin-user"),
     path("users/create", create_client_user, name="create-client-user"),
     path("accounts/create", create_account_api, name="create-account"),

@@ -41,6 +41,7 @@ from adminPanel.view.pending_requests import (
     list_pending_requests_summary,
     list_pending_withdrawals,
 )
+from adminPanel.view.transactions import list_admin_transactions
 from clientPanel import crud as client_crud
 from clientPanel.models import ClientAccount
 from clientPanel.view.common import create_client_login_token, hash_client_password
@@ -808,6 +809,96 @@ class TestAdminPanelModels:
         assert denied_response.status_code == 403
         assert denied_payload["status"] == "error"
         assert denied_payload["required_roles"] == ["admin"]
+
+    async def test_admin_transactions_page_api(self):
+        """Test the main admin transactions page endpoint."""
+        user = await ClientUser.create(
+            user_code="USR-ATX100",
+            name="Taylor Grant",
+            email="taylor.tx@example.com",
+            phone="+1 555 0400",
+            country="United States",
+        )
+        await ClientTransaction.create(
+            user=user,
+            account_number="ACC-1001",
+            transaction_type="Deposit",
+            amount=2500.0,
+            payment_method="Wire Transfer",
+            status="Completed",
+        )
+        await ClientTransaction.create(
+            user=user,
+            account_number="ACC-1001",
+            transaction_type="Withdrawal",
+            amount=700.0,
+            payment_method="Bank Transfer",
+            status="Pending",
+        )
+        await ClientTransaction.create(
+            user=user,
+            account_number="ACC-1001",
+            account_id_from="ACC-0900",
+            account_id_to="ACC-1001",
+            transaction_type="Credit-In",
+            amount=1500.0,
+            payment_method="Admin Manual Adjustment",
+            description="Internal transfer",
+            status="Completed",
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        response = await list_admin_transactions(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["summary"]["total_transactions"] == 3
+        assert payload["summary"]["deposit_count"] == 1
+        assert payload["summary"]["withdrawal_count"] == 1
+        assert payload["summary"]["internal_count"] == 1
+        assert payload["summary"]["pending_count"] == 1
+        assert len(payload["transactions"]) == 3
+        assert payload["transactions"][0]["type"] in {"Deposit", "Withdraw", "Internal Transfer"}
+
+        internal_request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {},
+                "GET": {"tab": "internal"},
+                "body": b"",
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "is_superuser": False},
+                )(),
+            },
+        )()
+
+        internal_response = await list_admin_transactions(internal_request)
+        internal_payload = json.loads(internal_response.content)
+
+        assert internal_response.status_code == 200
+        assert internal_payload["tab"] == "internal"
+        assert len(internal_payload["transactions"]) == 1
+        assert internal_payload["transactions"][0]["type"] == "Internal Transfer"
 
     async def test_admin_client_tickets(self):
         """Test the admin client ticket history endpoint."""
