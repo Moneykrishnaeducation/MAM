@@ -143,8 +143,27 @@ def serve_static_file(request, path=""):
     return response
 
 
+def serve_favicon(request):
+    """Serve favicon.ico with long-term caching to prevent repeated browser requests."""
+    _app_settings = get_settings()
+    search_dirs = [
+        *_app_settings.staticfiles_dirs,
+        _app_settings.static_root,
+        *get_frontend_static_dirs(),
+    ]
+    for d in search_dirs:
+        target_path = Path(d) / "favicon.ico"
+        if target_path.is_file():
+            res = serve_file_response(target_path, content_type="image/x-icon")
+            if res is not None:
+                res["Cache-Control"] = "public, max-age=86400, immutable"
+                return res
+    return HttpResponse(status=204)
+
+
 urlpatterns = [
     path("health", health),
+    path("favicon.ico", serve_favicon),
     path("api/status", api_status),
     path("api/login", login_client, name="login"),
     path("api/symbol-timing/", symbol_timing, name="symbol-timing"),
