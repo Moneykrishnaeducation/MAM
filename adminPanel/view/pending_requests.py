@@ -3,22 +3,29 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Iterable
 from datetime import datetime
 
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
 from adminPanel.models import ClientUser, PendingRequest
+from adminPanel.view.mail import _mail_from_address
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
     apply_approved_payment_request,
     apply_approved_profile_request,
 )
+
+logger = logging.getLogger(__name__)
 
 TAB_ALIASES: dict[str, tuple[str, ...]] = {
     "deposits": ("deposit", "deposits"),
@@ -87,6 +94,220 @@ def _mask_sensitive_value(value: str | None, keep_last: int = 4) -> str:
 def _pending_payload(request: PendingRequest) -> dict:
     payload = request.payload if isinstance(request.payload, dict) else {}
     return payload if isinstance(payload, dict) else {}
+
+
+def _admin_user_label(request) -> str:
+    user = getattr(request, "user", None)
+    if user is None or not getattr(user, "is_authenticated", False):
+        return "Admin"
+    return str(getattr(user, "name", None) or getattr(user, "email", None) or "Admin")
+
+
+def _build_approval_email_details(pending_request: PendingRequest, request_type: str, payload: dict) -> list[dict[str, str]]:
+    if request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
+        details = [
+            {"label": "Account Number", "value": str(payload.get("account_number") or "")},
+            {"label": "Amount", "value": f"${float(payload.get('amount') or pending_request.amount or 0.0):,.2f}"},
+            {"label": "Payment Method", "value": str(payload.get("payment_method") or "")},
+        ]
+        if request_type in {"withdrawal", "withdrawals"}:
+            destination_type = str(payload.get("destination_type") or "").strip()
+            if destination_type:
+                details.append({"label": "Destination Type", "value": destination_type})
+        notes = str(payload.get("notes") or "").strip()
+        if notes:
+            details.append({"label": "Notes", "value": notes})
+        return details
+
+    if request_type == "profile":
+        details = []
+        for label, key in [
+            ("Full Name", "full_name"),
+            ("Phone", "phone"),
+            ("Country", "country"),
+            ("City", "city"),
+            ("Postal Code", "postal_code"),
+            ("Tier", "tier"),
+            ("KYC Status", "kyc_status"),
+        ]:
+            value = str(payload.get(key) or "").strip()
+            if value:
+                details.append({"label": label, "value": value})
+        return details
+
+    if request_type in {"document", "documents"}:
+        details = []
+        for label, key in [
+            ("Document Type", "document_type"),
+            ("File Name", "file_name"),
+            ("File URL", "file_url"),
+        ]:
+            value = str(payload.get(key) or "").strip()
+            if value:
+                details.append({"label": label, "value": value})
+        return details
+
+    if request_type == "bank":
+        details = []
+        for label, key in [
+            ("Account Holder", "account_holder"),
+            ("Bank Name", "bank_name"),
+            ("Account Number", "account_number"),
+            ("IFSC / SWIFT", "ifsc_swift"),
+            ("Branch", "branch"),
+            ("Country", "country"),
+        ]:
+            value = str(payload.get(key) or "").strip()
+            if value:
+                details.append({"label": label, "value": value})
+        return details
+
+    if request_type == "crypto":
+        details = []
+        for label, key in [
+            ("Network", "network"),
+            ("Wallet Address", "wallet_address"),
+            ("Currency", "currency"),
+        ]:
+            value = str(payload.get(key) or "").strip()
+            if value:
+                details.append({"label": label, "value": value})
+        return details
+
+    return [{"label": "Request", "value": pending_request.client_name or "Pending Request"}]
+
+
+def _request_label_and_title(request_type: str, *, approved: bool) -> tuple[str, str]:
+    label_map = {
+        "deposit": "deposit request",
+        "deposits": "deposit request",
+        "withdrawal": "withdrawal request",
+        "withdrawals": "withdrawal request",
+        "profile": "profile update request",
+        "document": "document request",
+        "documents": "document request",
+        "bank": "bank details request",
+        "crypto": "crypto details request",
+    }
+    title_map = {
+        "deposit": "Deposit Approved" if approved else "Deposit Rejected",
+        "deposits": "Deposit Approved" if approved else "Deposit Rejected",
+        "withdrawal": "Withdrawal Approved" if approved else "Withdrawal Rejected",
+        "withdrawals": "Withdrawal Approved" if approved else "Withdrawal Rejected",
+        "profile": "Profile Update Approved" if approved else "Profile Update Rejected",
+        "document": "Document Approved" if approved else "Document Rejected",
+        "documents": "Document Approved" if approved else "Document Rejected",
+        "bank": "Bank Details Approved" if approved else "Bank Details Rejected",
+        "crypto": "Crypto Details Approved" if approved else "Crypto Details Rejected",
+    }
+    return label_map.get(request_type, "request"), title_map.get(request_type, "Request Approved" if approved else "Request Rejected")
+
+
+def _update_template_prefix(request_type: str) -> str | None:
+    mapping = {
+        "profile": "profile_update_approval_notification",
+        "document": "document_update_approval_notification",
+        "documents": "document_update_approval_notification",
+        "bank": "bank_details_approval_notification",
+        "crypto": "crypto_details_approval_notification",
+    }
+    return mapping.get(request_type)
+
+
+def _build_approval_email_context(*, pending_request: PendingRequest, request_type: str, user_name: str, approved_by: str, reviewed_at: str, payload: dict) -> tuple[str, str, str]:
+    request_label, title = _request_label_and_title(request_type, approved=True)
+    context = {
+        "title": title,
+        "user_name": user_name or "there",
+        "request_label": request_label,
+        "details": _build_approval_email_details(pending_request, request_type, payload),
+        "reviewed_at": reviewed_at,
+        "approved_by": approved_by,
+    }
+    plain_body = render_to_string("emails/admin_approval_notification.txt", context).strip()
+    html_body = render_to_string("emails/admin_approval_notification.html", context)
+    return title, plain_body, html_body
+
+
+def _build_rejection_email_context(*, pending_request: PendingRequest, request_type: str, user_name: str, reviewed_by: str, reviewed_at: str, payload: dict, reason: str | None = None) -> tuple[str, str, str]:
+    request_label, title = _request_label_and_title(request_type, approved=False)
+    context = {
+        "title": title,
+        "user_name": user_name or "there",
+        "request_label": request_label,
+        "details": _build_approval_email_details(pending_request, request_type, payload),
+        "reviewed_at": reviewed_at,
+        "approved_by": reviewed_by,
+        "reason": reason or "",
+    }
+    plain_body = render_to_string("emails/admin_rejection_notification.txt", context).strip()
+    html_body = render_to_string("emails/admin_rejection_notification.html", context)
+    return title, plain_body, html_body
+
+
+async def _send_admin_approval_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, approved_by: str, reviewed_at: str) -> None:
+    title, plain_body, html_body = _build_approval_email_context(
+        pending_request=pending_request,
+        request_type=request_type,
+        user_name=user.name or user.email or "there",
+        approved_by=approved_by,
+        reviewed_at=reviewed_at,
+        payload=payload,
+    )
+    message = EmailMultiAlternatives(
+        subject=title,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
+
+
+async def _send_admin_update_approval_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, approved_by: str, reviewed_at: str) -> None:
+    template_prefix = _update_template_prefix(request_type)
+    if template_prefix is None:
+        raise ValueError(f"Unsupported update approval type: {request_type}")
+
+    request_label, title = _request_label_and_title(request_type, approved=True)
+    context = {
+        "title": title,
+        "user_name": user.name or user.email or "there",
+        "request_label": request_label,
+        "details": _build_approval_email_details(pending_request, request_type, payload),
+        "reviewed_at": reviewed_at,
+        "approved_by": approved_by,
+    }
+    plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()
+    html_body = render_to_string(f"emails/{template_prefix}.html", context)
+    message = EmailMultiAlternatives(
+        subject=title,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
+
+
+async def _send_admin_rejection_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, reviewed_by: str, reviewed_at: str, reason: str | None = None) -> None:
+    title, plain_body, html_body = _build_rejection_email_context(
+        pending_request=pending_request,
+        request_type=request_type,
+        user_name=user.name or user.email or "there",
+        reviewed_by=reviewed_by,
+        reviewed_at=reviewed_at,
+        payload=payload,
+        reason=reason,
+    )
+    message = EmailMultiAlternatives(
+        subject=title,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 async def _resolve_user_for_pending_request(pending_request: PendingRequest) -> ClientUser | None:
@@ -329,9 +550,10 @@ async def decide_pending_request(request, request_id: str):
 
     if decision == "approved":
         request_type = _sanitize_request_type(pending_request.request_type)
+        resolved_user = None
         if request_type in {"bank", "crypto"}:
-            user = await _resolve_user_for_pending_request(pending_request)
-            if user is None:
+            resolved_user = await _resolve_user_for_pending_request(pending_request)
+            if resolved_user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -339,10 +561,10 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_payment_request(pending_request, profile=user)
+            await apply_approved_payment_request(pending_request, profile=resolved_user)
         elif request_type == "profile":
-            user = await _resolve_user_for_pending_request(pending_request)
-            if user is None:
+            resolved_user = await _resolve_user_for_pending_request(pending_request)
+            if resolved_user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -350,10 +572,10 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_profile_request(pending_request, user=user)
+            await apply_approved_profile_request(pending_request, user=resolved_user)
         elif request_type in {"document", "documents"}:
-            user = await _resolve_user_for_pending_request(pending_request)
-            if user is None:
+            resolved_user = await _resolve_user_for_pending_request(pending_request)
+            if resolved_user is None:
                 return JsonResponse(
                     {
                         "status": "error",
@@ -361,7 +583,7 @@ async def decide_pending_request(request, request_id: str):
                     },
                     status=400,
                 )
-            await apply_approved_document_request(pending_request, profile=user)
+            await apply_approved_document_request(pending_request, profile=resolved_user)
         elif request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()
@@ -421,16 +643,50 @@ async def decide_pending_request(request, request_id: str):
                         else:
                             t_acc.balance = float(t_acc.balance or 0.0) - amount
                         await t_acc.save()
+            resolved_user = await _resolve_user_for_pending_request(pending_request)
         else:
             pending_request.status = "Approved"
             pending_request.reviewed_at = timezone.now()
             await pending_request.save()
+
+        if resolved_user is not None:
+            approved_by = _admin_user_label(request)
+            reviewed_at = (
+                pending_request.reviewed_at.strftime("%Y-%m-%d %H:%M:%S")
+                if pending_request.reviewed_at
+                else timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            try:
+                payload = _pending_payload(pending_request)
+                if request_type in {"profile", "document", "documents", "bank", "crypto"}:
+                    await _send_admin_update_approval_email(
+                        user=resolved_user,
+                        pending_request=pending_request,
+                        request_type=request_type,
+                        payload=payload,
+                        approved_by=approved_by,
+                        reviewed_at=reviewed_at,
+                    )
+                else:
+                    await _send_admin_approval_email(
+                        user=resolved_user,
+                        pending_request=pending_request,
+                        request_type=request_type,
+                        payload=payload,
+                        approved_by=approved_by,
+                        reviewed_at=reviewed_at,
+                    )
+            except Exception as exc:
+                logger.error(
+                    f"Failed to send approval email for pending request {pending_request.id} to {resolved_user.email}: {exc}"
+                )
     else:
         pending_request.status = "Rejected"
         pending_request.reviewed_at = timezone.now()
         await pending_request.save()
 
         request_type = _sanitize_request_type(pending_request.request_type)
+        resolved_user = await _resolve_user_for_pending_request(pending_request)
         if request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
             from adminPanel.models import ClientTransaction
 
@@ -442,7 +698,29 @@ async def decide_pending_request(request, request_id: str):
                     tx.status = "Rejected"
                     await tx.save()
 
-    # Create notification for target user
+        if resolved_user is not None:
+            reviewed_by = _admin_user_label(request)
+            reviewed_at = (
+                pending_request.reviewed_at.strftime("%Y-%m-%d %H:%M:%S")
+                if pending_request.reviewed_at
+                else timezone.now().strftime("%Y-%m-%d %H:%M:%S")
+            )
+            reason = str(body.get("reason") or body.get("notes") or body.get("message") or "").strip() or None
+            try:
+                await _send_admin_rejection_email(
+                    user=resolved_user,
+                    pending_request=pending_request,
+                    request_type=request_type,
+                    payload=_pending_payload(pending_request),
+                    reviewed_by=reviewed_by,
+                    reviewed_at=reviewed_at,
+                    reason=reason,
+                )
+            except Exception as exc:
+                logger.error(
+                    f"Failed to send rejection email for pending request {pending_request.id} to {resolved_user.email}: {exc}"
+                )
+# Create notification for target user
     target_user = None
     if pending_request.user_id:
         from adminPanel.models import ClientUser
@@ -478,7 +756,6 @@ async def decide_pending_request(request, request_id: str):
                 "decision": decision,
             },
         )
-
     return JsonResponse(
         {
             "status": "ok",

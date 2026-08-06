@@ -31,6 +31,7 @@ from adminPanel.view.client_transactions import list_client_transactions
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.mam_accounts import create_mam_account, _render_credentials_email_body
 from adminPanel.view.pending_requests import (
+    decide_pending_request,
     list_pending_banks,
     list_pending_cryptos,
     list_pending_deposits,
@@ -46,9 +47,11 @@ from clientPanel.view.common import create_client_login_token, hash_client_passw
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.account import create_client_trading_account
+from clientPanel.view.documents import client_documents
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
 from clientPanel.view.reset_password import request_client_password_reset, reset_client_password
+from clientPanel.view.payment_details import client_payment_details
 from clientPanel.view.tickets import create_client_ticket, get_client_ticket_detail
 from clientPanel.view.withdrawal import create_client_withdrawal
 
@@ -196,6 +199,171 @@ class TestAdminPanelModels:
         assert "Go to Investor Dashboard" in html_body
         assert "MasterPass456!" in html_body
         assert "InvestorPass456!" in html_body
+
+    async def test_deposit_notification_email_template(self):
+        """Test the deposit notification template renders the key request fields."""
+        context = {
+            "user_name": "Jamie Park",
+            "account_number": "MT5-DEP-01",
+            "amount": "500.00",
+            "payment_method": "Wire Transfer",
+            "proof_name": "proof.pdf",
+            "notes": "Deposit for trading",
+            "status": "Pending",
+            "created_at": "2026-08-06 11:00:00",
+        }
+
+        plain_body = render_to_string("emails/deposit_notification_email.txt", context)
+        html_body = render_to_string("emails/deposit_notification_email.html", context)
+
+        assert "Jamie Park" in plain_body
+        assert "MT5-DEP-01" in plain_body
+        assert "500.00" in plain_body
+        assert "Wire Transfer" in plain_body
+        assert "proof.pdf" in plain_body
+        assert "View Deposit Status" in html_body
+
+    async def test_withdrawal_notification_email_template(self):
+        """Test the withdrawal notification template renders the key request fields."""
+        context = {
+            "user_name": "Jordan Kim",
+            "account_number": "MT5-WTH-01",
+            "amount": "250.00",
+            "payment_method": "Bank Transfer",
+            "destination_type": "bank",
+            "notes": "Withdraw to bank",
+            "status": "Pending",
+            "created_at": "2026-08-06 11:05:00",
+        }
+
+        plain_body = render_to_string("emails/withdrawal_notification_email.txt", context)
+        html_body = render_to_string("emails/withdrawal_notification_email.html", context)
+
+        assert "Jordan Kim" in plain_body
+        assert "MT5-WTH-01" in plain_body
+        assert "250.00" in plain_body
+        assert "Bank Transfer" in plain_body
+        assert "bank" in plain_body
+        assert "View Withdrawal Status" in html_body
+
+    async def test_admin_approval_notification_email_template(self):
+        """Test the admin approval notification template renders approval details."""
+        context = {
+            "title": "Deposit Approved",
+            "user_name": "Jamie Park",
+            "request_label": "deposit request",
+            "details": [
+                {"label": "Account Number", "value": "MT5-DEP-01"},
+                {"label": "Amount", "value": "$500.00"},
+                {"label": "Payment Method", "value": "Wire Transfer"},
+            ],
+            "reviewed_at": "2026-08-06 11:10:00",
+            "approved_by": "System Admin",
+        }
+
+        plain_body = render_to_string("emails/admin_approval_notification.txt", context)
+        html_body = render_to_string("emails/admin_approval_notification.html", context)
+
+        assert "Jamie Park" in plain_body
+        assert "deposit request" in plain_body
+        assert "MT5-DEP-01" in plain_body
+        assert "$500.00" in plain_body
+        assert "Wire Transfer" in plain_body
+        assert "Deposit Approved" in html_body
+        assert "System Admin" in html_body
+
+    async def test_admin_rejection_notification_email_template(self):
+        """Test the admin rejection notification template renders rejection details."""
+        context = {
+            "title": "Withdrawal Rejected",
+            "user_name": "Jordan Kim",
+            "request_label": "withdrawal request",
+            "details": [
+                {"label": "Account Number", "value": "MT5-WTH-01"},
+                {"label": "Amount", "value": "$250.00"},
+                {"label": "Payment Method", "value": "Bank Transfer"},
+            ],
+            "reviewed_at": "2026-08-06 11:12:00",
+            "approved_by": "System Admin",
+            "reason": "Missing supporting documents",
+        }
+
+        plain_body = render_to_string("emails/admin_rejection_notification.txt", context)
+        html_body = render_to_string("emails/admin_rejection_notification.html", context)
+
+        assert "Jordan Kim" in plain_body
+        assert "withdrawal request" in plain_body
+        assert "MT5-WTH-01" in plain_body
+        assert "$250.00" in plain_body
+        assert "Missing supporting documents" in plain_body
+        assert "Withdrawal Rejected" in html_body
+        assert "System Admin" in html_body
+
+    async def test_admin_update_approval_email_templates(self):
+        """Test the profile, document, bank, and crypto approval templates render correctly."""
+        cases = [
+            (
+                "emails/profile_update_approval_notification.txt",
+                "emails/profile_update_approval_notification.html",
+                {
+                    "title": "Profile Update Approved",
+                    "user_name": "Jamie Park",
+                    "request_label": "profile update request",
+                    "details": [{"label": "Full Name", "value": "Jamie Park"}],
+                    "reviewed_at": "2026-08-06 11:15:00",
+                    "approved_by": "System Admin",
+                },
+                "View Profile",
+            ),
+            (
+                "emails/document_update_approval_notification.txt",
+                "emails/document_update_approval_notification.html",
+                {
+                    "title": "Document Update Approved",
+                    "user_name": "Jamie Park",
+                    "request_label": "document request",
+                    "details": [{"label": "Document Type", "value": "identity"}],
+                    "reviewed_at": "2026-08-06 11:15:00",
+                    "approved_by": "System Admin",
+                },
+                "View Documents",
+            ),
+            (
+                "emails/bank_details_approval_notification.txt",
+                "emails/bank_details_approval_notification.html",
+                {
+                    "title": "Bank Details Approved",
+                    "user_name": "Jamie Park",
+                    "request_label": "bank details request",
+                    "details": [{"label": "Bank Name", "value": "ICICI"}],
+                    "reviewed_at": "2026-08-06 11:15:00",
+                    "approved_by": "System Admin",
+                },
+                "View Bank Details",
+            ),
+            (
+                "emails/crypto_details_approval_notification.txt",
+                "emails/crypto_details_approval_notification.html",
+                {
+                    "title": "Crypto Details Approved",
+                    "user_name": "Jamie Park",
+                    "request_label": "crypto details request",
+                    "details": [{"label": "Network", "value": "USDT-TRC20"}],
+                    "reviewed_at": "2026-08-06 11:15:00",
+                    "approved_by": "System Admin",
+                },
+                "View Crypto Details",
+            ),
+        ]
+
+        for plain_template, html_template, context, button_label in cases:
+            plain_body = render_to_string(plain_template, context)
+            html_body = render_to_string(html_template, context)
+            assert context["user_name"] in plain_body
+            assert context["title"] in plain_body
+            assert context["request_label"] in plain_body
+            assert button_label in html_body
+            assert context["approved_by"] in html_body
 
     async def test_admin_dashboard(self):
         """Test admin dashboard summary payload and admin-only access."""
@@ -939,6 +1107,218 @@ class TestClientPanelModels:
         assert profile.email == "jamie.login@example.com"
         assert profile.country == "Canada"
 
+    async def test_client_profile_update_sends_submission_email(self, monkeypatch):
+        """Test submitting a profile edit triggers the profile request email."""
+        from clientPanel.view import profile as profile_view
+
+        user = await ClientUser.create(
+            user_code="USR-PROFILE-SUB1",
+            name="Jordan Lee",
+            email="jordan.submit@example.com",
+            phone="+1 555 0200",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jordan Lee",
+            email="jordan.submit@example.com",
+            phone="+1 555 0200",
+            country="United States",
+            tier="Standard",
+            kyc_status="Pending",
+        )
+
+        captured = {}
+
+        async def fake_send_profile_update_email(**kwargs):
+            captured["email"] = kwargs["email"]
+            captured["details"] = kwargs["details"]
+
+        monkeypatch.setattr(profile_view, "_send_profile_update_email", fake_send_profile_update_email)
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "PUT",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "name": "Jordan Lee",
+                        "email": "jordan.submit@example.com",
+                        "phone": "+1 555 0222",
+                        "country": "Canada",
+                    }
+                ).encode(),
+            },
+        )()
+
+        response = await get_client_profile(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert payload["profile_request_status"] == "pending"
+        assert captured["email"] == "jordan.submit@example.com"
+        assert captured["details"]["Country"] == "Canada"
+
+        pending_request = await PendingRequest.filter(user_id=user.id, request_type="profile").first()
+        assert pending_request is not None
+        assert pending_request.status == "Pending"
+
+    async def test_client_identity_document_submission_sends_email(self, monkeypatch):
+        """Test submitting an identity proof triggers the document submission email."""
+        from clientPanel.view import documents as documents_view
+
+        user = await ClientUser.create(
+            user_code="USR-DOC1",
+            name="Maya Singh",
+            email="maya.doc@example.com",
+            country="India",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Maya Singh",
+            email="maya.doc@example.com",
+            country="India",
+        )
+
+        captured = {}
+
+        async def fake_send_document_submission_email(**kwargs):
+            captured["email"] = kwargs["email"]
+            captured["document_type"] = kwargs["document_type"]
+            captured["details"] = kwargs["details"]
+
+        monkeypatch.setattr(
+            documents_view, "_send_document_submission_email", fake_send_document_submission_email
+        )
+        monkeypatch.setattr(
+            documents_view,
+            "_save_uploaded_document",
+            lambda uploaded_file, profile_id, document_type: (
+                f"client_documents/{profile_id}/{document_type}/identity.pdf",
+                "https://example.com/identity.pdf",
+            ),
+        )
+
+        fake_file = type("File", (), {"name": "identity.pdf", "content_type": "application/pdf", "size": 1234})()
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "POST": {},
+                "FILES": {"documentFile": fake_file},
+                "body": json.dumps({"documentType": "identity"}).encode(),
+            },
+        )()
+
+        response = await client_documents(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert captured["email"] == "maya.doc@example.com"
+        assert captured["document_type"] == "identity"
+        assert captured["details"]["Document Type"] == "Identity Proof"
+
+        pending_request = await PendingRequest.filter(user_id=user.id, request_type="documents").first()
+        assert pending_request is not None
+        assert pending_request.payload["document_type"] == "identity"
+
+    async def test_client_payment_submission_sends_email(self, monkeypatch):
+        """Test submitting bank and crypto payment details triggers the payment email."""
+        from clientPanel.view import payment_details as payment_view
+
+        user = await ClientUser.create(
+            user_code="USR-PAY1",
+            name="Noah Patel",
+            email="noah.pay@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Noah Patel",
+            email="noah.pay@example.com",
+            country="United States",
+        )
+
+        captured: dict[str, dict] = {}
+
+        async def fake_send_payment_submission_email(**kwargs):
+            captured["email"] = kwargs["email"]
+            captured["payment_type"] = kwargs["payment_type"]
+            captured["details"] = kwargs["details"]
+
+        monkeypatch.setattr(
+            payment_view, "_send_payment_submission_email", fake_send_payment_submission_email
+        )
+
+        bank_request = type(
+            "Request",
+            (),
+            {
+                "method": "PUT",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "paymentType": "bank",
+                        "accountHolder": "Noah Patel",
+                        "bankName": "First National",
+                        "accountNumber": "1234567890",
+                        "ifscSwift": "FNINUS33",
+                        "branch": "Downtown",
+                        "country": "United States",
+                    }
+                ).encode(),
+            },
+        )()
+
+        bank_response = await client_payment_details(bank_request)
+        bank_payload = json.loads(bank_response.content)
+
+        assert bank_response.status_code == 200
+        assert bank_payload["status"] == "ok"
+        assert captured["email"] == "noah.pay@example.com"
+        assert captured["payment_type"] == "bank"
+        assert captured["details"]["Bank Name"] == "First National"
+
+        crypto_request = type(
+            "Request",
+            (),
+            {
+                "method": "PUT",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "paymentType": "crypto",
+                        "network": "USDT-TRC20",
+                        "cryptoAddress": "TRC20-WALLET-123",
+                        "cryptoCurrency": "USDT",
+                    }
+                ).encode(),
+            },
+        )()
+
+        crypto_response = await client_payment_details(crypto_request)
+        crypto_payload = json.loads(crypto_response.content)
+
+        assert crypto_response.status_code == 200
+        assert crypto_payload["status"] == "ok"
+        assert captured["payment_type"] == "crypto"
+        assert captured["details"]["Wallet Address"] == "TRC20-WALLET-123"
+
+        bank_pending = await PendingRequest.filter(user_id=user.id, request_type="bank").first()
+        crypto_pending = await PendingRequest.filter(user_id=user.id, request_type="crypto").first()
+        assert bank_pending is not None
+        assert crypto_pending is not None
+
     async def test_client_activity_logs_use_authenticated_user_id(self):
         """Test client activity logs are fetched for the logged-in client user."""
         user = await ClientUser.create(
@@ -1494,8 +1874,10 @@ class TestClientPanelModels:
         assert payload["dashboard"]["cards"][0]["key"] == "balance"
         assert len(payload["dashboard"]["recent_activity_logs"]) == 5
 
-    async def test_client_deposit(self):
+    async def test_client_deposit(self, monkeypatch):
         """Test creating a client deposit request."""
+        from clientPanel.view import deposit as deposit_view
+
         user = await ClientUser.create(
             user_code="USR-DEPOSIT1",
             name="Jamie Park",
@@ -1533,6 +1915,14 @@ class TestClientPanelModels:
             },
         )()
 
+        called = {}
+
+        async def fake_send_deposit_email(**kwargs):
+            called["email"] = kwargs["email"]
+            called["account_number"] = kwargs["account_number"]
+
+        monkeypatch.setattr(deposit_view, "_send_deposit_email", fake_send_deposit_email)
+
         response = await create_client_deposit(request)
         payload = json.loads(response.content)
 
@@ -1545,9 +1935,13 @@ class TestClientPanelModels:
         assert saved is not None
         assert saved.amount == 500.0
         assert saved.payment_method == "Wire Transfer"
+        assert called["email"] == "jamie.deposit@example.com"
+        assert called["account_number"] == "MT5-DEP-01"
 
-    async def test_client_withdrawal(self):
+    async def test_client_withdrawal(self, monkeypatch):
         """Test creating a client withdrawal request."""
+        from clientPanel.view import withdrawal as withdrawal_view
+
         user = await ClientUser.create(
             user_code="USR-WITHDRAW1",
             name="Jordan Kim",
@@ -1585,6 +1979,14 @@ class TestClientPanelModels:
             },
         )()
 
+        called = {}
+
+        async def fake_send_withdrawal_email(**kwargs):
+            called["email"] = kwargs["email"]
+            called["account_number"] = kwargs["account_number"]
+
+        monkeypatch.setattr(withdrawal_view, "_send_withdrawal_email", fake_send_withdrawal_email)
+
         response = await create_client_withdrawal(request)
         payload = json.loads(response.content)
 
@@ -1597,6 +1999,248 @@ class TestClientPanelModels:
         assert saved is not None
         assert saved.amount == 250.0
         assert saved.payment_method == "Bank Transfer"
+        assert called["email"] == "jordan.withdraw@example.com"
+        assert called["account_number"] == "MT5-WTH-01"
+
+    async def test_admin_approves_deposit_request_sends_email(self, monkeypatch):
+        """Test approving a deposit request sends the approval email to the client."""
+        from adminPanel.view import pending_requests as pending_view
+
+        user = await ClientUser.create(
+            user_code="USR-APPROVE1",
+            name="Jamie Park",
+            email="jamie.approve@example.com",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jamie Park",
+            email="jamie.approve@example.com",
+            country="United States",
+        )
+        await ClientAccount.create(
+            client_profile=profile,
+            account_number="MT5-APR-01",
+            balance=2000.0,
+            equity=2100.0,
+        )
+        tx = await ClientTransaction.create(
+            user_id=user.id,
+            account_number="MT5-APR-01",
+            transaction_type="Deposit",
+            amount=500.0,
+            payment_method="Wire Transfer",
+            status="Pending",
+        )
+        pending = await PendingRequest.create(
+            request_type="deposit",
+            client_name="Jamie Park",
+            user_id=user.id,
+            amount=500.0,
+            status="Pending",
+            payload={
+                "transaction_id": tx.id,
+                "account_number": "MT5-APR-01",
+                "amount": 500.0,
+                "payment_method": "Wire Transfer",
+            },
+        )
+
+        called = {}
+
+        async def fake_send_admin_approval_email(**kwargs):
+            called["email"] = kwargs["user"].email
+            called["request_type"] = kwargs["request_type"]
+            called["approved_by"] = kwargs["approved_by"]
+
+        monkeypatch.setattr(pending_view, "_send_admin_approval_email", fake_send_admin_approval_email)
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"status": "approved"}).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "name": "System Admin"},
+                )(),
+            },
+        )()
+
+        response = await decide_pending_request(request, request_id=f"PEN-{pending.id}")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert called["email"] == "jamie.approve@example.com"
+        assert called["request_type"] == "deposit"
+        assert called["approved_by"] == "System Admin"
+
+        refreshed_pending = await PendingRequest.get(id=pending.id)
+        refreshed_tx = await ClientTransaction.get(id=tx.id)
+        assert refreshed_pending.status == "Approved"
+        assert refreshed_tx.status == "Approved"
+
+    async def test_admin_approves_profile_request_sends_email(self, monkeypatch):
+        """Test approving a profile update request sends the update approval email."""
+        from adminPanel.view import pending_requests as pending_view
+
+        user = await ClientUser.create(
+            user_code="USR-PROFILE-APR1",
+            name="Jamie Park",
+            email="jamie.profile.approve@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jamie Park",
+            email="jamie.profile.approve@example.com",
+            country="United States",
+        )
+        pending = await PendingRequest.create(
+            request_type="profile",
+            client_name="Jamie Park",
+            user_id=user.id,
+            amount=0.0,
+            status="Pending",
+            payload={
+                "full_name": "Jamie Park Updated",
+                "phone": "+1 555 0101",
+                "country": "Canada",
+                "city": "Toronto",
+                "postal_code": "M5H 2N2",
+                "tier": "VIP",
+                "kyc_status": "Verified",
+            },
+        )
+
+        called = {}
+
+        async def fake_send_admin_update_approval_email(**kwargs):
+            called["email"] = kwargs["user"].email
+            called["request_type"] = kwargs["request_type"]
+            called["approved_by"] = kwargs["approved_by"]
+
+        monkeypatch.setattr(pending_view, "_send_admin_update_approval_email", fake_send_admin_update_approval_email)
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"status": "approved"}).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "name": "System Admin"},
+                )(),
+            },
+        )()
+
+        response = await decide_pending_request(request, request_id=f"PEN-{pending.id}")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert called["email"] == "jamie.profile.approve@example.com"
+        assert called["request_type"] == "profile"
+        assert called["approved_by"] == "System Admin"
+
+        refreshed_pending = await PendingRequest.get(id=pending.id)
+        refreshed_user = await ClientUser.get(id=user.id)
+        assert refreshed_pending.status == "Approved"
+        assert refreshed_user.country == "Canada"
+
+    async def test_admin_rejects_deposit_request_sends_email(self, monkeypatch):
+        """Test rejecting a deposit request sends the rejection email to the client."""
+        from adminPanel.view import pending_requests as pending_view
+
+        user = await ClientUser.create(
+            user_code="USR-REJECT1",
+            name="Jordan Kim",
+            email="jordan.reject@example.com",
+            country="United States",
+        )
+        profile = await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jordan Kim",
+            email="jordan.reject@example.com",
+            country="United States",
+        )
+        await ClientAccount.create(
+            client_profile=profile,
+            account_number="MT5-REJ-01",
+            balance=2000.0,
+            equity=2100.0,
+        )
+        tx = await ClientTransaction.create(
+            user_id=user.id,
+            account_number="MT5-REJ-01",
+            transaction_type="Deposit",
+            amount=500.0,
+            payment_method="Wire Transfer",
+            status="Pending",
+        )
+        pending = await PendingRequest.create(
+            request_type="deposit",
+            client_name="Jordan Kim",
+            user_id=user.id,
+            amount=500.0,
+            status="Pending",
+            payload={
+                "transaction_id": tx.id,
+                "account_number": "MT5-REJ-01",
+                "amount": 500.0,
+                "payment_method": "Wire Transfer",
+            },
+        )
+
+        called = {}
+
+        async def fake_send_admin_rejection_email(**kwargs):
+            called["email"] = kwargs["user"].email
+            called["request_type"] = kwargs["request_type"]
+            called["reviewed_by"] = kwargs["reviewed_by"]
+            called["reason"] = kwargs["reason"]
+
+        monkeypatch.setattr(pending_view, "_send_admin_rejection_email", fake_send_admin_rejection_email)
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"status": "rejected", "reason": "Invalid receipt"}).encode(),
+                "user": type(
+                    "User",
+                    (),
+                    {"is_authenticated": True, "is_staff": True, "name": "System Admin"},
+                )(),
+            },
+        )()
+
+        response = await decide_pending_request(request, request_id=f"PEN-{pending.id}")
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert called["email"] == "jordan.reject@example.com"
+        assert called["request_type"] == "deposit"
+        assert called["reviewed_by"] == "System Admin"
+        assert called["reason"] == "Invalid receipt"
+
+        refreshed_pending = await PendingRequest.get(id=pending.id)
+        refreshed_tx = await ClientTransaction.get(id=tx.id)
+        assert refreshed_pending.status == "Rejected"
+        assert refreshed_tx.status == "Rejected"
 
     async def test_client_ticket_create_and_detail(self):
         """Test creating and reading a client ticket for the logged-in user."""

@@ -1,0 +1,11 @@
+Hello {{ user_name }},
+
+Your {{ request_label }} has been approved by our admin team.
+
+{% for item in details %}{{ item.label }}: {{ item.value }}
+{% endfor %}Status: Approved
+{% if reviewed_at %}Reviewed At: {{ reviewed_at }}
+{% endif %}{% if approved_by %}Approved By: {{ approved_by }}
+{% endif %}
+
+If you have any questions about this approval, please contact support.

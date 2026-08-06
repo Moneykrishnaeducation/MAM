@@ -64,6 +64,8 @@ Recent additions:
 - `static/frontend/` is the drop-in location for the exported Next.js frontend build. The backend reads from that directory only.
 - `clientPanel/view/login.py` now sets auth cookies for `access_token`, `jwt_token`, `refresh_token`, `role`, plus the legacy session cookie names so the frontend no longer needs `localStorage` for auth state.
 - `clientPanel/view/reset_password.py` now supports emailed password reset links via `/api/client/request-password-reset` and token-based completion via `/api/client/reset-password`, and the frontend includes a `/client/reset-password` page for link follow-through.
+- `clientPanel/view/profile.py`, `clientPanel/view/documents.py`, and `clientPanel/view/payment_details.py` now send submission emails for profile edits, identity/address proof uploads, and bank/crypto payment-detail updates when a client submits a pending request.
+- `templates/emails/profile_update_notification_email.*`, `templates/emails/document_submission_notification_email.*`, and `templates/emails/payment_details_submission_notification_email.*` hold the client-facing request-submission email templates used by those flows.
 - `adminPanel/view/mam_accounts.py` now sends branded MT5 credential emails to the related client after MAM or investor account creation, including the login, group, and generated passwords.
 - `templates/emails/mam_credentials_email.html` and `templates/emails/mam_credentials_email.txt` hold the standalone MAM credential email templates rendered by `adminPanel/view/mam_accounts.py`.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.

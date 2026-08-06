@@ -1,0 +1,11 @@
+Hello {{ user_name }},
+
+We have received your {{ document_label|lower }} request and it is now pending review.
+
+{% for label, value in details.items %}{% if value %}{{ label }}: {{ value }}
+{% endif %}{% endfor %}Status: {{ status }}
+{% if created_at %}Submitted At: {{ created_at }}
+{% endif %}
+
+Please keep this email for your records.
+Our team will review the request shortly.

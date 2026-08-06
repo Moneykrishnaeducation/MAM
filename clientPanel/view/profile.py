@@ -3,8 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -21,10 +26,63 @@ from clientPanel.view.common import (
     get_latest_profile_request_status,
     get_latest_payment_request_status,
 )
-
-
+from adminPanel.view.mail import _mail_from_address
 from django.core.files.storage import default_storage
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+
+def _profile_display_name(profile) -> str:
+    return str(
+        getattr(profile, "full_name", None)
+        or getattr(profile, "name", None)
+        or getattr(profile, "email", None)
+        or "Client"
+    )
+
+
+def _render_profile_update_email(
+    *,
+    user_name: str,
+    details: dict,
+    status: str = "Pending",
+    created_at: str | None = None,
+) -> tuple[str, str, str]:
+    context = {
+        "user_name": user_name or "there",
+        "details": details,
+        "status": status,
+        "created_at": created_at or "",
+    }
+    subject = "Profile details submitted for approval"
+    plain_body = render_to_string("emails/profile_update_notification_email.txt", context).strip()
+    html_body = render_to_string("emails/profile_update_notification_email.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_profile_update_email(
+    *,
+    user_name: str,
+    email: str,
+    details: dict,
+    status: str = "Pending",
+    created_at: str | None = None,
+) -> None:
+    subject, plain_body, html_body = _render_profile_update_email(
+        user_name=user_name,
+        details=details,
+        status=status,
+        created_at=created_at,
+    )
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @csrf_exempt
@@ -75,6 +133,25 @@ async def get_client_profile(request):
         return _error(str(exc), status=400)
 
     pending_request = await create_profile_pending_request(user, user, submission_payload)
+
+    try:
+        await _send_profile_update_email(
+            user_name=_profile_display_name(profile),
+            email=str(getattr(profile, "email", "") or ""),
+            details={
+                "Full Name": submission_payload.get("full_name") or "",
+                "Phone": submission_payload.get("phone") or "",
+                "Country": submission_payload.get("country") or "",
+                "City": submission_payload.get("city") or "",
+                "Postal Code": submission_payload.get("postal_code") or "",
+                "Tier": submission_payload.get("tier") or "",
+                "KYC Status": submission_payload.get("kyc_status") or "",
+            },
+            status="Pending",
+            created_at=timezone.now().strftime("%Y-%m-%d %H:%M:%S"),
+        )
+    except Exception as exc:
+        logger.error(f"Failed to send profile update email to {profile.email}: {exc}")
 
     return JsonResponse(
         {

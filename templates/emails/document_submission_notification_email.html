@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        @keyframes gold-shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #061230; color: #E8EEF9; }
+        .email-container { max-width: 600px; margin: 20px auto; border-radius: 12px; overflow: hidden; box-shadow: 0px 4px 20px rgba(240, 200, 74, 0.25); background: #0B1F4B; color: #E8EEF9; border: 2px solid transparent; background-clip: padding-box; background-size: 400% 400%; }
+        @supports (animation: gold-shimmer 2s linear infinite) { .email-container { background: linear-gradient(145deg, #0B1F4B, #1A3A8C) padding-box, linear-gradient(90deg, #C9A227, #F0C84A, #C9A227) border-box; background-size: 200% auto; animation: gold-shimmer 8s linear infinite; border: 2px solid transparent; } }
+        .header { background: linear-gradient(145deg, #F0C84A, #C9A227); color: #0B1F4B; text-align: center; padding: 25px; box-shadow: 0 0 15px rgba(240, 200, 74, 0.5); }
+        .header h1 { margin: 0; font-size: 30px; letter-spacing: 2px; }
+        .content { padding: 20px 30px; }
+        .content h2 { color: #F0C84A; margin-top: 0; }
+        .credentials-box { background: rgba(0, 0, 0, 0.6); border-radius: 8px; padding: 15px; margin: 20px 0; box-shadow: 0px 2px 8px rgba(240, 200, 74, 0.15); border: 1px solid rgba(240, 200, 74, 0.4); }
+        .credentials-box p { margin: 8px 0; font-size: 16px; color: #E8EEF9; }
+        .button-wrap { text-align: center; }
+        .button { display: inline-block; text-align: center; background: linear-gradient(145deg, #F0C84A, #C9A227); color: #000000 !important; text-decoration: none; padding: 12px 30px; border-radius: 8px; font-weight: bold; margin: 20px auto; font-size: 16px; box-shadow: 0 0 10px rgba(240, 200, 74, 0.5); border: 1px solid #C9A227; }
+        .footer { background: #061230; text-align: center; padding: 15px; color: #8A9BC0; font-size: 12px; border-top: 1px solid #C9A227; }
+        .footer a { color: #F0C84A; text-decoration: none; }
+        @media screen and (max-width: 600px) { .email-container { width: 95% !important; margin: 10px auto; } .header h1 { font-size: 24px !important; } .content { padding: 15px !important; } .content h2 { font-size: 18px !important; } .credentials-box p { font-size: 14px !important; } .button { font-size: 14px !important; padding: 10px 20px !important; } }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {{ user_name }},</h2>
+            <p class="welcome-message">We have received your {{ document_label|lower }} request and it is now pending review.</p>
+            <div class="credentials-box">
+                {% for label, value in details.items %}
+                    {% if value %}<p><strong>{{ label }}:</strong> {{ value }}</p>{% endif %}
+                {% endfor %}
+                <p><strong>Status:</strong> {{ status }}</p>
+                {% if created_at %}<p><strong>Submitted At:</strong> {{ created_at }}</p>{% endif %}
+            </div>
+            <div class="button-wrap"><a href="https://client.vtindex.com/" class="button">View Request</a></div>
+            <p class="welcome-message">Please keep this email for your records. Our team will review the request shortly.</p>
+        </div>
+        <div class="footer"><p>For support, contact us at <a href="mailto:support@vtindex.com">support@vtindex.com</a>.</p></div>
+    </div>
+</body>
+</html>

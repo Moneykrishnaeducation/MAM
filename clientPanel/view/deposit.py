@@ -1,15 +1,69 @@
 """Client deposit endpoint."""
 
 import json
+import logging
 
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
+from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
+
+logger = logging.getLogger(__name__)
+
+
+def _profile_display_name(profile) -> str:
+    return str(
+        getattr(profile, "full_name", None)
+        or getattr(profile, "name", None)
+        or getattr(profile, "email", None)
+        or "Client"
+    )
+
+
+def _render_deposit_email(*, user_name: str, account_number: str, amount: float, payment_method: str, proof_name: str | None = None, notes: str | None = None, status: str = "Pending", created_at: str | None = None) -> tuple[str, str, str]:
+    context = {
+        "user_name": user_name or "there",
+        "account_number": account_number,
+        "amount": f"{amount:,.2f}",
+        "payment_method": payment_method or "N/A",
+        "proof_name": proof_name or "",
+        "notes": notes or "",
+        "status": status,
+        "created_at": created_at or "",
+    }
+    subject = "Deposit request submitted"
+    plain_body = render_to_string("emails/deposit_notification_email.txt", context).strip()
+    html_body = render_to_string("emails/deposit_notification_email.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_deposit_email(*, user_name: str, email: str, account_number: str, amount: float, payment_method: str, proof_name: str | None = None, notes: str | None = None, status: str = "Pending", created_at: str | None = None) -> None:
+    subject, plain_body, html_body = _render_deposit_email(
+        user_name=user_name,
+        account_number=account_number,
+        amount=amount,
+        payment_method=payment_method,
+        proof_name=proof_name,
+        notes=notes,
+        status=status,
+        created_at=created_at,
+    )
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @csrf_exempt
@@ -124,6 +178,21 @@ async def create_client_deposit(request):
             "notes": notes,
         },
     )
+
+    try:
+        await _send_deposit_email(
+            user_name=_profile_display_name(profile),
+            email=str(getattr(profile, "email", "") or ""),
+            account_number=account.account_number,
+            amount=amount,
+            payment_method=payment_method,
+            proof_name=proof_name or None,
+            notes=notes or None,
+            status="Pending",
+            created_at=transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") if transaction.created_at else None,
+        )
+    except Exception as exc:
+        logger.error(f"Failed to send deposit email to {profile.email}: {exc}")
 
     return JsonResponse(
         {

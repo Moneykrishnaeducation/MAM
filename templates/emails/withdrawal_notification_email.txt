@@ -1,0 +1,15 @@
+Hello {{ user_name }},
+
+We have received your withdrawal request and it is now pending review.
+
+Account Number: {{ account_number }}
+Amount: {{ amount }}
+Payment Method: {{ payment_method }}
+{% if destination_type %}Destination Type: {{ destination_type }}
+{% endif %}{% if notes %}Notes: {{ notes }}
+{% endif %}Status: {{ status }}
+{% if created_at %}Submitted At: {{ created_at }}
+{% endif %}
+
+Please keep your transaction details for reference.
+Our team will review the request shortly.
