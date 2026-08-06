@@ -1,9 +1,11 @@
 import type { AppProps } from 'next/app';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import ClientSidebar from '@/components/Client/sidebar';
 import ClientHeader from '@/components/Client/header';
 import AdminSidebar from '@/components/Admin/sidebar';
 import AdminHeader from '@/components/Admin/header';
+import { installAuthApiInterceptor } from '@/lib/authApiInterceptor';
 import '../index.css';
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -11,6 +13,10 @@ export default function App({ Component, pageProps }: AppProps) {
   const isClientResetPasswordRoute = router.pathname === '/client/reset-password';
   const isClientRoute = router.pathname.startsWith('/client');
   const isAdminRoute = router.pathname.startsWith('/admin');
+
+  useEffect(() => {
+    installAuthApiInterceptor();
+  }, []);
 
   if (isClientRoute && !isClientResetPasswordRoute) {
     return (

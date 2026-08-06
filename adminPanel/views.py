@@ -198,6 +198,9 @@ async def _load_or_create_client_document(user: ClientUser) -> ClientDocument:
 
 # ── GET views ──────────────────────────────────────────────────────────────────
 
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
 async def list_admin_system_users(request):
     """List system admin users from the admin_users table."""
     await ensure_db_initialized()
@@ -292,6 +295,9 @@ async def admin_profile(request):
     )
 
 
+@csrf_exempt
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
 async def list_client_users(request):
     """List client users directly from database."""
     await ensure_db_initialized()
@@ -1193,6 +1199,7 @@ async def save_demo_group_configuration(request):
 
 
 @csrf_exempt
+@permission_required(IsAdmin)
 @require_http_methods(["PUT", "POST"])
 async def update_admin_user(request, user_id):
     """Update an administrator's profile, role, or password (targets admin_users table)."""

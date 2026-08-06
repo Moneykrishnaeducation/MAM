@@ -66,6 +66,7 @@ Recent additions:
 - `clientPanel/view/reset_password.py` now supports emailed password reset links via `/api/client/request-password-reset` and token-based completion via `/api/client/reset-password`, and the frontend includes a `/client/reset-password` page for link follow-through.
 - `clientPanel/view/profile.py`, `clientPanel/view/documents.py`, and `clientPanel/view/payment_details.py` now send submission emails for profile edits, identity/address proof uploads, and bank/crypto payment-detail updates when a client submits a pending request.
 - `templates/emails/profile_update_notification_email.*`, `templates/emails/document_submission_notification_email.*`, and `templates/emails/payment_details_submission_notification_email.*` hold the client-facing request-submission email templates used by those flows.
+- `Frontend/apps/web/src/lib/authApiInterceptor.ts` installs a browser-wide API fetch interceptor that logs out the current admin or client session on `403`/`404` responses from browser API calls, using the current app area or request path to choose the logout endpoint.
 - `adminPanel/view/mam_accounts.py` now sends branded MT5 credential emails to the related client after MAM or investor account creation, including the login, group, and generated passwords.
 - `templates/emails/mam_credentials_email.html` and `templates/emails/mam_credentials_email.txt` hold the standalone MAM credential email templates rendered by `adminPanel/view/mam_accounts.py`.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.
@@ -73,6 +74,8 @@ Recent additions:
 - `adminPanel/view/client_profile.py` provides the admin-only client profile update API under `/api/admin/users/<user_id>/profile`.
 - `adminPanel/view/client_transactions.py` provides the admin-only client transaction history API under `/api/admin/users/<user_id>/transactions`.
 - `adminPanel/view/transactions.py` provides the admin-only main transactions page API under `/api/admin/transactions`, including tab filtering and summary counts.
+- `adminPanel/urls.py` now wraps every adminPanel route with `IsAdmin` via a shared `admin_only` wrapper, so all admin APIs in that URL file require an admin role.
+- `clientPanel/urls.py` now wraps the authenticated client routes with `IsClient` via a shared `client_only` wrapper, while keeping password-reset and logout endpoints public.
 - `adminPanel/view/client_tickets.py` provides the admin-only client support ticket history API under `/api/admin/users/<user_id>/tickets`.
 - `adminPanel/views.py` now includes KYC/document payloads in `/api/admin/users` and exposes `/api/admin/users/<user_id>/kyc` for lazy-loading the row expansion data from `client_profiles` and `client_documents`.
 - `adminPanel/views.py` now exposes category-specific activity APIs under `/api/admin/activity/admin`, `/api/admin/activity/client`, and `/api/admin/activity/error`, while `/api/admin/activity` remains the full activity feed.
