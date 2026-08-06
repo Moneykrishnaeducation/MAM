@@ -71,7 +71,7 @@ def _match_condition(aliases: Iterable[str]) -> Q | None:
 
 def _requester_email(name: str) -> str:
     slug = "".join(ch for ch in name.lower() if ch.isalnum())
-    return f"{slug or 'requester'}@moneykrishna.com"
+    return f"{slug or 'requester'}"
 
 
 def _avatar_url(name: str) -> str:
@@ -453,8 +453,29 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     file_name = payload.get("file_name") or payload.get("fileName") or payload.get("proof_name")
     file_url = payload.get("file_url") or payload.get("fileUrl") or payload.get("proof_url")
     requested_value = request.client_name
+    profile_fields: list[dict[str, str]] = []
     if request_type == "profile":
-        requested_value = payload.get("full_name") or payload.get("name") or request.client_name
+        for label, key in [
+            ("Full Name", "full_name"),
+            ("Email", "email"),
+            ("Phone", "phone"),
+            ("Country", "country"),
+            ("Address", "address"),
+            ("City", "city"),
+            ("Postal Code", "postal_code"),
+            ("Tier", "tier"),
+            ("KYC Status", "kyc_status"),
+            ("Avatar", "avatar"),
+        ]:
+            value = str(payload.get(key) or "").strip()
+            if value:
+                profile_fields.append({"label": label, "value": value})
+        requested_value = (
+            payload.get("full_name")
+            or payload.get("name")
+            or ", ".join(item["value"] for item in profile_fields[:2])
+            or request.client_name
+        )
     elif request_type == "bank":
         requested_value = payload.get("bank_name") or payload.get("bankName") or request.client_name
     elif request_type == "crypto":
@@ -488,6 +509,10 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "fieldToUpdate": title,
         "currentValue": request.client_name,
         "requestedValue": requested_value,
+        "profileFields": profile_fields,
+        "profileSummary": ", ".join(
+            f"{item['label']}: {item['value']}" for item in profile_fields[:4]
+        ),
         "reason": f"{title} request submitted through the admin portal.",
         "bankName": bank_name,
         "accountHolder": account_holder,

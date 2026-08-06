@@ -60,6 +60,25 @@ export default function AdminSidebar() {
     };
   }, [showLogoutConfirm]);
 
+  const [userRole, setUserRole] = useState("");
+
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const nameEQ = "role=";
+      const ca = document.cookie.split(";");
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === " ") c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+          setUserRole(decodeURIComponent(c.substring(nameEQ.length, c.length)).trim());
+          break;
+        }
+      }
+    }
+  }, []);
+
+  const isSuperAdmin = userRole.toLowerCase() === "superadmin";
+
   const navItems: NavItem[] = [
     { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { href: "/admin/requests", label: "Pending Requests", icon: Clock },
@@ -70,8 +89,11 @@ export default function AdminSidebar() {
     { href: "/admin/activity", label: "Activity Logs", icon: Activity },
     { href: "/admin/transactions", label: "Transactions", icon: Repeat },
     { href: "/admin/admin-users", label: "Admins", icon: ShieldCheck },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
+
+  if (isSuperAdmin) {
+    navItems.push({ href: "/admin/settings", label: "Settings", icon: Settings });
+  }
 
   const isNavItemActive = (href: string) => {
     if (href === "/admin/dashboard") {
@@ -172,7 +194,7 @@ export default function AdminSidebar() {
                     href={item.href as any}
                     prefetch={true}
                     onClick={handleNavClick}
-                    className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] px-4 py-3.5 text-[12px] font-extrabold uppercase tracking-[0.22em] transition-all duration-300 ${
+                    className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] px-4 py-3.5 text-[0.8rem] font-extrabold uppercase  transition-all duration-300 ${
                       isActive
                         ? "border border-[#556cc3]/65 bg-[linear-gradient(180deg,#324b9d_0%,#253a7c_100%)] text-[#f5c84b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_32px_rgba(0,0,0,0.28)] translate-x-1"
                         : "border border-transparent text-slate-100/86 hover:border-white/10 hover:bg-white/10 hover:text-white"
