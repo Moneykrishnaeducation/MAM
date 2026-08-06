@@ -96,6 +96,7 @@ export default function ClientManagerPage() {
   const [newLeverage, setNewLeverage] = useState<string>('500');
   const [passwordType, setPasswordType] = useState<'Investor' | 'Manager' | 'None'>('Investor');
   const [newInvestorPassword, setNewInvestorPassword] = useState<string>('');
+  const [confirmInvestorPassword, setConfirmInvestorPassword] = useState<string>('');
   const [selectedManager, setSelectedManager] = useState<ManagerRow | null>(null);
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
@@ -1052,6 +1053,16 @@ export default function ClientManagerPage() {
                       className={`w-full rounded-xl border px-3 py-2 text-xs text-white outline-none ${inputClass}`}
                     />
                   </div>
+                  <div className="space-y-1">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>Confirm Password</span>
+                    <input
+                      type="password"
+                      value={confirmInvestorPassword}
+                      onChange={(e) => setConfirmInvestorPassword(e.target.value)}
+                      placeholder="Confirm new password"
+                      className={`w-full rounded-xl border px-3 py-2 text-xs text-white outline-none ${inputClass}`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1061,6 +1072,7 @@ export default function ClientManagerPage() {
                   onClick={() => {
                     setShowAccountSettingsModal(false);
                     setNewInvestorPassword('');
+                    setConfirmInvestorPassword('');
                   }}
                   className={`flex-1 rounded-2xl border px-4 py-3 text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white`}
                 >
@@ -1069,7 +1081,15 @@ export default function ClientManagerPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    if (!activeManager?.accountId || !newInvestorPassword) return;
+                    if (!activeManager?.accountId) return;
+                    if (!newInvestorPassword || !confirmInvestorPassword) {
+                      toast.error('Please enter and confirm the new password');
+                      return;
+                    }
+                    if (newInvestorPassword !== confirmInvestorPassword) {
+                      toast.error('Passwords do not match');
+                      return;
+                    }
                     try {
                       const res = await fetch('/api/client/reset-investor-password', {
                         method: 'POST',
@@ -1086,6 +1106,7 @@ export default function ClientManagerPage() {
                         toast.success(data.message || 'Password updated successfully');
                         setShowAccountSettingsModal(false);
                         setNewInvestorPassword('');
+                        setConfirmInvestorPassword('');
                       } else {
                         toast.error(data?.message || 'Failed to reset password');
                       }

@@ -635,21 +635,60 @@ class MT5ManagerActions:
         if not self.manager:
             return False
 
-        # password_type: 0/1 or "master"/"investor" or MT5Manager.MTUser.EnUserPasswordType
-        # standard MT5 API: 0 = main (master), 1 = investor
-        pwd_type_val = 1 if str(password_type).lower() in ("investor", "1") else 0
+        is_investor = str(password_type).lower() in ("investor", "1")
+        pwd_type_val = 1 if is_investor else 0
         try:
             if hasattr(MT5Manager, "MTUser") and hasattr(MT5Manager.MTUser, "EnUserPasswordType"):
-                pwd_type_val = MT5Manager.MTUser.EnUserPasswordType.USER_PASS_INVESTOR if str(password_type).lower() in ("investor", "1") else MT5Manager.MTUser.EnUserPasswordType.USER_PASS_MAIN
-        except Exception:
-            pass
+                pwd_type_val = (
+                    MT5Manager.MTUser.EnUserPasswordType.USER_PASS_INVESTOR
+                    if is_investor
+                    else MT5Manager.MTUser.EnUserPasswordType.USER_PASS_MAIN
+                )
+        except Exception as e:
+            logger.debug(f"[MT5] EnUserPasswordType lookup error: {e}")
 
+        # 1. Try UserPasswordChange(type, login, password)
+        try:
+            res = self.manager.UserPasswordChange(pwd_type_val, login_id, new_pwd)
+            logger.info(f"[MT5] UserPasswordChange(type, login, pwd) result for {login_id}: {res}")
+            if res and res != 0 and res is not False:
+                return True
+        except Exception as exc:
+            logger.warning(f"[MT5] UserPasswordChange(type, login, pwd) exception: {exc}")
+
+        # 2. Try UserPasswordChange(login, type, password)
         try:
             res = self.manager.UserPasswordChange(login_id, pwd_type_val, new_pwd)
-            return bool(res)
+            logger.info(f"[MT5] UserPasswordChange(login, type, pwd) result for {login_id}: {res}")
+            if res and res != 0 and res is not False:
+                return True
         except Exception as exc:
-            logger.error(f"UserPasswordChange failed for {login_id}: {exc}")
-            return False
+            logger.warning(f"[MT5] UserPasswordChange(login, type, pwd) exception: {exc}")
+
+        # 3. Try UserPasswordSet(login, type, password) / UserPasswordSet(type, login, password)
+        try:
+            if hasattr(self.manager, "UserPasswordSet"):
+                res = self.manager.UserPasswordSet(pwd_type_val, login_id, new_pwd)
+                if not res:
+                    res = self.manager.UserPasswordSet(login_id, pwd_type_val, new_pwd)
+                logger.info(f"[MT5] UserPasswordSet result for {login_id}: {res}")
+                if res and res != 0 and res is not False:
+                    return True
+        except Exception as exc:
+            logger.warning(f"[MT5] UserPasswordSet exception for {login_id}: {exc}")
+
+        # 4. Check if user exists on MT5 server
+        try:
+            user = self.manager.UserGet(login_id)
+            if not user:
+                logger.error(f"[MT5] UserGet({login_id}) returned None — account does not exist on MT5 server")
+            else:
+                logger.info(f"[MT5] UserGet({login_id}) found user: {getattr(user, 'Login', login_id)}")
+        except Exception as exc:
+            logger.warning(f"[MT5] UserGet exception for {login_id}: {exc}")
+
+        logger.error(f"[MT5] Failed to change password for account {login_id}")
+        return False
 
     @ensure_connected
     def _handle_funds_operation(self, login_id, amount, comment, deal_action, operation_type):
