@@ -393,9 +393,14 @@ export default function ClientMyInvestPage() {
     }
   };
 
-  const handleInvestorPasswordSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleInvestorPasswordSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPasswordError(null);
+
+    if (!selectedInvModal) {
+      setPasswordError('No investment selected.');
+      return;
+    }
 
     if (!newInvestorPassword || !confirmInvestorPassword) {
       setPasswordError('Please enter and confirm the new password.');
@@ -407,11 +412,31 @@ export default function ClientMyInvestPage() {
       return;
     }
 
-    setShowPasswordModal(false);
-    setNewInvestorPassword('');
-    setConfirmInvestorPassword('');
-    setShowPasswordText(false);
-    console.log('Investor password updated for', selectedInvestmentId || 'unknown');
+    try {
+      const response = await fetchClientEndpoint<{ status?: string; message?: string }>(
+        '/api/client/reset-investor-password',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            account_id: selectedInvModal.accountId,
+            new_password: newInvestorPassword,
+            password_type: 'investor',
+          }),
+        }
+      );
+
+      if (response && response.status === 'ok') {
+        toast.success(response.message || 'Investor password updated successfully!');
+        setShowPasswordModal(false);
+        setNewInvestorPassword('');
+        setConfirmInvestorPassword('');
+        setShowPasswordText(false);
+      } else {
+        setPasswordError('Failed to reset investor password. Please try again.');
+      }
+    } catch {
+      setPasswordError('An error occurred while resetting investor password.');
+    }
   };
 
   const handleDeployConfiguration = async () => {

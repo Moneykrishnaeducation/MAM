@@ -36,6 +36,7 @@ import { ManagerSkeleton } from '@/components/client-page-skeletons';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import AccountOpenModal from '../model/accountopen';
+import { toast } from 'sonner';
 
 export async function fetchAdminManagers(page?: number, perPage?: number, search?: string) {
   try {
@@ -94,6 +95,7 @@ export default function ClientManagerPage() {
   const [convertedAmount, setConvertedAmount] = useState<any>(null);
   const [newLeverage, setNewLeverage] = useState<string>('500');
   const [passwordType, setPasswordType] = useState<'Investor' | 'Manager' | 'None'>('Investor');
+  const [newInvestorPassword, setNewInvestorPassword] = useState<string>('');
   const [selectedManager, setSelectedManager] = useState<ManagerRow | null>(null);
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
@@ -1017,46 +1019,80 @@ export default function ClientManagerPage() {
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <div>
                     <div className={`text-[10px] uppercase tracking-[0.24em] ${softTextClass}`}>Security Access</div>
-                    <div className="text-sm font-black text-white">Choose Password Type</div>
+                    <div className="text-sm font-black text-white">Reset Account Password</div>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {['Investor', 'Manager', 'None'].map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => setPasswordType(type as 'Investor' | 'Manager' | 'None')}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left text-sm font-bold transition ${passwordType === type ? 'border-[#3aa0ff] bg-white/5 text-white shadow-lg' : 'border-white/5 bg-white/[0.02] text-blue-100 hover:border-blue-400'}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{type} Password</span>
-                        {passwordType === type ? <span className="text-blue-200 text-xs uppercase tracking-[0.24em]">Selected</span> : null}
-                      </div>
-                      {type === 'Investor' && (
-                        <p className={`mt-2 text-xs ${softTextClass}`}>Use this password for investor access controls.</p>
-                      )}
-                      {type === 'Manager' && (
-                        <p className={`mt-2 text-xs ${softTextClass}`}>Use this password for manager-level secure changes.</p>
-                      )}
-                      {type === 'None' && (
-                        <p className={`mt-2 text-xs ${softTextClass}`}>Disable password access for now.</p>
-                      )}
-                    </button>
-                  ))}
+                <div className="space-y-3">
+                  <div>
+                    <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>Password Type</span>
+                    <div className="grid grid-cols-2 gap-2 mt-1">
+                      {['Investor', 'Manager'].map((type) => (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => setPasswordType(type as 'Investor' | 'Manager')}
+                          className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                            passwordType === type
+                              ? 'border-[#3aa0ff] bg-blue-500/20 text-white'
+                              : 'border-white/10 bg-white/5 text-slate-300'
+                          }`}
+                        >
+                          {type}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>New Password</span>
+                    <input
+                      type="password"
+                      value={newInvestorPassword}
+                      onChange={(e) => setNewInvestorPassword(e.target.value)}
+                      placeholder="Enter new password"
+                      className={`w-full rounded-xl border px-3 py-2 text-xs text-white outline-none ${inputClass}`}
+                    />
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
-                  onClick={() => setShowAccountSettingsModal(false)}
+                  onClick={() => {
+                    setShowAccountSettingsModal(false);
+                    setNewInvestorPassword('');
+                  }}
                   className={`flex-1 rounded-2xl border px-4 py-3 text-xs font-bold transition-all hover:scale-105 border-white/10 text-slate-300 hover:bg-white/5 hover:text-white`}
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowAccountSettingsModal(false)}
+                  onClick={async () => {
+                    if (!activeManager?.accountId || !newInvestorPassword) return;
+                    try {
+                      const res = await fetch('/api/client/reset-investor-password', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          account_id: activeManager.accountId,
+                          new_password: newInvestorPassword,
+                          password_type: passwordType.toLowerCase(),
+                        }),
+                      });
+                      const data = await res.json().catch(() => null);
+                      if (res.ok && data?.status === 'ok') {
+                        toast.success(data.message || 'Password updated successfully');
+                        setShowAccountSettingsModal(false);
+                        setNewInvestorPassword('');
+                      } else {
+                        toast.error(data?.message || 'Failed to reset password');
+                      }
+                    } catch {
+                      toast.error('An error occurred resetting password');
+                    }
+                  }}
                   className={`inline-flex flex-1 items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.16em] transition-all hover:scale-105 ${goldButtonClass}`}
                 >
                   Save Settings

@@ -1,19 +1,18 @@
-import MT5Manager
-import atexit
-import requests
-import time
-import threading
-import logging
 import asyncio
+import atexit
 import concurrent.futures
+import json
+import logging
+import os
+import threading
+import time
+from datetime import datetime, timedelta
+
+import MT5Manager
 from django.core.cache import cache
 from django.utils import timezone
-from datetime import datetime, timedelta
-import os
-import json
-from asgiref.sync import async_to_sync
 
-from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount
+from adminPanel.models import MT5GroupConfig, ServerSetting, TradeGroup, TradingAccount
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +24,11 @@ GROUP_CONFIG = {}
 try:
     config_path = os.path.join(os.path.dirname(__file__), "group_config.json")
     if os.path.exists(config_path):
-        with open(config_path, "r") as f:
+        with open(config_path) as f:
             GROUP_CONFIG = json.load(f)
 except Exception as e:
     logger.error(f"Failed to load group_config.json: {e}")
-   
+
 DEFAULT_GROUP = GROUP_CONFIG.get("default_group")
 
 crights = MT5Manager.MTUser.EnUsersRights
@@ -317,7 +316,7 @@ def cache_account_success(login_id, balance, equity, cache_duration=30):
     cache_key = f"mt5_success_{login_id}"
     data = {"balance": balance, "equity": equity, "timestamp": time.time()}
     cache.set(cache_key, data, cache_duration)
-   
+
 class MT5ManagerAPI:
     def __init__(self):
         unique_id = str(os.getpid())
@@ -329,7 +328,7 @@ class MT5ManagerAPI:
             module_path=os.path.dirname(MT5Manager.__file__),
             work_path=instance_directory
         )
-       
+
         self.manager = MT5Manager.ManagerAPI()
         self.connected = False
 
@@ -471,17 +470,17 @@ class MT5ManagerActions:
             to_date = datetime.now()
         if from_date is None:
             from_date = to_date - timedelta(days=365)
-        
+
         try:
             numeric_login_id = int(login_id)
         except (ValueError, TypeError):
             logger.warning(f"Skipping non-numeric account ID: {login_id}")
             return []
-            
+
         deals = self.manager.DealRequest(numeric_login_id, from_date, to_date)
         if deals is False or deals is None or isinstance(deals, bool):
             return []
-        
+
         closed_deals = []
         for d in deals:
             action = getattr(d, "Action", None)
@@ -552,7 +551,7 @@ class MT5ManagerActions:
         effective_group = group_name if group_name else DEFAULT_GROUP
         if not self.manager:
             raise Exception("MT5 Manager not connected")
-       
+
         user = MT5Manager.MTUser(self.manager)
         user.Group = str(effective_group)
         user.Leverage = int(leverage)
@@ -563,7 +562,7 @@ class MT5ManagerActions:
         user.Phone = getattr(client, "phone", "")
         user.Agent = agent
         user.Rights = account_create_rights
-       
+
         if not self.manager.UserAdd(user, master_password, investor_password):
             return False
         else:
@@ -583,10 +582,10 @@ class MT5ManagerActions:
         except (ValueError, TypeError) as e:
             logger.error(f"Type conversion error in deposit_funds: {e}")
             return False
-           
+
         if amount <= 0:
             return False
-           
+
         return self._handle_funds_operation(login_id, amount, comment, MT5Manager.MTDeal.EnDealAction.DEAL_BALANCE, "Deposit")
 
     @ensure_connected
@@ -615,13 +614,42 @@ class MT5ManagerActions:
         except (ValueError, TypeError) as e:
             logger.error(f"Type conversion error in change_leverage: {e}")
             return False
-           
+
         user = self.manager.UserGet(login_id)
         if user:
             user.Leverage = leverage
             if self.manager.UserUpdate(user):
                 return True
         return False
+
+    @ensure_connected
+    def change_password(self, login_id, new_password, password_type="investor"):
+        """Change master or investor password for an MT5 trading account."""
+        try:
+            login_id = int(login_id)
+            new_pwd = str(new_password)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Type conversion error in change_password: {e}")
+            return False
+
+        if not self.manager:
+            return False
+
+        # password_type: 0/1 or "master"/"investor" or MT5Manager.MTUser.EnUserPasswordType
+        # standard MT5 API: 0 = main (master), 1 = investor
+        pwd_type_val = 1 if str(password_type).lower() in ("investor", "1") else 0
+        try:
+            if hasattr(MT5Manager, "MTUser") and hasattr(MT5Manager.MTUser, "EnUserPasswordType"):
+                pwd_type_val = MT5Manager.MTUser.EnUserPasswordType.USER_PASS_INVESTOR if str(password_type).lower() in ("investor", "1") else MT5Manager.MTUser.EnUserPasswordType.USER_PASS_MAIN
+        except Exception:
+            pass
+
+        try:
+            res = self.manager.UserPasswordChange(login_id, pwd_type_val, new_pwd)
+            return bool(res)
+        except Exception as exc:
+            logger.error(f"UserPasswordChange failed for {login_id}: {exc}")
+            return False
 
     @ensure_connected
     def _handle_funds_operation(self, login_id, amount, comment, deal_action, operation_type):

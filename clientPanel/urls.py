@@ -19,6 +19,7 @@ from clientPanel.view.mam_managers import (
     invest_in_manager,
     list_mam_managers,
     list_my_mam_managers,
+    reset_investor_password,
     toggle_manager_status,
 )
 from clientPanel.view.OpenPositions import get_client_open_positions
@@ -53,6 +54,8 @@ urlpatterns = [
     path("mam-managers/invest", invest_in_manager, name="mam-managers-invest"),
     path("mam-managers/<str:account_id>/investors", get_manager_investors, name="mam-manager-investors"),
     path("mam-managers/<str:account_id>/status", toggle_manager_status, name="mam-manager-status"),
+    path("mam-managers/reset-password", reset_investor_password, name="mam-managers-reset-password"),
+    path("reset-investor-password", reset_investor_password, name="reset-investor-password"),
     path("invest", invest_in_manager, name="mam-invest"),
     path("my-investments", get_client_investments, name="my-investments"),
     path("my-investments/pause", pause_copying_api, name="pause-copying"),

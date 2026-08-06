@@ -353,3 +353,76 @@ async def toggle_manager_status(request, account_id: str):
         "is_enabled": mam_master.is_enabled,
     })
 
+
+@csrf_exempt
+@permission_required(IsClient)
+async def reset_investor_password(request):
+    """Reset the investor password for an investor trading account owned by the client or linked to a client's MAM manager."""
+    if request.method != "POST":
+        return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
+    user_id = await _resolve_client_user_id(request)
+    if user_id is None:
+        return _error("Authenticated session is required", status=401)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        return _error("Invalid JSON body")
+
+    account_id = body.get("account_id") or body.get("accountId") or body.get("login")
+    new_password = body.get("new_password") or body.get("newPassword") or body.get("password")
+    password_type = str(body.get("password_type") or body.get("passwordType") or "investor").lower()
+
+    if not account_id:
+        return _error("account_id (or accountId / login) is required")
+
+    if not new_password:
+        return _error("new_password is required")
+
+    # The trading account must belong to the client OR be an investor account linked to a MAM master owned by the client
+    account = (
+        await TradingAccount.filter(account_id=str(account_id), user_id=user_id).first()
+        or await TradingAccount.filter(id=account_id, user_id=user_id).first()
+    )
+
+    if not account:
+        # Check if client owns the master MAM account that this investor belongs to
+        inv_acc = (
+            await TradingAccount.filter(account_id=str(account_id), account_type="Investor")
+            .prefetch_related("mam_master_account")
+            .first()
+            or await TradingAccount.filter(id=account_id, account_type="Investor")
+            .prefetch_related("mam_master_account")
+            .first()
+        )
+        if inv_acc and inv_acc.mam_master_account and inv_acc.mam_master_account.user_id == user_id:
+            account = inv_acc
+
+    if not account:
+        return _error("Trading account not found or access denied", status=404)
+
+    try:
+        mt5 = MT5ManagerActions()
+        if mt5.connection_error:
+            return _error(f"MT5 Connection failed: {mt5.connection_error}", status=500)
+
+        success = mt5.change_password(
+            login_id=int(account.account_id),
+            new_password=new_password,
+            password_type=password_type,
+        )
+
+        if success:
+            return JsonResponse({
+                "status": "ok",
+                "message": f"Successfully updated {password_type} password for account #{account.account_id}",
+                "account_id": account.account_id,
+            })
+        else:
+            return _error("Failed to update password on MT5 server", status=500)
+    except Exception as e:
+        logger.error(f"Error resetting password for account {account_id}: {e}")
+        return _error(f"Error resetting password: {str(e)}", status=500)
+
