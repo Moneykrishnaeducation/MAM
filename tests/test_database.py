@@ -1,6 +1,7 @@
 """Tests for Tortoise ORM models and CRUD operations in adminPanel and clientPanel."""
 
 import json
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.conf import settings
@@ -10,6 +11,7 @@ from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
     AdminMailMessage,
+    AdminUser,
     ClientProfile,
     ClientDocument,
     ClientTicket,
@@ -43,7 +45,7 @@ from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
-from clientPanel.view.reset_password import reset_client_password
+from clientPanel.view.reset_password import request_client_password_reset, reset_client_password
 from clientPanel.view.tickets import create_client_ticket, get_client_ticket_detail
 from clientPanel.view.withdrawal import create_client_withdrawal
 
@@ -871,6 +873,57 @@ class TestClientPanelModels:
         assert profile.email == "jamie.login@example.com"
         assert profile.country == "Canada"
 
+    async def test_client_activity_logs_use_authenticated_user_id(self):
+        """Test client activity logs are fetched for the logged-in client user."""
+        user = await ClientUser.create(
+            user_code="USR-ACT1",
+            name="Morgan Lane",
+            email="morgan.activity@example.com",
+            country="United States",
+        )
+        other_user = await ClientUser.create(
+            user_code="USR-ACT2",
+            name="Taylor Reed",
+            email="taylor.activity@example.com",
+            country="United States",
+        )
+
+        await ActivityLog.create(
+            user_email=user.email,
+            user_name=user.name,
+            user_role="Client",
+            action_type="Login",
+            module_name="Authentication",
+            user_id=user.id,
+        )
+        await ActivityLog.create(
+            user_email=other_user.email,
+            user_name=other_user.name,
+            user_role="Client",
+            action_type="Login",
+            module_name="Authentication",
+            user_id=other_user.id,
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "GET",
+                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "GET": {},
+                "body": b"",
+            },
+        )()
+
+        response = await get_client_activity_logs(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert len(payload["activity_logs"]) == 1
+        assert payload["activity_logs"][0]["user_name"] == "Morgan Lane"
+
     async def test_admin_login_and_dashboard_token_lookup(self):
         """Test admin login response and bearer-token access to the admin dashboard."""
         admin_user = await ClientUser.create(
@@ -983,6 +1036,239 @@ class TestClientPanelModels:
 
         assert login_response.status_code == 200
         assert login_payload["status"] == "ok"
+
+    async def test_client_password_reset_link_flow(self, monkeypatch):
+        """Test requesting a reset link and using it to set a new password."""
+        user = await ClientUser.create(
+            user_code="USR-RESET2",
+            name="Jordan Pike",
+            email="jordan.reset@example.com",
+            country="United States",
+        )
+        await ClientProfile.create(
+            user_id=user.id,
+            full_name="Jordan Pike",
+            email="jordan.reset@example.com",
+            country="United States",
+        )
+
+        captured: dict[str, str] = {}
+
+        async def fake_send_password_reset_email(target_user, reset_url):
+            captured["email"] = target_user.email
+            captured["reset_url"] = reset_url
+
+        monkeypatch.setattr(
+            "clientPanel.view.reset_password._send_password_reset_email",
+            fake_send_password_reset_email,
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"email": "jordan.reset@example.com"}).encode(),
+                "build_absolute_uri": lambda self, path: f"https://example.com{path}",
+            },
+        )()
+
+        response = await request_client_password_reset(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert captured["email"] == "jordan.reset@example.com"
+
+        reset_link = captured["reset_url"]
+        parsed = urlparse(reset_link)
+        token = parse_qs(parsed.query)["token"][0]
+
+        reset_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "token": token,
+                        "new_password": "TokenPass123!",
+                        "confirm_password": "TokenPass123!",
+                    }
+                ).encode(),
+            },
+        )()
+
+        reset_response = await reset_client_password(reset_request)
+        reset_payload = json.loads(reset_response.content)
+
+        assert reset_response.status_code == 200
+        assert reset_payload["status"] == "ok"
+
+        login_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {"email": "jordan.reset@example.com", "password": "TokenPass123!"}
+                ).encode(),
+            },
+        )()
+
+        login_response = await login_client(login_request)
+        login_payload = json.loads(login_response.content)
+
+        assert login_response.status_code == 200
+        assert login_payload["status"] == "ok"
+
+    async def test_password_reset_requests_role_when_email_exists_in_both_tables(self, monkeypatch):
+        """Test the reset request asks the user to choose a role when the email exists in both tables."""
+        await AdminUser.create(
+            name="Shared Admin",
+            email="shared@example.com",
+            password_hash=hash_client_password("AdminPass123!"),
+            role="Admin",
+            department="Operations",
+            status="Active",
+        )
+        await ClientUser.create(
+            user_code="USR-SHARED1",
+            name="Shared Client",
+            email="shared@example.com",
+            country="United States",
+        )
+
+        captured: dict[str, str] = {}
+
+        async def fake_send_password_reset_email(target_user, reset_url):
+            captured["email"] = target_user.email
+            captured["reset_url"] = reset_url
+
+        monkeypatch.setattr(
+            "clientPanel.view.reset_password._send_password_reset_email",
+            fake_send_password_reset_email,
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"email": "shared@example.com"}).encode(),
+                "build_absolute_uri": lambda self, path: f"https://example.com{path}",
+            },
+        )()
+
+        response = await request_client_password_reset(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "needs_role_selection"
+        assert {role["value"] for role in payload["roles"]} == {"admin", "client"}
+        assert captured == {}
+
+        admin_choice_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "email": "shared@example.com",
+                        "user_type": "admin",
+                    }
+                ).encode(),
+                "build_absolute_uri": lambda self, path: f"https://example.com{path}",
+            },
+        )()
+
+        admin_choice_response = await request_client_password_reset(admin_choice_request)
+        admin_choice_payload = json.loads(admin_choice_response.content)
+
+        assert admin_choice_response.status_code == 200
+        assert admin_choice_payload["status"] == "ok"
+        assert captured["email"] == "shared@example.com"
+
+    async def test_admin_password_reset_link_flow(self, monkeypatch):
+        """Test requesting a reset link for an admin account and using it to set a new password."""
+        admin_user = await AdminUser.create(
+            name="System Admin",
+            email="system.admin@example.com",
+            password_hash=hash_client_password("OldAdmin123!"),
+            role="Admin",
+            department="Operations",
+            status="Active",
+        )
+
+        captured: dict[str, str] = {}
+
+        async def fake_send_password_reset_email(target_user, reset_url):
+            captured["email"] = target_user.email
+            captured["reset_url"] = reset_url
+
+        monkeypatch.setattr(
+            "clientPanel.view.reset_password._send_password_reset_email",
+            fake_send_password_reset_email,
+        )
+
+        request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps({"email": "system.admin@example.com"}).encode(),
+                "build_absolute_uri": lambda self, path: f"https://example.com{path}",
+            },
+        )()
+
+        response = await request_client_password_reset(request)
+        payload = json.loads(response.content)
+
+        assert response.status_code == 200
+        assert payload["status"] == "ok"
+        assert captured["email"] == "system.admin@example.com"
+
+        reset_link = captured["reset_url"]
+        parsed = urlparse(reset_link)
+        token = parse_qs(parsed.query)["token"][0]
+
+        reset_request = type(
+            "Request",
+            (),
+            {
+                "method": "POST",
+                "headers": {},
+                "GET": {},
+                "body": json.dumps(
+                    {
+                        "token": token,
+                        "new_password": "NewAdmin123!",
+                        "confirm_password": "NewAdmin123!",
+                    }
+                ).encode(),
+            },
+        )()
+
+        reset_response = await reset_client_password(reset_request)
+        reset_payload = json.loads(reset_response.content)
+
+        assert reset_response.status_code == 200
+        assert reset_payload["status"] == "ok"
+        refreshed_admin = await AdminUser.get(email="system.admin@example.com")
+        assert refreshed_admin.password_hash != admin_user.password_hash
 
     async def test_client_dashboard(self):
         """Test client dashboard cards and recent activity logs."""

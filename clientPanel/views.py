@@ -8,7 +8,11 @@ from clientPanel.view.investments import get_client_investments
 from clientPanel.view.logout import logout_client
 from clientPanel.view.login import login_client
 from clientPanel.view.profile import get_client_profile
-from clientPanel.view.reset_password import change_client_password, reset_client_password
+from clientPanel.view.reset_password import (
+    change_client_password,
+    request_client_password_reset,
+    reset_client_password,
+)
 from clientPanel.view.tickets import (
     create_client_ticket,
     get_client_ticket_detail,
@@ -19,6 +23,7 @@ from clientPanel.view.withdrawal import create_client_withdrawal
 
 __all__ = [
     "login_client",
+    "request_client_password_reset",
     "reset_client_password",
     "change_client_password",
     "get_client_dashboard",
