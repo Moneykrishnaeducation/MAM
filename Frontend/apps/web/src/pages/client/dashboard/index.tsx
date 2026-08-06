@@ -813,41 +813,41 @@ export default function ClientDashboardPage() {
   const handleManualDepositSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!clientAccount?.account_number || !cheeseAmount || !proof) {
-      toast.error('Please fill all required fields.');
+    if (!selectedDepositAccount || !cheeseAmount || !proof) {
+      toast.error("Please fill all required fields.");
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await fetch('/api/client/deposit', {
-        method: 'POST',
-        credentials: 'include',
+      const formData = new FormData();
+      formData.append("account_number", selectedDepositAccount);
+      formData.append("amount", cheeseAmount);
+      formData.append("payment_method", "Manual Deposit");
+      formData.append("notes", `Manual deposit submitted from dashboard (${currency})`);
+      formData.append("proof_file", proof);
+
+      const response = await fetch("/api/client/deposit", {
+        method: "POST",
+        credentials: "include",
         headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
+          Accept: "application/json",
         },
-        body: JSON.stringify({
-          account_number: selectedDepositAccount,
-          amount: Number(cheeseAmount),
-          payment_method: 'Manual Deposit',
-          proof_name: proof.name,
-          notes: `Manual deposit submitted from dashboard (${currency})`,
-        }),
+        body: formData,
       });
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data?.message || 'Failed to submit deposit request');
+        throw new Error(data?.message || "Failed to submit deposit request");
       }
 
-      toast.success(data?.message || 'Manual deposit request submitted successfully!');
+      toast.success(data?.message || "Manual deposit request submitted successfully!");
       setShowDepositModal(false);
       setProof(null);
-      setCheeseAmount('');
+      setCheeseAmount("");
     } catch (error: any) {
-      toast.error(error?.message || 'Failed to submit deposit request');
+      toast.error(error?.message || "Failed to submit deposit request");
     } finally {
       setSubmitting(false);
     }

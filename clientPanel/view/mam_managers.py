@@ -19,7 +19,16 @@ from clientPanel.view.common import _error, _resolve_client_user_id
 logger = logging.getLogger(__name__)
 
 
-def _render_investor_credentials_email(*, user_name: str, login: str | int, group: str, account_name: str, leverage: int | None, master_password: str | None, investor_password: str | None) -> tuple[str, str, str]:
+def _render_investor_credentials_email(
+    *,
+    user_name: str,
+    login: str | int,
+    group: str,
+    account_name: str,
+    leverage: int | None,
+    master_password: str | None,
+    investor_password: str | None,
+) -> tuple[str, str, str]:
     context = {
         "user_name": user_name or "there",
         "account_type": "Investor",
@@ -36,7 +45,16 @@ def _render_investor_credentials_email(*, user_name: str, login: str | int, grou
     return subject, plain_body, html_body
 
 
-async def _send_investor_credentials_email(*, user: ClientUser, login: str | int, group: str, account_name: str, leverage: int | None, master_password: str | None = None, investor_password: str | None = None) -> None:
+async def _send_investor_credentials_email(
+    *,
+    user: ClientUser,
+    login: str | int,
+    group: str,
+    account_name: str,
+    leverage: int | None,
+    master_password: str | None = None,
+    investor_password: str | None = None,
+) -> None:
     subject, plain_body, html_body = _render_investor_credentials_email(
         user_name=user.name or user.email or "there",
         login=login,
@@ -81,10 +99,12 @@ async def list_my_mam_managers(request):
     page = _parse_positive_int(raw_page, 1)
     per_page = _parse_positive_int(raw_per_page, 10)
 
-    managers = await TradingAccount.filter(
-        user_id=user_id,
-        account_type="MAM"
-    ).prefetch_related("user").all()
+    managers = (
+        await TradingAccount.filter(user_id=user_id, account_type="MAM")
+        .order_by("-created_at")
+        .prefetch_related("user")
+        .all()
+    )
 
     investor_accounts = await TradingAccount.filter(
         account_type="Investor",
@@ -107,17 +127,19 @@ async def list_my_mam_managers(request):
             if search_q not in haystack:
                 continue
 
-        results.append({
-            "id": m.id,
-            "account_id": acc_id,
-            "name": name,
-            "email": email,
-            "strategy": m.risk_level or "Quantitative Grid",
-            "aum": float(m.balance),
-            "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
-            "status": m.status or "Active",
-            "investors_count": investor_counts.get(m.id, 0),
-        })
+        results.append(
+            {
+                "id": m.id,
+                "account_id": acc_id,
+                "name": name,
+                "email": email,
+                "strategy": m.risk_level or "Quantitative Grid",
+                "aum": float(m.balance),
+                "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
+                "status": m.status or "Active",
+                "investors_count": investor_counts.get(m.id, 0),
+            }
+        )
 
     total = len(results)
 
@@ -170,10 +192,13 @@ async def list_mam_managers(request):
     page = _parse_positive_int(raw_page, 1)
     per_page = _parse_positive_int(raw_per_page, 10)
 
-    managers = await TradingAccount.filter(
-        account_type="MAM",
-        is_enabled=True,
-    ).filter(status__iexact="Active").prefetch_related("user").all()
+    managers = (
+        await TradingAccount.filter(account_type="MAM", is_enabled=True)
+        .filter(status__iexact="Active")
+        .order_by("-created_at")
+        .prefetch_related("user")
+        .all()
+    )
 
     # Pre-count investor accounts linked per master manager account
     investor_accounts = await TradingAccount.filter(
@@ -197,17 +222,19 @@ async def list_mam_managers(request):
             if search_q not in haystack:
                 continue
 
-        results.append({
-            "id": m.id,
-            "account_id": acc_id,
-            "name": name,
-            "email": email,
-            "strategy": m.risk_level or "Quantitative Grid",
-            "aum": float(m.balance),
-            "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
-            "status": m.status or "Active",
-            "investors_count": investor_counts.get(m.id, 0),
-        })
+        results.append(
+            {
+                "id": m.id,
+                "account_id": acc_id,
+                "name": name,
+                "email": email,
+                "strategy": m.risk_level or "Quantitative Grid",
+                "aum": float(m.balance),
+                "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
+                "status": m.status or "Active",
+                "investors_count": investor_counts.get(m.id, 0),
+            }
+        )
 
     total = len(results)
 
@@ -258,7 +285,9 @@ async def invest_in_manager(request):
     except Exception:
         return _error("Invalid JSON body")
 
-    manager_acc = body.get("managerAccNumber") or body.get("manager_account_id") or body.get("manager_id")
+    manager_acc = (
+        body.get("managerAccNumber") or body.get("manager_account_id") or body.get("manager_id")
+    )
     if not manager_acc:
         return _error("Manager account number (managerAccNumber or manager_account_id) is required")
 
@@ -315,16 +344,18 @@ async def invest_in_manager(request):
     except Exception as exc:
         logger.error(f"Failed to send investor credentials email to {user.email}: {exc}")
 
-    return JsonResponse({
-        "status": "ok",
-        "message": f"Successfully invested with Manager {mam_master.account_id}",
-        "account": {
-            "login": result["login"],
-            "group": result["group"],
-            "manager_account_id": mam_master.account_id,
-            "account_name": f"Investor for {mam_master.account_name or mam_master.account_id}",
-        },
-    })
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Successfully invested with Manager {mam_master.account_id}",
+            "account": {
+                "login": result["login"],
+                "group": result["group"],
+                "manager_account_id": mam_master.account_id,
+                "account_name": f"Investor for {mam_master.account_name or mam_master.account_id}",
+            },
+        }
+    )
 
 
 @permission_required(IsClient)
@@ -334,13 +365,17 @@ async def get_manager_investors(request, account_id: str):
     user_id = await _resolve_client_user_id(request)
 
     mam_master = (
-        await TradingAccount.filter(account_id=str(account_id), account_type="MAM", user_id=user_id).first()
+        await TradingAccount.filter(
+            account_id=str(account_id), account_type="MAM", user_id=user_id
+        ).first()
         or await TradingAccount.filter(id=account_id, account_type="MAM", user_id=user_id).first()
     )
     if not mam_master:
         return _error(f"MAM Master account {account_id} not found or access denied", status=404)
 
-    investors = await TradingAccount.filter(mam_master_account=mam_master).prefetch_related("user").all()
+    investors = (
+        await TradingAccount.filter(mam_master_account=mam_master).prefetch_related("user").all()
+    )
     investor_data = [
         {
             "id": f"INV-{inv.account_id}",
@@ -354,11 +389,13 @@ async def get_manager_investors(request, account_id: str):
         for inv in investors
     ]
 
-    return JsonResponse({
-        "status": "ok",
-        "mam_account_id": mam_master.account_id,
-        "investors": investor_data,
-    })
+    return JsonResponse(
+        {
+            "status": "ok",
+            "mam_account_id": mam_master.account_id,
+            "investors": investor_data,
+        }
+    )
 
 
 @csrf_exempt
@@ -372,7 +409,9 @@ async def toggle_manager_status(request, account_id: str):
     user_id = await _resolve_client_user_id(request)
 
     mam_master = (
-        await TradingAccount.filter(account_id=str(account_id), account_type="MAM", user_id=user_id).first()
+        await TradingAccount.filter(
+            account_id=str(account_id), account_type="MAM", user_id=user_id
+        ).first()
         or await TradingAccount.filter(id=account_id, account_type="MAM", user_id=user_id).first()
     )
     if not mam_master:
@@ -401,12 +440,14 @@ async def toggle_manager_status(request, account_id: str):
 
     await mam_master.save()
 
-    return JsonResponse({
-        "status": "ok",
-        "message": f"MAM Manager account {mam_master.account_id} is now {mam_master.status}",
-        "account_status": mam_master.status,
-        "is_enabled": mam_master.is_enabled,
-    })
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"MAM Manager account {mam_master.account_id} is now {mam_master.status}",
+            "account_status": mam_master.status,
+            "is_enabled": mam_master.is_enabled,
+        }
+    )
 
 
 @csrf_exempt
@@ -470,14 +511,15 @@ async def reset_investor_password(request):
         )
 
         if success:
-            return JsonResponse({
-                "status": "ok",
-                "message": f"Successfully updated {password_type} password for account #{account.account_id}",
-                "account_id": account.account_id,
-            })
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": f"Successfully updated {password_type} password for account #{account.account_id}",
+                    "account_id": account.account_id,
+                }
+            )
         else:
             return _error("Failed to update password on MT5 server", status=500)
     except Exception as e:
         logger.error(f"Error resetting password for account {account_id}: {e}")
         return _error(f"Error resetting password: {str(e)}", status=500)
-

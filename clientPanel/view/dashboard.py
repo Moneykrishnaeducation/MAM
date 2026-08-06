@@ -48,7 +48,7 @@ async def get_client_dashboard(request):
 
     accounts = await ClientAccount.filter(user_id=profile.id).all()
     investments = await MyInvestment.filter(user_id=profile.id).all()
-    transactions = await ClientTransaction.filter(user_id=profile.id).all()
+    transactions = await ClientTransaction.filter(user_id=profile.id).order_by("-created_at").all()
     tickets = await ClientTicket.filter(user_id=profile.id).all()
     activity_logs = await ActivityLog.filter(user_id=profile.id).order_by("-timestamp").limit(5)
 

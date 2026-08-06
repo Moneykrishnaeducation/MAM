@@ -35,36 +35,48 @@ async def get_client_investments(request):
     page = _parse_positive_int(raw_page, 1)
     per_page = _parse_positive_int(raw_per_page, 10)
 
-    investments = await TradingAccount.filter(
-        user_id=profile.id,
-        account_type="Investor"
-    ).prefetch_related("mam_master_account", "mam_master_account__user").all()
+    investments = (
+        await TradingAccount.filter(user_id=profile.id, account_type="Investor")
+        .order_by("-created_at")
+        .prefetch_related("mam_master_account", "mam_master_account__user")
+        .all()
+    )
 
     results = []
     for inv in investments:
-        strategy_name = inv.mam_master_account.account_name if inv.mam_master_account else "Unknown Strategy"
-        manager_name = inv.mam_master_account.user.name if (inv.mam_master_account and inv.mam_master_account.user) else "Unknown Manager"
+        strategy_name = (
+            inv.mam_master_account.account_name if inv.mam_master_account else "Unknown Strategy"
+        )
+        manager_name = (
+            inv.mam_master_account.user.name
+            if (inv.mam_master_account and inv.mam_master_account.user)
+            else "Unknown Manager"
+        )
 
         balance_val = float(inv.balance)
         equity_val = float(inv.equity)
         return_pct = ((equity_val - balance_val) / balance_val * 100) if balance_val > 0 else 0.0
 
-        results.append({
-            "id": inv.id,
-            "account_id": inv.account_id,
-            "strategy": strategy_name,
-            "manager": manager_name,
-            "allocated": balance_val,
-            "current_value": equity_val,
-            "return_pct": round(return_pct, 2),
-            "status": inv.status or "Active",
-            "investor_allow_copy": inv.investor_allow_copy,
-            "leverage": f"{inv.leverage}x",
-            "copy_mode": inv.copy_mode or "balance",
-            "copy_factor": float(inv.copy_factor) if inv.copy_factor is not None else 1.0,
-            "multi_trade_count": inv.multi_trade_count,
-            "manager_account_id": inv.mam_master_account.account_id if inv.mam_master_account else None,
-        })
+        results.append(
+            {
+                "id": inv.id,
+                "account_id": inv.account_id,
+                "strategy": strategy_name,
+                "manager": manager_name,
+                "allocated": balance_val,
+                "current_value": equity_val,
+                "return_pct": round(return_pct, 2),
+                "status": inv.status or "Active",
+                "investor_allow_copy": inv.investor_allow_copy,
+                "leverage": f"{inv.leverage}x",
+                "copy_mode": inv.copy_mode or "balance",
+                "copy_factor": float(inv.copy_factor) if inv.copy_factor is not None else 1.0,
+                "multi_trade_count": inv.multi_trade_count,
+                "manager_account_id": inv.mam_master_account.account_id
+                if inv.mam_master_account
+                else None,
+            }
+        )
 
     total = len(results)
 
@@ -86,7 +98,7 @@ async def get_client_investments(request):
                 "total_pages": total_pages,
                 "has_next": page < total_pages,
                 "has_previous": page > 1,
-            }
+            },
         }
     else:
         response = {
@@ -120,11 +132,13 @@ async def pause_copying_api(request):
     if not account_id:
         return _error("account_id is required")
 
-    account = await TradingAccount.filter(
-        account_id=str(account_id),
-        user_id=user_id,
-        account_type="Investor"
-    ).prefetch_related("mam_master_account").first()
+    account = (
+        await TradingAccount.filter(
+            account_id=str(account_id), user_id=user_id, account_type="Investor"
+        )
+        .prefetch_related("mam_master_account")
+        .first()
+    )
 
     if not account:
         return _error("Trading account not found or access denied", status=404)
@@ -167,11 +181,13 @@ async def start_copying_api(request):
     if not account_id:
         return _error("account_id is required")
 
-    account = await TradingAccount.filter(
-        account_id=str(account_id),
-        user_id=user_id,
-        account_type="Investor"
-    ).prefetch_related("mam_master_account").first()
+    account = (
+        await TradingAccount.filter(
+            account_id=str(account_id), user_id=user_id, account_type="Investor"
+        )
+        .prefetch_related("mam_master_account")
+        .first()
+    )
 
     if not account:
         return _error("Trading account not found or access denied", status=404)
@@ -184,7 +200,9 @@ async def start_copying_api(request):
         if mt5.connection_error:
             return _error(f"MT5 Connection failed: {mt5.connection_error}", status=500)
 
-        success = mt5.start_mam_copy(int(account.account_id), int(account.mam_master_account.account_id))
+        success = mt5.start_mam_copy(
+            int(account.account_id), int(account.mam_master_account.account_id)
+        )
         if success:
             account.investor_allow_copy = True
             await account.save()
@@ -224,18 +242,14 @@ async def deploy_coefficient_config_api(request):
     try:
         db_id = int(account_id)
         account = await TradingAccount.filter(
-            id=db_id,
-            user_id=user_id,
-            account_type="Investor"
+            id=db_id, user_id=user_id, account_type="Investor"
         ).first()
     except ValueError:
         pass
 
     if not account:
         account = await TradingAccount.filter(
-            account_id=str(account_id),
-            user_id=user_id,
-            account_type="Investor"
+            account_id=str(account_id), user_id=user_id, account_type="Investor"
         ).first()
 
     if not account:
@@ -261,13 +275,16 @@ async def deploy_coefficient_config_api(request):
             account.multi_trade_count = 1
 
         await account.save()
-        return JsonResponse({
-            "status": "ok",
-            "message": "Coefficient configuration deployed successfully",
-            "copy_mode": account.copy_mode,
-            "copy_factor": float(account.copy_factor) if account.copy_factor is not None else None,
-            "multi_trade_count": account.multi_trade_count
-        })
+        return JsonResponse(
+            {
+                "status": "ok",
+                "message": "Coefficient configuration deployed successfully",
+                "copy_mode": account.copy_mode,
+                "copy_factor": float(account.copy_factor)
+                if account.copy_factor is not None
+                else None,
+                "multi_trade_count": account.multi_trade_count,
+            }
+        )
     except Exception as e:
         return _error(f"Error deploying coefficient configuration: {str(e)}", status=500)
-
