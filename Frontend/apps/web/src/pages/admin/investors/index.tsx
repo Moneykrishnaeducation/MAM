@@ -169,27 +169,28 @@ export default function AdminInvestorsPage() {
         {/* SUMMARY KPI CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* Card 1: 20% White Highlight Card */}
-          <div className="bg-white text-slate-900 border border-blue-100 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
+          {/* Card 1 */}
+          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center justify-between">
-              <span className="text-slate-500 text-xs font-extrabold uppercase tracking-wider">Total Investors</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
+              <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider">Total Investors</span>
+              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
                 <Users size={20} />
               </div>
             </div>
             <div className="mt-3">
-              <div className="text-3xl font-black text-[#0b1329]">{investors.length}</div>
-              <div className="text-[11px] text-blue-700 mt-1 flex items-center gap-1 font-bold">
+              <div className="text-3xl font-black text-white">{investors.length}</div>
+              <div className="text-[11px] text-[#f5c84b] mt-1 flex items-center gap-1 font-bold">
                 <span>100% Active accounts</span>
               </div>
             </div>
+            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
           </div>
 
-          {/* Card 2: 80% Dark Blue Card */}
-          <div className="bg-[#111c38] border border-blue-900/50 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
+          {/* Card 2 */}
+          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Capital Invested</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300">
+              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
                 <DollarSign size={20} />
               </div>
             </div>
@@ -202,13 +203,14 @@ export default function AdminInvestorsPage() {
                 <span>Pooled investor equity balance</span>
               </div>
             </div>
+            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
           </div>
 
-          {/* Card 3: 80% Dark Blue Card */}
-          <div className="bg-[#111c38] border border-blue-900/50 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
+          {/* Card 3 */}
+          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Assigned to MAM</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300">
+              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
                 <UserCheck size={20} />
               </div>
             </div>
@@ -218,13 +220,14 @@ export default function AdminInvestorsPage() {
                 Allocated to active strategy managers
               </div>
             </div>
+            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
           </div>
 
-          {/* Card 4: 80% Dark Blue Card */}
-          <div className="bg-[#111c38] border border-blue-900/50 rounded-2xl p-5 shadow-xl relative overflow-hidden group">
+          {/* Card 4 */}
+          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
             <div className="flex items-center justify-between">
               <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Allocation Status</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300">
+              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
                 <Landmark size={20} />
               </div>
             </div>
@@ -236,6 +239,7 @@ export default function AdminInvestorsPage() {
                 {unassignedCount} Standby
               </span>
             </div>
+            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
           </div>
 
         </div>
@@ -256,15 +260,15 @@ export default function AdminInvestorsPage() {
           </div>
         )}
 
-        {/* MAIN DATA TABLE CONTAINER - DARK BLUE 80% */}
-        <div className="bg-[#111c38]/90 border border-blue-900/60 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
+        {/* MAIN DATA TABLE CONTAINER */}
+        <div className="bg-[#0b183f]/80 border border-blue-800/40 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
           
           {/* SEARCH & FILTER TABS */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
             
-            {/* Search Bar with Crisp White Accent Inputs */}
-            <div className="flex items-center gap-3 bg-[#0b1329] px-4 py-2.5 rounded-2xl w-full lg:w-96 border border-blue-900/60 focus-within:border-white transition-all shadow-inner">
-              <Search size={16} className="text-blue-400 shrink-0" />
+            {/* Search Bar with Crisp Accent Inputs */}
+            <div className="flex items-center gap-3 bg-blue-950/40 px-4 py-2.5 rounded-2xl w-full lg:w-96 border border-blue-800/60 focus-within:border-[#f5c84b] transition-all shadow-inner">
+              <Search size={16} className="text-[#f5c84b] shrink-0" />
               <input 
                 type="text" 
                 value={searchTerm}
@@ -282,7 +286,7 @@ export default function AdminInvestorsPage() {
             {/* Filter Tabs */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
               <span className="text-xs text-slate-300 font-bold flex items-center gap-1 mr-1 shrink-0">
-                <SlidersHorizontal size={13} className="text-blue-400" /> Filter:
+                <SlidersHorizontal size={13} className="text-[#f5c84b]" /> Filter:
               </span>
               {(['All', 'Assigned', 'Unassigned'] as const).map((st) => (
                 <button
@@ -290,8 +294,8 @@ export default function AdminInvestorsPage() {
                   onClick={() => setStatusFilter(st)}
                   className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shrink-0 ${
                     statusFilter === st
-                      ? 'bg-white text-[#0b1329] border-white shadow-lg'
-                      : 'bg-[#1e293b]/70 text-slate-300 border-blue-900/50 hover:bg-blue-600 hover:text-white'
+                      ? 'bg-[#C9A227] text-slate-950 border-[#C9A227] shadow-lg shadow-[#a3851d]/20'
+                      : 'bg-blue-900/40 text-slate-300 border-blue-800/40 hover:bg-[#C9A227]/20 hover:text-[#f5c84b] hover:border-[#C9A227]/40'
                   }`}
                 >
                   {st === 'All' ? 'All Investors' : st}
@@ -307,21 +311,21 @@ export default function AdminInvestorsPage() {
 
           </div>
 
-          {/* TABLE (80% Dark Blue background + 20% White Text & Action Badges) */}
-          <div className="overflow-x-auto rounded-2xl border border-blue-900/60">
+          {/* TABLE */}
+          <div className="overflow-x-auto rounded-2xl border border-blue-800/40">
             <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#0b1329] text-blue-300 border-b border-blue-900/80 uppercase tracking-wider font-extrabold text-[11px]">
-                  <th className="py-3.5 px-4 font-bold">Investor ID</th>
-                  <th className="py-3.5 px-4 font-bold">Investor Details</th>
-                  <th className="py-3.5 px-4 font-bold">Assigned Manager (ID)</th>
-                  <th className="py-3.5 px-4 font-bold">Account ID</th>
-                  <th className="py-3.5 px-4 font-bold">Invested (Balance)</th>
-                  <th className="py-3.5 px-4 font-bold">Profit Gain</th>
-                  <th className="py-3.5 px-4 pr-6 text-right font-bold">Actions</th>
+              <thead className="bg-blue-900/40 font-semibold text-white">
+                <tr className="border-b border-blue-800/40 uppercase tracking-widest text-[10px]">
+                  <th className="py-3.5 px-4 font-bold text-white">Investor ID</th>
+                  <th className="py-3.5 px-4 font-bold text-white">Investor Details</th>
+                  <th className="py-3.5 px-4 font-bold text-white">Assigned Manager (ID)</th>
+                  <th className="py-3.5 px-4 font-bold text-white">Account ID</th>
+                  <th className="py-3.5 px-4 font-bold text-white">Invested (Balance)</th>
+                  <th className="py-3.5 px-4 font-bold text-white">Profit Gain</th>
+                  <th className="py-3.5 px-4 pr-6 text-right font-bold text-white">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-blue-900/40 bg-[#0f172a]/60">
+              <tbody className="divide-y divide-blue-800/40 bg-transparent">
                 {filteredInvestors.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
@@ -337,10 +341,10 @@ export default function AdminInvestorsPage() {
                       <React.Fragment key={inv.id}>
                         <tr 
                           onClick={() => toggleRow(inv.id)}
-                          className={`cursor-pointer transition-all ${
+                          className={`cursor-pointer transition-colors group ${
                             isExpanded 
-                              ? 'bg-blue-950/80 border-l-4 border-l-white' 
-                              : 'hover:bg-blue-900/30 border-l-4 border-l-transparent'
+                              ? 'bg-blue-900/40' 
+                              : 'hover:bg-blue-900/20'
                           }`}
                         >
                           {/* ID */}
@@ -351,12 +355,12 @@ export default function AdminInvestorsPage() {
                           {/* NAME & EMAIL */}
                           <td className="py-4 px-4">
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-white text-[#0b1329] font-black text-xs flex items-center justify-center shadow-md shrink-0">
+                              <div className="w-8 h-8 rounded-full bg-[#C9A227] text-slate-950 font-black text-xs flex items-center justify-center shadow-md shrink-0">
                                 {initials}
                               </div>
                               <div>
-                                <div className="font-bold text-white text-xs sm:text-sm">{inv.name}</div>
-                                <div className="text-slate-400 text-[11px] font-medium">{inv.email}</div>
+                                <div className="font-bold text-white text-xs sm:text-sm group-hover:text-[#f5c84b] transition-colors">{inv.name}</div>
+                                <div className="text-blue-200/60 text-[11px] font-medium">{inv.email}</div>
                               </div>
                             </div>
                           </td>
@@ -365,13 +369,13 @@ export default function AdminInvestorsPage() {
                           <td className="py-4 px-4">
                             <div className="flex flex-col">
                               <span className="font-bold text-slate-200 text-xs">{inv.managerName}</span>
-                              <span className="font-mono text-[11px] text-blue-400 font-medium">{inv.managerUserId}</span>
+                              <span className="font-mono text-[11px] text-[#f5c84b] font-medium">{inv.managerUserId}</span>
                             </div>
                           </td>
 
                           {/* ACCOUNT ID */}
                           <td className="py-4 px-4 font-mono">
-                            <span className="px-3 py-1.5 rounded-lg bg-[#0b1329] text-sm font-black text-white">
+                            <span className="px-3 py-1.5 rounded-lg bg-blue-900/40 text-sm font-black text-white border border-blue-800/40">
                               {inv.accountId}
                             </span>
                           </td>
@@ -395,8 +399,8 @@ export default function AdminInvestorsPage() {
                               onClick={(e) => { e.stopPropagation(); toggleRow(inv.id); }}
                               className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-extrabold text-xs transition-all border ${
                                 isExpanded 
-                                  ? 'bg-white text-[#0b1329] border-white shadow-lg' 
-                                  : 'bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border-blue-900/60'
+                                  ? 'bg-[#C9A227] text-slate-950 border-[#C9A227] shadow-lg shadow-[#a3851d]/20' 
+                                  : 'bg-blue-900/40 hover:bg-[#C9A227]/20 hover:text-[#f5c84b] text-slate-300 border-blue-800/40'
                               }`}
                             >
                               <span>{isExpanded ? 'Hide Menu' : 'Manage'}</span>
@@ -407,13 +411,13 @@ export default function AdminInvestorsPage() {
 
                         {/* EXPANDED ACTION PANEL */}
                         {isExpanded && (
-                          <tr className="bg-[#0b1329] border-b border-blue-900/80">
+                          <tr className="bg-blue-900/20 border-b border-blue-800/40">
                             <td colSpan={7} className="p-4 sm:p-5">
-                              <div className="bg-[#0f172a] rounded-2xl border border-blue-900/80 p-4 sm:p-5 shadow-2xl space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/60 pb-3">
+                              <div className="bg-[#0b183f]/90 rounded-2xl border border-blue-800/40 p-4 sm:p-5 shadow-2xl space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-800/40 pb-3">
                                   <div className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
-                                    <Sparkles size={14} className="text-blue-400" />
-                                    <span>Financial & Account Controls — <strong className="text-blue-300">{inv.name}</strong></span>
+                                    <Sparkles size={14} className="text-[#f5c84b]" />
+                                    <span>Financial & Account Controls — <strong className="text-[#f5c84b]">{inv.name}</strong></span>
                                   </div>
                                   <span className="text-[11px] text-slate-300 font-mono">
                                     Investor Ref: <strong className="text-white">{inv.id}</strong> | Acc: <strong className="text-blue-300">{inv.accountId}</strong>
@@ -423,41 +427,41 @@ export default function AdminInvestorsPage() {
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
                                   <button 
                                     onClick={() => openFinancialModal(inv, 'deposit')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border border-blue-900/60 text-xs font-bold transition-all group shadow-md"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
                                   >
-                                    <ArrowDownCircle size={18} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                    <ArrowDownCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
                                     <span>Deposit</span>
                                   </button>
 
                                   <button 
                                     onClick={() => openFinancialModal(inv, 'withdraw')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border border-blue-900/60 text-xs font-bold transition-all group shadow-md"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
                                   >
-                                    <ArrowUpCircle size={18} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                    <ArrowUpCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
                                     <span>Withdraw</span>
                                   </button>
 
                                   <button 
                                     onClick={() => openFinancialModal(inv, 'credit-in')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border border-blue-900/60 text-xs font-bold transition-all group shadow-md"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
                                   >
-                                    <PlusCircle size={18} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                    <PlusCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
                                     <span>Credit-In</span>
                                   </button>
 
                                   <button 
                                     onClick={() => openFinancialModal(inv, 'credit-out')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border border-blue-900/60 text-xs font-bold transition-all group shadow-md"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
                                   >
-                                    <MinusCircle size={18} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                    <MinusCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
                                     <span>Credit-Out</span>
                                   </button>
 
                                   <button 
                                     onClick={() => openFinancialModal(inv, 'history')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-[#1e293b] hover:bg-white hover:text-[#0b1329] text-white border border-blue-900/60 text-xs font-bold transition-all group shadow-md"
+                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
                                   >
-                                    <History size={18} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                    <History size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
                                     <span>History Logs</span>
                                   </button>
                                 </div>

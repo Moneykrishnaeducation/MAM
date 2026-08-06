@@ -40,7 +40,7 @@ from adminPanel.view.pending_requests import (
 from adminPanel.view.transactions import list_admin_transactions
 from adminPanel.view.logout import logout_admin
 from adminPanel.view.mail import admin_mails
-from backendPanel.permissions import IsAdmin, permission_required
+from backendPanel.permissions import IsAdmin, IsSuperAdmin, permission_required
 from adminPanel.views import (
     admin_profile,
     create_admin_user,
@@ -63,6 +63,7 @@ from adminPanel.views import (
 app_name = "adminPanel"
 
 admin_only = permission_required(IsAdmin)
+super_admin_only = permission_required(IsSuperAdmin)
 
 urlpatterns = [
     path("dashboard", admin_only(get_admin_dashboard), name="dashboard"),
@@ -178,12 +179,12 @@ urlpatterns = [
     # MT5 CRUD Routes
     path(
         "server-settings",
-        admin_only(mt5_crud.server_settings_list_create),
+        super_admin_only(mt5_crud.server_settings_list_create),
         name="server-settings-list-create",
     ),
     path(
         "server-settings/<int:pk>",
-        admin_only(mt5_crud.server_setting_detail_update_delete),
+        super_admin_only(mt5_crud.server_setting_detail_update_delete),
         name="server-setting-detail",
     ),
     path(
