@@ -1,26 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/router';
-import { 
-  LayoutDashboard, 
-  Users, 
-  UserCheck, 
-  Landmark, 
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/router";
+import {
+  type LucideIcon,
+  Activity,
+  ChevronRight,
   Clock,
-  Activity, 
-  Settings, 
-  Mail,
-  ShieldCheck,
-  UserPlus,
+  Landmark,
+  LayoutDashboard,
   LogOut,
+  Mail,
+  Repeat,
+  Settings,
+  ShieldCheck,
+  UserCheck,
+  Users,
   X,
-  Search,
-  Bell,
-  Sparkles,
-  Repeat
-} from 'lucide-react';
+} from "lucide-react";
+
+type NavItem = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
 
 export default function AdminSidebar() {
   const router = useRouter();
@@ -32,7 +36,7 @@ export default function AdminSidebar() {
   useEffect(() => {
     const handleSidebarStateChange = (event: Event) => {
       const detail = (event as CustomEvent<{ isOpen: boolean }>).detail;
-      if (typeof detail?.isOpen === 'boolean') {
+      if (typeof detail?.isOpen === "boolean") {
         setIsOpen(detail.isOpen);
       }
     };
@@ -41,33 +45,41 @@ export default function AdminSidebar() {
       setIsOpen(false);
     }
 
-    window.addEventListener('admin-sidebar-state-change', handleSidebarStateChange);
-    return () => window.removeEventListener('admin-sidebar-state-change', handleSidebarStateChange);
+    window.addEventListener("admin-sidebar-state-change", handleSidebarStateChange);
+    return () => window.removeEventListener("admin-sidebar-state-change", handleSidebarStateChange);
   }, []);
 
   useEffect(() => {
-    if (typeof document === 'undefined') {
+    if (typeof document === "undefined") {
       return;
     }
 
-    document.body.style.overflow = showLogoutConfirm ? 'hidden' : '';
+    document.body.style.overflow = showLogoutConfirm ? "hidden" : "";
     return () => {
-      document.body.style.overflow = '';
+      document.body.style.overflow = "";
     };
   }, [showLogoutConfirm]);
 
-  const navItems = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/admin/requests', label: 'Pending Requests', icon: Clock, badge: '5' },
-    { href: '/admin/users', label: 'Users', icon: Users },
-    { href: '/admin/managers', label: 'Managers', icon: UserCheck },
-    { href: '/admin/investors', label: 'Investors', icon: Landmark },
-    { href: '/admin/mails', label: 'Mails', icon: Mail, badge: '3' },
-    { href: '/admin/activity', label: 'Activity', icon: Activity },
-    { href: '/admin/transactions', label: 'Transactions', icon: Repeat },
-    { href: '/admin/admin-users', label: 'Admin Users', icon: ShieldCheck },
-    { href: '/admin/settings', label: 'Settings', icon: Settings },
+  const navItems: NavItem[] = [
+    { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/requests", label: "Pending Requests", icon: Clock },
+    { href: "/admin/users", label: "Users", icon: Users },
+    { href: "/admin/managers", label: "Managers", icon: UserCheck },
+    { href: "/admin/investors", label: "Investors", icon: Landmark },
+    { href: "/admin/mails", label: "Mails", icon: Mail },
+    { href: "/admin/activity", label: "Activity Logs", icon: Activity },
+    { href: "/admin/transactions", label: "Transactions", icon: Repeat },
+    { href: "/admin/admin-users", label: "Admins", icon: ShieldCheck },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
+
+  const isNavItemActive = (href: string) => {
+    if (href === "/admin/dashboard") {
+      return currentPath === "/admin" || currentPath === href || currentPath.startsWith(`${href}/`);
+    }
+
+    return currentPath === href || currentPath.startsWith(`${href}/`);
+  };
 
   const requestLogout = () => {
     setShowLogoutConfirm(true);
@@ -82,21 +94,21 @@ export default function AdminSidebar() {
   const handleLogout = async () => {
     setLogoutLoading(true);
     try {
-      await fetch('/api/admin/logout', {
-        method: 'POST',
-        credentials: 'include',
+      await fetch("/api/admin/logout", {
+        method: "POST",
+        credentials: "include",
         headers: {
-          Accept: 'application/json',
+          Accept: "application/json",
         },
       });
     } finally {
-      window.location.href = '/';
+      window.location.href = "/";
     }
   };
 
   const setSidebarOpen = (nextOpen: boolean) => {
     window.dispatchEvent(
-      new CustomEvent('admin-sidebar-state-change', {
+      new CustomEvent("admin-sidebar-state-change", {
         detail: { isOpen: nextOpen },
       }),
     );
@@ -110,142 +122,112 @@ export default function AdminSidebar() {
 
   return (
     <>
-      {/* Mobile Sidebar Overlay Backdrop */}
       {isOpen && (
-        <div 
+        <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 bg-black/40 z-40 md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] animate-in fade-in duration-200 md:hidden"
         />
       )}
 
-      <aside 
-        className={`flex flex-col h-screen overflow-hidden border-r border-slate-200 z-50 transition-all duration-300 shadow-sm
-          fixed md:sticky top-0 left-0
-          ${isOpen 
-            ? 'w-64 p-5 translate-x-0 opacity-100' 
-            : 'w-0 p-0 overflow-hidden opacity-0 -translate-x-full md:translate-x-0 md:w-0 md:p-0 border-none'
+      <aside
+        className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-white/10 shadow-[12px_0_40px_rgba(4,10,25,0.25)] transition-all duration-300 md:sticky
+          ${
+            isOpen
+              ? "w-[18rem] translate-x-0 opacity-100"
+              : "w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0 md:border-none"
           }
-        `} 
-        style={{ backgroundColor: '#eef4fc' }}
+        `}
+        style={{
+          background:
+            "radial-gradient(circle at 18% 0%, rgba(255,255,255,0.08), transparent 34%), linear-gradient(180deg, #07122a 0%, #0c2457 45%, #173f8e 100%)",
+        }}
       >
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-300/80">
-          {/* Brand Header */}
-          <div className="flex items-center justify-between gap-3 px-2 mb-6">
-            <div className="flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black py-2 px-3.5 rounded-2xl text-xl shadow-[0_0_20px_rgba(37,99,235,0.4)] tracking-wider">
-                MAM
-              </div>
-              <div>
-                <h2 className="text-lg font-bold text-slate-800 leading-tight">Admin Portal</h2>
-                <p className="text-xs text-blue-600 font-medium">Money Krishna Edu</p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSidebarOpen(false)}
-              className="flex items-center justify-center h-9 w-9 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-              title="Close menu"
-              aria-label="Close menu"
-            >
-              <X size={18} />
-            </button>
-          </div>
+        <div className="flex h-full min-h-0 flex-col px-3 py-4">
+          <div className="mb-8 mt-2 flex items-center justify-between gap-3 px-2">
+                    <img
+                      src="/Vt.png"
+                      alt="VTIndex Logo"
+                      className="w-32 transition-transform drop-shadow-[0_0_15px_rgba(201,162,39,0.4)] hover:scale-[1.05]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSidebarOpen(false)}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-slate-200/70 transition-colors hover:bg-white/10 hover:text-white"
+                      title="Close menu"
+                      aria-label="Close menu"
+                    >
+                        <X size={18} />
+                      </button>
+                    </div>
 
-          {/* Search & Status (Header elements inside Sidebar) */}
-          <div className="px-2 mb-6 space-y-3">
-            {/* Search Input */}
-            <div className="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 focus-within:border-blue-500/80 transition-all shadow-sm">
-              <Search size={15} className="text-slate-400 shrink-0" />
-              <input 
-                type="text" 
-                placeholder="Search..." 
-                className="bg-transparent border-none text-slate-800 outline-none w-full text-xs placeholder-slate-400 font-sans"
-              />
-            </div>
-            
-            {/* Status & Notifications Row */}
-            <div className="flex items-center justify-between gap-2 px-1">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 bg-blue-500/10 border border-blue-500/20 px-2 py-1 rounded-lg">
-                <Sparkles size={11} className="animate-pulse" />
-                <span>MT5: Optimal</span>
-              </div>
-              
-              <button className="flex items-center gap-1 text-[10px] font-bold text-slate-600 hover:text-slate-800 bg-white border border-slate-200 hover:bg-slate-55 px-2 py-1 rounded-lg relative cursor-pointer shadow-sm">
-                <Bell size={11} />
-                <span>Alerts</span>
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-blue-500 rounded-full ring-2 ring-white" />
+          <div className="flex-1 min-h-0 overflow-y-auto pr-1 [-ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
+            <nav className="space-y-2">
+              {navItems.map((item) => {
+                const isActive = isNavItemActive(item.href);
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href as any}
+                    prefetch={true}
+                    onClick={handleNavClick}
+                    className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] px-4 py-3.5 text-[12px] font-extrabold uppercase tracking-[0.22em] transition-all duration-300 ${
+                      isActive
+                        ? "border border-[#556cc3]/65 bg-[linear-gradient(180deg,#324b9d_0%,#253a7c_100%)] text-[#f5c84b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_32px_rgba(0,0,0,0.28)] translate-x-1"
+                        : "border border-transparent text-slate-100/86 hover:border-white/10 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-white" />
+                    )}
+
+                    <Icon
+                      size={20}
+                      strokeWidth={isActive ? 2.35 : 2}
+                      className={`shrink-0 transition-colors duration-300 ${
+                        isActive ? "text-[#f5c84b]" : "text-slate-300/75 group-hover:text-white"
+                      }`}
+                    />
+
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+
+                    <ChevronRight
+                      size={15}
+                      strokeWidth={2.5}
+                      className={`shrink-0 transition-all duration-300 ${
+                        isActive
+                          ? "text-[#f5c84b]/75"
+                          : "translate-x-[-4px] text-white/0 opacity-0 group-hover:translate-x-0 group-hover:text-white/70 group-hover:opacity-100"
+                      }`}
+                    />
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* <div className="mt-5 border-t border-white/10 pt-4">
+              <button
+                type="button"
+                onClick={requestLogout}
+                className="group flex w-full items-center gap-3 rounded-[20px] border border-white/10 bg-black/10 px-4 py-3.5 text-left text-[12px] font-extrabold uppercase tracking-[0.22em] text-slate-100/85 transition-all duration-300 hover:-translate-x-1 hover:bg-white/10 hover:text-white"
+              >
+                <LogOut size={19} className="shrink-0 text-slate-300/75 transition-colors group-hover:text-white" />
+                <span className="min-w-0 flex-1 truncate">Logout</span>
+                <ChevronRight
+                  size={15}
+                  strokeWidth={2.5}
+                  className="shrink-0 text-white/35 transition-colors group-hover:text-white/70"
+                />
               </button>
-            </div>
-          </div>
-
-          {/* Navigation */}
-          <nav className="space-y-1.5">
-            <div className="px-3 mb-2 text-[10px] font-semibold tracking-wider text-slate-400 uppercase">
-              Admin Menu
-            </div>
-            {navItems.map((item) => {
-              const isActive = currentPath === item.href || (item.href === '/admin/dashboard' && currentPath === '/admin');
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href as any}
-                  prefetch={true}
-                  onClick={handleNavClick}
-                  className={`flex items-center justify-between px-4 py-3 rounded-xl font-medium text-sm transition-all duration-200 ${
-                    isActive
-                      ? 'bg-white text-blue-600 border border-slate-200 border-l-4 border-l-blue-500 shadow-md font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 hover:translate-x-1'
-                  }`}
-                >
-                  <div className="flex items-center gap-3.5">
-                    <Icon size={19} className={isActive ? 'text-blue-600' : 'text-slate-500'} />
-                    <span>{item.label}</span>
-                  </div>
-                  {item.badge && (
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500 text-white shadow-sm">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-
-        {/* Admin User Card at bottom */}
-        <div className="pt-4 border-t border-slate-200 flex-shrink-0">
-          <div className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 transition-colors">
-            <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
-                alt="Admin Avatar"
-                className="w-10 h-10 rounded-xl object-cover ring-2 ring-blue-500/20"
-              />
-              <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h4 className="text-sm font-semibold text-slate-800 truncate">Super Admin</h4>
-              <div className="flex items-center gap-1 text-[11px] text-slate-500">
-                <ShieldCheck size={12} className="text-blue-500" />
-                <span className="truncate">Administrator</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={requestLogout}
-              className="text-slate-500 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-slate-200/60"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            </div> */}
           </div>
         </div>
       </aside>
 
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 backdrop-blur-md px-4">
-          <div className="w-[min(92vw,28rem)] rounded-3xl border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-md">
+          <div className="w-[min(92vw,28rem)] animate-in fade-in zoom-in-95 rounded-3xl border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] duration-200">
             <div className="p-5 sm:p-6">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -264,6 +246,7 @@ export default function AdminSidebar() {
                   <X size={16} />
                 </button>
               </div>
+
               <div className="mt-5 flex items-center justify-end gap-3">
                 <button
                   type="button"
@@ -279,7 +262,7 @@ export default function AdminSidebar() {
                   disabled={logoutLoading}
                   className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {logoutLoading ? 'Logging out...' : 'OK'}
+                  {logoutLoading ? "Logging out..." : "OK"}
                 </button>
               </div>
             </div>
