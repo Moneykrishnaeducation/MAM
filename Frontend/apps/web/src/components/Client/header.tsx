@@ -328,32 +328,29 @@ export default function ClientHeader() {
       </div>
 
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/55 backdrop-blur-md px-4">
-          <div className="w-[min(92vw,28rem)] rounded-3xl border border-blue-700/50 bg-[#0b1330] shadow-[0_30px_80px_rgba(0,0,0,0.55)] animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-extrabold text-white">Logout confirmation</div>
-                  <p className="mt-1 text-sm text-slate-300">
-                    Are you sure you want to logout from the client portal?
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeLogoutConfirm}
-                  disabled={logoutLoading}
-                  className="rounded-full p-2 text-slate-400 transition-colors hover:bg-white/5 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Close logout confirmation"
-                >
-                  <X size={16} />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/65 backdrop-blur-md px-4">
+          <div className="w-[min(92vw,24rem)] rounded-3xl border border-slate-800 bg-[#0c1535] p-6 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8),0_0_40px_rgba(59,130,246,0.1)] animate-in fade-in zoom-in-95 duration-200 relative overflow-hidden">
+            {/* Background glowing gradient pattern */}
+            <div className="absolute -top-12 -left-12 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-red-500/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="flex flex-col items-center text-center">
+              {/* Warning/Logout Icon Container */}
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500 ring-8 ring-red-500/5 mb-4">
+                <LogOut size={24} className="translate-x-0.5" />
               </div>
-              <div className="mt-5 flex items-center justify-end gap-3">
+
+              <h3 className="text-lg font-bold text-white tracking-tight">Confirm Logout</h3>
+              <p className="mt-2 text-sm text-slate-400 leading-relaxed max-w-[280px]">
+                Are you sure you want to logout? You will need to sign back in to access your client portal.
+              </p>
+
+              <div className="mt-6 flex w-full flex-col sm:flex-row gap-3">
                 <button
                   type="button"
                   onClick={closeLogoutConfirm}
                   disabled={logoutLoading}
-                  className="rounded-2xl border border-blue-800/50 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex-1 rounded-2xl border border-slate-700/80 bg-slate-800/40 py-2.5 text-sm font-semibold text-slate-300 transition-all duration-200 hover:bg-slate-800 hover:text-white hover:border-slate-600 disabled:cursor-not-allowed disabled:opacity-50 active:scale-[0.98]"
                 >
                   Cancel
                 </button>
@@ -361,9 +358,19 @@ export default function ClientHeader() {
                   type="button"
                   onClick={() => void handleLogout()}
                   disabled={logoutLoading}
-                  className="rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-cyan-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex-1 rounded-2xl bg-gradient-to-r from-red-500 to-rose-600 py-2.5 text-sm font-extrabold text-white shadow-lg shadow-red-500/20 transition-all duration-200 hover:from-red-400 hover:to-rose-500 hover:shadow-red-500/35 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98] flex items-center justify-center gap-2"
                 >
-                  {logoutLoading ? 'Logging out...' : 'OK'}
+                  {logoutLoading ? (
+                    <span className="flex items-center gap-2">
+                      <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Logging out...
+                    </span>
+                  ) : (
+                    'Logout'
+                  )}
                 </button>
               </div>
             </div>
