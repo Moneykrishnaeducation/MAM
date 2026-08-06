@@ -108,15 +108,26 @@ export default function WithdrawalModal({
         const accRes = await fetch("/api/client/account", { credentials: "include" });
         if (accRes.ok && active) {
           const data = await accRes.json();
-          if (data && data.account) {
-            const accList = [{
+          let accList: any[] = [];
+          if (data && Array.isArray(data.accounts) && data.accounts.length > 0) {
+            accList = data.accounts.map((a: any) => ({
+              account_id: a.account_number,
+              balance: Number(a.balance || 0),
+            }));
+          } else if (data && data.account) {
+            accList = [{
               account_id: data.account.account_number,
-              balance: Number(data.account.balance || 0)
+              balance: Number(data.account.balance || 0),
             }];
-            setAccounts(accList);
-            if (!selectedAccount) {
-              setSelectedAccount(data.account.account_number);
-              setAvailableBalance(Number(data.account.balance || 0));
+          }
+          setAccounts(accList);
+
+          const initialAccount = currentAccount || selectedAccount || (accList.length > 0 ? accList[0].account_id : "");
+          if (initialAccount) {
+            setSelectedAccount(initialAccount);
+            const matched = accList.find(a => String(a.account_id) === String(initialAccount));
+            if (matched) {
+              setAvailableBalance(matched.balance);
             }
           }
         }
@@ -136,12 +147,14 @@ export default function WithdrawalModal({
 
     loadData();
     return () => { active = false; };
-  }, []);
+  }, [currentAccount]);
 
   useEffect(() => {
-    const acc = accounts.find(a => a.account_id === selectedAccount);
-    if (acc) {
-      setAvailableBalance(acc.balance);
+    if (selectedAccount && accounts.length > 0) {
+      const acc = accounts.find(a => String(a.account_id) === String(selectedAccount));
+      if (acc) {
+        setAvailableBalance(acc.balance);
+      }
     }
   }, [selectedAccount, accounts]);
 

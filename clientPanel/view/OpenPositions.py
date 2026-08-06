@@ -26,12 +26,15 @@ async def fetch_open_positions(account_id: int):
     mt5_status = "offline"
     try:
         from adminPanel.mt5.services import MT5ManagerActions
+
         mt5_actions = MT5ManagerActions()
         if mt5_actions.manager:
             positions = mt5_actions.get_open_positions(int(account_id))
             mt5_status = "online"
     except Exception as e:
-        logger.warning(f"Could not fetch positions via MT5ManagerActions for account {account_id}: {e}")
+        logger.warning(
+            f"Could not fetch positions via MT5ManagerActions for account {account_id}: {e}"
+        )
 
     return positions, mt5_status
 
@@ -50,17 +53,22 @@ def get_client_open_positions(request, account_id: int):
 
         positions, mt5_status = async_to_sync(fetch_open_positions)(account_id)
 
-        return JsonResponse({
-            "success": True,
-            "account_id": str(account_id),
-            "positions": positions,
-            "mt5_status": mt5_status,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "account_id": str(account_id),
+                "positions": positions,
+                "mt5_status": mt5_status,
+            }
+        )
     except Exception as e:
         logger.error(f"Error fetching open positions for account {account_id}: {e}")
-        return JsonResponse({
-            "success": False,
-            "message": str(e),
-            "positions": [],
-            "mt5_status": "offline",
-        }, status=500)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": str(e),
+                "positions": [],
+                "mt5_status": "offline",
+            },
+            status=500,
+        )

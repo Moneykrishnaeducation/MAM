@@ -139,7 +139,13 @@ async def process_mail_queue(*, limit: int = 100) -> dict[str, int]:
         message.last_attempt_at = timezone.now()
         message.error_message = None
         await message.save(
-            update_fields=["status", "attempt_count", "last_attempt_at", "error_message", "updated_at"]
+            update_fields=[
+                "status",
+                "attempt_count",
+                "last_attempt_at",
+                "error_message",
+                "updated_at",
+            ]
         )
 
         try:
@@ -150,7 +156,13 @@ async def process_mail_queue(*, limit: int = 100) -> dict[str, int]:
             message.error_message = str(exc)
             message.sent_at = None
             await message.save(
-                update_fields=["status", "error_message", "sent_at", "last_attempt_at", "updated_at"]
+                update_fields=[
+                    "status",
+                    "error_message",
+                    "sent_at",
+                    "last_attempt_at",
+                    "updated_at",
+                ]
             )
             failed += 1
             continue

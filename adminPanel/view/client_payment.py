@@ -55,7 +55,10 @@ async def update_client_payment_details(request, user_id: str):
 
     payment_type = str(body.get("paymentType") or body.get("payment_type") or "").strip().lower()
     if payment_type not in {"bank", "crypto"}:
-        return JsonResponse({"status": "error", "message": "paymentType must be either 'bank' or 'crypto'"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "paymentType must be either 'bank' or 'crypto'"},
+            status=400,
+        )
 
     submission_payload = build_payment_submission_payload(
         profile=user,

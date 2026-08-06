@@ -36,9 +36,6 @@ async def create_admin_user(
     )
 
 
-
-
-
 # Client User CRUD Operations
 async def get_client_user(user_id: int) -> ClientUser | None:
     """Get client user by ID."""
@@ -66,9 +63,6 @@ async def create_client_user(
         country=country,
         role="Client",
     )
-
-
-
 
 
 async def get_pending_requests(skip: int = 0, limit: int = 100) -> list[PendingRequest]:

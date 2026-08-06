@@ -6,6 +6,7 @@ import json
 HOST = "localhost"
 PORT = 8000
 
+
 class MyHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         user = {
@@ -19,16 +20,10 @@ class MyHandler(BaseHTTPRequestHandler):
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
-        self.send_header(
-            "Set-Cookie",
-            f"user={user_json}; Path=/; Max-Age=86400; SameSite=Lax"
-        )
+        self.send_header("Set-Cookie", f"user={user_json}; Path=/; Max-Age=86400; SameSite=Lax")
         self.end_headers()
 
-        response = {
-            "message": "User cookie has been set.",
-            "user": user
-        }
+        response = {"message": "User cookie has been set.", "user": user}
 
         self.wfile.write(json.dumps(response).encode("utf-8"))
 

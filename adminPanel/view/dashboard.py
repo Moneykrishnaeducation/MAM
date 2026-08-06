@@ -67,9 +67,10 @@ async def get_admin_dashboard(request):
         total_aum = total_managed_balance
 
     active_accounts = sum(
-        1 for account in mam_accounts if str(account.status).strip().lower() in {"active", "operational"}
+        1
+        for account in mam_accounts
+        if str(account.status).strip().lower() in {"active", "operational"}
     )
-
 
     cards = [
         _dashboard_card(
@@ -170,7 +171,11 @@ async def get_admin_dashboard(request):
                 ],
                 "quick_actions": [
                     {"label": "Add User", "href": "/admin/activity", "icon": "UserPlus"},
-                    {"label": "Create Admin User", "href": "/admin/admin-users", "icon": "PlusCircle"},
+                    {
+                        "label": "Create Admin User",
+                        "href": "/admin/admin-users",
+                        "icon": "PlusCircle",
+                    },
                     {"label": "View Logs", "href": "/admin/activity", "icon": "FileText"},
                     {"label": "System Config", "href": "/admin/settings", "icon": "Settings"},
                 ],

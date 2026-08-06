@@ -102,13 +102,17 @@ def _serialize_ticket(ticket: ClientTicket, request=None) -> dict:
         "priority": ticket.priority,
         "status": _canonical_ticket_status(ticket.status),
         "description": ticket.description,
-        "created_at": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
+        "created_at": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        if ticket.created_at
+        else None,
         "attachments": _serialize_attachments(getattr(ticket, "attachments", None)),
     }
 
 
 def _extract_ticket_payload(request) -> tuple[dict, list]:
-    content_type = str(getattr(request, "content_type", "") or request.META.get("CONTENT_TYPE", "")).lower()
+    content_type = str(
+        getattr(request, "content_type", "") or request.META.get("CONTENT_TYPE", "")
+    ).lower()
     if content_type.startswith("multipart/form-data"):
         files = (
             request.FILES.getlist("documents")
@@ -164,11 +168,7 @@ async def get_client_tickets(request):
         return error
 
     requested_status = _normalize_ticket_status(request.GET.get("status") or request.GET.get("tab"))
-    tickets = (
-        await ClientTicket.filter(user_id=profile.id)
-        .order_by("-created_at")
-        .all()
-    )
+    tickets = await ClientTicket.filter(user_id=profile.id).order_by("-created_at").all()
     filtered_tickets = [
         ticket for ticket in tickets if _ticket_matches_status(ticket.status, requested_status)
     ]

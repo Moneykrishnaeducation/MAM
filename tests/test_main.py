@@ -17,7 +17,11 @@ def test_root(client):
     response = client.get("/")
     assert response.status_code == 200
     if response.headers.get("content-type", "").startswith("text/html"):
-        content = response.content if hasattr(response, "content") else b"".join(response.streaming_content)
+        content = (
+            response.content
+            if hasattr(response, "content")
+            else b"".join(response.streaming_content)
+        )
         assert len(content) > 0
     else:
         assert response.json() == {"message": "Welcome to MAM!"}

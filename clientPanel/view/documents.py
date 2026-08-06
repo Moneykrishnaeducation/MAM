@@ -66,7 +66,9 @@ def _render_document_submission_email(
         "created_at": created_at or "",
     }
     subject = f"{label} submitted for approval"
-    plain_body = render_to_string("emails/document_submission_notification_email.txt", context).strip()
+    plain_body = render_to_string(
+        "emails/document_submission_notification_email.txt", context
+    ).strip()
     html_body = render_to_string("emails/document_submission_notification_email.html", context)
     return subject, plain_body, html_body
 
@@ -93,7 +95,12 @@ async def _send_document_submission_email(
         html_body=html_body,
         to=[email],
         source=f"client_{document_type}_submission",
-        payload={"user_name": user_name, "document_type": document_type, "status": status, "created_at": created_at},
+        payload={
+            "user_name": user_name,
+            "document_type": document_type,
+            "status": status,
+            "created_at": created_at,
+        },
     )
 
 
@@ -123,13 +130,17 @@ async def client_documents(request):
             }
         )
 
-    document_type = _normalize_document_type(request.POST.get("documentType") or request.POST.get("document_type"))
+    document_type = _normalize_document_type(
+        request.POST.get("documentType") or request.POST.get("document_type")
+    )
     if document_type is None:
         try:
             body = json.loads(request.body or b"{}")
         except (json.JSONDecodeError, ValueError):
             body = {}
-        document_type = _normalize_document_type(body.get("documentType") or body.get("document_type"))
+        document_type = _normalize_document_type(
+            body.get("documentType") or body.get("document_type")
+        )
         if document_type is None:
             return _error("documentType must be either 'identity' or 'address'", status=400)
     uploaded_file = (
@@ -160,7 +171,12 @@ async def client_documents(request):
 
     try:
         await _send_document_submission_email(
-            user_name=str(getattr(profile, "full_name", None) or getattr(profile, "name", None) or profile.email or "Client"),
+            user_name=str(
+                getattr(profile, "full_name", None)
+                or getattr(profile, "name", None)
+                or profile.email
+                or "Client"
+            ),
             email=str(getattr(profile, "email", "") or ""),
             document_type=document_type,
             details={

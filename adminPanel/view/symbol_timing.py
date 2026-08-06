@@ -25,8 +25,14 @@ def _classify_symbol(path: str) -> str:
     if "indices" in p or "index" in p:
         return "indices"
     if (
-        "commodity" in p or "metal" in p or "gold" in p or "silver" in p
-        or "oil" in p or "energy" in p or "xau" in p or "xag" in p
+        "commodity" in p
+        or "metal" in p
+        or "gold" in p
+        or "silver" in p
+        or "oil" in p
+        or "energy" in p
+        or "xau" in p
+        or "xag" in p
     ):
         return "commodities"
     if "stock" in p or "share" in p or "cfd" in p:

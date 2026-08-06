@@ -77,6 +77,7 @@ def _save_uploaded_document(uploaded_file, user_id: int, document_type: str) -> 
     file_url = default_storage.url(saved_path)
     return saved_path, file_url
 
+
 # Valid roles for AdminUser records (canonical title-case)
 _VALID_ADMIN_ROLES: frozenset[str] = frozenset({"Admin", "SuperAdmin", "Viewer"})
 
@@ -93,22 +94,31 @@ def _canonicalize_admin_role(raw: str) -> str | None:
     """Return canonical title-case role or None if not a valid admin role."""
     return _ROLE_CANONICAL.get(raw.strip().lower().replace("-", "").replace(" ", ""))
 
+
 async def _get_current_admin_user(request):
     token = get_admin_request_token(request)
     if not token:
-        return None, JsonResponse({"status": "error", "message": "Authentication token missing."}, status=401)
+        return None, JsonResponse(
+            {"status": "error", "message": "Authentication token missing."}, status=401
+        )
 
     payload = load_admin_login_token(token)
     if payload is None:
-        return None, JsonResponse({"status": "error", "message": "Invalid or expired admin token."}, status=401)
+        return None, JsonResponse(
+            {"status": "error", "message": "Invalid or expired admin token."}, status=401
+        )
 
     user_id = payload.get("user_id")
     if user_id is None:
-        return None, JsonResponse({"status": "error", "message": "Invalid admin token payload."}, status=401)
+        return None, JsonResponse(
+            {"status": "error", "message": "Invalid admin token payload."}, status=401
+        )
 
     user = await AdminUser.filter(id=int(user_id)).first()
     if user is None:
-        return None, JsonResponse({"status": "error", "message": "Admin user not found."}, status=404)
+        return None, JsonResponse(
+            {"status": "error", "message": "Admin user not found."}, status=404
+        )
 
     return user, None
 
@@ -196,7 +206,9 @@ async def _load_or_create_client_document(user: ClientUser) -> ClientDocument:
 
     return await ClientDocument.create(user_id=user.id)
 
+
 # ── GET views ──────────────────────────────────────────────────────────────────
+
 
 @csrf_exempt
 @permission_required(IsAdmin)
@@ -216,7 +228,9 @@ async def list_admin_system_users(request):
             "status": user.status,
             "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
             "avatar": user.avatar,
-            "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S") if user.created_at else None,
+            "created_at": user.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            if user.created_at
+            else None,
         }
         for user in admin_users
     ]
@@ -246,7 +260,9 @@ async def admin_profile(request):
                     "permissions": user.permissions or [],
                     "status": user.status,
                     "avatar": user.avatar,
-                    "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
+                    "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S")
+                    if user.last_login
+                    else None,
                 },
             }
         )
@@ -289,7 +305,9 @@ async def admin_profile(request):
                 "permissions": user.permissions or [],
                 "status": user.status,
                 "avatar": user.avatar,
-                "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S") if user.last_login else None,
+                "lastLogin": user.last_login.strftime("%Y-%m-%d %H:%M:%S")
+                if user.last_login
+                else None,
             },
         }
     )
@@ -326,7 +344,9 @@ async def list_client_users(request):
                 "marginFree": float(acc.margin_free),
                 "activeTrades": 0,
                 "status": acc.status or "Active",
-                "agent": getattr(settings, 'MT5_DEFAULT_AGENT', 426) if acc.account_type.upper() == "MAM" else None,
+                "agent": getattr(settings, "MT5_DEFAULT_AGENT", 426)
+                if acc.account_type.upper() == "MAM"
+                else None,
             }
             for acc in t_accs
         ]
@@ -339,7 +359,9 @@ async def list_client_users(request):
         crypto_network = crypto_detail.network if crypto_detail else "USDT-TRC20"
         payment_details = {
             "paymentType": "bank" if bank_detail else ("crypto" if crypto_detail else "bank"),
-            "accountHolder": bank_detail.account_holder if bank_detail and bank_detail.account_holder else user.name,
+            "accountHolder": bank_detail.account_holder
+            if bank_detail and bank_detail.account_holder
+            else user.name,
             "accountNumber": bank_account_number,
             "bankName": bank_detail.bank_name if bank_detail else "",
             "ifscSwift": bank_detail.ifsc_swift if bank_detail else "",
@@ -353,41 +375,47 @@ async def list_client_users(request):
         }
 
         bank_crypto = {
-            "accountMask": _mask_account_number(bank_account_number) if bank_account_number else "Not Configured",
+            "accountMask": _mask_account_number(bank_account_number)
+            if bank_account_number
+            else "Not Configured",
             "bankName": bank_detail.bank_name if bank_detail else "Not Configured",
-            "cryptoWallet": f"{crypto_wallet_address} ({crypto_network})".strip() if crypto_wallet_address else "Not Configured",
+            "cryptoWallet": f"{crypto_wallet_address} ({crypto_network})".strip()
+            if crypto_wallet_address
+            else "Not Configured",
         }
 
-        results.append({
-            "id": user.user_code or f"USR-{user.id:03d}",
-            "user_id": user.id,
-            "name": user.name,
-            "email": user.email,
-            "phone": user.phone,
-            "role": user.role,
-            "status": user.status,
-            "verified": user.verified,
-            "country": user.country,
-            "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
-            "avatar": user.avatar,
-            "tradingAccount": primary_acc,
-            "tradingAccounts": trading_accounts_data,
-            "profile": _serialize_client_profile(user),
-            "kyc": {
-                "status": user.kyc_status,
-                "document_detail": serialize_client_document_detail(document_detail),
-                "documents": build_document_details_payload(
-                    profile=user,
-                    document_detail=document_detail,
-                    identity_request=identity_request,
-                    address_request=address_request,
-                ),
-            },
-            "paymentDetails": payment_details,
-            "bankCrypto": bank_crypto,
-            "transactions": [],
-            "tickets": [],
-        })
+        results.append(
+            {
+                "id": user.user_code or f"USR-{user.id:03d}",
+                "user_id": user.id,
+                "name": user.name,
+                "email": user.email,
+                "phone": user.phone,
+                "role": user.role,
+                "status": user.status,
+                "verified": user.verified,
+                "country": user.country,
+                "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
+                "avatar": user.avatar,
+                "tradingAccount": primary_acc,
+                "tradingAccounts": trading_accounts_data,
+                "profile": _serialize_client_profile(user),
+                "kyc": {
+                    "status": user.kyc_status,
+                    "document_detail": serialize_client_document_detail(document_detail),
+                    "documents": build_document_details_payload(
+                        profile=user,
+                        document_detail=document_detail,
+                        identity_request=identity_request,
+                        address_request=address_request,
+                    ),
+                },
+                "paymentDetails": payment_details,
+                "bankCrypto": bank_crypto,
+                "transactions": [],
+                "tickets": [],
+            }
+        )
     return JsonResponse({"status": "ok", "users": results})
 
 
@@ -460,12 +488,26 @@ async def update_client_user_documents(request, user_id: str):
         documents = []
 
     slot_map = {
-        "id_proof": ("identity_file_name", "identity_file_path", "identity_status", "identity_uploaded_at"),
-        "address_proof": ("address_file_name", "address_file_path", "address_status", "address_uploaded_at"),
+        "id_proof": (
+            "identity_file_name",
+            "identity_file_path",
+            "identity_status",
+            "identity_uploaded_at",
+        ),
+        "address_proof": (
+            "address_file_name",
+            "address_file_path",
+            "address_status",
+            "address_uploaded_at",
+        ),
     }
     file_map = {
-        "id_proof": request.FILES.get("id_proof") or request.FILES.get("identity") or request.FILES.get("identityFile"),
-        "address_proof": request.FILES.get("address_proof") or request.FILES.get("address") or request.FILES.get("addressFile"),
+        "id_proof": request.FILES.get("id_proof")
+        or request.FILES.get("identity")
+        or request.FILES.get("identityFile"),
+        "address_proof": request.FILES.get("address_proof")
+        or request.FILES.get("address")
+        or request.FILES.get("addressFile"),
     }
 
     updated_slots: list[str] = []
@@ -485,13 +527,17 @@ async def update_client_user_documents(request, user_id: str):
 
         uploaded_file = file_map.get(doc_type)
         if uploaded_file is not None:
-            file_name, file_path = _save_uploaded_document(uploaded_file, user.id, "identity" if doc_type == "id_proof" else "address")
+            file_name, file_path = _save_uploaded_document(
+                uploaded_file, user.id, "identity" if doc_type == "id_proof" else "address"
+            )
             setattr(document, file_field_name, file_name)
             setattr(document, file_path_field, file_path)
             setattr(document, uploaded_at_field, timezone.now())
         elif item.get("fileUrl") or item.get("file_url"):
             file_path_value = str(item.get("fileUrl") or item.get("file_url") or "").strip() or None
-            file_name_value = str(item.get("fileName") or item.get("file_name") or "").strip() or None
+            file_name_value = (
+                str(item.get("fileName") or item.get("file_name") or "").strip() or None
+            )
             if file_name_value:
                 setattr(document, file_field_name, file_name_value)
             if file_path_value:
@@ -640,19 +686,21 @@ async def list_managers(request):
         except Exception as exc:
             logger.warning("MT5 manager lookup failed for %s: %s", acc_id, exc)
 
-        results.append({
-            "id": m.id,
-            "account_id": acc_id,
-            "name": name,
-            "email": email,
-            "strategy": m.risk_level or "Quantitative Grid",
-            "aum": balance_value,
-            "balance": balance_value,
-            "credit": credit_value,
-            "equity": equity_value,
-            "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
-            "status": m.status or "Active",
-        })
+        results.append(
+            {
+                "id": m.id,
+                "account_id": acc_id,
+                "name": name,
+                "email": email,
+                "strategy": m.risk_level or "Quantitative Grid",
+                "aum": balance_value,
+                "balance": balance_value,
+                "credit": credit_value,
+                "equity": equity_value,
+                "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
+                "status": m.status or "Active",
+            }
+        )
 
     total = len(results)
 
@@ -673,7 +721,7 @@ async def list_managers(request):
                 "total_pages": total_pages,
                 "has_next": page < total_pages,
                 "has_previous": page > 1,
-            }
+            },
         }
     else:
         response = {
@@ -696,19 +744,20 @@ async def list_investors(request):
         except Exception:
             mam_master = None
 
-        results.append({
-            "id": i.id,
-            "account_id": i.account_id,
-            "name": i.user.name if i.user else "Investor User",
-            "email": i.user.email if i.user else "investor@mam.com",
-            "equity": float(i.equity),
-            "allocated_mam_name": mam_master.account_name if mam_master else None,
-            "allocated_mam": mam_master.account_id if mam_master else None,
-            "status": i.status or "Active",
-        })
+        results.append(
+            {
+                "id": i.id,
+                "account_id": i.account_id,
+                "name": i.user.name if i.user else "Investor User",
+                "email": i.user.email if i.user else "investor@mam.com",
+                "equity": float(i.equity),
+                "allocated_mam_name": mam_master.account_name if mam_master else None,
+                "allocated_mam": mam_master.account_id if mam_master else None,
+                "status": i.status or "Active",
+            }
+        )
 
     return JsonResponse({"status": "ok", "investors": results})
-
 
 
 def _classify_activity_log(log: ActivityLog) -> str:
@@ -716,7 +765,19 @@ def _classify_activity_log(log: ActivityLog) -> str:
     text = f"{log.user_role} {log.action_type} {log.module_name}".lower()
     role = str(log.user_role or "").strip().lower()
 
-    if any(keyword in text for keyword in ("error", "failed", "failure", "exception", "denied", "blocked", "unauthorized", "invalid")):
+    if any(
+        keyword in text
+        for keyword in (
+            "error",
+            "failed",
+            "failure",
+            "exception",
+            "denied",
+            "blocked",
+            "unauthorized",
+            "invalid",
+        )
+    ):
         return "error"
 
     if role == "client":
@@ -727,7 +788,20 @@ def _classify_activity_log(log: ActivityLog) -> str:
 
     if any(
         keyword in text
-        for keyword in ("client", "user", "login", "signin", "sign in", "profile", "account", "kyc", "ticket", "deposit", "withdraw", "payment")
+        for keyword in (
+            "client",
+            "user",
+            "login",
+            "signin",
+            "sign in",
+            "profile",
+            "account",
+            "kyc",
+            "ticket",
+            "deposit",
+            "withdraw",
+            "payment",
+        )
     ):
         return "client"
 
@@ -799,8 +873,8 @@ async def list_error_activity_logs(request):
     return await _list_activity_logs_by_category("error")
 
 
-
 # ── POST views ─────────────────────────────────────────────────────────────────
+
 
 def _generate_user_code(prefix: str, length: int = 6) -> str:
     """Generate a random user code like USR-A83F2C."""
@@ -835,10 +909,14 @@ async def create_admin_user(request):
     )
 
     if not name or not email:
-        return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "name and email are required"}, status=400
+        )
 
     if not password:
-        return JsonResponse({"status": "error", "message": "password is required for admin users"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "password is required for admin users"}, status=400
+        )
 
     if role is None:
         return JsonResponse(
@@ -911,10 +989,18 @@ async def create_client_user(request):
     )
 
     if not name or not email:
-        return JsonResponse({"status": "error", "message": "name and email are required"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "name and email are required"}, status=400
+        )
 
     if role.lower() == "admin":
-        return JsonResponse({"status": "error", "message": "Admin users must be created through the admin user endpoint"}, status=400)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": "Admin users must be created through the admin user endpoint",
+            },
+            status=400,
+        )
 
     if await ClientUser.filter(email=email).exists():
         return JsonResponse(
@@ -1004,15 +1090,17 @@ async def get_available_groups(request):
 
         groups_list = []
         for c in configs:
-            groups_list.append({
-                "id": c.group_name,
-                "label": c.group_name,
-                "enabled": c.is_enabled,
-                "alias": c.description or "",
-                "is_default": False,
-                "is_demo_default": False,
-                "is_demo": c.is_demo,
-            })
+            groups_list.append(
+                {
+                    "id": c.group_name,
+                    "label": c.group_name,
+                    "enabled": c.is_enabled,
+                    "alias": c.description or "",
+                    "is_default": False,
+                    "is_demo_default": False,
+                    "is_demo": c.is_demo,
+                }
+            )
 
         trade_groups = await TradeGroup.all()
         for tg in trade_groups:
@@ -1022,10 +1110,7 @@ async def get_available_groups(request):
                     g["is_demo_default"] = tg.is_demo_default
                     g["alias"] = tg.alias or g["alias"]
 
-        return JsonResponse({
-            "success": True,
-            "groups": groups_list
-        })
+        return JsonResponse({"success": True, "groups": groups_list})
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
@@ -1053,11 +1138,7 @@ async def get_current_group_config(request):
             tg = tg_map.get(c.group_name)
             alias = tg.alias if tg else (c.description or "")
 
-            group_item = {
-                "id": c.group_name,
-                "name": c.group_name,
-                "alias": alias
-            }
+            group_item = {"id": c.group_name, "name": c.group_name, "alias": alias}
 
             if c.is_demo:
                 demo_groups.append(group_item)
@@ -1074,16 +1155,18 @@ async def get_current_group_config(request):
         if not demo_group and demo_groups:
             demo_group = {"id": demo_groups[0]["id"]}
 
-        return JsonResponse({
-            "success": True,
-            "configuration": {
-                "real_groups": real_groups,
-                "demo_groups": demo_groups,
-                "default_group": default_group,
-                "demo_group": demo_group,
-                "last_updated": None
+        return JsonResponse(
+            {
+                "success": True,
+                "configuration": {
+                    "real_groups": real_groups,
+                    "demo_groups": demo_groups,
+                    "default_group": default_group,
+                    "demo_group": demo_group,
+                    "last_updated": None,
+                },
             }
-        })
+        )
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
@@ -1095,6 +1178,7 @@ async def save_group_configuration(request):
     try:
         await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
+
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
 
@@ -1135,7 +1219,7 @@ async def save_group_configuration(request):
                     alias=alias,
                     is_active=enabled,
                     is_default=is_default,
-                    type="real"
+                    type="real",
                 )
 
         return JsonResponse({"success": True})
@@ -1150,6 +1234,7 @@ async def save_demo_group_configuration(request):
     try:
         await ensure_db_initialized()
         from adminPanel.models import MT5GroupConfig, TradeGroup
+
         body = json.loads(request.body)
         groups_input = body.get("groups", [])
 
@@ -1168,7 +1253,9 @@ async def save_demo_group_configuration(request):
             group_name = g.get("id")
             enabled = g.get("enabled", True)
             alias = g.get("alias", "")
-            is_demo_default = (group_name == demo_default_id) if demo_default_id else g.get("demo_default", False)
+            is_demo_default = (
+                (group_name == demo_default_id) if demo_default_id else g.get("demo_default", False)
+            )
 
             # Update/Create MT5GroupConfig
             config = await MT5GroupConfig.filter(group_name=group_name).first()
@@ -1190,7 +1277,7 @@ async def save_demo_group_configuration(request):
                     alias=alias,
                     is_active=enabled,
                     is_demo_default=is_demo_default,
-                    type="demo"
+                    type="demo",
                 )
 
         return JsonResponse({"success": True, "demo_default_group": demo_default_id})
@@ -1216,7 +1303,9 @@ async def update_admin_user(request, user_id):
 
         user = await AdminUser.filter(id=clean_id).first()
         if not user:
-            return JsonResponse({"status": "error", "message": "Administrator not found"}, status=404)
+            return JsonResponse(
+                {"status": "error", "message": "Administrator not found"}, status=404
+            )
 
         if "role" in body:
             new_role_input = str(body["role"]).strip()

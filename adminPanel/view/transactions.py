@@ -31,7 +31,15 @@ def _transaction_family(transaction: ClientTransaction) -> str:
         return "deposit"
     if transaction_type in {"withdraw", "withdrawal", "withdrawals"}:
         return "withdraw"
-    if transaction_type in {"credit-in", "credit_in", "credit out", "credit-out", "credit_out", "transfer", "internal transfer"}:
+    if transaction_type in {
+        "credit-in",
+        "credit_in",
+        "credit out",
+        "credit-out",
+        "credit_out",
+        "transfer",
+        "internal transfer",
+    }:
         return "internal"
     return "internal"
 
@@ -152,7 +160,8 @@ async def list_admin_transactions(request):
     filtered_transactions = [
         transaction
         for transaction in transactions
-        if _transaction_matches_tab(transaction, tab) and _transaction_matches_search(transaction, search)
+        if _transaction_matches_tab(transaction, tab)
+        and _transaction_matches_search(transaction, search)
     ]
 
     summary = {
@@ -162,9 +171,15 @@ async def list_admin_transactions(request):
             for transaction in transactions
             if str(transaction.status or "").strip().lower() in {"pending", "processing"}
         ),
-        "deposit_count": sum(1 for transaction in transactions if _transaction_family(transaction) == "deposit"),
-        "withdrawal_count": sum(1 for transaction in transactions if _transaction_family(transaction) == "withdraw"),
-        "internal_count": sum(1 for transaction in transactions if _transaction_family(transaction) == "internal"),
+        "deposit_count": sum(
+            1 for transaction in transactions if _transaction_family(transaction) == "deposit"
+        ),
+        "withdrawal_count": sum(
+            1 for transaction in transactions if _transaction_family(transaction) == "withdraw"
+        ),
+        "internal_count": sum(
+            1 for transaction in transactions if _transaction_family(transaction) == "internal"
+        ),
         "total_volume": sum(float(transaction.amount or 0.0) for transaction in transactions),
     }
 
@@ -174,6 +189,8 @@ async def list_admin_transactions(request):
             "tab": tab or "all",
             "search": search,
             "summary": summary,
-            "transactions": [_serialize_transaction(transaction) for transaction in filtered_transactions],
+            "transactions": [
+                _serialize_transaction(transaction) for transaction in filtered_transactions
+            ],
         }
     )

@@ -40,7 +40,9 @@ def _transaction_matches_tab(transaction: ClientTransaction, tab: str | None) ->
     return transaction_type in {"withdrawal", "withdrawals", "withdraw"}
 
 
-def _parse_positive_int(raw_value: str | None, default: int, *, minimum: int = 1, maximum: int | None = None) -> int:
+def _parse_positive_int(
+    raw_value: str | None, default: int, *, minimum: int = 1, maximum: int | None = None
+) -> int:
     try:
         value = int(str(raw_value or "").strip())
     except (TypeError, ValueError):
@@ -122,9 +124,15 @@ def _serialize_transaction(transaction: ClientTransaction, account_map: dict) ->
 
 def _build_transaction_counts(transactions: list[ClientTransaction]) -> dict:
     return {
-        "PENDING": sum(1 for tx in transactions if str(tx.status).strip().lower() in {"pending", "processing"}),
-        "DEPOSIT": sum(1 for tx in transactions if str(tx.transaction_type).strip().lower() == "deposit"),
-        "WITHDRAWAL": sum(1 for tx in transactions if str(tx.transaction_type).strip().lower() == "withdrawal"),
+        "PENDING": sum(
+            1 for tx in transactions if str(tx.status).strip().lower() in {"pending", "processing"}
+        ),
+        "DEPOSIT": sum(
+            1 for tx in transactions if str(tx.transaction_type).strip().lower() == "deposit"
+        ),
+        "WITHDRAWAL": sum(
+            1 for tx in transactions if str(tx.transaction_type).strip().lower() == "withdrawal"
+        ),
     }
 
 
@@ -142,15 +150,21 @@ async def get_client_transactions(request):
     from_date = _parse_date_param(request.GET.get("from_date") or request.GET.get("from"))
     to_date = _parse_date_param(request.GET.get("to_date") or request.GET.get("to"))
     page_requested = request.GET.get("page") is not None
-    per_page_requested = request.GET.get("per_page") is not None or request.GET.get("limit") is not None
+    per_page_requested = (
+        request.GET.get("per_page") is not None or request.GET.get("limit") is not None
+    )
     paginate = page_requested or per_page_requested
     page = _parse_positive_int(request.GET.get("page"), 1) if paginate else 1
-    per_page = _parse_positive_int(request.GET.get("per_page") or request.GET.get("limit"), 10, maximum=1000) if paginate else 0
+    per_page = (
+        _parse_positive_int(
+            request.GET.get("per_page") or request.GET.get("limit"), 10, maximum=1000
+        )
+        if paginate
+        else 0
+    )
 
     transactions = (
-        await ClientTransaction.filter(user_id=profile.id)
-        .order_by("-created_at", "-id")
-        .all()
+        await ClientTransaction.filter(user_id=profile.id).order_by("-created_at", "-id").all()
     )
 
     client_accounts = await ClientAccount.filter(user_id=profile.id).all()
@@ -210,7 +224,9 @@ async def get_client_transactions(request):
         per_page = None
         page_transactions = filtered_transactions
 
-    results = [_serialize_transaction(transaction, account_map) for transaction in page_transactions]
+    results = [
+        _serialize_transaction(transaction, account_map) for transaction in page_transactions
+    ]
 
     response = {
         "status": "ok",

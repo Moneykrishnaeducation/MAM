@@ -23,36 +23,52 @@ async def get_client_account(request):
     profile, error = await _get_client_profile_for_request(request)
     if error:
         return error
-    account = await ClientAccount.filter(user_id=profile.id).first()
-    if account is None:
-        trading_acc = await TradingAccount.filter(user_id=profile.id).first()
-        if trading_acc is not None:
-            account = await ClientAccount.create(
-                user_id=profile.id,
-                account_number=trading_acc.account_id,
-                balance=float(trading_acc.balance),
-                equity=float(trading_acc.equity),
-                margin_free=float(trading_acc.margin_free),
-                leverage=f"1:{trading_acc.leverage}",
-                currency="USD",
-                status=trading_acc.status or "Active",
-            )
+
+    trading_accs = await TradingAccount.filter(user_id=profile.id).all()
+    for ta in trading_accs:
+        ca = await ClientAccount.filter(user_id=profile.id, account_number=ta.account_id).first()
+        if ca:
+            ca.balance = float(ta.balance)
+            ca.equity = float(ta.equity)
+            ca.margin_free = float(ta.margin_free)
+            await ca.save()
         else:
-            return _error("Account not found", status=404, account=None)
+            await ClientAccount.create(
+                user_id=profile.id,
+                account_number=ta.account_id,
+                balance=float(ta.balance),
+                equity=float(ta.equity),
+                margin_free=float(ta.margin_free),
+                leverage=f"1:{ta.leverage}",
+                currency="USD",
+                status=ta.status or "Active",
+            )
+
+    accounts = await ClientAccount.filter(user_id=profile.id).all()
+    if not accounts:
+        return _error("Account not found", status=404, account=None, accounts=[])
+
+    serialized_accounts = [
+        {
+            "user_id": profile.id,
+            "account_number": acc.account_number,
+            "server": acc.server,
+            "balance": acc.balance,
+            "equity": acc.equity,
+            "margin_free": acc.margin_free,
+            "leverage": acc.leverage,
+            "currency": acc.currency,
+            "status": acc.status,
+        }
+        for acc in accounts
+    ]
+
+    first_acc = serialized_accounts[0]
     return JsonResponse(
         {
             "status": "ok",
-            "account": {
-                "user_id": profile.id,
-                "account_number": account.account_number,
-                "server": account.server,
-                "balance": account.balance,
-                "equity": account.equity,
-                "margin_free": account.margin_free,
-                "leverage": account.leverage,
-                "currency": account.currency,
-                "status": account.status,
-            },
+            "account": first_acc,
+            "accounts": serialized_accounts,
         }
     )
 
@@ -118,7 +134,7 @@ async def create_client_trading_account(request):
             master_password=master_password,
             investor_password=investor_password,
             initial_balance=0.0,
-            user_id=user.id
+            user_id=user.id,
         )
 
         if not result:
@@ -146,22 +162,28 @@ async def create_client_trading_account(request):
         except Exception as exc:
             logger.error(f"Failed to send client MAM credentials email to {user.email}: {exc}")
 
-        return JsonResponse({
-            "status": "ok",
-            "message": "MAM master account created successfully",
-            "account": {
-                "login": result["login"],
-                "group": result["group"],
+        return JsonResponse(
+            {
+                "status": "ok",
+                "message": "MAM master account created successfully",
+                "account": {
+                    "login": result["login"],
+                    "group": result["group"],
+                },
             }
-        })
+        )
 
     # ── 2. Investor Account Creation ────────────────────────────────────────
     elif acc_type == "investor":
         manager_acc = body.get("managerAccNumber")
         if not manager_acc:
-            return _error("managerAccNumber is required to link the investor to a MAM master strategy")
+            return _error(
+                "managerAccNumber is required to link the investor to a MAM master strategy"
+            )
 
-        mam_master = await TradingAccount.filter(account_id=str(manager_acc), account_type="MAM").first()
+        mam_master = await TradingAccount.filter(
+            account_id=str(manager_acc), account_type="MAM"
+        ).first()
         if not mam_master:
             return _error(f"MAM Master account {manager_acc} not found", status=404)
 
@@ -177,7 +199,7 @@ async def create_client_trading_account(request):
             investor_password=investment_pwd,
             mam_master_login=int(mam_master.account_id),
             initial_balance=0.0,
-            user_id=user.id
+            user_id=user.id,
         )
 
         if not result:
@@ -202,11 +224,13 @@ async def create_client_trading_account(request):
         except Exception as exc:
             logger.error(f"Failed to send client investor credentials email to {user.email}: {exc}")
 
-        return JsonResponse({
-            "status": "ok",
-            "message": "Investor account created successfully",
-            "account": {
-                "login": result["login"],
-                "group": result["group"],
+        return JsonResponse(
+            {
+                "status": "ok",
+                "message": "Investor account created successfully",
+                "account": {
+                    "login": result["login"],
+                    "group": result["group"],
+                },
             }
-        })
+        )

@@ -102,13 +102,11 @@ async def list_client_tickets(request, user_id: str):
         return JsonResponse({"status": "error", "message": "Client user not found"}, status=404)
 
     status_filter = _normalize_ticket_status(request.GET.get("status") or request.GET.get("tab"))
-    category_filter = _normalize_ticket_category(request.GET.get("category") or request.GET.get("type"))
-
-    tickets = (
-        await ClientTicket.filter(user_id=user.id)
-        .order_by("-created_at", "-id")
-        .all()
+    category_filter = _normalize_ticket_category(
+        request.GET.get("category") or request.GET.get("type")
     )
+
+    tickets = await ClientTicket.filter(user_id=user.id).order_by("-created_at", "-id").all()
     filtered_tickets = [
         ticket
         for ticket in tickets
@@ -118,17 +116,21 @@ async def list_client_tickets(request, user_id: str):
     summary = {
         "total_tickets": len(tickets),
         "open_count": sum(
-            1 for ticket in tickets if str(ticket.status or "").strip().lower() in {"open", "new", "active"}
+            1
+            for ticket in tickets
+            if str(ticket.status or "").strip().lower() in {"open", "new", "active"}
         ),
         "pending_count": sum(
             1
             for ticket in tickets
-            if str(ticket.status or "").strip().lower() in {"pending", "in progress", "inprogress", "processing"}
+            if str(ticket.status or "").strip().lower()
+            in {"pending", "in progress", "inprogress", "processing"}
         ),
         "closed_count": sum(
             1
             for ticket in tickets
-            if str(ticket.status or "").strip().lower() in {"closed", "resolved", "completed", "done"}
+            if str(ticket.status or "").strip().lower()
+            in {"closed", "resolved", "completed", "done"}
         ),
     }
 

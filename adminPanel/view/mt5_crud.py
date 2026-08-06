@@ -12,19 +12,33 @@ from backendPanel.database import ensure_db_initialized
 
 logger = logging.getLogger(__name__)
 
+
 # Helper to serialize Decimal/datetime values
 def clean_data(val):
     if hasattr(val, "strftime"):
         return val.strftime("%Y-%m-%d %H:%M:%S")
     from decimal import Decimal
+
     if isinstance(val, Decimal):
         return float(val)
     return val
 
 
-def _render_credentials_email(*, user_name: str, account_type: str, login: str | int, group: str, account_name: str | None = None, leverage: int | None = None, master_password: str | None = None, investor_password: str | None = None) -> tuple[str, str, str]:
+def _render_credentials_email(
+    *,
+    user_name: str,
+    account_type: str,
+    login: str | int,
+    group: str,
+    account_name: str | None = None,
+    leverage: int | None = None,
+    master_password: str | None = None,
+    investor_password: str | None = None,
+) -> tuple[str, str, str]:
     display_account_type = "MAM" if account_type.strip().lower() == "mam" else account_type.title()
-    template_prefix = "mam_credentials_email" if display_account_type == "MAM" else "investor_credentials_email"
+    template_prefix = (
+        "mam_credentials_email" if display_account_type == "MAM" else "investor_credentials_email"
+    )
     context = {
         "user_name": user_name or "there",
         "account_type": display_account_type,
@@ -41,7 +55,17 @@ def _render_credentials_email(*, user_name: str, account_type: str, login: str |
     return subject, plain_body, html_body
 
 
-async def _send_credentials_email(*, user: ClientUser, account_type: str, login: str | int, group: str, account_name: str | None = None, leverage: int | None = None, master_password: str | None = None, investor_password: str | None = None) -> None:
+async def _send_credentials_email(
+    *,
+    user: ClientUser,
+    account_type: str,
+    login: str | int,
+    group: str,
+    account_name: str | None = None,
+    leverage: int | None = None,
+    master_password: str | None = None,
+    investor_password: str | None = None,
+) -> None:
     subject, plain_body, html_body = _render_credentials_email(
         user_name=user.name or user.email or "there",
         account_type=account_type,
@@ -58,10 +82,18 @@ async def _send_credentials_email(*, user: ClientUser, account_type: str, login:
         html_body=html_body,
         to=[user.email],
         source=f"mt5_{account_type.lower()}_credentials",
-        payload={"account_type": account_type, "login": str(login), "group": group, "account_name": account_name, "leverage": leverage},
+        payload={
+            "account_type": account_type,
+            "login": str(login),
+            "group": group,
+            "account_name": account_name,
+            "leverage": leverage,
+        },
     )
 
+
 # ================= SERVER SETTING CRUD =================
+
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
@@ -98,17 +130,20 @@ async def server_settings_list_create(request):
                 server_name_client=body.get("server_name_client"),
                 server_type=bool(body.get("server_type", True)),
             )
-            return JsonResponse({
-                "status": "ok",
-                "message": "Server setting created successfully",
-                "server_setting": {
-                    "id": s.id,
-                    "server_ip": s.server_ip,
-                    "real_account_login": s.real_account_login,
-                    "server_name_client": s.server_name_client,
-                    "server_type": s.server_type,
-                }
-            }, status=201)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "Server setting created successfully",
+                    "server_setting": {
+                        "id": s.id,
+                        "server_ip": s.server_ip,
+                        "real_account_login": s.real_account_login,
+                        "server_name_client": s.server_name_client,
+                        "server_type": s.server_type,
+                    },
+                },
+                status=201,
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -122,18 +157,20 @@ async def server_setting_detail_update_delete(request, pk):
         return JsonResponse({"status": "error", "message": "Server setting not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse({
-            "status": "ok",
-            "server_setting": {
-                "id": setting.id,
-                "server_ip": setting.server_ip,
-                "real_account_login": setting.real_account_login,
-                "server_name_client": setting.server_name_client,
-                "server_type": setting.server_type,
-                "created_at": clean_data(setting.created_at),
-                "updated_at": clean_data(setting.updated_at),
+        return JsonResponse(
+            {
+                "status": "ok",
+                "server_setting": {
+                    "id": setting.id,
+                    "server_ip": setting.server_ip,
+                    "real_account_login": setting.real_account_login,
+                    "server_name_client": setting.server_name_client,
+                    "server_type": setting.server_type,
+                    "created_at": clean_data(setting.created_at),
+                    "updated_at": clean_data(setting.updated_at),
+                },
             }
-        })
+        )
 
     elif request.method == "PUT":
         try:
@@ -149,17 +186,19 @@ async def server_setting_detail_update_delete(request, pk):
             if "server_type" in body:
                 setting.server_type = bool(body["server_type"])
             await setting.save()
-            return JsonResponse({
-                "status": "ok",
-                "message": "Server setting updated successfully",
-                "server_setting": {
-                    "id": setting.id,
-                    "server_ip": setting.server_ip,
-                    "real_account_login": setting.real_account_login,
-                    "server_name_client": setting.server_name_client,
-                    "server_type": setting.server_type,
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "Server setting updated successfully",
+                    "server_setting": {
+                        "id": setting.id,
+                        "server_ip": setting.server_ip,
+                        "real_account_login": setting.real_account_login,
+                        "server_name_client": setting.server_name_client,
+                        "server_type": setting.server_type,
+                    },
                 }
-            })
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -169,6 +208,7 @@ async def server_setting_detail_update_delete(request, pk):
 
 
 # ================= MT5 GROUP CONFIG CRUD =================
+
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
@@ -204,16 +244,19 @@ async def group_configs_list_create(request):
                 min_deposit=float(body.get("min_deposit", 0.0)),
                 description=body.get("description", ""),
             )
-            return JsonResponse({
-                "status": "ok",
-                "message": "MT5 Group config created successfully",
-                "group_config": {
-                    "id": c.id,
-                    "group_name": c.group_name,
-                    "is_demo": c.is_demo,
-                    "is_enabled": c.is_enabled,
-                }
-            }, status=201)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "MT5 Group config created successfully",
+                    "group_config": {
+                        "id": c.id,
+                        "group_name": c.group_name,
+                        "is_demo": c.is_demo,
+                        "is_enabled": c.is_enabled,
+                    },
+                },
+                status=201,
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -227,21 +270,23 @@ async def group_config_detail_update_delete(request, pk):
         return JsonResponse({"status": "error", "message": "Group config not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse({
-            "status": "ok",
-            "group_config": {
-                "id": config.id,
-                "group_name": config.group_name,
-                "is_demo": config.is_demo,
-                "is_enabled": config.is_enabled,
-                "leverage": config.leverage,
-                "min_deposit": clean_data(config.min_deposit),
-                "description": config.description,
-                "created_at": clean_data(config.created_at),
-                "updated_at": clean_data(config.updated_at),
-                "last_sync": clean_data(config.last_sync),
+        return JsonResponse(
+            {
+                "status": "ok",
+                "group_config": {
+                    "id": config.id,
+                    "group_name": config.group_name,
+                    "is_demo": config.is_demo,
+                    "is_enabled": config.is_enabled,
+                    "leverage": config.leverage,
+                    "min_deposit": clean_data(config.min_deposit),
+                    "description": config.description,
+                    "created_at": clean_data(config.created_at),
+                    "updated_at": clean_data(config.updated_at),
+                    "last_sync": clean_data(config.last_sync),
+                },
             }
-        })
+        )
 
     elif request.method == "PUT":
         try:
@@ -259,16 +304,18 @@ async def group_config_detail_update_delete(request, pk):
             if "description" in body:
                 config.description = body["description"]
             await config.save()
-            return JsonResponse({
-                "status": "ok",
-                "message": "Group config updated successfully",
-                "group_config": {
-                    "id": config.id,
-                    "group_name": config.group_name,
-                    "is_demo": config.is_demo,
-                    "is_enabled": config.is_enabled,
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "Group config updated successfully",
+                    "group_config": {
+                        "id": config.id,
+                        "group_name": config.group_name,
+                        "is_demo": config.is_demo,
+                        "is_enabled": config.is_enabled,
+                    },
                 }
-            })
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -278,6 +325,7 @@ async def group_config_detail_update_delete(request, pk):
 
 
 # ================= TRADE GROUP CRUD =================
+
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
@@ -313,7 +361,9 @@ async def trade_groups_list_create(request):
             if is_default and group_type == "real":
                 await TradeGroup.filter(is_default=True, type="real").update(is_default=False)
             if is_demo_default and group_type == "demo":
-                await TradeGroup.filter(is_demo_default=True, type="demo").update(is_demo_default=False)
+                await TradeGroup.filter(is_demo_default=True, type="demo").update(
+                    is_demo_default=False
+                )
 
             g = await TradeGroup.create(
                 group_id=body.get("group_id"),
@@ -325,15 +375,18 @@ async def trade_groups_list_create(request):
                 is_default=is_default,
                 is_demo_default=is_demo_default,
             )
-            return JsonResponse({
-                "status": "ok",
-                "message": "Trade group created successfully",
-                "trade_group": {
-                    "id": g.id,
-                    "name": g.name,
-                    "type": g.type,
-                }
-            }, status=201)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "Trade group created successfully",
+                    "trade_group": {
+                        "id": g.id,
+                        "name": g.name,
+                        "type": g.type,
+                    },
+                },
+                status=201,
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -347,22 +400,24 @@ async def trade_group_detail_update_delete(request, pk):
         return JsonResponse({"status": "error", "message": "Trade group not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse({
-            "status": "ok",
-            "trade_group": {
-                "id": group.id,
-                "group_id": group.group_id,
-                "name": group.name,
-                "description": group.description,
-                "alias": group.alias,
-                "type": group.type,
-                "is_active": group.is_active,
-                "is_default": group.is_default,
-                "is_demo_default": group.is_demo_default,
-                "created_at": clean_data(group.created_at),
-                "updated_at": clean_data(group.updated_at),
+        return JsonResponse(
+            {
+                "status": "ok",
+                "trade_group": {
+                    "id": group.id,
+                    "group_id": group.group_id,
+                    "name": group.name,
+                    "description": group.description,
+                    "alias": group.alias,
+                    "type": group.type,
+                    "is_active": group.is_active,
+                    "is_default": group.is_default,
+                    "is_demo_default": group.is_demo_default,
+                    "created_at": clean_data(group.created_at),
+                    "updated_at": clean_data(group.updated_at),
+                },
             }
-        })
+        )
 
     elif request.method == "PUT":
         try:
@@ -370,13 +425,21 @@ async def trade_group_detail_update_delete(request, pk):
             group_type = body.get("type", group.type)
 
             if bool(body.get("is_default", False)) and group_type == "real":
-                await TradeGroup.filter(is_default=True, type="real").exclude(id=pk).update(is_default=False)
+                await (
+                    TradeGroup.filter(is_default=True, type="real")
+                    .exclude(id=pk)
+                    .update(is_default=False)
+                )
                 group.is_default = True
             elif "is_default" in body:
                 group.is_default = bool(body["is_default"])
 
             if bool(body.get("is_demo_default", False)) and group_type == "demo":
-                await TradeGroup.filter(is_demo_default=True, type="demo").exclude(id=pk).update(is_demo_default=False)
+                await (
+                    TradeGroup.filter(is_demo_default=True, type="demo")
+                    .exclude(id=pk)
+                    .update(is_demo_default=False)
+                )
                 group.is_demo_default = True
             elif "is_demo_default" in body:
                 group.is_demo_default = bool(body["is_demo_default"])
@@ -395,15 +458,17 @@ async def trade_group_detail_update_delete(request, pk):
                 group.is_active = bool(body["is_active"])
 
             await group.save()
-            return JsonResponse({
-                "status": "ok",
-                "message": "Trade group updated successfully",
-                "trade_group": {
-                    "id": group.id,
-                    "name": group.name,
-                    "type": group.type,
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "Trade group updated successfully",
+                    "trade_group": {
+                        "id": group.id,
+                        "name": group.name,
+                        "type": group.type,
+                    },
                 }
-            })
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -413,6 +478,7 @@ async def trade_group_detail_update_delete(request, pk):
 
 
 # ================= MAM ACCOUNT CRUD =================
+
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
@@ -441,8 +507,11 @@ async def mam_accounts_list_create(request):
             # Default to first user if none supplied since user_id is required
             first_user = await ClientUser.first()
             if not first_user:
-                return JsonResponse({"status": "error", "message": "No client user exists to own the MAM account"}, status=400)
-            
+                return JsonResponse(
+                    {"status": "error", "message": "No client user exists to own the MAM account"},
+                    status=400,
+                )
+
             try:
                 lev = int(str(body.get("leverage", "500")).split(":")[-1])
             except Exception:
@@ -470,15 +539,18 @@ async def mam_accounts_list_create(request):
                 copy_multiplier_mode="Fixed",
                 status=body.get("status", "Active"),
             )
-            return JsonResponse({
-                "status": "ok",
-                "message": "MAM account created successfully",
-                "mam_account": {
-                    "id": a.id,
-                    "account_number": a.account_id,
-                    "status": a.status,
-                }
-            }, status=201)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "MAM account created successfully",
+                    "mam_account": {
+                        "id": a.id,
+                        "account_number": a.account_id,
+                        "status": a.status,
+                    },
+                },
+                status=201,
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -492,19 +564,21 @@ async def mam_account_detail_update_delete(request, pk):
         return JsonResponse({"status": "error", "message": "MAM account not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse({
-            "status": "ok",
-            "mam_account": {
-                "id": account.id,
-                "account_number": account.account_id,
-                "broker": "Equinix Direct",
-                "master_strategy": "Quantitative Grid",
-                "leverage": f"1:{account.leverage}",
-                "total_balance": clean_data(account.balance),
-                "status": account.status or "Active",
-                "created_at": clean_data(account.created_at),
+        return JsonResponse(
+            {
+                "status": "ok",
+                "mam_account": {
+                    "id": account.id,
+                    "account_number": account.account_id,
+                    "broker": "Equinix Direct",
+                    "master_strategy": "Quantitative Grid",
+                    "leverage": f"1:{account.leverage}",
+                    "total_balance": clean_data(account.balance),
+                    "status": account.status or "Active",
+                    "created_at": clean_data(account.created_at),
+                },
             }
-        })
+        )
 
     elif request.method == "PUT":
         try:
@@ -521,15 +595,17 @@ async def mam_account_detail_update_delete(request, pk):
             if "status" in body:
                 account.status = body["status"]
             await account.save()
-            return JsonResponse({
-                "status": "ok",
-                "message": "MAM account updated successfully",
-                "mam_account": {
-                    "id": account.id,
-                    "account_number": account.account_id,
-                    "status": account.status,
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "MAM account updated successfully",
+                    "mam_account": {
+                        "id": account.id,
+                        "account_number": account.account_id,
+                        "status": account.status,
+                    },
                 }
-            })
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -538,15 +614,19 @@ async def mam_account_detail_update_delete(request, pk):
         return JsonResponse({"status": "ok", "message": "MAM account deleted successfully"})
 
 
-
 # ================= INVESTOR (MAM INVESTOR) CRUD =================
+
 
 @csrf_exempt
 @require_http_methods(["GET", "POST"])
 async def investors_list_create(request):
     await ensure_db_initialized()
     if request.method == "GET":
-        investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account").order_by("-created_at")
+        investors = (
+            await TradingAccount.filter(account_type="Investor")
+            .prefetch_related("user", "mam_master_account")
+            .order_by("-created_at")
+        )
         results = [
             {
                 "id": i.id,
@@ -567,24 +647,44 @@ async def investors_list_create(request):
             body = json.loads(request.body)
             first_user = await ClientUser.first()
             if not first_user:
-                return JsonResponse({"status": "error", "message": "No client user exists to own the Investor account"}, status=400)
+                return JsonResponse(
+                    {
+                        "status": "error",
+                        "message": "No client user exists to own the Investor account",
+                    },
+                    status=400,
+                )
 
             mam_master = None
-            manager_acc = body.get("managerAccNumber") or body.get("manager_account_id") or body.get("manager_id")
+            manager_acc = (
+                body.get("managerAccNumber")
+                or body.get("manager_account_id")
+                or body.get("manager_id")
+            )
             allocated_mam = body.get("allocated_mam") or manager_acc
             if allocated_mam:
                 mam_master = (
-                    await TradingAccount.filter(account_id=str(allocated_mam), account_type="MAM").first()
+                    await TradingAccount.filter(
+                        account_id=str(allocated_mam), account_type="MAM"
+                    ).first()
                     or await TradingAccount.filter(id=allocated_mam, account_type="MAM").first()
                 )
 
             try:
                 mt5 = MT5ManagerActions()
                 if mt5.connection_error:
-                    return JsonResponse({"status": "error", "message": f"MT5 Connection failed: {mt5.connection_error}"}, status=500)
+                    return JsonResponse(
+                        {
+                            "status": "error",
+                            "message": f"MT5 Connection failed: {mt5.connection_error}",
+                        },
+                        status=500,
+                    )
             except Exception as exc:
                 logger.error(f"MT5 Manager init failed: {exc}")
-                return JsonResponse({"status": "error", "message": f"MT5 Connection failed: {exc}"}, status=500)
+                return JsonResponse(
+                    {"status": "error", "message": f"MT5 Connection failed: {exc}"}, status=500
+                )
 
             account_name = body.get("name", "MAM Investor")
             leverage_value = mam_master.leverage if mam_master else body.get("leverage", 100)
@@ -593,7 +693,11 @@ async def investors_list_create(request):
             except (ValueError, TypeError):
                 leverage = 100
 
-            investor_password = body.get("investmentPassword") or body.get("password") or body.get("investorPassword")
+            investor_password = (
+                body.get("investmentPassword")
+                or body.get("password")
+                or body.get("investorPassword")
+            )
             result = mt5.create_investor_account(
                 name=first_user.name,
                 email=first_user.email,
@@ -602,14 +706,19 @@ async def investors_list_create(request):
                 leverage=leverage,
                 master_password=None,
                 investor_password=investor_password,
-                mam_master_login=int(mam_master.account_id) if mam_master and str(mam_master.account_id).isdigit() else None,
+                mam_master_login=int(mam_master.account_id)
+                if mam_master and str(mam_master.account_id).isdigit()
+                else None,
                 initial_balance=float(body.get("equity", 0.0)),
                 allocated_mam=mam_master.id if mam_master else None,
                 user_id=first_user.id,
             )
 
             if not result:
-                return JsonResponse({"status": "error", "message": "Failed to create investor account on MT5"}, status=500)
+                return JsonResponse(
+                    {"status": "error", "message": "Failed to create investor account on MT5"},
+                    status=500,
+                )
 
             i = await TradingAccount.get(id=result["trading_account_id"])
             i.account_name = account_name
@@ -636,19 +745,24 @@ async def investors_list_create(request):
                     investor_password=result.get("investor_password"),
                 )
             except Exception as exc:
-                logger.error(f"Failed to send investor credentials email to {first_user.email}: {exc}")
+                logger.error(
+                    f"Failed to send investor credentials email to {first_user.email}: {exc}"
+                )
 
-            return JsonResponse({
-                "status": "ok",
-                "message": "MAM Investor created successfully",
-                "investor": {
-                    "id": i.id,
-                    "name": i.account_name,
-                    "account_number": result["login"],
-                    "status": i.status,
-                    "allocated_mam": mam_master.account_id if mam_master else None,
-                }
-            }, status=201)
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "MAM Investor created successfully",
+                    "investor": {
+                        "id": i.id,
+                        "name": i.account_name,
+                        "account_number": result["login"],
+                        "status": i.status,
+                        "allocated_mam": mam_master.account_id if mam_master else None,
+                    },
+                },
+                status=201,
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -657,24 +771,32 @@ async def investors_list_create(request):
 @require_http_methods(["GET", "PUT", "DELETE"])
 async def investor_detail_update_delete(request, pk):
     await ensure_db_initialized()
-    investor = await TradingAccount.filter(id=pk, account_type="Investor").prefetch_related("user", "mam_master_account").first()
+    investor = (
+        await TradingAccount.filter(id=pk, account_type="Investor")
+        .prefetch_related("user", "mam_master_account")
+        .first()
+    )
     if not investor:
         return JsonResponse({"status": "error", "message": "MAM Investor not found"}, status=404)
 
     if request.method == "GET":
-        return JsonResponse({
-            "status": "ok",
-            "investor": {
-                "id": investor.id,
-                "name": investor.user.name if investor.user else "Investor User",
-                "email": investor.user.email if investor.user else "investor@mam.com",
-                "account_number": investor.account_id,
-                "equity": clean_data(investor.equity),
-                "allocated_mam": investor.mam_master_account.account_id if investor.mam_master_account else None,
-                "status": investor.status or "Active",
-                "created_at": clean_data(investor.created_at),
+        return JsonResponse(
+            {
+                "status": "ok",
+                "investor": {
+                    "id": investor.id,
+                    "name": investor.user.name if investor.user else "Investor User",
+                    "email": investor.user.email if investor.user else "investor@mam.com",
+                    "account_number": investor.account_id,
+                    "equity": clean_data(investor.equity),
+                    "allocated_mam": investor.mam_master_account.account_id
+                    if investor.mam_master_account
+                    else None,
+                    "status": investor.status or "Active",
+                    "created_at": clean_data(investor.created_at),
+                },
             }
-        })
+        )
 
     elif request.method == "PUT":
         try:
@@ -691,22 +813,26 @@ async def investor_detail_update_delete(request, pk):
                 investor.equity = float(body["equity"])
                 investor.balance = float(body["equity"])
             if "allocated_mam" in body:
-                mam_master = await TradingAccount.filter(account_id=str(body["allocated_mam"]), account_type="MAM").first()
+                mam_master = await TradingAccount.filter(
+                    account_id=str(body["allocated_mam"]), account_type="MAM"
+                ).first()
                 if mam_master:
                     investor.mam_master_account = mam_master
             if "status" in body:
                 investor.status = body["status"]
             await investor.save()
-            return JsonResponse({
-                "status": "ok",
-                "message": "MAM Investor updated successfully",
-                "investor": {
-                    "id": investor.id,
-                    "name": investor.user.name if investor.user else "Investor User",
-                    "account_number": investor.account_id,
-                    "status": investor.status,
+            return JsonResponse(
+                {
+                    "status": "ok",
+                    "message": "MAM Investor updated successfully",
+                    "investor": {
+                        "id": investor.id,
+                        "name": investor.user.name if investor.user else "Investor User",
+                        "account_number": investor.account_id,
+                        "status": investor.status,
+                    },
                 }
-            })
+            )
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
@@ -715,8 +841,8 @@ async def investor_detail_update_delete(request, pk):
         return JsonResponse({"status": "ok", "message": "MAM Investor deleted successfully"})
 
 
-
 # ================= SYNC GROUPS FROM MT5 =================
+
 
 @csrf_exempt
 @require_http_methods(["POST"])
@@ -725,7 +851,7 @@ async def sync_groups_from_mt5(request):
     try:
         await ensure_db_initialized()
         from adminPanel.mt5.services import MT5ManagerActions
-        
+
         is_real = True
         st_param = request.GET.get("server_type")
         if st_param is not None:
@@ -737,25 +863,27 @@ async def sync_groups_from_mt5(request):
                     is_real = bool(body["server_type"])
             except Exception:
                 pass
-                
+
         mt5_actions = MT5ManagerActions(server_type=is_real)
-        
+
         if mt5_actions.connection_error:
-            return JsonResponse({
-                "status": "error", 
-                "message": f"MT5 connection failed: {mt5_actions.connection_error}"
-            }, status=500)
-            
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "message": f"MT5 connection failed: {mt5_actions.connection_error}",
+                },
+                status=500,
+            )
+
         success = mt5_actions.sync_mt5_groups()
         if success:
-            return JsonResponse({
-                "status": "ok",
-                "message": "Groups synchronized from MT5 successfully"
-            })
+            return JsonResponse(
+                {"status": "ok", "message": "Groups synchronized from MT5 successfully"}
+            )
         else:
-            return JsonResponse({
-                "status": "error",
-                "message": "Failed to synchronize groups from MT5 manager"
-            }, status=500)
+            return JsonResponse(
+                {"status": "error", "message": "Failed to synchronize groups from MT5 manager"},
+                status=500,
+            )
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=500)

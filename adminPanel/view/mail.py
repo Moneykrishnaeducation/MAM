@@ -70,8 +70,12 @@ def _serialize_mail_message(message: AdminMailMessage) -> dict:
         else None,
         "error_message": message.error_message,
         "sent_at": message.sent_at.strftime("%Y-%m-%d %H:%M:%S") if message.sent_at else None,
-        "created_at": message.created_at.strftime("%Y-%m-%d %H:%M:%S") if message.created_at else None,
-        "updated_at": message.updated_at.strftime("%Y-%m-%d %H:%M:%S") if message.updated_at else None,
+        "created_at": message.created_at.strftime("%Y-%m-%d %H:%M:%S")
+        if message.created_at
+        else None,
+        "updated_at": message.updated_at.strftime("%Y-%m-%d %H:%M:%S")
+        if message.updated_at
+        else None,
         "created_by_id": message.created_by_id,
     }
 
@@ -104,7 +108,9 @@ async def admin_mails(request):
             "sent": await AdminMailMessage.filter(status="sent").count(),
             "failed": await AdminMailMessage.filter(status="failed").count(),
         }
-        return JsonResponse({"status": "ok", "messages": payload, "summary": summary, "count": len(payload)})
+        return JsonResponse(
+            {"status": "ok", "messages": payload, "summary": summary, "count": len(payload)}
+        )
 
     try:
         body = json.loads(request.body or b"{}")
@@ -128,7 +134,9 @@ async def admin_mails(request):
         return _error("At least one recipient is required", status=400)
 
     created_by = None
-    if getattr(request, "user", None) is not None and getattr(request.user, "is_authenticated", False):
+    if getattr(request, "user", None) is not None and getattr(
+        request.user, "is_authenticated", False
+    ):
         created_by = getattr(request.user, "id", None)
 
     mail_message = await AdminMailMessage.create(
@@ -165,7 +173,9 @@ async def admin_mails(request):
         mail_message.status = "failed"
         mail_message.error_message = str(exc)
         await mail_message.save(update_fields=["status", "error_message", "updated_at"])
-        return _error("Unable to queue email", status=502, mail=_serialize_mail_message(mail_message))
+        return _error(
+            "Unable to queue email", status=502, mail=_serialize_mail_message(mail_message)
+        )
 
     return JsonResponse(
         {

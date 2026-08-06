@@ -50,7 +50,9 @@ def _build_password_reset_token(*, user_type: str, user) -> str:
 
 def _read_password_reset_token(token: str) -> dict | None:
     try:
-        payload = signing.loads(token, salt=PASSWORD_RESET_TOKEN_SALT, max_age=PASSWORD_RESET_TOKEN_MAX_AGE)
+        payload = signing.loads(
+            token, salt=PASSWORD_RESET_TOKEN_SALT, max_age=PASSWORD_RESET_TOKEN_MAX_AGE
+        )
     except signing.BadSignature:
         return None
 
@@ -72,15 +74,15 @@ async def _send_password_reset_email(user, reset_url: str, *, user_type: str) ->
         "If you did not request this, you can safely ignore this email."
     )
     html_body = mark_safe(
-        "<div style=\"font-family:Arial,sans-serif;line-height:1.6;color:#0f172a\">"
-        f"<h2 style=\"margin:0 0 16px\">Reset your password</h2>"
+        '<div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">'
+        f'<h2 style="margin:0 0 16px">Reset your password</h2>'
         f"<p>Hello {escape(recipient_name)},</p>"
         "<p>We received a request to reset your password.</p>"
-        f"<p><a href=\"{escape(reset_url)}\" "
-        "style=\"display:inline-block;background:#1d4ed8;color:#fff;padding:12px 18px;"
-        "text-decoration:none;border-radius:8px\">Reset password</a></p>"
-        f"<p style=\"color:#475569\">This link expires in {PASSWORD_RESET_TOKEN_MAX_AGE // 60} minutes.</p>"
-        "<p style=\"color:#475569\">If you did not request this, you can ignore this email.</p>"
+        f'<p><a href="{escape(reset_url)}" '
+        'style="display:inline-block;background:#1d4ed8;color:#fff;padding:12px 18px;'
+        'text-decoration:none;border-radius:8px">Reset password</a></p>'
+        f'<p style="color:#475569">This link expires in {PASSWORD_RESET_TOKEN_MAX_AGE // 60} minutes.</p>'
+        '<p style="color:#475569">If you did not request this, you can ignore this email.</p>'
         "</div>"
     )
 
@@ -94,7 +96,9 @@ async def _send_password_reset_email(user, reset_url: str, *, user_type: str) ->
     )
 
 
-async def _find_password_reset_target_by_token(token: str) -> tuple[str, ClientUser | AdminUser] | None:
+async def _find_password_reset_target_by_token(
+    token: str,
+) -> tuple[str, ClientUser | AdminUser] | None:
     payload = _read_password_reset_token(token)
     if payload is None:
         return None
@@ -119,7 +123,9 @@ async def _find_password_reset_target_by_token(token: str) -> tuple[str, ClientU
     return user_type, user
 
 
-async def _find_password_reset_target_by_email(email: str) -> tuple[str, ClientUser | AdminUser] | None:
+async def _find_password_reset_target_by_email(
+    email: str,
+) -> tuple[str, ClientUser | AdminUser] | None:
     admin_user = await AdminUser.filter(email=email).first()
     if admin_user is not None:
         return "admin", admin_user
@@ -219,7 +225,9 @@ async def reset_client_password(request):
     email = str(body.get("email", "")).strip().lower()
     requested_user_type = str(body.get("user_type") or body.get("role") or "").strip().lower()
     new_password = str(body.get("new_password") or body.get("password") or "").strip()
-    confirm_password = str(body.get("confirm_password") or body.get("confirmPassword") or "").strip()
+    confirm_password = str(
+        body.get("confirm_password") or body.get("confirmPassword") or ""
+    ).strip()
 
     if not token and not email:
         return _error("token or email is required", status=400)
@@ -243,7 +251,9 @@ async def reset_client_password(request):
         if requested_user_type and requested_user_type not in matches:
             return _error("Selected role does not match this email", status=404)
         if len(matches) > 1 and not requested_user_type:
-            return _error("Role is required when the email exists in both admin and client tables", status=400)
+            return _error(
+                "Role is required when the email exists in both admin and client tables", status=400
+            )
         user = matches[requested_user_type or next(iter(matches.keys()))]
 
     user.password_hash = hash_client_password(new_password)
@@ -272,9 +282,15 @@ async def change_client_password(request):
     if error:
         return error
 
-    current_password = str(body.get("current_password") or body.get("currentPassword") or "").strip()
-    new_password = str(body.get("new_password") or body.get("newPassword") or body.get("password") or "").strip()
-    confirm_password = str(body.get("confirm_password") or body.get("confirmPassword") or "").strip()
+    current_password = str(
+        body.get("current_password") or body.get("currentPassword") or ""
+    ).strip()
+    new_password = str(
+        body.get("new_password") or body.get("newPassword") or body.get("password") or ""
+    ).strip()
+    confirm_password = str(
+        body.get("confirm_password") or body.get("confirmPassword") or ""
+    ).strip()
 
     if not current_password:
         return _error("current_password is required", status=400)
@@ -289,8 +305,12 @@ async def change_client_password(request):
     if str(user.role or "").strip().lower() == "admin":
         return _error("Client not found", status=404)
 
-    current_password_login = bool(user.user_code) and current_password == str(user.user_code).strip()
-    current_password_password = bool(user.password_hash) and verify_client_password(current_password, user.password_hash)
+    current_password_login = (
+        bool(user.user_code) and current_password == str(user.user_code).strip()
+    )
+    current_password_password = bool(user.password_hash) and verify_client_password(
+        current_password, user.password_hash
+    )
 
     if not current_password_login and not current_password_password:
         return _error("Current password is incorrect", status=400)

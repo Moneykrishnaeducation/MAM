@@ -26,7 +26,17 @@ def _profile_display_name(profile) -> str:
     )
 
 
-def _render_withdrawal_email(*, user_name: str, account_number: str, amount: float, payment_method: str, destination_type: str | None = None, notes: str | None = None, status: str = "Pending", created_at: str | None = None) -> tuple[str, str, str]:
+def _render_withdrawal_email(
+    *,
+    user_name: str,
+    account_number: str,
+    amount: float,
+    payment_method: str,
+    destination_type: str | None = None,
+    notes: str | None = None,
+    status: str = "Pending",
+    created_at: str | None = None,
+) -> tuple[str, str, str]:
     context = {
         "user_name": user_name or "there",
         "account_number": account_number,
@@ -43,7 +53,18 @@ def _render_withdrawal_email(*, user_name: str, account_number: str, amount: flo
     return subject, plain_body, html_body
 
 
-async def _send_withdrawal_email(*, user_name: str, email: str, account_number: str, amount: float, payment_method: str, destination_type: str | None = None, notes: str | None = None, status: str = "Pending", created_at: str | None = None) -> None:
+async def _send_withdrawal_email(
+    *,
+    user_name: str,
+    email: str,
+    account_number: str,
+    amount: float,
+    payment_method: str,
+    destination_type: str | None = None,
+    notes: str | None = None,
+    status: str = "Pending",
+    created_at: str | None = None,
+) -> None:
     subject, plain_body, html_body = _render_withdrawal_email(
         user_name=user_name,
         account_number=account_number,
@@ -60,7 +81,16 @@ async def _send_withdrawal_email(*, user_name: str, email: str, account_number: 
         html_body=html_body,
         to=[email],
         source="client_withdrawal_submission",
-        payload={"user_name": user_name, "account_number": account_number, "amount": amount, "payment_method": payment_method, "destination_type": destination_type, "notes": notes, "status": status, "created_at": created_at},
+        payload={
+            "user_name": user_name,
+            "account_number": account_number,
+            "amount": amount,
+            "payment_method": payment_method,
+            "destination_type": destination_type,
+            "notes": notes,
+            "status": status,
+            "created_at": created_at,
+        },
     )
 
 
@@ -127,9 +157,10 @@ async def create_client_withdrawal(request):
         amount=amount,
         payment_method=payment_method,
         status="Pending",
-     )
+    )
 
     from adminPanel.models import PendingRequest
+
     await PendingRequest.create(
         request_type="withdrawal",
         client_name=profile.full_name or profile.email or "Client",
@@ -156,7 +187,9 @@ async def create_client_withdrawal(request):
             destination_type=destination_type or None,
             notes=notes or None,
             status="Pending",
-            created_at=transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") if transaction.created_at else None,
+            created_at=transaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            if transaction.created_at
+            else None,
         )
     except Exception as exc:
         logger.error(f"Failed to send withdrawal email to {profile.email}: {exc}")
@@ -174,7 +207,9 @@ async def create_client_withdrawal(request):
                 "destination_type": destination_type or None,
                 "status": transaction.status,
                 "notes": notes or None,
-                "created_at": transaction.created_at.strftime("%Y-%m-%d %H:%M:%S") if transaction.created_at else None,
+                "created_at": transaction.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                if transaction.created_at
+                else None,
             },
         },
         status=201,

@@ -35,6 +35,7 @@ _MAX_DB_ERRORS = 5
 
 # ─── Health check ────────────────────────────────────────────────────────────
 
+
 def _is_manager_alive(manager, mt5_lock: threading.RLock) -> bool:
     """
     Lightweight liveness probe for the shared ManagerAPI connection.
@@ -50,7 +51,9 @@ def _is_manager_alive(manager, mt5_lock: threading.RLock) -> bool:
             total = manager.GroupTotal()
         # In Python, isinstance(False, int) is True — explicitly disallow bool
         if isinstance(total, bool) or not isinstance(total, int):
-            logger.warning(f"[BALANCE-SYNC] Health check failed: GroupTotal() returned non-int {total!r}")
+            logger.warning(
+                f"[BALANCE-SYNC] Health check failed: GroupTotal() returned non-int {total!r}"
+            )
             return False
         return total >= 0
     except Exception as exc:
@@ -60,8 +63,10 @@ def _is_manager_alive(manager, mt5_lock: threading.RLock) -> bool:
 
 # ─── Core sync function ───────────────────────────────────────────────────────
 
-def update_account_balances_in_db(manager, mt5_lock: threading.RLock,
-                                   target_account_id=None) -> int:
+
+def update_account_balances_in_db(
+    manager, mt5_lock: threading.RLock, target_account_id=None
+) -> int:
     """
     Fetch live balance/equity/margin from the provided MT5 ManagerAPI object
     and write the values into the 'trading_accounts' PostgreSQL table.
@@ -84,12 +89,12 @@ def update_account_balances_in_db(manager, mt5_lock: threading.RLock,
             if target_account_id:
                 cursor.execute(
                     'SELECT account_id FROM "trading_accounts" WHERE account_id = %s',
-                    [str(target_account_id)]
+                    [str(target_account_id)],
                 )
             else:
                 cursor.execute(
                     'SELECT account_id FROM "trading_accounts"'
-                    ' WHERE account_id IS NOT NULL AND account_id != \'\''
+                    " WHERE account_id IS NOT NULL AND account_id != ''"
                 )
             rows = cursor.fetchall()
 
@@ -134,7 +139,7 @@ def update_account_balances_in_db(manager, mt5_lock: threading.RLock,
                                 margin_free = %s, margin_level = %s
                             WHERE account_id = %s
                             """,
-                            [balance, equity, margin, margin_free, margin_level, acct_id_str]
+                            [balance, equity, margin, margin_free, margin_level, acct_id_str],
                         )
                         updated_count += 1
                     elif user_info and not isinstance(user_info, bool):
@@ -146,16 +151,20 @@ def update_account_balances_in_db(manager, mt5_lock: threading.RLock,
                             SET balance = %s, equity = %s
                             WHERE account_id = %s
                             """,
-                            [balance, equity, acct_id_str]
+                            [balance, equity, acct_id_str],
                         )
                         updated_count += 1
                     else:
-                        logger.debug(f"[BALANCE-SYNC] Account {acct_id_str} not found on MT5 server.")
+                        logger.debug(
+                            f"[BALANCE-SYNC] Account {acct_id_str} not found on MT5 server."
+                        )
 
                 except Exception as ex:
                     logger.warning(f"[BALANCE-SYNC] Failed updating account {acct_id_str}: {ex}")
 
-        logger.info(f"[BALANCE-SYNC] Processed {len(rows)} account(s), updated {updated_count} successfully.")
+        logger.info(
+            f"[BALANCE-SYNC] Processed {len(rows)} account(s), updated {updated_count} successfully."
+        )
         return updated_count
 
     except Exception as e:
@@ -164,6 +173,7 @@ def update_account_balances_in_db(manager, mt5_lock: threading.RLock,
 
 
 # ─── Background thread ────────────────────────────────────────────────────────
+
 
 def continuous_balance_updater(interval_seconds: float = 5.0):
     """
@@ -181,7 +191,7 @@ def continuous_balance_updater(interval_seconds: float = 5.0):
     from tortoise import Tortoise
 
     logger.info(f"[BALANCE-SYNC] Thread started. Sync interval: {interval_seconds}s.")
-    mt5_lock = get_mt5_api_lock()   # single stable reference to the module RLock
+    mt5_lock = get_mt5_api_lock()  # single stable reference to the module RLock
     manager = None
     db_error_count = 0
 
@@ -192,9 +202,12 @@ def continuous_balance_updater(interval_seconds: float = 5.0):
             try:
                 from backendPanel.database import ensure_db_initialized
                 from adminPanel.mt5.services import run_async
+
                 run_async(ensure_db_initialized())
             except Exception as db_err:
-                logger.warning(f"[BALANCE-SYNC] Database not ready yet ({db_err}). Retrying in 5s...")
+                logger.warning(
+                    f"[BALANCE-SYNC] Database not ready yet ({db_err}). Retrying in 5s..."
+                )
                 sleep(5.0)
                 continue
 
@@ -211,7 +224,9 @@ def continuous_balance_updater(interval_seconds: float = 5.0):
 
         # ── Step 2: health-check the live connection ──────────────────
         if not _is_manager_alive(manager, mt5_lock):
-            logger.warning("[BALANCE-SYNC] Shared MT5 manager health check failed. Waiting for reconnect...")
+            logger.warning(
+                "[BALANCE-SYNC] Shared MT5 manager health check failed. Waiting for reconnect..."
+            )
             manager = None
             sleep(_MANAGER_WAIT_INTERVAL)
             continue
@@ -255,6 +270,7 @@ def start_balance_sync_thread(interval_seconds: float = 5.0):
 
 # ─── Admin API endpoint ───────────────────────────────────────────────────────
 
+
 @csrf_exempt
 def sync_trading_balances_api(request):
     """
@@ -273,26 +289,34 @@ def sync_trading_balances_api(request):
         manager = get_shared_manager()
 
         if not manager:
-            return JsonResponse({
-                "success": False,
-                "message": "MT5 Manager is not connected yet.",
-                "synced_count": 0,
-            }, status=503)
+            return JsonResponse(
+                {
+                    "success": False,
+                    "message": "MT5 Manager is not connected yet.",
+                    "synced_count": 0,
+                },
+                status=503,
+            )
 
         mt5_lock = get_mt5_api_lock()
         synced_count = update_account_balances_in_db(
             manager, mt5_lock, target_account_id=account_id
         )
 
-        return JsonResponse({
-            "success": True,
-            "message": f"Successfully synchronized balances for {synced_count} account(s).",
-            "synced_count": synced_count,
-        })
+        return JsonResponse(
+            {
+                "success": True,
+                "message": f"Successfully synchronized balances for {synced_count} account(s).",
+                "synced_count": synced_count,
+            }
+        )
     except Exception as e:
         logger.error(f"[ADMIN] Error in sync_trading_balances_api: {e}")
-        return JsonResponse({
-            "success": False,
-            "message": str(e),
-            "synced_count": 0,
-        }, status=500)
+        return JsonResponse(
+            {
+                "success": False,
+                "message": str(e),
+                "synced_count": 0,
+            },
+            status=500,
+        )

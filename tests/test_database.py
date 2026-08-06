@@ -1220,14 +1220,18 @@ class TestClientPanelModels:
             captured["email"] = kwargs["email"]
             captured["details"] = kwargs["details"]
 
-        monkeypatch.setattr(profile_view, "_send_profile_update_email", fake_send_profile_update_email)
+        monkeypatch.setattr(
+            profile_view, "_send_profile_update_email", fake_send_profile_update_email
+        )
 
         request = type(
             "Request",
             (),
             {
                 "method": "PUT",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -1249,7 +1253,9 @@ class TestClientPanelModels:
         assert captured["email"] == "jordan.submit@example.com"
         assert captured["details"]["Country"] == "Canada"
 
-        pending_request = await PendingRequest.filter(user_id=user.id, request_type="profile").first()
+        pending_request = await PendingRequest.filter(
+            user_id=user.id, request_type="profile"
+        ).first()
         assert pending_request is not None
         assert pending_request.status == "Pending"
 
@@ -1289,13 +1295,17 @@ class TestClientPanelModels:
             ),
         )
 
-        fake_file = type("File", (), {"name": "identity.pdf", "content_type": "application/pdf", "size": 1234})()
+        fake_file = type(
+            "File", (), {"name": "identity.pdf", "content_type": "application/pdf", "size": 1234}
+        )()
         request = type(
             "Request",
             (),
             {
                 "method": "POST",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "POST": {},
                 "FILES": {"documentFile": fake_file},
@@ -1312,7 +1322,9 @@ class TestClientPanelModels:
         assert captured["document_type"] == "identity"
         assert captured["details"]["Document Type"] == "Identity Proof"
 
-        pending_request = await PendingRequest.filter(user_id=user.id, request_type="documents").first()
+        pending_request = await PendingRequest.filter(
+            user_id=user.id, request_type="documents"
+        ).first()
         assert pending_request is not None
         assert pending_request.payload["document_type"] == "identity"
 
@@ -1349,7 +1361,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "PUT",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -1379,7 +1393,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "PUT",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -1442,7 +1458,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "GET",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": b"",
             },
@@ -1513,14 +1531,18 @@ class TestClientPanelModels:
             captured["group"] = kwargs["group"]
 
         monkeypatch.setattr("clientPanel.view.account.MT5ManagerActions", FakeMT5)
-        monkeypatch.setattr("clientPanel.view.account._send_credentials_email", fake_send_credentials_email)
+        monkeypatch.setattr(
+            "clientPanel.view.account._send_credentials_email", fake_send_credentials_email
+        )
 
         request = type(
             "Request",
             (),
             {
                 "method": "POST",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -1945,7 +1967,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "GET",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": b"",
             },
@@ -1988,7 +2012,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "POST",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -2017,7 +2043,9 @@ class TestClientPanelModels:
         assert payload["deposit"]["amount"] == 500.0
         assert payload["deposit"]["status"] == "Pending"
 
-        saved = await ClientTransaction.filter(client_profile_id=profile.id, transaction_type="Deposit").first()
+        saved = await ClientTransaction.filter(
+            client_profile_id=profile.id, transaction_type="Deposit"
+        ).first()
         assert saved is not None
         assert saved.amount == 500.0
         assert saved.payment_method == "Wire Transfer"
@@ -2052,7 +2080,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "POST",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -2081,7 +2111,9 @@ class TestClientPanelModels:
         assert payload["withdrawal"]["amount"] == 250.0
         assert payload["withdrawal"]["status"] == "Pending"
 
-        saved = await ClientTransaction.filter(client_profile_id=profile.id, transaction_type="Withdrawal").first()
+        saved = await ClientTransaction.filter(
+            client_profile_id=profile.id, transaction_type="Withdrawal"
+        ).first()
         assert saved is not None
         assert saved.amount == 250.0
         assert saved.payment_method == "Bank Transfer"
@@ -2139,7 +2171,9 @@ class TestClientPanelModels:
             called["request_type"] = kwargs["request_type"]
             called["approved_by"] = kwargs["approved_by"]
 
-        monkeypatch.setattr(pending_view, "_send_admin_approval_email", fake_send_admin_approval_email)
+        monkeypatch.setattr(
+            pending_view, "_send_admin_approval_email", fake_send_admin_approval_email
+        )
 
         request = type(
             "Request",
@@ -2211,7 +2245,9 @@ class TestClientPanelModels:
             called["request_type"] = kwargs["request_type"]
             called["approved_by"] = kwargs["approved_by"]
 
-        monkeypatch.setattr(pending_view, "_send_admin_update_approval_email", fake_send_admin_update_approval_email)
+        monkeypatch.setattr(
+            pending_view, "_send_admin_update_approval_email", fake_send_admin_update_approval_email
+        )
 
         request = type(
             "Request",
@@ -2295,7 +2331,9 @@ class TestClientPanelModels:
             called["reviewed_by"] = kwargs["reviewed_by"]
             called["reason"] = kwargs["reason"]
 
-        monkeypatch.setattr(pending_view, "_send_admin_rejection_email", fake_send_admin_rejection_email)
+        monkeypatch.setattr(
+            pending_view, "_send_admin_rejection_email", fake_send_admin_rejection_email
+        )
 
         request = type(
             "Request",
@@ -2348,7 +2386,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "POST",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": json.dumps(
                     {
@@ -2368,7 +2408,10 @@ class TestClientPanelModels:
         assert create_payload["status"] == "ok"
         assert create_payload["ticket"]["subject"] == "Withdrawal delay inquiry"
         assert create_payload["ticket"]["category"] == "Deposits & Withdrawals"
-        assert create_payload["ticket"]["description"] == "My withdrawal has been pending for two business days."
+        assert (
+            create_payload["ticket"]["description"]
+            == "My withdrawal has been pending for two business days."
+        )
 
         saved = await ClientTicket.filter(client_profile_id=profile.id).first()
         assert saved is not None
@@ -2378,7 +2421,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "GET",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(user.id, user.email)}"
+                },
                 "GET": {},
                 "body": b"",
             },
@@ -2410,7 +2455,9 @@ class TestClientPanelModels:
             (),
             {
                 "method": "GET",
-                "headers": {"Authorization": f"Bearer {create_client_login_token(other_user.id, other_user.email)}"},
+                "headers": {
+                    "Authorization": f"Bearer {create_client_login_token(other_user.id, other_user.email)}"
+                },
                 "GET": {},
                 "body": b"",
             },

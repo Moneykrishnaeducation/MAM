@@ -68,7 +68,12 @@ async def _send_investor_credentials_email(
         html_body=html_body,
         to=[user.email],
         source="mam_investor_credentials",
-        payload={"account_name": account_name, "login": str(login), "group": group, "leverage": leverage},
+        payload={
+            "account_name": account_name,
+            "login": str(login),
+            "group": group,
+            "leverage": leverage,
+        },
     )
 
 

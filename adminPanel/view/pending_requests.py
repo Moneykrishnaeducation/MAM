@@ -101,11 +101,16 @@ def _admin_user_label(request) -> str:
     return str(getattr(user, "name", None) or getattr(user, "email", None) or "Admin")
 
 
-def _build_approval_email_details(pending_request: PendingRequest, request_type: str, payload: dict) -> list[dict[str, str]]:
+def _build_approval_email_details(
+    pending_request: PendingRequest, request_type: str, payload: dict
+) -> list[dict[str, str]]:
     if request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
         details = [
             {"label": "Account Number", "value": str(payload.get("account_number") or "")},
-            {"label": "Amount", "value": f"${float(payload.get('amount') or pending_request.amount or 0.0):,.2f}"},
+            {
+                "label": "Amount",
+                "value": f"${float(payload.get('amount') or pending_request.amount or 0.0):,.2f}",
+            },
             {"label": "Payment Method", "value": str(payload.get("payment_method") or "")},
         ]
         if request_type in {"withdrawal", "withdrawals"}:
@@ -198,7 +203,9 @@ def _request_label_and_title(request_type: str, *, approved: bool) -> tuple[str,
         "bank": "Bank Details Approved" if approved else "Bank Details Rejected",
         "crypto": "Crypto Details Approved" if approved else "Crypto Details Rejected",
     }
-    return label_map.get(request_type, "request"), title_map.get(request_type, "Request Approved" if approved else "Request Rejected")
+    return label_map.get(request_type, "request"), title_map.get(
+        request_type, "Request Approved" if approved else "Request Rejected"
+    )
 
 
 def _update_template_prefix(request_type: str) -> str | None:
@@ -212,7 +219,15 @@ def _update_template_prefix(request_type: str) -> str | None:
     return mapping.get(request_type)
 
 
-def _build_approval_email_context(*, pending_request: PendingRequest, request_type: str, user_name: str, approved_by: str, reviewed_at: str, payload: dict) -> tuple[str, str, str]:
+def _build_approval_email_context(
+    *,
+    pending_request: PendingRequest,
+    request_type: str,
+    user_name: str,
+    approved_by: str,
+    reviewed_at: str,
+    payload: dict,
+) -> tuple[str, str, str]:
     request_label, title = _request_label_and_title(request_type, approved=True)
     context = {
         "title": title,
@@ -227,7 +242,16 @@ def _build_approval_email_context(*, pending_request: PendingRequest, request_ty
     return title, plain_body, html_body
 
 
-def _build_rejection_email_context(*, pending_request: PendingRequest, request_type: str, user_name: str, reviewed_by: str, reviewed_at: str, payload: dict, reason: str | None = None) -> tuple[str, str, str]:
+def _build_rejection_email_context(
+    *,
+    pending_request: PendingRequest,
+    request_type: str,
+    user_name: str,
+    reviewed_by: str,
+    reviewed_at: str,
+    payload: dict,
+    reason: str | None = None,
+) -> tuple[str, str, str]:
     request_label, title = _request_label_and_title(request_type, approved=False)
     context = {
         "title": title,
@@ -243,7 +267,15 @@ def _build_rejection_email_context(*, pending_request: PendingRequest, request_t
     return title, plain_body, html_body
 
 
-async def _send_admin_approval_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, approved_by: str, reviewed_at: str) -> None:
+async def _send_admin_approval_email(
+    *,
+    user: ClientUser,
+    pending_request: PendingRequest,
+    request_type: str,
+    payload: dict,
+    approved_by: str,
+    reviewed_at: str,
+) -> None:
     title, plain_body, html_body = _build_approval_email_context(
         pending_request=pending_request,
         request_type=request_type,
@@ -258,11 +290,24 @@ async def _send_admin_approval_email(*, user: ClientUser, pending_request: Pendi
         html_body=html_body,
         to=[user.email],
         source="pending_request_approval",
-        payload={"pending_request_id": pending_request.id, "request_type": request_type, "approved_by": approved_by, "reviewed_at": reviewed_at},
+        payload={
+            "pending_request_id": pending_request.id,
+            "request_type": request_type,
+            "approved_by": approved_by,
+            "reviewed_at": reviewed_at,
+        },
     )
 
 
-async def _send_admin_update_approval_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, approved_by: str, reviewed_at: str) -> None:
+async def _send_admin_update_approval_email(
+    *,
+    user: ClientUser,
+    pending_request: PendingRequest,
+    request_type: str,
+    payload: dict,
+    approved_by: str,
+    reviewed_at: str,
+) -> None:
     template_prefix = _update_template_prefix(request_type)
     if template_prefix is None:
         raise ValueError(f"Unsupported update approval type: {request_type}")
@@ -284,11 +329,25 @@ async def _send_admin_update_approval_email(*, user: ClientUser, pending_request
         html_body=html_body,
         to=[user.email],
         source="pending_request_update_approval",
-        payload={"pending_request_id": pending_request.id, "request_type": request_type, "approved_by": approved_by, "reviewed_at": reviewed_at},
+        payload={
+            "pending_request_id": pending_request.id,
+            "request_type": request_type,
+            "approved_by": approved_by,
+            "reviewed_at": reviewed_at,
+        },
     )
 
 
-async def _send_admin_rejection_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, reviewed_by: str, reviewed_at: str, reason: str | None = None) -> None:
+async def _send_admin_rejection_email(
+    *,
+    user: ClientUser,
+    pending_request: PendingRequest,
+    request_type: str,
+    payload: dict,
+    reviewed_by: str,
+    reviewed_at: str,
+    reason: str | None = None,
+) -> None:
     title, plain_body, html_body = _build_rejection_email_context(
         pending_request=pending_request,
         request_type=request_type,
@@ -304,7 +363,13 @@ async def _send_admin_rejection_email(*, user: ClientUser, pending_request: Pend
         html_body=html_body,
         to=[user.email],
         source="pending_request_rejection",
-        payload={"pending_request_id": pending_request.id, "request_type": request_type, "reviewed_by": reviewed_by, "reviewed_at": reviewed_at, "reason": reason},
+        payload={
+            "pending_request_id": pending_request.id,
+            "request_type": request_type,
+            "reviewed_by": reviewed_by,
+            "reviewed_at": reviewed_at,
+            "reason": reason,
+        },
     )
 
 
@@ -703,7 +768,10 @@ async def decide_pending_request(request, request_id: str):
                 if pending_request.reviewed_at
                 else timezone.now().strftime("%Y-%m-%d %H:%M:%S")
             )
-            reason = str(body.get("reason") or body.get("notes") or body.get("message") or "").strip() or None
+            reason = (
+                str(body.get("reason") or body.get("notes") or body.get("message") or "").strip()
+                or None
+            )
             try:
                 await _send_admin_rejection_email(
                     user=resolved_user,
@@ -718,7 +786,7 @@ async def decide_pending_request(request, request_id: str):
                 logger.error(
                     f"Failed to send rejection email for pending request {pending_request.id} to {resolved_user.email}: {exc}"
                 )
-# Create notification for target user
+    # Create notification for target user
     target_user = None
     if pending_request.user_id:
         from adminPanel.models import ClientUser

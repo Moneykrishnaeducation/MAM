@@ -78,9 +78,7 @@ async def list_client_transactions(request, user_id: str):
 
     tab = _normalize_transaction_tab(request.GET.get("tab") or request.GET.get("type"))
     transactions = (
-        await ClientTransaction.filter(user_id=user.id)
-        .order_by("-created_at", "-id")
-        .all()
+        await ClientTransaction.filter(user_id=user.id).order_by("-created_at", "-id").all()
     )
     filtered_transactions = [
         transaction for transaction in transactions if _transaction_matches_tab(transaction, tab)
@@ -89,12 +87,20 @@ async def list_client_transactions(request, user_id: str):
     summary = {
         "total_transactions": len(transactions),
         "pending_count": sum(
-            1 for transaction in transactions if str(transaction.status).strip().lower() in {"pending", "processing"}
+            1
+            for transaction in transactions
+            if str(transaction.status).strip().lower() in {"pending", "processing"}
         ),
         "total_volume": sum(transaction.amount for transaction in transactions),
-        "deposit_count": sum(1 for transaction in transactions if str(transaction.transaction_type).strip().lower() == "deposit"),
+        "deposit_count": sum(
+            1
+            for transaction in transactions
+            if str(transaction.transaction_type).strip().lower() == "deposit"
+        ),
         "withdrawal_count": sum(
-            1 for transaction in transactions if str(transaction.transaction_type).strip().lower() == "withdrawal"
+            1
+            for transaction in transactions
+            if str(transaction.transaction_type).strip().lower() == "withdrawal"
         ),
     }
 
@@ -108,7 +114,9 @@ async def list_client_transactions(request, user_id: str):
             },
             "tab": tab or "all",
             "summary": summary,
-            "transactions": [_serialize_transaction(transaction) for transaction in filtered_transactions],
+            "transactions": [
+                _serialize_transaction(transaction) for transaction in filtered_transactions
+            ],
         }
     )
 

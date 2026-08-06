@@ -1,6 +1,12 @@
 """Client-specific data loader functions using central adminPanel models."""
 
-from adminPanel.models import ClientAccount, ClientTicket, ClientTransaction, MyInvestment, ClientUser
+from adminPanel.models import (
+    ClientAccount,
+    ClientTicket,
+    ClientTransaction,
+    MyInvestment,
+    ClientUser,
+)
 
 
 async def get_client_profile_by_user_id(user_id: int) -> ClientUser | None:

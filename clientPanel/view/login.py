@@ -125,6 +125,7 @@ async def login_client(request):
 
         # Record last login
         from django.utils import timezone
+
         admin_user.last_login = timezone.now()
         await admin_user.save(update_fields=["last_login"])
 
@@ -178,13 +179,16 @@ async def login_client(request):
     if "admin" in role_value:
         return _error("Invalid credentials", status=401)
 
-    password_login = bool(user.password_hash) and verify_client_password(access_code, user.password_hash)
+    password_login = bool(user.password_hash) and verify_client_password(
+        access_code, user.password_hash
+    )
     access_code_login = bool(user.user_code) and user.user_code == access_code
     if not password_login and not access_code_login:
         return _error("Invalid credentials", status=401)
 
     profile = user
     from django.utils import timezone
+
     user.last_login = timezone.now()
     await user.save(update_fields=["last_login"])
 

@@ -47,6 +47,7 @@ _ROLE_WEIGHT: dict[str, int] = {
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _normalize_role(value: Any) -> str | None:
     """Return a lower-cased, stripped role string or None."""
     if value is None:
@@ -130,6 +131,7 @@ def role_has_min_weight(role: str | None, min_role: str) -> bool:
 # Permission classes
 # ---------------------------------------------------------------------------
 
+
 class BaseRolePermission:
     """Base permission helper for role-based request checks."""
 
@@ -190,6 +192,7 @@ class IsViewer(BaseRolePermission):
 # Decorator factory
 # ---------------------------------------------------------------------------
 
+
 def permission_required(permission_cls: type[BaseRolePermission]):
     """Wrap a sync or async Django view with a role permission check."""
 
@@ -207,6 +210,7 @@ def permission_required(permission_cls: type[BaseRolePermission]):
                 try:
                     if request.method in {"POST", "PUT", "DELETE", "PATCH"}:
                         from adminPanel.audit import log_post_activity
+
                         await log_post_activity(request, res)
                 except Exception:
                     pass
@@ -223,6 +227,7 @@ def permission_required(permission_cls: type[BaseRolePermission]):
             try:
                 if request.method in {"POST", "PUT", "DELETE", "PATCH"}:
                     from adminPanel.audit import log_post_activity
+
                     async_to_sync(log_post_activity)(request, res)
             except Exception:
                 pass
@@ -256,7 +261,11 @@ def require_role(*roles: str):
                 role = _extract_role_from_request(request)
                 if role not in allowed:
                     return JsonResponse(
-                        {"status": "error", "message": denied_message, "required_roles": list(allowed)},
+                        {
+                            "status": "error",
+                            "message": denied_message,
+                            "required_roles": list(allowed),
+                        },
                         status=403,
                     )
                 return await view_func(request, *args, **kwargs)

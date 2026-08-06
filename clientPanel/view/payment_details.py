@@ -49,8 +49,12 @@ def _render_payment_submission_email(
         "created_at": created_at or "",
     }
     subject = f"{label} submitted for approval"
-    plain_body = render_to_string("emails/payment_details_submission_notification_email.txt", context).strip()
-    html_body = render_to_string("emails/payment_details_submission_notification_email.html", context)
+    plain_body = render_to_string(
+        "emails/payment_details_submission_notification_email.txt", context
+    ).strip()
+    html_body = render_to_string(
+        "emails/payment_details_submission_notification_email.html", context
+    )
     return subject, plain_body, html_body
 
 
@@ -76,7 +80,12 @@ async def _send_payment_submission_email(
         html_body=html_body,
         to=[email],
         source=f"client_{payment_type}_submission",
-        payload={"user_name": user_name, "payment_type": payment_type, "status": status, "created_at": created_at},
+        payload={
+            "user_name": user_name,
+            "payment_type": payment_type,
+            "status": status,
+            "created_at": created_at,
+        },
     )
 
 
@@ -148,7 +157,12 @@ async def client_payment_details(request):
             }
 
         await _send_payment_submission_email(
-            user_name=str(getattr(profile, "full_name", None) or getattr(profile, "name", None) or profile.email or "Client"),
+            user_name=str(
+                getattr(profile, "full_name", None)
+                or getattr(profile, "name", None)
+                or profile.email
+                or "Client"
+            ),
             email=str(getattr(profile, "email", "") or ""),
             payment_type=payment_type,
             details=details,

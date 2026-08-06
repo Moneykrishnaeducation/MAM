@@ -14,7 +14,9 @@ class Command(BaseCommand):
     help = "Send queued mail messages stored in the database."
 
     def add_arguments(self, parser):
-        parser.add_argument("--limit", type=int, default=100, help="Maximum queued messages to send per run")
+        parser.add_argument(
+            "--limit", type=int, default=100, help="Maximum queued messages to send per run"
+        )
         parser.add_argument(
             "--watch",
             action="store_true",
