@@ -63,6 +63,7 @@ Recent additions:
 
 - `static/frontend/` is the drop-in location for the exported Next.js frontend build. The backend reads from that directory only.
 - `clientPanel/view/login.py` now sets auth cookies for `access_token`, `jwt_token`, `refresh_token`, `role`, plus the legacy session cookie names so the frontend no longer needs `localStorage` for auth state.
+- `clientPanel/view/reset_password.py` now supports emailed password reset links via `/api/client/request-password-reset` and token-based completion via `/api/client/reset-password`, and the frontend includes a `/client/reset-password` page for link follow-through.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.
 - `adminPanel/view/pending_requests.py` provides the admin-only request-tab APIs under `/api/admin/requests/...`.
 - `adminPanel/view/client_profile.py` provides the admin-only client profile update API under `/api/admin/users/<user_id>/profile`.

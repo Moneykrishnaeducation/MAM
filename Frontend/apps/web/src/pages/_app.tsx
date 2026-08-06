@@ -8,10 +8,11 @@ import '../index.css';
 
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
+  const isClientResetPasswordRoute = router.pathname === '/client/reset-password';
   const isClientRoute = router.pathname.startsWith('/client');
   const isAdminRoute = router.pathname.startsWith('/admin');
 
-  if (isClientRoute) {
+  if (isClientRoute && !isClientResetPasswordRoute) {
     return (
       <div className="flex h-screen w-screen overflow-hidden bg-[#0e2250] text-slate-100 font-sans antialiased">
         <ClientSidebar />

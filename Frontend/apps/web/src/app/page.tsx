@@ -160,33 +160,81 @@ function ForgotPasswordModal({
   const [resetEmail, setResetEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [roleChoices, setRoleChoices] = useState<Array<{ value: string; label: string }>>([]);
 
   if (!isOpen) return null;
 
-  const handleReset = (e: React.FormEvent) => {
-    e.preventDefault();
+  const closeModal = () => {
+    setResetEmail("");
+    setSending(false);
+    setSent(false);
+    setRoleChoices([]);
+    onClose();
+  };
+
+  const handleReset = async (role?: string) => {
     if (!resetEmail) {
       toast.error("Please enter your registered email address.");
       return;
     }
+
     setSending(true);
-    setTimeout(() => {
-      setSending(false);
-      setSent(true);
-      toast.success("Security reset link sent!", {
-        description: `Instructions dispatched to ${resetEmail}`,
+    try {
+      const response = await fetch("/api/client/request-password-reset", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          email: resetEmail,
+          ...(role ? { user_type: role } : {}),
+        }),
       });
-    }, 1200);
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Unable to send reset link.");
+      }
+
+      if (data?.status === "needs_role_selection" && Array.isArray(data?.roles) && data.roles.length > 0) {
+        setRoleChoices(data.roles);
+        toast.info("Choose account type", {
+          description: data?.message || "Select which account you want to reset.",
+        });
+        return;
+      }
+
+      setRoleChoices([]);
+      setSent(true);
+      toast.success("Reset link sent", {
+        description: data?.message || `Instructions dispatched to ${resetEmail}`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to send reset link.";
+      toast.error("Password reset failed", {
+        description: message,
+      });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleReset();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
       <div className="bg-slate-900 border border-[#d4af37]/40 w-full max-w-md rounded-2xl p-6 shadow-2xl relative shadow-gold-glow">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
-        >
-          <X className="w-5 h-5" />
+          <button
+            onClick={closeModal}
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition"
+          >
+            <X className="w-5 h-5" />
         </button>
 
         <div className="flex items-center gap-3 mb-4">
@@ -208,20 +256,16 @@ function ForgotPasswordModal({
               Reset email dispatched to <span className="font-semibold text-[#e6c687]">{resetEmail}</span>. Check your inbox for security instructions.
             </p>
             <button
-              onClick={() => {
-                setSent(false);
-                setResetEmail("");
-                onClose();
-              }}
+              onClick={closeModal}
               className="w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition border border-slate-700"
             >
               Back to Login
             </button>
           </div>
         ) : (
-          <form onSubmit={handleReset} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <p className="text-xs text-slate-400 leading-relaxed">
-              Enter your corporate email address associated with your terminal account. We will send you a temporary 2FA verification link.
+              Enter your corporate email address associated with your terminal account. We will send a secure password reset link.
             </p>
 
             <div>
@@ -233,7 +277,10 @@ function ForgotPasswordModal({
                 <input
                   type="email"
                   value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
+                  onChange={(e) => {
+                    setResetEmail(e.target.value);
+                    setRoleChoices([]);
+                  }}
                   placeholder="trader@company.com"
                   className="w-full bg-slate-950/90 border border-[#d4af37]/30 rounded-xl pl-9 pr-4 py-2.5 text-xs text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition"
                   required
@@ -241,29 +288,57 @@ function ForgotPasswordModal({
               </div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={sending}
-                className="flex-1 py-2.5 bg-gold-metallic text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-gold-glow disabled:opacity-50"
-              >
-                {sending ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    Sending...
-                  </>
-                ) : (
-                  "Dispatch Link"
-                )}
-              </button>
-            </div>
+            {roleChoices.length > 0 ? (
+              <div className="space-y-2 pt-2">
+                <p className="text-xs text-slate-400">
+                  This email exists in both account tables. Please choose which role to reset.
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {roleChoices.map((role) => (
+                    <button
+                      key={role.value}
+                      type="button"
+                      disabled={sending}
+                      onClick={() => void handleReset(role.value)}
+                      className="py-2.5 rounded-xl border border-[#d4af37]/30 bg-slate-900/80 text-slate-100 text-xs font-semibold transition hover:border-[#d4af37] hover:bg-slate-800 disabled:opacity-50"
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setRoleChoices([])}
+                  className="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  Choose another email
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={closeModal}
+                  className="flex-1 py-2.5 bg-slate-800/80 hover:bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="flex-1 py-2.5 bg-gold-metallic text-slate-950 font-black rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-gold-glow disabled:opacity-50"
+                >
+                  {sending ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Dispatch Link"
+                  )}
+                </button>
+              </div>
+            )}
           </form>
         )}
       </div>

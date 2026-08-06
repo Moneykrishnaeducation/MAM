@@ -25,7 +25,11 @@ from clientPanel.view.mam_managers import (
 from clientPanel.view.OpenPositions import get_client_open_positions
 from clientPanel.view.payment_details import client_payment_details
 from clientPanel.view.profile import get_client_profile
-from clientPanel.view.reset_password import change_client_password, reset_client_password
+from clientPanel.view.reset_password import (
+    change_client_password,
+    request_client_password_reset,
+    reset_client_password,
+)
 from clientPanel.view.tickets import (
     create_client_ticket,
     get_client_ticket_detail,
@@ -38,6 +42,7 @@ app_name = "clientPanel"
 
 urlpatterns = [
     path("reset-password", reset_client_password, name="reset-password"),
+    path("request-password-reset", request_client_password_reset, name="request-password-reset"),
     path("change-password", change_client_password, name="change-password"),
     path("logout", logout_client, name="logout"),
     path("activity-logs", get_client_activity_logs, name="activity-logs"),
