@@ -161,7 +161,7 @@ function GlassCard({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`relative overflow-hidden rounded-[2.5rem] border backdrop-blur-md shadow-2xl bg-[linear-gradient(180deg,#0a2265_0%,#091948_100%)] border-[#1d58c8] shadow-[0_28px_80px_rgba(4,15,54,0.36)] ${noPadding ? '' : 'p-8'} ${className}`}
+      className={`relative overflow-hidden rounded-[1.75rem] border backdrop-blur-md shadow-2xl bg-[linear-gradient(180deg,#0a2265_0%,#091948_100%)] border-[#1d58c8] shadow-[0_28px_80px_rgba(4,15,54,0.36)] sm:rounded-[2.5rem] ${noPadding ? '' : 'p-4 sm:p-6 lg:p-8'} ${className}`}
     >
       {children}
     </motion.div>
@@ -345,7 +345,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> =
   bond: { bg: 'bg-slate-500/10', text: 'text-slate-400', label: 'Bond' },
 };
 const typeStyle = (t = '') =>
-  TYPE_COLORS[t.toLowerCase()] ?? { bg: 'bg-slate-500/10', text: 'text-slate-400', label: t || 'â€”' };
+  TYPE_COLORS[t.toLowerCase()] ?? { bg: 'bg-slate-500/10', text: 'text-slate-400', label: t || '-' };
 
 const QUICK_SYMBOLS = [
   { label: 'GOLD', value: 'OANDA:XAUUSD' },
@@ -449,9 +449,9 @@ function MarketOverview() {
         </div>
 
         {/* Search */}
-        <div className="flex flex-col md:flex-row gap-6 relative z-10 mb-8">
-          <div className="flex-1 flex items-center gap-4 rounded-[1.4rem] px-6 py-5 relative border transition-all duration-500 bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] focus-within:border-[#2f8cff] shadow-[0_24px_60px_rgba(4,15,54,0.2)]">
-            <Search className="w-6 h-6 text-blue-300" />
+        <div className="relative z-10 mb-8 flex flex-col gap-4 md:flex-row md:items-stretch">
+          <div className="relative flex w-full min-w-0 flex-1 items-center gap-3 rounded-[1.25rem] border bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] px-4 py-4 transition-all duration-500 focus-within:border-[#2f8cff] border-[#1b56ca] shadow-[0_24px_60px_rgba(4,15,54,0.2)] sm:gap-4 sm:px-6 sm:py-5 sm:rounded-[1.4rem]">
+            <Search className="w-5 h-5 text-blue-300 sm:w-6 sm:h-6" />
             <input
               ref={inputRef}
               type="text"
@@ -461,7 +461,7 @@ function MarketOverview() {
               onFocus={() => setFocused(true)}
               onBlur={() => setTimeout(() => setFocused(false), 180)}
               placeholder="Search Market Symbol..."
-              className="flex-1 bg-transparent outline-none text-base font-black uppercase tracking-tight text-white placeholder:text-slate-500"
+              className="flex-1 min-w-0 bg-transparent outline-none text-sm font-black uppercase tracking-tight text-white placeholder:text-slate-500 sm:text-base"
             />
             {searching && <RefreshCw className="w-5 h-5 text-yellow-400 animate-spin" />}
 
@@ -471,7 +471,7 @@ function MarketOverview() {
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 15 }}
-                  className="absolute left-0 top-[calc(100%+12px)] w-full z-[60] rounded-[2rem] overflow-hidden shadow-2xl border backdrop-blur-xl bg-[#0a2265] border-[#1b56ca]"
+                  className="absolute left-0 top-[calc(100%+12px)] z-[60] max-h-[65vh] w-full overflow-y-auto rounded-[1.5rem] border bg-[#0a2265] shadow-2xl backdrop-blur-xl border-[#1b56ca] sm:rounded-[2rem]"
                 >
                   {suggestions.map((s, i) => {
                     const ts = typeStyle(s.type);
@@ -479,7 +479,7 @@ function MarketOverview() {
                       <button
                         key={i}
                         onMouseDown={() => applySymbol(`${s.exchange}:${s.symbol}`)}
-                        className={`w-full flex items-center gap-5 px-8 py-5 text-left transition-all ${i === activeIdx ? 'bg-[#112b74]' : 'hover:bg-[#112b74]/50'}`}
+                        className={`flex w-full items-center gap-4 px-4 py-4 text-left transition-all sm:gap-5 sm:px-8 sm:py-5 ${i === activeIdx ? 'bg-[#112b74]' : 'hover:bg-[#112b74]/50'}`}
                       >
                         <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1.5 rounded-xl ${ts.bg} ${ts.text}`}>
                           {ts.label}
@@ -497,19 +497,19 @@ function MarketOverview() {
             </AnimatePresence>
           </div>
 
-          <div className="md:w-64 w-full flex flex-col justify-center gap-1 rounded-[1.4rem] px-8 py-4 border bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-yellow-400/30 shadow-[0_0_24px_rgba(250,204,21,0.12)]">
+          <div className="flex w-full flex-col justify-center gap-1.5 rounded-[1.25rem] border bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] px-4 py-4 shadow-[0_0_24px_rgba(250,204,21,0.12)] border-yellow-400/30 md:w-64 sm:px-8 sm:py-4 sm:rounded-[1.4rem]">
             <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Active Symbol</span>
-            <span className="font-black text-lg text-yellow-400 tracking-tighter font-mono uppercase truncate">{symbol}</span>
+            <span className="font-black text-base text-yellow-400 tracking-tighter font-mono uppercase truncate sm:text-lg">{symbol}</span>
           </div>
         </div>
 
         {/* Quick Symbols */}
-        <div className="flex flex-wrap gap-3 relative z-10">
+        <div className="relative z-10 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
           {QUICK_SYMBOLS.map((qs) => (
             <button
               key={qs.value}
               onClick={() => applySymbol(qs.value)}
-              className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 transform active:scale-95 ${
+              className={`w-full px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 transform active:scale-95 sm:w-auto sm:px-6 ${
                 symbol === qs.value
                   ? 'border border-yellow-400 bg-[linear-gradient(135deg,#d8a109_0%,#c78f05_100%)] text-white shadow-[0_0_28px_rgba(244,188,28,0.34)] scale-105'
                   : 'bg-[#0b246d] border border-[#1b56ca] text-blue-300 hover:border-yellow-400 hover:text-yellow-400'
@@ -526,8 +526,8 @@ function MarketOverview() {
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.2 }}
-        className="relative w-full rounded-[3rem] overflow-hidden border border-blue-800/30 shadow-2xl"
-        style={{ minHeight: '55vh' }}
+        className="relative w-full overflow-hidden rounded-[2rem] border border-blue-800/30 shadow-2xl sm:rounded-[3rem]"
+        style={{ minHeight: 'clamp(420px, 55vh, 760px)' }}
       >
         <div className="tradingview-widget-container h-full" ref={container}>
           <div className="tradingview-widget-container__widget h-full" />
@@ -737,12 +737,12 @@ function AllSymbolsTiming() {
 
         {/* Category + Timezone */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6 relative z-10">
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap justify-center gap-3 sm:justify-start">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.key}
                 onClick={() => { setActiveCategory(cat.key); setCurrentPage(1); }}
-                className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 transform active:scale-95 ${
+                className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-[0.15em] transition-all duration-300 transform active:scale-95 sm:px-5 ${
                   activeCategory === cat.key
                     ? 'border border-yellow-400 bg-[linear-gradient(135deg,#d8a109_0%,#c78f05_100%)] text-white shadow-[0_0_20px_rgba(244,188,28,0.25)] scale-105'
                     : 'bg-[#0b246d]/65 border border-[#1b56ca]/40 text-blue-300 hover:border-yellow-400 hover:text-yellow-400'
@@ -752,7 +752,7 @@ function AllSymbolsTiming() {
               </button>
             ))}
           </div>
-          <div className="flex items-center gap-3 bg-[#0b246d]/40 px-4 py-2.5 rounded-xl border border-[#1b56ca]/20 shrink-0">
+          <div className="flex w-full items-center justify-between gap-3 rounded-xl border bg-[#0b246d]/40 px-4 py-2.5 shrink-0 border-[#1b56ca]/20 lg:w-auto">
             <select
               value={selectedTz}
               onChange={(e) => setSelectedTz(Number(e.target.value))}
@@ -768,14 +768,14 @@ function AllSymbolsTiming() {
         </div>
 
         {/* Search */}
-        <div className="relative z-10 flex items-center gap-4 rounded-[1.4rem] px-6 py-4 border transition-all duration-500 bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] focus-within:border-[#2f8cff] shadow-[0_24px_60px_rgba(4,15,54,0.2)]">
+        <div className="relative z-10 flex items-center gap-3 rounded-[1.25rem] border bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] px-4 py-4 transition-all duration-500 focus-within:border-[#2f8cff] border-[#1b56ca] shadow-[0_24px_60px_rgba(4,15,54,0.2)] sm:gap-4 sm:px-6 sm:py-4 sm:rounded-[1.4rem]">
           <Search className="w-5 h-5 text-yellow-400" />
           <input
             type="text"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-            placeholder={`Search ${activeCategory === 'all' ? 'Symbols' : activeCategory} (e.g. JP225, EURUSD, XAUUSD)â€¦`}
-            className="flex-1 bg-transparent outline-none text-sm font-black uppercase tracking-tight placeholder:text-slate-500 text-white"
+            placeholder={`Search ${activeCategory === 'all' ? 'Symbols' : activeCategory} (e.g. JP225, EURUSD, XAUUSD)...`}
+            className="flex-1 min-w-0 bg-transparent outline-none text-sm font-black uppercase tracking-tight placeholder:text-slate-500 text-white"
           />
         </div>
       </GlassCard>
@@ -846,12 +846,12 @@ function AllSymbolsTiming() {
                               <div className="flex flex-col gap-1">
                                 {daySessions.map((s, idx) => (
                                   <span key={idx} className="text-xs font-black font-mono text-yellow-400 bg-yellow-400/5 border border-yellow-400/10 px-2.5 py-1 rounded-md inline-block whitespace-nowrap">
-                                    {s.open} â€“ {s.close}
+                                    {s.open} - {s.close}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <span className="text-xs font-black uppercase opacity-20">â€”</span>
+                              <span className="text-xs font-black uppercase opacity-20">-</span>
                             )}
                           </td>
                         );
@@ -867,7 +867,7 @@ function AllSymbolsTiming() {
                                 <span className="text-xs font-black uppercase text-white">{day.substring(0, 3)}</span>
                                 <div className="flex flex-col items-end gap-1">
                                   {daySessions.map((s, idx) => (
-                                    <span key={idx} className="text-xs font-bold font-mono text-yellow-400">{s.open} â€“ {s.close}</span>
+                                    <span key={idx} className="text-xs font-bold font-mono text-yellow-400">{s.open} - {s.close}</span>
                                   ))}
                                 </div>
                               </div>
@@ -887,11 +887,11 @@ function AllSymbolsTiming() {
 
       {/* Pagination */}
       {!loading && !error && totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 rounded-[2rem] border backdrop-blur-md bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] shadow-lg">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-[2rem] border px-4 py-4 backdrop-blur-md bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] shadow-lg sm:flex-row sm:items-center sm:px-6">
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-            Showing {Math.min(filteredData.length, (currentPage - 1) * itemsPerPage + 1)}â€“{Math.min(filteredData.length, currentPage * itemsPerPage)} of {filteredData.length} symbols
+            Showing {Math.min(filteredData.length, (currentPage - 1) * itemsPerPage + 1)}-{Math.min(filteredData.length, currentPage * itemsPerPage)} of {filteredData.length} symbols
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end sm:self-auto">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
@@ -948,7 +948,7 @@ export default function ClientTechnicalAnalysisPage() {
 
         <div className="max-w-[1600px] mx-auto relative z-10">
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-10">
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/70 border border-blue-700 text-blue-200 text-xs font-semibold mb-2">
                 <TrendingUp size={13} /> Technical Analysis
@@ -961,8 +961,8 @@ export default function ClientTechnicalAnalysisPage() {
           </div>
 
           {/* Animated Tab Bar */}
-          <div className="flex justify-center mb-10">
-            <div className="inline-flex flex-wrap justify-center gap-3 p-3 rounded-[2.5rem] border shadow-2xl backdrop-blur-2xl bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] shadow-[0_24px_60px_rgba(4,15,54,0.28)]">
+          <div className="mb-10 flex w-full justify-start overflow-x-auto pb-2 md:justify-center">
+            <div className="inline-flex min-w-max flex-nowrap justify-start gap-2 rounded-[2rem] border p-2 shadow-2xl backdrop-blur-2xl bg-[linear-gradient(180deg,#0a2265_0%,#091d58_100%)] border-[#1b56ca] shadow-[0_24px_60px_rgba(4,15,54,0.28)] sm:gap-3 sm:p-3 sm:rounded-[2.5rem]">
               <LayoutGroup>
                 {TABS.map((t) => {
                   const Icon = t.icon;
@@ -971,18 +971,18 @@ export default function ClientTechnicalAnalysisPage() {
                     <button
                       key={t.id}
                       onClick={() => setActiveTab(t.id)}
-                      className={`relative flex items-center gap-3 px-8 py-4 rounded-[1.8rem] text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 ${
+                      className={`relative flex items-center gap-2 rounded-[1.4rem] px-4 py-3 text-[11px] font-black uppercase tracking-[0.15em] transition-all duration-500 whitespace-nowrap sm:gap-3 sm:px-8 sm:py-4 sm:rounded-[1.8rem] ${
                         isActive ? 'text-white' : 'text-slate-400 hover:text-yellow-400'
                       }`}
                     >
                       {isActive && (
                         <motion.div
                           layoutId="active-pill"
-                          className="absolute inset-0 rounded-[1.6rem] shadow-2xl border border-yellow-400 bg-[linear-gradient(135deg,#d8a109_0%,#c78f05_100%)] shadow-[0_0_28px_rgba(244,188,28,0.34)]"
+                          className="absolute inset-0 rounded-[1.2rem] border border-yellow-400 bg-[linear-gradient(135deg,#d8a109_0%,#c78f05_100%)] shadow-[0_0_28px_rgba(244,188,28,0.34)] sm:rounded-[1.6rem] shadow-2xl"
                           transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                         />
                       )}
-                      <Icon size={18} className="relative z-10" />
+                      <Icon size={16} className="relative z-10 sm:w-[18px] sm:h-[18px]" />
                       <span className="relative z-10 hidden sm:inline">{t.label}</span>
                     </button>
                   );

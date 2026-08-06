@@ -52,6 +52,26 @@ TORTOISE_ORM = get_tortoise_config()
 async def auto_sync_db_schema() -> None:
     """Compare Tortoise ORM models against PostgreSQL and auto-add missing columns."""
     conn = Tortoise.get_connection("default")
+
+    # Rename client_transactions to transactions if client_transactions exists and transactions does not
+    try:
+        check_tx = await conn.execute_query(
+            "SELECT 1 FROM information_schema.tables WHERE table_name='transactions'"
+        )
+        if not check_tx[1]:
+            check_ctx = await conn.execute_query(
+                "SELECT 1 FROM information_schema.tables WHERE table_name='client_transactions'"
+            )
+            if check_ctx[1]:
+                await conn.execute_query(
+                    'ALTER TABLE "client_transactions" RENAME TO "transactions";'
+                )
+                logger.info("[DB AUTO-SYNC] Renamed table 'client_transactions' to 'transactions'")
+    except Exception as e:
+        logger.warning(
+            f"[DB AUTO-SYNC] Warning renaming table 'client_transactions' to 'transactions': {e}"
+        )
+
     modified_count = 0
     for app in Tortoise.apps.values():
         for model in app.values():
@@ -98,7 +118,7 @@ async def auto_sync_db_schema() -> None:
         "client_crypto_details": ["client_profile_id"],
         "client_documents": ["client_profile_id"],
         "client_investments": ["client_profile_id"],
-        "client_transactions": ["client_profile_id"],
+        "transactions": ["client_profile_id"],
         "client_tickets": ["client_profile_id"],
         "admin_pending_requests": ["client_profile_id"],
     }
@@ -118,7 +138,9 @@ async def auto_sync_db_schema() -> None:
                         f"[DB AUTO-SYNC] Relaxed legacy constraint on '{table_name}.{col_name}' to allow user-based rows."
                     )
         except Exception as e:
-            logger.warning(f"[DB AUTO-SYNC] Warning relaxing legacy constraints on '{table_name}': {e}")
+            logger.warning(
+                f"[DB AUTO-SYNC] Warning relaxing legacy constraints on '{table_name}': {e}"
+            )
 
     try:
         res = await conn.execute_query(
@@ -136,7 +158,9 @@ async def auto_sync_db_schema() -> None:
                   AND cp.user_id IS NOT NULL
                 """
             )
-            logger.info("[DB AUTO-SYNC] Backfilled client_documents.user_id from client_profile_id.")
+            logger.info(
+                "[DB AUTO-SYNC] Backfilled client_documents.user_id from client_profile_id."
+            )
     except Exception as e:
         logger.warning(f"[DB AUTO-SYNC] Warning backfilling client_documents.user_id: {e}")
 
@@ -154,9 +178,13 @@ async def auto_sync_db_schema() -> None:
         logger.warning(f"[DB AUTO-SYNC] Warning creating admin_activity_logs.user_id index: {e}")
 
     if modified_count > 0:
-        logger.info(f"[DB AUTO-SYNC] Schema sync complete. Applied {modified_count} database modification(s).")
+        logger.info(
+            f"[DB AUTO-SYNC] Schema sync complete. Applied {modified_count} database modification(s)."
+        )
     else:
-        logger.info("[DB AUTO-SYNC] Schema sync complete. Database tables and columns are up to date.")
+        logger.info(
+            "[DB AUTO-SYNC] Schema sync complete. Database tables and columns are up to date."
+        )
 
 
 async def ensure_db_initialized() -> None:

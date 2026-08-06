@@ -8,6 +8,7 @@ from tortoise import fields, models
 
 logger = logging.getLogger(__name__)
 
+
 class AdminUser(models.Model):
     """Admin System User model for admin-users management."""
 
@@ -29,6 +30,8 @@ class AdminUser(models.Model):
 
     def __repr__(self) -> str:
         return f"<AdminUser(id={self.id}, name={self.name}, email={self.email})>"
+
+
 class ClientUser(models.Model):
     """Unified user model for both admin and client records."""
 
@@ -79,8 +82,8 @@ class TradingAccount(models.Model):
 
     # ── Identity ──────────────────────────────────────────────────────────
     id = fields.IntField(primary_key=True)
-    account_id = fields.CharField(max_length=100)          # MT5 login number
-    account_type = fields.CharField(max_length=20)         # "MAM" | "Investor"
+    account_id = fields.CharField(max_length=100)  # MT5 login number
+    account_type = fields.CharField(max_length=20)  # "MAM" | "Investor"
     account_name = fields.CharField(max_length=255)
 
     # ── Owner ─────────────────────────────────────────────────────────────
@@ -113,7 +116,7 @@ class TradingAccount(models.Model):
     is_enabled = fields.BooleanField(default=True)
     is_trading_enabled = fields.BooleanField(default=True)
     is_algo_enabled = fields.BooleanField(default=False)
-    algo_enabled = fields.BooleanField(default=False)       # legacy alias
+    algo_enabled = fields.BooleanField(default=False)  # legacy alias
     is_pending = fields.BooleanField(default=False)
 
     # ── Financial snapshot (synced from MT5) ──────────────────────────────
@@ -124,23 +127,22 @@ class TradingAccount(models.Model):
     margin_free = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     margin_level = fields.DecimalField(max_digits=12, decimal_places=2, default=0.00)
 
-
     # ── MAM / copy-trade configuration ────────────────────────────────────
     manager_allow_copy = fields.BooleanField(default=False)
     investor_allow_copy = fields.BooleanField(default=False)
     copy_trade_enabled = fields.BooleanField(default=False)
     dual_trade_enabled = fields.BooleanField(default=False)
-    copy_mode = fields.CharField(max_length=20, null=True)          # e.g. "Fixed" | "Proportional"
+    copy_mode = fields.CharField(max_length=20, null=True)  # e.g. "Fixed" | "Proportional"
     copy_factor = fields.DecimalField(max_digits=10, decimal_places=2, null=True)
     copy_multiplier_mode = fields.CharField(max_length=50, default="Fixed")
     fixed_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
     max_copy_multiplier = fields.DecimalField(max_digits=10, decimal_places=2, default=1.00)
-    multi_trade_count = fields.IntField(default=1, min_value=0)      # must be >= 0
+    multi_trade_count = fields.IntField(default=1, min_value=0)  # must be >= 0
 
     # ── Profit & risk ─────────────────────────────────────────────────────
     profit_sharing_percentage = fields.DecimalField(max_digits=5, decimal_places=2, null=True)
-    risk_level = fields.CharField(max_length=10, null=True)         # e.g. "Low" | "Med" | "High"
-    payout_frequency = fields.CharField(max_length=20, null=True)   # e.g. "Monthly"
+    risk_level = fields.CharField(max_length=10, null=True)  # e.g. "Low" | "Med" | "High"
+    payout_frequency = fields.CharField(max_length=20, null=True)  # e.g. "Monthly"
 
     # ── Lifecycle timestamps ──────────────────────────────────────────────
     status = fields.CharField(max_length=20, null=True, default="Active")
@@ -167,7 +169,6 @@ class TradingAccount(models.Model):
     def is_investor(self) -> bool:
         """True when this account belongs to an investor (follower)."""
         return self.account_type == "Investor"
-
 
 
 class PendingRequest(models.Model):
@@ -234,7 +235,9 @@ class ActivityLog(models.Model):
             details = data.pop("details")
             if isinstance(details, dict):
                 data["old_values"] = data.get("old_values") or details
-                data["module_name"] = str(details.get("module_name") or details.get("module") or "legacy")
+                data["module_name"] = str(
+                    details.get("module_name") or details.get("module") or "legacy"
+                )
             else:
                 data["module_name"] = "legacy"
                 data["old_values"] = data.get("old_values") or {"details": details}
@@ -274,6 +277,7 @@ class AdminMailMessage(models.Model):
     class Meta:
         table = "admin_mail_messages"
 
+
 class ClientDocument(models.Model):
     """Client identity and address documents."""
 
@@ -296,6 +300,7 @@ class ClientDocument(models.Model):
 
     class Meta:
         table = "client_documents"
+
 
 class ClientProfile(models.Model):
     """Client Profile model for client user personal and KYC data."""
@@ -410,11 +415,16 @@ class ClientTransaction(models.Model):
     transaction_type = fields.CharField(max_length=50)
     amount = fields.FloatField(default=0.0)
     payment_method = fields.CharField(max_length=100, default="Wire Transfer")
+    role = fields.CharField(max_length=50, null=True)
+    email = fields.CharField(max_length=255, null=True)
+    account_id_from = fields.CharField(max_length=100, null=True)
+    account_id_to = fields.CharField(max_length=100, null=True)
+    description = fields.TextField(null=True)
     status = fields.CharField(max_length=50, default="Completed")
     created_at = fields.DatetimeField(auto_now_add=True)
 
     class Meta:
-        table = "client_transactions"
+        table = "transactions"
 
 
 class ClientTicket(models.Model):
@@ -503,5 +513,3 @@ class MT5SendDedup(models.Model):
 
     class Meta:
         table = "mt5_send_dedup"
-
-
