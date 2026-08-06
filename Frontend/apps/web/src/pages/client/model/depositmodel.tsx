@@ -124,20 +124,20 @@ export default function DepositModal({
 
     setIsSubmitting(true);
     try {
+      const formData = new FormData();
+      formData.append("account_number", selectedDepositAccount);
+      formData.append("amount", cheeseAmount);
+      formData.append("payment_method", "Manual Deposit");
+      formData.append("notes", "Manual deposit submitted from deposit modal");
+      formData.append("proof_file", proofFile);
+
       const response = await fetch("/api/client/deposit", {
         method: "POST",
         credentials: "include",
         headers: {
           Accept: "application/json",
-          "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          account_number: selectedDepositAccount,
-          amount: Number(cheeseAmount),
-          payment_method: "Manual Deposit",
-          proof_name: proofFile.name,
-          notes: `Manual deposit submitted from deposit modal`,
-        }),
+        body: formData,
       });
 
       const data = await response.json().catch(() => ({}));

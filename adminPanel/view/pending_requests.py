@@ -71,8 +71,7 @@ def _requester_email(name: str) -> str:
 
 def _avatar_url(name: str) -> str:
     return (
-        "https://ui-avatars.com/api/"
-        f"?name={name.replace(' ', '+')}&background=1e3a5f&color=7dd3fc"
+        f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=1e3a5f&color=7dd3fc"
     )
 
 
@@ -152,26 +151,32 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     title = TAB_DEFAULT_TITLES[tab]
     payload = _pending_payload(request)
     request_type = _sanitize_request_type(request.request_type)
-    document_type = str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
+    document_type = (
+        str(payload.get("document_type") or payload.get("documentType") or "").strip().lower()
+    )
     bank_name = payload.get("bank_name") or payload.get("bankName") or f"{title} Bank"
-    account_holder = payload.get("account_holder") or payload.get("accountHolder") or request.client_name
-    account_number = payload.get("account_number") or payload.get("accountNumber") or f"**** {request.id:04d}"
+    account_holder = (
+        payload.get("account_holder") or payload.get("accountHolder") or request.client_name
+    )
+    account_number = (
+        payload.get("account_number") or payload.get("accountNumber") or f"**** {request.id:04d}"
+    )
     swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
     network = payload.get("network") or "USDT-TRC20"
-    wallet_address = payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
-    file_name = payload.get("file_name") or payload.get("fileName")
-    file_url = payload.get("file_url") or payload.get("fileUrl")
+    wallet_address = (
+        payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
+    )
+    file_name = payload.get("file_name") or payload.get("fileName") or payload.get("proof_name")
+    file_url = payload.get("file_url") or payload.get("fileUrl") or payload.get("proof_url")
     requested_value = request.client_name
     if request_type == "profile":
-        requested_value = (
-            payload.get("full_name")
-            or payload.get("name")
-            or request.client_name
-        )
+        requested_value = payload.get("full_name") or payload.get("name") or request.client_name
     elif request_type == "bank":
         requested_value = payload.get("bank_name") or payload.get("bankName") or request.client_name
     elif request_type == "crypto":
-        requested_value = payload.get("wallet_address") or payload.get("cryptoAddress") or request.client_name
+        requested_value = (
+            payload.get("wallet_address") or payload.get("cryptoAddress") or request.client_name
+        )
     elif request_type in {"document", "documents"}:
         requested_value = file_name or request.client_name
     return {
@@ -185,10 +190,14 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "amount": f"${request.amount:,.2f}",
         "method": TAB_DEFAULT_METHODS[tab],
         "referenceNo": f"{title[:3].upper()}-{request.id}",
-        "proofUrl": None,
+        "proofUrl": file_url,
         "availableBalance": None,
         "payoutDestination": None,
-        "documentType": "Identity Document" if document_type == "identity" else "Address Document" if document_type == "address" else title,
+        "documentType": "Identity Document"
+        if document_type == "identity"
+        else "Address Document"
+        if document_type == "address"
+        else title,
         "docNumber": f"{title[:3].upper()}-{request.id}",
         "fileName": file_name or f"{tab}_{request.id}.pdf",
         "previewUrl": file_url,
@@ -298,7 +307,9 @@ def _resolve_pending_request_id(request_id: str) -> int | None:
 async def decide_pending_request(request, request_id: str):
     pending_id = _resolve_pending_request_id(request_id)
     if pending_id is None:
-        return JsonResponse({"status": "error", "message": "Invalid pending request id"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "Invalid pending request id"}, status=400
+        )
 
     pending_request = await PendingRequest.filter(id=pending_id).first()
     if pending_request is None:
@@ -371,7 +382,9 @@ async def decide_pending_request(request, request_id: str):
                     account_number = tx.account_number
 
                     # 1. Update ClientAccount in DB
-                    acc = await ClientAccount.filter(user_id=pending_request.user_id, account_number=account_number).first()
+                    acc = await ClientAccount.filter(
+                        user_id=pending_request.user_id, account_number=account_number
+                    ).first()
                     if acc:
                         if request_type in {"deposit", "deposits"}:
                             acc.balance = float(acc.balance or 0.0) + amount
@@ -380,7 +393,9 @@ async def decide_pending_request(request, request_id: str):
                         await acc.save()
 
                     # 2. Execute MT5 operation and update TradingAccount in DB
-                    t_acc = await TradingAccount.filter(user_id=pending_request.user_id, account_id=account_number).first()
+                    t_acc = await TradingAccount.filter(
+                        user_id=pending_request.user_id, account_id=account_number
+                    ).first()
                     if not t_acc:
                         t_acc = await TradingAccount.filter(account_id=account_number).first()
 
@@ -395,8 +410,11 @@ async def decide_pending_request(request, request_id: str):
                                 mt5.withdraw_funds(mt5_login, amount, comment)
                         except Exception as exc:
                             import logging
+
                             logger = logging.getLogger(__name__)
-                            logger.error(f"[MT5] Error executing {request_type} for account {account_number}: {exc}")
+                            logger.error(
+                                f"[MT5] Error executing {request_type} for account {account_number}: {exc}"
+                            )
 
                         if request_type in {"deposit", "deposits"}:
                             t_acc.balance = float(t_acc.balance or 0.0) + amount
@@ -415,6 +433,7 @@ async def decide_pending_request(request, request_id: str):
         request_type = _sanitize_request_type(pending_request.request_type)
         if request_type in {"deposit", "deposits", "withdrawal", "withdrawals"}:
             from adminPanel.models import ClientTransaction
+
             payload = _pending_payload(pending_request)
             tx_id = payload.get("transaction_id")
             if tx_id:
@@ -427,6 +446,8 @@ async def decide_pending_request(request, request_id: str):
         {
             "status": "ok",
             "message": f"Request {decision}",
-            "request": _serialize_pending_request(pending_request, _tab_for_request_type(pending_request.request_type)),
+            "request": _serialize_pending_request(
+                pending_request, _tab_for_request_type(pending_request.request_type)
+            ),
         }
     )

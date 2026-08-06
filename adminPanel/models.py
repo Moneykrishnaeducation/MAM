@@ -1,6 +1,5 @@
 """Models for adminPanel: Users, TradingAccount (MAM + Investor unified), Pending Requests, Activity Logs, Client Profiles & Accounts."""
 
-import json
 import logging
 from typing import Any
 
@@ -420,6 +419,8 @@ class ClientTransaction(models.Model):
     account_id_from = fields.CharField(max_length=100, null=True)
     account_id_to = fields.CharField(max_length=100, null=True)
     description = fields.TextField(null=True)
+    proof_name = fields.CharField(max_length=255, null=True)
+    proof_url = fields.CharField(max_length=500, null=True)
     status = fields.CharField(max_length=50, default="Completed")
     created_at = fields.DatetimeField(auto_now_add=True)
 
