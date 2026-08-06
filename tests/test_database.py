@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 
 import pytest
 from django.conf import settings
+from django.template.loader import render_to_string
 from tortoise import Tortoise
 
 from adminPanel import crud as admin_crud
@@ -169,6 +170,32 @@ class TestAdminPanelModels:
         assert "Reset password" not in html_body
         assert "MasterPass123!" in html_body
         assert "InvestorPass123!" in html_body
+
+    async def test_investor_credentials_email_template(self):
+        """Test the investor credentials template renders the investor-specific layout."""
+        context = {
+            "user_name": "Taylor Morgan",
+            "account_type": "Investor",
+            "account_name": "Investor for MAM-001",
+            "login": "12345679",
+            "group": "INV-Group",
+            "master_password": "MasterPass456!",
+            "investor_password": "InvestorPass456!",
+            "leverage": 200,
+        }
+
+        plain_body = render_to_string("emails/investor_credentials_email.txt", context)
+        html_body = render_to_string("emails/investor_credentials_email.html", context)
+
+        assert "Investor account credentials" not in plain_body
+        assert "Taylor Morgan" in plain_body
+        assert "12345679" in plain_body
+        assert "INV-Group" in plain_body
+        assert "MasterPass456!" in plain_body
+        assert "InvestorPass456!" in plain_body
+        assert "Go to Investor Dashboard" in html_body
+        assert "MasterPass456!" in html_body
+        assert "InvestorPass456!" in html_body
 
     async def test_admin_dashboard(self):
         """Test admin dashboard summary payload and admin-only access."""

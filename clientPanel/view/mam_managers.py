@@ -3,16 +3,57 @@
 import json
 import logging
 
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
+from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _resolve_client_user_id
 
 logger = logging.getLogger(__name__)
+
+
+def _render_investor_credentials_email(*, user_name: str, login: str | int, group: str, account_name: str, leverage: int | None, master_password: str | None, investor_password: str | None) -> tuple[str, str, str]:
+    context = {
+        "user_name": user_name or "there",
+        "account_type": "Investor",
+        "account_name": account_name or "",
+        "login": str(login),
+        "group": group,
+        "leverage": leverage,
+        "master_password": master_password or "",
+        "investor_password": investor_password or "",
+    }
+    subject = "Investor account credentials"
+    plain_body = render_to_string("emails/investor_credentials_email.txt", context).strip()
+    html_body = render_to_string("emails/investor_credentials_email.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_investor_credentials_email(*, user: ClientUser, login: str | int, group: str, account_name: str, leverage: int | None, master_password: str | None = None, investor_password: str | None = None) -> None:
+    subject, plain_body, html_body = _render_investor_credentials_email(
+        user_name=user.name or user.email or "there",
+        login=login,
+        group=group,
+        account_name=account_name,
+        leverage=leverage,
+        master_password=master_password,
+        investor_password=investor_password,
+    )
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @permission_required(IsClient)
@@ -261,6 +302,19 @@ async def invest_in_manager(request):
     trading_account.mam_master_account = mam_master
     await trading_account.save()
 
+    try:
+        await _send_investor_credentials_email(
+            user=user,
+            login=result["login"],
+            group=result["group"],
+            account_name=f"Investor for {mam_master.account_name or mam_master.account_id}",
+            leverage=mam_master.leverage,
+            master_password=result.get("master_password"),
+            investor_password=result.get("investor_password"),
+        )
+    except Exception as exc:
+        logger.error(f"Failed to send investor credentials email to {user.email}: {exc}")
+
     return JsonResponse({
         "status": "ok",
         "message": f"Successfully invested with Manager {mam_master.account_id}",
@@ -268,6 +322,7 @@ async def invest_in_manager(request):
             "login": result["login"],
             "group": result["group"],
             "manager_account_id": mam_master.account_id,
+            "account_name": f"Investor for {mam_master.account_name or mam_master.account_id}",
         },
     })
 

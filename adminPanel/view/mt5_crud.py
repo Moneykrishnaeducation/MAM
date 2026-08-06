@@ -1,9 +1,18 @@
 import json
+import logging
+
+from asgiref.sync import sync_to_async
+from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount, ClientUser
+from adminPanel.mt5.services import MT5ManagerActions
+from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
+
+logger = logging.getLogger(__name__)
 
 # Helper to serialize Decimal/datetime values
 def clean_data(val):
@@ -13,6 +22,46 @@ def clean_data(val):
     if isinstance(val, Decimal):
         return float(val)
     return val
+
+
+def _render_credentials_email(*, user_name: str, account_type: str, login: str | int, group: str, account_name: str | None = None, leverage: int | None = None, master_password: str | None = None, investor_password: str | None = None) -> tuple[str, str, str]:
+    display_account_type = "MAM" if account_type.strip().lower() == "mam" else account_type.title()
+    template_prefix = "mam_credentials_email" if display_account_type == "MAM" else "investor_credentials_email"
+    context = {
+        "user_name": user_name or "there",
+        "account_type": display_account_type,
+        "account_name": account_name or "",
+        "login": str(login),
+        "group": group,
+        "leverage": leverage,
+        "master_password": master_password or "",
+        "investor_password": investor_password or "",
+    }
+    subject = f"{display_account_type} account credentials"
+    plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()
+    html_body = render_to_string(f"emails/{template_prefix}.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_credentials_email(*, user: ClientUser, account_type: str, login: str | int, group: str, account_name: str | None = None, leverage: int | None = None, master_password: str | None = None, investor_password: str | None = None) -> None:
+    subject, plain_body, html_body = _render_credentials_email(
+        user_name=user.name or user.email or "there",
+        account_type=account_type,
+        login=login,
+        group=group,
+        account_name=account_name,
+        leverage=leverage,
+        master_password=master_password,
+        investor_password=investor_password,
+    )
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=plain_body,
+        from_email=_mail_from_address(),
+        to=[user.email],
+    )
+    message.attach_alternative(html_body, "text/html")
+    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 # ================= SERVER SETTING CRUD =================
 
@@ -518,48 +567,88 @@ async def investors_list_create(request):
     elif request.method == "POST":
         try:
             body = json.loads(request.body)
-            # Default to first user if none exists
             first_user = await ClientUser.first()
             if not first_user:
                 return JsonResponse({"status": "error", "message": "No client user exists to own the Investor account"}, status=400)
 
-            # Find matching MAM master account if allocated_mam is set
             mam_master = None
-            allocated_mam = body.get("allocated_mam")
+            manager_acc = body.get("managerAccNumber") or body.get("manager_account_id") or body.get("manager_id")
+            allocated_mam = body.get("allocated_mam") or manager_acc
             if allocated_mam:
-                mam_master = await TradingAccount.filter(account_id=str(allocated_mam), account_type="MAM").first()
+                mam_master = (
+                    await TradingAccount.filter(account_id=str(allocated_mam), account_type="MAM").first()
+                    or await TradingAccount.filter(id=allocated_mam, account_type="MAM").first()
+                )
 
-            i = await TradingAccount.create(
-                account_id=body.get("account_number"),
-                account_type="Investor",
-                account_name=body.get("name", "MAM Investor"),
-                user=first_user,
-                mam_master_account=mam_master,
-                leverage=mam_master.leverage if mam_master else 100,
-                balance=float(body.get("equity", 0.0)),
-                equity=float(body.get("equity", 0.0)),
-                margin=0,
-                margin_free=0,
-                margin_level=0,
-                is_enabled=True,
-                is_trading_enabled=True,
-                is_algo_enabled=False,
-                is_pending=False,
-                manager_allow_copy=False,
-                investor_allow_copy=True,
-                copy_trade_enabled=True,
-                dual_trade_enabled=False,
-                copy_multiplier_mode="Fixed",
-                status=body.get("status", "Active"),
+            try:
+                mt5 = MT5ManagerActions()
+                if mt5.connection_error:
+                    return JsonResponse({"status": "error", "message": f"MT5 Connection failed: {mt5.connection_error}"}, status=500)
+            except Exception as exc:
+                logger.error(f"MT5 Manager init failed: {exc}")
+                return JsonResponse({"status": "error", "message": f"MT5 Connection failed: {exc}"}, status=500)
+
+            account_name = body.get("name", "MAM Investor")
+            leverage_value = mam_master.leverage if mam_master else body.get("leverage", 100)
+            try:
+                leverage = int(str(leverage_value).replace("x", ""))
+            except (ValueError, TypeError):
+                leverage = 100
+
+            investor_password = body.get("investmentPassword") or body.get("password") or body.get("investorPassword")
+            result = mt5.create_investor_account(
+                name=first_user.name,
+                email=first_user.email,
+                phone=first_user.phone or "",
+                country=first_user.country or "United States",
+                leverage=leverage,
+                master_password=None,
+                investor_password=investor_password,
+                mam_master_login=int(mam_master.account_id) if mam_master and str(mam_master.account_id).isdigit() else None,
+                initial_balance=float(body.get("equity", 0.0)),
+                allocated_mam=mam_master.id if mam_master else None,
+                user_id=first_user.id,
             )
+
+            if not result:
+                return JsonResponse({"status": "error", "message": "Failed to create investor account on MT5"}, status=500)
+
+            i = await TradingAccount.get(id=result["trading_account_id"])
+            i.account_name = account_name
+            i.user = first_user
+            if mam_master:
+                i.mam_master_account = mam_master
+                if not i.leverage:
+                    i.leverage = mam_master.leverage
+            i.status = body.get("status", i.status or "Active")
+            if "equity" in body:
+                i.balance = float(body.get("equity", 0.0))
+                i.equity = float(body.get("equity", 0.0))
+            await i.save()
+
+            try:
+                await _send_credentials_email(
+                    user=first_user,
+                    account_type="Investor",
+                    login=result["login"],
+                    group=result["group"],
+                    account_name=account_name,
+                    leverage=leverage,
+                    master_password=result.get("master_password"),
+                    investor_password=result.get("investor_password"),
+                )
+            except Exception as exc:
+                logger.error(f"Failed to send investor credentials email to {first_user.email}: {exc}")
+
             return JsonResponse({
                 "status": "ok",
                 "message": "MAM Investor created successfully",
                 "investor": {
                     "id": i.id,
                     "name": i.account_name,
-                    "account_number": i.account_id,
+                    "account_number": result["login"],
                     "status": i.status,
+                    "allocated_mam": mam_master.account_id if mam_master else None,
                 }
             }, status=201)
         except Exception as e:

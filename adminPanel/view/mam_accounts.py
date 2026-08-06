@@ -30,6 +30,7 @@ def _render_credentials_email_body(
     leverage: int | None = None,
 ) -> tuple[str, str, str]:
     display_account_type = "MAM" if account_type.strip().lower() == "mam" else account_type.title()
+    template_prefix = "mam_credentials_email" if display_account_type == "MAM" else "investor_credentials_email"
     context = {
         "user_name": user_name or "there",
         "account_type": display_account_type,
@@ -42,8 +43,8 @@ def _render_credentials_email_body(
     }
 
     subject = f"{display_account_type} account credentials"
-    plain_body = render_to_string("emails/mam_credentials_email.txt", context).strip()
-    html_body = render_to_string("emails/mam_credentials_email.html", context)
+    plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()
+    html_body = render_to_string(f"emails/{template_prefix}.html", context)
     return subject, plain_body, html_body
 
 
