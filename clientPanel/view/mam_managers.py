@@ -129,7 +129,10 @@ async def list_mam_managers(request):
     page = _parse_positive_int(raw_page, 1)
     per_page = _parse_positive_int(raw_per_page, 10)
 
-    managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user").all()
+    managers = await TradingAccount.filter(
+        account_type="MAM",
+        is_enabled=True,
+    ).filter(status__iexact="Active").prefetch_related("user").all()
 
     # Pre-count investor accounts linked per master manager account
     investor_accounts = await TradingAccount.filter(
@@ -267,3 +270,86 @@ async def invest_in_manager(request):
             "manager_account_id": mam_master.account_id,
         },
     })
+
+
+@permission_required(IsClient)
+async def get_manager_investors(request, account_id: str):
+    """Fetch assigned investors list for a specific MAM master manager account owned by the client."""
+    await ensure_db_initialized()
+    user_id = await _resolve_client_user_id(request)
+
+    mam_master = (
+        await TradingAccount.filter(account_id=str(account_id), account_type="MAM", user_id=user_id).first()
+        or await TradingAccount.filter(id=account_id, account_type="MAM", user_id=user_id).first()
+    )
+    if not mam_master:
+        return _error(f"MAM Master account {account_id} not found or access denied", status=404)
+
+    investors = await TradingAccount.filter(mam_master_account=mam_master).prefetch_related("user").all()
+    investor_data = [
+        {
+            "id": f"INV-{inv.account_id}",
+            "accountId": inv.account_id,
+            "name": inv.user.name if inv.user else inv.account_name,
+            "email": inv.user.email if inv.user else "",
+            "invested": f"${float(inv.equity):,.2f}",
+            "profit": f"${float(inv.balance):,.2f}",
+            "status": inv.status or "Active",
+        }
+        for inv in investors
+    ]
+
+    return JsonResponse({
+        "status": "ok",
+        "mam_account_id": mam_master.account_id,
+        "investors": investor_data,
+    })
+
+
+@csrf_exempt
+@permission_required(IsClient)
+async def toggle_manager_status(request, account_id: str):
+    """Activate or deactivate a MAM manager account to show or hide it in the available list."""
+    if request.method != "POST":
+        return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
+    user_id = await _resolve_client_user_id(request)
+
+    mam_master = (
+        await TradingAccount.filter(account_id=str(account_id), account_type="MAM", user_id=user_id).first()
+        or await TradingAccount.filter(id=account_id, account_type="MAM", user_id=user_id).first()
+    )
+    if not mam_master:
+        return _error(f"MAM Master account {account_id} not found or access denied", status=404)
+
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except Exception:
+        body = {}
+
+    action = body.get("action")  # "activate" or "deactivate" or toggle if omitted
+    if action == "activate":
+        mam_master.status = "Active"
+        mam_master.is_enabled = True
+    elif action == "deactivate":
+        mam_master.status = "Inactive"
+        mam_master.is_enabled = False
+    else:
+        # Toggle
+        if str(mam_master.status).strip().lower() == "active":
+            mam_master.status = "Inactive"
+            mam_master.is_enabled = False
+        else:
+            mam_master.status = "Active"
+            mam_master.is_enabled = True
+
+    await mam_master.save()
+
+    return JsonResponse({
+        "status": "ok",
+        "message": f"MAM Manager account {mam_master.account_id} is now {mam_master.status}",
+        "account_status": mam_master.status,
+        "is_enabled": mam_master.is_enabled,
+    })
+

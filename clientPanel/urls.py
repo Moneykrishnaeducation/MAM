@@ -14,7 +14,13 @@ from clientPanel.view.investments import (
     start_copying_api,
 )
 from clientPanel.view.logout import logout_client
-from clientPanel.view.mam_managers import invest_in_manager, list_mam_managers, list_my_mam_managers
+from clientPanel.view.mam_managers import (
+    get_manager_investors,
+    invest_in_manager,
+    list_mam_managers,
+    list_my_mam_managers,
+    toggle_manager_status,
+)
 from clientPanel.view.OpenPositions import get_client_open_positions
 from clientPanel.view.payment_details import client_payment_details
 from clientPanel.view.profile import get_client_profile
@@ -45,6 +51,8 @@ urlpatterns = [
     path("mam-managers", list_mam_managers, name="mam-managers-list"),
     path("my-mam-managers", list_my_mam_managers, name="my-mam-managers-list"),
     path("mam-managers/invest", invest_in_manager, name="mam-managers-invest"),
+    path("mam-managers/<str:account_id>/investors", get_manager_investors, name="mam-manager-investors"),
+    path("mam-managers/<str:account_id>/status", toggle_manager_status, name="mam-manager-status"),
     path("invest", invest_in_manager, name="mam-invest"),
     path("my-investments", get_client_investments, name="my-investments"),
     path("my-investments/pause", pause_copying_api, name="pause-copying"),

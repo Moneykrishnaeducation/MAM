@@ -113,6 +113,61 @@ export default function ClientManagerPage() {
   const [positionsError, setPositionsError] = useState<string | null>(null);
   const [mt5Status, setMt5Status] = useState<string>('offline');
 
+  const [popupInvestors, setPopupInvestors] = useState<any[]>([]);
+  const [isPopupInvestorsLoading, setIsPopupInvestorsLoading] = useState<boolean>(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
+
+  const fetchManagerInvestorsList = async (accountId: string) => {
+    setIsPopupInvestorsLoading(true);
+    try {
+      const res = await fetch(`/api/client/mam-managers/${accountId}/investors`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPopupInvestors(Array.isArray(data.investors) ? data.investors : []);
+      }
+    } catch {
+      // Fallback to activeManager.investorsList
+    } finally {
+      setIsPopupInvestorsLoading(false);
+    }
+  };
+
+  const handleOpenInvestorListModal = () => {
+    if (activeManager?.accountId) {
+      fetchManagerInvestorsList(activeManager.accountId);
+    }
+    setShowInvestorListModal(true);
+  };
+
+  const handleToggleStatus = async () => {
+    if (!activeManager?.accountId) return;
+    setIsTogglingStatus(true);
+    try {
+      const isCurrentlyActive = String(activeManager.status).toLowerCase() === 'active';
+      const action = isCurrentlyActive ? 'deactivate' : 'activate';
+      const res = await fetch(`/api/client/mam-managers/${activeManager.accountId}/status`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updatedStatus = data.account_status || (isCurrentlyActive ? 'Inactive' : 'Active');
+        setAllManagers((prev) =>
+          prev.map((m) => (m.accountId === activeManager.accountId ? { ...m, status: updatedStatus } : m))
+        );
+        setSelectedManager((prev) => (prev ? { ...prev, status: updatedStatus } : null));
+      }
+    } catch {
+      // Handle error
+    } finally {
+      setIsTogglingStatus(false);
+    }
+  };
+
   // 1. Fetch static client dashboard / investments on mount
   useEffect(() => {
     let active = true;
@@ -566,7 +621,7 @@ export default function ClientManagerPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setShowInvestorListModal(true)}
+                      onClick={handleOpenInvestorListModal}
                       className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
                     >
                       <Users size={16} /> Investor List
@@ -585,8 +640,22 @@ export default function ClientManagerPage() {
                     >
                       <TrendingUp size={16} /> Performance
                     </button>
-                    <button className="w-full py-3 rounded-xl bg-[#ef4444] hover:bg-[#dc2626] text-white font-extrabold transition-colors text-sm flex items-center justify-center gap-2">
-                      <RefreshCw size={16} /> Deactivate
+                    <button
+                      type="button"
+                      onClick={handleToggleStatus}
+                      disabled={isTogglingStatus}
+                      className={`w-full py-3 rounded-xl text-white font-extrabold transition-colors text-sm flex items-center justify-center gap-2 ${
+                        String(activeManager?.status).toLowerCase() === 'active'
+                          ? 'bg-[#ef4444] hover:bg-[#dc2626]'
+                          : 'bg-emerald-600 hover:bg-emerald-700'
+                      }`}
+                    >
+                      <RefreshCw size={16} className={isTogglingStatus ? 'animate-spin' : ''} />
+                      {isTogglingStatus
+                        ? 'Updating...'
+                        : String(activeManager?.status).toLowerCase() === 'active'
+                        ? 'Deactivate'
+                        : 'Activate'}
                     </button>
                   </div>
                 </div>
@@ -1019,16 +1088,21 @@ export default function ClientManagerPage() {
               </button>
             </div>
             <div className="p-6">
-              {activeManager.investorsList?.length ? (
+              {isPopupInvestorsLoading ? (
+                <div className="flex flex-col items-center justify-center p-12 text-center">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-amber-400 rounded-full animate-spin mb-3" />
+                  <p className={`font-bold text-xs ${softTextClass}`}>Loading investors list...</p>
+                </div>
+              ) : (popupInvestors.length ? popupInvestors : activeManager.investorsList)?.length ? (
                 <div className="grid gap-4">
-                  {activeManager.investorsList.map((inv : any) => (
-                    <div key={inv.id} className={`rounded-2xl border p-4 bg-white/[0.02] ${borderMutedClass} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
+                  {(popupInvestors.length ? popupInvestors : activeManager.investorsList).map((inv: any) => (
+                    <div key={inv.id || inv.accountId} className={`rounded-2xl border p-4 bg-white/[0.02] ${borderMutedClass} flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3`}>
                       <div>
                         <div className="text-sm font-black text-white">{inv.name}</div>
-                        <div className={`text-xs mt-1 ${softTextClass}`}>ID: {inv.id} · {inv.invested || 'Active'}</div>
+                        <div className={`text-xs mt-1 ${softTextClass}`}>Account #{inv.accountId || inv.id} · {inv.invested || 'Active'}</div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="rounded-full bg-blue-900/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-blue-100 border border-blue-500/20">{inv.profit}</span>
+                        <span className="rounded-full bg-blue-900/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.18em] text-blue-100 border border-blue-500/20">{inv.profit || inv.equity}</span>
                         <span className="text-xs text-slate-300">{inv.email}</span>
                       </div>
                     </div>
