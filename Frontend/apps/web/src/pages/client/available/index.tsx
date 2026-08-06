@@ -92,32 +92,19 @@ export default function ClientAvailablePage() {
     growth: `${manager.investorsCount} linked`,
   });
 
-  // 1. Load static investments on mount
+  // Load only available MAM managers on mount & page/query changes
   useEffect(() => {
     let active = true;
-    const loadStaticData = async () => {
-      const investmentsResponse = await fetchClientInvestments();
-      if (!active) return;
-      setClientInvestments(Array.isArray(investmentsResponse) ? investmentsResponse : []);
-    };
-    loadStaticData();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // 2. Load paginated managers when page, limit, or query changes
-  useEffect(() => {
-    let active = true;
-    const loadManagers = async () => {
+    const loadAllData = async () => {
       setIsPageLoading(true);
       try {
         const res = await fetchAdminManagers(currentPage, perPage, query);
+
         if (!active) return;
 
         if (res && Array.isArray(res.managers)) {
-          const liveManagers = buildManagerRows(res.managers, clientInvestments, null);
-          const assignedManager = pickAssignedManager(liveManagers, clientInvestments) || DEFAULT_MANAGER_ROW;
+          const liveManagers = buildManagerRows(res.managers, [], null);
+          const assignedManager = pickAssignedManager(liveManagers, []) || DEFAULT_MANAGER_ROW;
 
           setAllManagers(liveManagers);
           setManagerInfo(assignedManager);
@@ -152,11 +139,11 @@ export default function ClientAvailablePage() {
       }
     };
 
-    loadManagers();
+    loadAllData();
     return () => {
       active = false;
     };
-  }, [currentPage, perPage, query, clientInvestments]);
+  }, [currentPage, perPage, query]);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
