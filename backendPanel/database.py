@@ -4,9 +4,9 @@ from typing import Any
 
 from tortoise import Tortoise
 
-warnings.filterwarnings("ignore", message=".*Tortoise connection.*")
-
 from backendPanel.settings import get_settings
+
+warnings.filterwarnings("ignore", message=".*Tortoise connection.*")
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -148,7 +148,7 @@ async def auto_sync_db_schema() -> None:
         )
         existing_cols = {r["column_name"] for r in res[1]}
         if {"client_profile_id", "user_id"}.issubset(existing_cols):
-            await conn.execute_query(
+            res_update = await conn.execute_query(
                 """
                 UPDATE client_documents AS cd
                 SET user_id = cp.user_id
@@ -158,9 +158,10 @@ async def auto_sync_db_schema() -> None:
                   AND cp.user_id IS NOT NULL
                 """
             )
-            logger.info(
-                "[DB AUTO-SYNC] Backfilled client_documents.user_id from client_profile_id."
-            )
+            if res_update[0] > 0:
+                logger.info(
+                    f"[DB AUTO-SYNC] Backfilled {res_update[0]} client_documents.user_id row(s)."
+                )
     except Exception as e:
         logger.warning(f"[DB AUTO-SYNC] Warning backfilling client_documents.user_id: {e}")
 
@@ -170,20 +171,20 @@ async def auto_sync_db_schema() -> None:
         )
         existing_cols = {r["column_name"] for r in res[1]}
         if "user_id" in existing_cols:
-            await conn.execute_query(
-                'CREATE INDEX IF NOT EXISTS "admin_activity_logs_user_id_idx" ON "admin_activity_logs" ("user_id");'
+            check_idx = await conn.execute_query(
+                "SELECT 1 FROM pg_indexes WHERE tablename='admin_activity_logs' AND indexname='admin_activity_logs_user_id_idx'"
             )
-            logger.info("[DB AUTO-SYNC] Ensured index on admin_activity_logs.user_id.")
+            if not check_idx[1]:
+                await conn.execute_query(
+                    'CREATE INDEX IF NOT EXISTS "admin_activity_logs_user_id_idx" ON "admin_activity_logs" ("user_id");'
+                )
+                logger.info("[DB AUTO-SYNC] Created index on admin_activity_logs.user_id.")
     except Exception as e:
         logger.warning(f"[DB AUTO-SYNC] Warning creating admin_activity_logs.user_id index: {e}")
 
     if modified_count > 0:
         logger.info(
             f"[DB AUTO-SYNC] Schema sync complete. Applied {modified_count} database modification(s)."
-        )
-    else:
-        logger.info(
-            "[DB AUTO-SYNC] Schema sync complete. Database tables and columns are up to date."
         )
 
 

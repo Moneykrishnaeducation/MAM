@@ -116,11 +116,7 @@ export default function ClientAvailablePage() {
         if (!active) return;
 
         if (res && Array.isArray(res.managers)) {
-          const dashboardResponse = await fetchClientDashboard();
-          if (!active) return;
-          const profile = dashboardResponse?.client || null;
-
-          const liveManagers = buildManagerRows(res.managers, clientInvestments, profile);
+          const liveManagers = buildManagerRows(res.managers, clientInvestments, null);
           const assignedManager = pickAssignedManager(liveManagers, clientInvestments) || DEFAULT_MANAGER_ROW;
 
           setAllManagers(liveManagers);

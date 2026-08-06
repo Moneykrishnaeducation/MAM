@@ -171,59 +171,33 @@ export default function ClientManagerPage() {
     }
   };
 
-  // 1. Fetch static client dashboard / investments on mount
+  // Fetch only my-mam-managers for the My Manager page
   useEffect(() => {
     let active = true;
-    const loadStaticData = async () => {
-      const [dashboardResponse, investmentsResponse] = await Promise.all([
-        fetchClientDashboard(),
-        fetchClientInvestments(),
-      ]);
-      if (!active) return;
-
-      const dashboard = dashboardResponse || null;
-      const account = dashboard?.account || null;
-      const investments = Array.isArray(investmentsResponse) ? investmentsResponse : [];
-      setClientAccount(account);
-      setClientInvestments(investments);
-    };
-
-    loadStaticData();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // 2. Fetch managers when pagination params or query changes
-  useEffect(() => {
-    let active = true;
-    const loadManagers = async () => {
+    const loadAllData = async () => {
       setIsPageLoading(true);
       try {
-        const res = await fetchAdminManagers(currentPage, perPage, query);
+        const managersRes = await fetchAdminManagers(currentPage, perPage, query);
+
         if (!active) return;
 
-        if (res && Array.isArray(res.managers)) {
-          const dashboardResponse = await fetchClientDashboard();
-          if (!active) return;
-          const profile = dashboardResponse?.client || null;
-
-          const liveManagers = buildManagerRows(res.managers, clientInvestments, profile);
-          const assignedManager = pickAssignedManager(liveManagers, clientInvestments) || DEFAULT_MANAGER_ROW;
+        if (managersRes && Array.isArray(managersRes.managers)) {
+          const liveManagers = buildManagerRows(managersRes.managers, [], null);
+          const assignedManager = pickAssignedManager(liveManagers, []) || DEFAULT_MANAGER_ROW;
 
           setAllManagers(liveManagers);
           setManagerInfo(assignedManager);
           setPagination({
-            page: Number(res.pagination?.page ?? currentPage),
-            perPage: Number(res.pagination?.per_page ?? perPage),
-            total: Number(res.pagination?.total ?? liveManagers.length),
-            totalPages: Number(res.pagination?.total_pages ?? 1),
-            hasNext: Boolean(res.pagination?.has_next),
-            hasPrevious: Boolean(res.pagination?.has_previous),
+            page: Number(managersRes.pagination?.page ?? currentPage),
+            perPage: Number(managersRes.pagination?.per_page ?? perPage),
+            total: Number(managersRes.pagination?.total ?? liveManagers.length),
+            totalPages: Number(managersRes.pagination?.total_pages ?? 1),
+            hasNext: Boolean(managersRes.pagination?.has_next),
+            hasPrevious: Boolean(managersRes.pagination?.has_previous),
           });
         }
       } catch {
-        // Fallback
+        // Fallback error handling
       } finally {
         if (active) {
           setIsPageLoading(false);
@@ -231,11 +205,11 @@ export default function ClientManagerPage() {
       }
     };
 
-    loadManagers();
+    loadAllData();
     return () => {
       active = false;
     };
-  }, [currentPage, perPage, query, clientInvestments]);
+  }, [currentPage, perPage, query]);
 
   const panelClass = isDarkMode
     ? 'border-slate-800 bg-slate-900 shadow-xl'
