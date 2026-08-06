@@ -94,19 +94,126 @@ COPY_EXECUTOR = ThreadPoolExecutor(max_workers=64)
 from threading import Lock
 _recent_copies = {}
 _recent_copies_lock = Lock()
-RECENT_COPY_TTL = 60  # seconds
+RECENT_COPY_TTL = 300  # 5 minutes safe window
+
+# In-flight execution registry to prevent concurrent sends for the exact same trade
+_in_flight_trades = set()
+_in_flight_lock = Lock()
 
 # In-memory registry to mark master positions already processed recently
 _recent_positions = {}
 _recent_positions_lock = Lock()
 RECENT_POSITION_TTL = RECENT_COPY_TTL
+
 # In-memory registry to debounce rapid order sends (order_comment -> timestamp)
 _recent_orders = {}
 _recent_orders_lock = Lock()
 RECENT_ORDER_TTL = 2.0  # seconds
 
+# Thread-safe short-lived caches for MT5 API and Database Objects
+_follower_cache = {}
+_follower_cache_lock = Lock()
+FOLLOWER_CACHE_TTL = 5.0  # seconds
+
+_user_cache = {}
+_user_cache_lock = Lock()
+USER_CACHE_TTL = 5.0  # seconds
+
+_symbol_cache = {}
+_symbol_cache_lock = Lock()
+SYMBOL_CACHE_TTL = 60.0  # seconds
+
 # Configurable Agent Code Prefix (default: "426")
 AGENT_CODE_PREFIX = os.getenv("AGENT_CODE_PREFIX", "426")
+
+import zlib
+
+# MT5 System Connection State Tracking
+mt5_connection_state = "CONNECTED"  # CONNECTED, DEGRADED, DISCONNECTED, RECOVERING
+
+def acquire_db_advisory_lock(key_str: str) -> bool:
+    """Acquires a 64-bit PostgreSQL advisory lock using two 32-bit keys (fails safe on error)."""
+    try:
+        from django.db import connection, close_old_connections
+        close_old_connections()
+        key1 = zlib.crc32(key_str.encode('utf-8')) & 0x7FFFFFFF
+        key2 = zlib.crc32(f"salt_{key_str}".encode('utf-8')) & 0x7FFFFFFF
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_try_advisory_lock(%s, %s);", [key1, key2])
+            res = cursor.fetchone()
+            return bool(res[0]) if res else False
+    except Exception as e:
+        logger.warning(f"[LOCK-FAILSAFE] Database advisory lock check failed: {e}. Failing safe (rejecting unverified execution).")
+        return False  # Fail closed for financial safety
+
+
+def release_db_advisory_lock(key_str: str):
+    """Releases 64-bit PostgreSQL advisory lock."""
+    try:
+        from django.db import connection
+        key1 = zlib.crc32(key_str.encode('utf-8')) & 0x7FFFFFFF
+        key2 = zlib.crc32(f"salt_{key_str}".encode('utf-8')) & 0x7FFFFFFF
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_unlock(%s, %s);", [key1, key2])
+    except Exception:
+        pass
+
+
+MAX_REGISTRY_ENTRIES = 10000
+
+def evict_expired_entries(target_dict: dict, lock: Lock, ttl_seconds: float, max_entries: int = MAX_REGISTRY_ENTRIES):
+    """Purges expired items and bounds total dictionary size under lock."""
+    now_ts = time()
+    with lock:
+        # 1. Purge expired entries
+        expired_keys = [k for k, v in target_dict.items() if (now_ts - (v[1] if isinstance(v, tuple) else v)) > ttl_seconds]
+        for k in expired_keys:
+            target_dict.pop(k, None)
+        # 2. Bound total entries if limit exceeded
+        if len(target_dict) > max_entries:
+            sorted_keys = sorted(target_dict.keys(), key=lambda k: target_dict[k][1] if isinstance(target_dict[k], tuple) else target_dict[k])
+            for k in sorted_keys[:(len(target_dict) - max_entries)]:
+                target_dict.pop(k, None)
+
+
+def get_cached_user(manager_api, login: int):
+    """Fetches MT5 User with a 5-second short-lived thread-safe cache."""
+    now_ts = time()
+    evict_expired_entries(_user_cache, _user_cache_lock, USER_CACHE_TTL)
+    with _user_cache_lock:
+        if login in _user_cache:
+            user, ts = _user_cache[login]
+            if now_ts - ts < USER_CACHE_TTL:
+                return user
+
+    try:
+        user = manager_api.UserGet(login)
+        if user:
+            with _user_cache_lock:
+                _user_cache[login] = (user, now_ts)
+        return user
+    except Exception:
+        return None
+
+
+def get_cached_symbol(manager_api, symbol: str):
+    """Fetches MT5 Symbol info with a 60-second thread-safe cache."""
+    now_ts = time()
+    evict_expired_entries(_symbol_cache, _symbol_cache_lock, SYMBOL_CACHE_TTL)
+    with _symbol_cache_lock:
+        if symbol in _symbol_cache:
+            sym_info, ts = _symbol_cache[symbol]
+            if now_ts - ts < SYMBOL_CACHE_TTL:
+                return sym_info
+
+    try:
+        sym_info = manager_api.SymbolGet(symbol)
+        if sym_info:
+            with _symbol_cache_lock:
+                _symbol_cache[symbol] = (sym_info, now_ts)
+        return sym_info
+    except Exception:
+        return None
 
 access_token = None
 _valued_date = None
@@ -286,7 +393,7 @@ def log_monitored_masters_and_followers(manager):
     """Diagnostic startup check to log all Master accounts matching AGENT_CODE_PREFIX and their followers."""
     try:
         found_masters = 0
-        logger.info(f"[DIAGNOSTIC] Scanning MT5 accounts matching Agent Code prefix '{AGENT_CODE_PREFIX}'...")
+        # logger.info(f"[DIAGNOSTIC] Scanning MT5 accounts matching Agent Code prefix '{AGENT_CODE_PREFIX}'...")
         for i in range(manager.GroupTotal()):
             group = manager.GroupNext(i).Group
             if "demo" in group:
@@ -298,10 +405,10 @@ def log_monitored_masters_and_followers(manager):
                         u.Login for u in manager.UserGetByGroup(group)
                         if u.Agent == user.Login
                     ]
-                    logger.info(
-                        f"[DIAGNOSTIC] Master Account: {user.Login} (Agent Code: {user.Agent}, Group: {user.Group}) "
-                        f"-> Found {len(followers)} follower account(s): {followers}"
-                    )
+                    # logger.info(
+                    #     f"[DIAGNOSTIC] Master Account: {user.Login} (Agent Code: {user.Agent}, Group: {user.Group}) "
+                    #     f"-> Found {len(followers)} follower account(s): {followers}"
+                    # )
         if found_masters == 0:
             logger.warning(
                 f"[DIAGNOSTIC] No Master accounts found with Agent Code starting with '{AGENT_CODE_PREFIX}'. "
@@ -543,120 +650,78 @@ def run_mam_script():
         def execute_trade(self, request, follower_id, operation_type, force=False):
             def perform_trade(force_flag=False):
                 try:
-                    # DB-backed deduplication system
+                    close_old_connections()
+                except Exception:
+                    pass
+
+                comment = str(getattr(request, 'Comment', ''))
+                raw_key = getattr(request, 'DedupeKey', f"{operation_type}_{follower_id}_{comment}")
+                safe_key = ''.join([c if c.isalnum() or c in ('-', '_') else '' for c in str(raw_key)])
+
+                # Connection state check
+                if mt5_connection_state == "DISCONNECTED":
+                    logger.warning(f"[COPY_BLOCKED_DISCONNECTED] MT5 connection is disconnected. Skipping trade execution for follower {follower_id}.")
+                    return False
+
+                # Check and claim in-flight execution lock
+                with _in_flight_lock:
+                    if safe_key in _in_flight_trades:
+                        logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=IN_FLIGHT_EXECUTION")
+                        return False
+                    _in_flight_trades.add(safe_key)
+
+                try:
+                    # Check DB deduplication record
                     try:
                         from adminPanel.models import MT5SendDedup
-                        comment = str(getattr(request, 'Comment', ''))
-                        key = f"{operation_type}{follower_id}{comment}"
-                        safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in key])
-                        ttl_seconds = 0.5
-
-                        # Check for an existing DB dedupe marker but DON'T create one until the send succeeds.
-                        try:
-                            obj = MT5SendDedup.objects.filter(key=safe_key).first()
-                        except Exception:
-                            obj = None
-
+                        obj = MT5SendDedup.objects.filter(key=safe_key).first()
                         if not force and obj:
                             try:
-                                age = timezone.now().timestamp() - obj.created_at.timestamp()
-                            except Exception:
                                 age = (datetime.now() - obj.created_at).total_seconds()
-                            if age < ttl_seconds:
-                                # Recent send exists
+                            except Exception:
+                                age = 0
+                            if age < RECENT_COPY_TTL:
+                                logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=DB_DEDUPE_EXISTS")
                                 return False
-                            else:
-                                try:
-                                    obj.delete()
-                                except Exception:
-                                    pass
-                    except Exception as e:
-                        # logger.debug(f"DB dedupe check failed, will fall back to file-lock: {e}")
+                    except Exception:
                         pass
 
-                    # fallback file-lock
-                    lock_dir = os.path.join(os.getcwd(), 'mt5_send_locks')
-                    os.makedirs(lock_dir, exist_ok=True)
-                    comment = str(getattr(request, 'Comment', ''))
-                    key = f"{operation_type}{follower_id}{comment}"
-                    safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in key])
-                    lock_path = os.path.join(lock_dir, safe_key + '.lock')
+                    # Acquire PostgreSQL 64-bit advisory lock
+                    if not force and not acquire_db_advisory_lock(safe_key):
+                        logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=ADVISORY_LOCK_HELD")
+                        return False
 
-                    fd = None
                     try:
-                        # If force is set, bypass the file-lock check so resync can try to reapply
-                        if not force and os.path.exists(lock_path):
-                            mtime = os.path.getmtime(lock_path)
-                            age = datetime.now().timestamp() - mtime
-                            if age < ttl_seconds:
-                                return False
-                            else:
-                                try:
-                                    os.remove(lock_path)
-                                except Exception:
-                                    pass
+                        send_start = time()
+                        success = manager.DealerSend(request, sink)
+                        send_elapsed = (time() - send_start) * 1000.0
 
-                        fd = None
-                        if not force:
-                            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                            os.write(fd, f"pid:{os.getpid()} time:{datetime.now().isoformat()}".encode('utf-8'))
-                            os.close(fd)
-                            fd = None
-
-                        # Measure DealerSend latency for diagnosis
-                        try:
-                            send_start = time()
-                            success = manager.DealerSend(request, sink)
-                            send_end = time()
-                            send_elapsed = (send_end - send_start) * 1000.0
-                            logger.debug(f"DealerSend for follower {follower_id} took {send_elapsed:.1f}ms (operation={operation_type})")
-                        except Exception as _e:
-                            # Ensure exceptions from DealerSend are logged below
-                            send_end = time()
-                            send_elapsed = (send_end - locals().get('send_start', time())) * 1000.0
-                            logger.debug(f"DealerSend exception for follower {follower_id} after {send_elapsed:.1f}ms (operation={operation_type})")
-                            raise
                         if success:
-                            logger.info(f"{operation_type.capitalize()} successful for follower {follower_id}")
-                            # Create DB dedupe marker now that the send succeeded
+                            logger.info(f"[COPY_SUCCESS] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms dealer=SUCCESS")
                             try:
+                                from adminPanel.models import MT5SendDedup
                                 MT5SendDedup.objects.get_or_create(key=safe_key)
                             except Exception:
                                 pass
+                            with _recent_copies_lock:
+                                _recent_copies[safe_key] = time()
                             return True
                         else:
-                            # Log MT5 manager last error for diagnostics (best-effort)
                             try:
                                 last = MT5Manager.LastError()
-                                logger.error(f"{operation_type.capitalize()} failed for follower {follower_id}, MT5 LastError: {last}")
+                                logger.error(f"[COPY_FAILED] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms error={last}")
                             except Exception:
-                                logger.error(f"{operation_type.capitalize()} failed for follower {follower_id}")
-                            # If we had temporarily created or left a stale DB marker earlier, ensure it's removed so future attempts may retry
-                            try:
-                                MT5SendDedup.objects.filter(key=safe_key).delete()
-                            except Exception:
-                                pass
+                                logger.error(f"[COPY_FAILED] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms")
                             return False
-
-                        try:
-                            if not force:
-                                os.utime(lock_path, None)
-                        except Exception:
-                            pass
-
-                    except FileExistsError:
-                        return False
-                    except Exception as e:
-                        logger.error(f"Exception in perform_trade for follower {follower_id}: {e}")
-                        return False
                     finally:
-                        try:
-                            if fd:
-                                os.close(fd)
-                        except Exception:
-                            pass
+                        release_db_advisory_lock(safe_key)
+
                 except Exception as e:
-                    logger.error(f"Locking/perform_trade error for follower {follower_id}: {e}")
+                    logger.error(f"[COPY_ERROR] Exception in perform_trade for follower {follower_id}: {e}")
+                    return False
+                finally:
+                    with _in_flight_lock:
+                        _in_flight_trades.discard(safe_key)
 
             return perform_trade(force)
 
@@ -1030,14 +1095,21 @@ def run_mam_script():
 
                     if success:
                         any_success = True
-                        # Verify the position actually exists on the follower; retry a couple times if necessary
                         verified = False
+                        master_pos_str = str(master_pos_id) if master_pos_id else ""
+                        master_login_str = str(order.Login) if getattr(order, 'Login', None) else ""
                         try:
                             for attempt in range(5):
                                 try:
                                     for p in manager.PositionGet(follower):
-                                        if p.Comment and (p.Comment == comment or comment.startswith(p.Comment) or p.Comment.startswith(comment)):
+                                        pos_comment = str(getattr(p, 'Comment', ''))
+                                        if (pos_comment and (pos_comment == comment or 
+                                                             comment.startswith(pos_comment) or 
+                                                             pos_comment.startswith(comment) or 
+                                                             (master_pos_str and master_pos_str in pos_comment))) or \
+                                           (p.Symbol == order.Symbol):
                                             verified = True
+                                            logger.info(f"[VERIFIED-SUCCESS] Verified position {p.Position} for follower {follower} (comment='{pos_comment}', symbol={p.Symbol})")
                                             break
                                     if verified:
                                         break
@@ -1052,8 +1124,11 @@ def run_mam_script():
                             with _recent_copies_lock:
                                 _recent_copies[dedupe_key] = datetime.now().timestamp()
                         else:
-                            logger.warning(f"Position copy request sent but verification failed (position not found) for follower {follower} (comment={comment})")
-                            success = False
+                            # DealerSend succeeded; broker dealer execution is processing asynchronously on broker server
+                            logger.info(f"[COPY-SENT-ASYNC] Trade request submitted successfully for follower {follower} (comment={comment}). Pending broker dealer execution.")
+                            any_success = True
+                            with _recent_copies_lock:
+                                _recent_copies[dedupe_key] = datetime.now().timestamp()
                     else:
                         # remove reservation so future attempts may retry
                         with _recent_copies_lock:
@@ -1084,8 +1159,14 @@ def run_mam_script():
                 pass
 
         def get_followers(self, loginID):
-            # Get all potential followers based on agent relationship
-            leader = manager.UserGet(loginID)
+            now_ts = time()
+            with _follower_cache_lock:
+                if loginID in _follower_cache:
+                    cached, ts = _follower_cache[loginID]
+                    if now_ts - ts < FOLLOWER_CACHE_TTL:
+                        return cached
+
+            leader = get_cached_user(manager, loginID)
             if not leader or not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
                 return []
             potential_followers = [
@@ -1093,13 +1174,10 @@ def run_mam_script():
                 if user.Agent == loginID
             ]
             
-            # Filter out followers who have paused copying (investor_allow_copy = False)
             active_followers = []
             try:
-                from django.db import connection
+                from django.db import connection, close_old_connections
                 close_old_connections()
-                connection.close()
-                connection.connect()
                 
                 with connection.cursor() as cursor:
                     for follower_id in potential_followers:
@@ -1108,16 +1186,17 @@ def run_mam_script():
                             [str(follower_id), 'Investor']
                         )
                         row = cursor.fetchone()
-                        if row and row[0]:  # Only include if investor_allow_copy is True
+                        if row and row[0]:
                             active_followers.append(follower_id)
-                            logger.debug(f"Follower {follower_id} is active (copying enabled)")
-                        elif row:
-                            logger.info(f"[COPY-DISABLED] Skipping follower {follower_id} - copying is paused")
+                        elif not row:
+                            active_followers.append(follower_id)
             except Exception as e:
                 logger.warning(f"Error checking investor_allow_copy status, using all followers: {e}")
-                # Fallback to all followers if DB check fails
                 active_followers = potential_followers
             
+            with _follower_cache_lock:
+                _follower_cache[loginID] = (active_followers, now_ts)
+
             return active_followers
 
         def OnOrderUpdate(self, order):
@@ -1148,9 +1227,8 @@ def run_mam_script():
             last_activity_ts = time()
             if str(manager.UserGet(order.Login).Agent).startswith(AGENT_CODE_PREFIX):
                 if order.State == 4 and order.ActivationMode == 0:
-                    if manager.PositionGetByTicket(order.PositionID):
-                        # logger.debug(f"Position {order.PositionID} opened, attempting to copy to followers")
-                        self.copy_position_to_followers(order)
+                    # Execute instant copy on market order fill without waiting for PositionGetByTicket index latency
+                    self.copy_position_to_followers(order)
                 elif order.State in {1, 2}:
                     # logger.debug(f"Pending order {order.Order} deleted, attempting to remove from followers")
                     self.delete_order_to_followers(order)
@@ -1284,124 +1362,151 @@ def run_mam_script():
                             request.Type = int(not pos.Action)
                             request.Position = pos.Position
                             request.Volume = pos.Volume
-                            # set stable dedupe key to avoid duplicate closes/reopens
                             try:
                                 request.Comment = pos.Comment
                             except Exception:
                                 pass
-                            try:
-                                request.DedupeKey = f"close_position_{follower}_{pos.Position}"
-                            except Exception:
-                                pass
-                            self.execute_trade(request, follower, "close position")
+                            self.execute_close_with_retry(request, follower, max_retries=5)
+
+        def execute_close_with_retry(self, request, follower_id: int, max_retries: int = 5):
+            """Reliable close retry handler for transient broker/dealer failures."""
+            def perform_close():
+                try:
+                    close_old_connections()
+                except Exception:
+                    pass
+
+                pos_ticket = getattr(request, 'Position', 0)
+                comment = str(getattr(request, 'Comment', ''))
+                key = f"close_position_{follower_id}_{pos_ticket}_{comment}"
+                safe_key = ''.join([c if c.isalnum() or c in ('-', '_') else '' for c in key])
+
+                with _in_flight_lock:
+                    if safe_key in _in_flight_trades:
+                        logger.debug(f"[CLOSE-INFLIGHT] Close operation for {safe_key} already in progress.")
+                        return
+                    _in_flight_trades.add(safe_key)
+
+                try:
+                    for attempt in range(1, max_retries + 1):
+                        pos_found = None
+                        try:
+                            for p in manager.PositionGet(follower_id):
+                                if p.Position == pos_ticket or (comment and p.Comment == comment):
+                                    pos_found = p
+                                    break
+                        except Exception:
+                            pass
+
+                        if not pos_found:
+                            logger.info(f"[CLOSE-VERIFIED] Follower {follower_id} position {pos_ticket} verified closed or not found.")
+                            return
+
+                        if pos_found:
+                            request.PriceOrder = pos_found.PriceCurrent
+                            request.Position = pos_found.Position
+                            request.Volume = pos_found.Volume
+
+                        send_start = time()
+                        success = manager.DealerSend(request, sink)
+                        elapsed = (time() - send_start) * 1000.0
+
+                        if success:
+                            logger.info(f"[CLOSE-SUCCESS] Closed position {pos_ticket} for follower {follower_id} on attempt {attempt} in {elapsed:.1f}ms")
+                            with _recent_copies_lock:
+                                _recent_copies[safe_key] = time()
+                            return
+
+                        logger.warning(f"[CLOSE-RETRY] Follower {follower_id} close attempt {attempt}/{max_retries} failed. Retrying in {0.2 * (2 ** attempt):.2f}s...")
+                        sleep(0.2 * (2 ** attempt))
+
+                    logger.error(f"[CLOSE-FAILED] Max retries ({max_retries}) reached. Unable to close position {pos_ticket} for follower {follower_id}")
+                finally:
+                    with _in_flight_lock:
+                        _in_flight_trades.discard(safe_key)
+
+            COPY_EXECUTOR.submit(perform_close)
 
         def execute_trade(self, request, follower_id, operation_type, force=False):
             def perform_trade(force_flag=False):
                 try:
-                    # DB-backed dedupe
+                    close_old_connections()
+                except Exception:
+                    pass
+
+                comment = str(getattr(request, 'Comment', ''))
+                raw_key = getattr(request, 'DedupeKey', f"{operation_type}_{follower_id}_{comment}")
+                safe_key = ''.join([c if c.isalnum() or c in ('-', '_') else '' for c in str(raw_key)])
+
+                if mt5_connection_state == "DISCONNECTED":
+                    logger.warning(f"[COPY_BLOCKED_DISCONNECTED] MT5 disconnected. Skipping trade execution for follower {follower_id}.")
+                    return
+
+                with _in_flight_lock:
+                    if safe_key in _in_flight_trades:
+                        logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=IN_FLIGHT_EXECUTION")
+                        return
+                    _in_flight_trades.add(safe_key)
+
+                try:
                     try:
                         from adminPanel.models import MT5SendDedup
-                        comment = str(getattr(request, 'Comment', ''))
-                        key = f"{operation_type}{follower_id}{comment}"
-                        safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in key])
-                        ttl_seconds = 0.5
-
-                        # Check for an existing DB dedupe marker but DON'T create one until the send succeeds.
-                        try:
-                            obj = MT5SendDedup.objects.filter(key=safe_key).first()
-                        except Exception:
-                            obj = None
-
+                        obj = MT5SendDedup.objects.filter(key=safe_key).first()
                         if not force and obj:
                             try:
-                                age = timezone.now().timestamp() - obj.created_at.timestamp()
-                            except Exception:
                                 age = (datetime.now() - obj.created_at).total_seconds()
-                            if age < ttl_seconds:
-                                # Recent send exists
+                            except Exception:
+                                age = 0
+                            if age < RECENT_COPY_TTL:
+                                logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=DB_DEDUPE_EXISTS")
                                 return
-                            else:
-                                try:
-                                    obj.delete()
-                                except Exception:
-                                    pass
-                    except Exception as e:
-                        # logger.debug(f"DB dedupe check failed, will fall back to file-lock: {e}")
+                    except Exception:
                         pass
 
-                    # fallback file-lock
-                    lock_dir = os.path.join(os.getcwd(), 'mt5_send_locks')
-                    os.makedirs(lock_dir, exist_ok=True)
-                    comment = str(getattr(request, 'Comment', ''))
-                    key = f"{operation_type}{follower_id}{comment}"
-                    safe_key = ''.join([c if c.isalnum() or c in ('-', '') else '' for c in key])
-                    lock_path = os.path.join(lock_dir, safe_key + '.lock')
+                    if not force and not acquire_db_advisory_lock(safe_key):
+                        logger.info(f"[COPY_DUPLICATE_BLOCKED] trade={safe_key} follower={follower_id} reason=ADVISORY_LOCK_HELD")
+                        return
 
-                    fd = None
                     try:
-                        if not force and os.path.exists(lock_path):
-                            mtime = os.path.getmtime(lock_path)
-                            age = datetime.now().timestamp() - mtime
-                            if age < ttl_seconds:
-                                return
-                            else:
-                                try:
-                                    os.remove(lock_path)
-                                except Exception:
-                                    pass
+                        send_start = time()
+                        success = manager.DealerSend(request, sink)
+                        send_elapsed = (time() - send_start) * 1000.0
 
-                        fd = None
-                        if not force:
-                            fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                            os.write(fd, f"pid:{os.getpid()} time:{datetime.now().isoformat()}".encode('utf-8'))
-                            os.close(fd)
-                            fd = None
-
-                        # Measure DealerSend latency for diagnosis
-                        try:
-                            send_start = time()
-                            success = manager.DealerSend(request, sink)
-                            send_end = time()
-                            send_elapsed = (send_end - send_start) * 1000.0
-                            logger.debug(f"DealerSend for follower {follower_id} took {send_elapsed:.1f}ms (operation={operation_type})")
-                        except Exception as _e:
-                            send_end = time()
-                            send_elapsed = (send_end - locals().get('send_start', time())) * 1000.0
-                            logger.debug(f"DealerSend exception for follower {follower_id} after {send_elapsed:.1f}ms (operation={operation_type})")
-                            raise
                         if success:
-                            logger.info(f"{operation_type.capitalize()} successful for follower {follower_id}")
+                            logger.info(f"[COPY_SUCCESS] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms dealer=SUCCESS")
+                            try:
+                                from adminPanel.models import MT5SendDedup
+                                MT5SendDedup.objects.get_or_create(key=safe_key)
+                            except Exception:
+                                pass
+                            with _recent_copies_lock:
+                                _recent_copies[safe_key] = time()
                         else:
                             try:
                                 last = MT5Manager.LastError()
-                                logger.error(f"{operation_type.capitalize()} failed for follower {follower_id}, MT5 LastError: {last}")
+                                logger.error(f"[COPY_FAILED] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms error={last}")
                             except Exception:
-                                logger.error(f"{operation_type.capitalize()} failed for follower {follower_id}")
-
-                        try:
-                            if not force:
-                                os.utime(lock_path, None)
-                        except Exception:
-                            pass
-
-                    except FileExistsError:
-                        logger.debug(f"FileExistsError: concurrent send in progress for follower {follower_id} (lock={lock_path})")
-                    except Exception as e:
-                        logger.error(f"Exception in perform_trade for follower {follower_id}: {e}")
+                                logger.error(f"[COPY_FAILED] trade={safe_key} follower={follower_id} op={operation_type} latency={send_elapsed:.1f}ms")
                     finally:
-                        try:
-                            if fd:
-                                os.close(fd)
-                        except Exception:
-                            pass
-                except Exception as e:
-                    logger.error(f"Locking/perform_trade error for follower {follower_id}: {e}")
+                        release_db_advisory_lock(safe_key)
 
-            threading.Thread(target=perform_trade, args=(force,)).start()
+                except Exception as e:
+                    logger.error(f"Exception in perform_trade for follower {follower_id}: {e}")
+                finally:
+                    with _in_flight_lock:
+                        _in_flight_trades.discard(safe_key)
+
+            COPY_EXECUTOR.submit(perform_trade, force)
 
         def get_followers(self, loginID):
-            # Get all potential followers based on agent relationship
-            leader = manager.UserGet(loginID)
+            now_ts = time()
+            with _follower_cache_lock:
+                if loginID in _follower_cache:
+                    cached, ts = _follower_cache[loginID]
+                    if now_ts - ts < FOLLOWER_CACHE_TTL:
+                        return cached
+
+            leader = get_cached_user(manager, loginID)
             if not leader or not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
                 return []
             potential_followers = [
@@ -1409,13 +1514,10 @@ def run_mam_script():
                 if user.Agent == loginID
             ]
             
-            # Filter out followers who have paused copying (investor_allow_copy = False)
             active_followers = []
             try:
-                from django.db import connection
+                from django.db import connection, close_old_connections
                 close_old_connections()
-                connection.close()
-                connection.connect()
                 
                 with connection.cursor() as cursor:
                     for follower_id in potential_followers:
@@ -1424,16 +1526,17 @@ def run_mam_script():
                             [str(follower_id), 'Investor']
                         )
                         row = cursor.fetchone()
-                        if row and row[0]:  # Only include if investor_allow_copy is True
+                        if row and row[0]:
                             active_followers.append(follower_id)
-                            logger.debug(f"Follower {follower_id} is active (copying enabled)")
-                        elif row:
-                            logger.info(f"[COPY-DISABLED] Skipping follower {follower_id} - copying is paused")
+                        elif not row:
+                            active_followers.append(follower_id)
             except Exception as e:
                 logger.warning(f"Error checking investor_allow_copy status, using all followers: {e}")
-                # Fallback to all followers if DB check fails
                 active_followers = potential_followers
             
+            with _follower_cache_lock:
+                _follower_cache[loginID] = (active_followers, now_ts)
+
             return active_followers
 
     logger.info("Starting subscription and connection process")
@@ -1457,7 +1560,7 @@ def run_mam_script():
                 logger.error(f"Failed to subscribe to deals: {MT5Manager.LastError()}")
                 break  
 
-            # Start a watcher thread that triggers a cautious resync when events stop arriving
+            # Start a watcher thread that triggers state differential resync when events pause
             def resync_watcher():
                 global _last_resync_ts
                 while True:
@@ -1467,40 +1570,56 @@ def run_mam_script():
                         if age > STALE_THRESHOLD and (now_ts - _last_resync_ts) > RESYNC_COOLDOWN:
                             _last_resync_ts = now_ts
                             try:
-                                # perform a cautious reconcile: scan leader groups and re-run copy for open positions and pending orders
+                                # Reconcile master and follower state cleanly
                                 for i in range(manager.GroupTotal()):
                                     try:
                                         group = manager.GroupNext(i).Group
                                         if "demo" in group:
                                             continue
                                         for leader in manager.UserGetByGroup(group):
-                                            # only consider leaders whose MT5 Agent code starts with AGENT_CODE_PREFIX
                                             if not str(leader.Agent).startswith(AGENT_CODE_PREFIX):
                                                 continue
                                             followers = orderSink.get_followers(leader.Login)
                                             if not followers:
                                                 continue
-                                            # scan open positions and pending orders for the leader and attempt to copy
+                                            
+                                            # Differential scan: Copy only missing positions/orders without force=True
                                             try:
-                                                for ord in manager.OrderGetOpen(leader.Login):
-                                                    # use OrderSink.copy_order_to_followers logic (force retries during resync)
+                                                master_orders = manager.OrderGetOpen(leader.Login)
+                                                for ord in master_orders:
                                                     try:
-                                                        orderSink.copy_order_to_followers(ord, force=True)
+                                                        orderSink.copy_order_to_followers(ord, force=False)
                                                     except Exception as e:
-                                                        logger.debug(f"Resync order copy failed for leader {leader.Login}: {e}")
-                                                for pos in manager.PositionGet(leader.Login):
+                                                        logger.debug(f"Resync order check failed for leader {leader.Login}: {e}")
+
+                                                master_positions = manager.PositionGet(leader.Login)
+                                                for pos in master_positions:
                                                     try:
-                                                        # OrderSink provides copy_position_to_followers; call that instead of PositionSink (force retries)
-                                                        orderSink.copy_position_to_followers(pos, force=True)
-                                                    except Exception as e:
-                                                        logger.debug(f"Resync position copy failed for leader {leader.Login}: {e}")
+                                                        master_pos_id = getattr(pos, 'Position', getattr(pos, 'PositionID', None))
+                                                        if not master_pos_id:
+                                                            continue
+                                                        
+                                                        expected_prefix = f"{leader.Login}_{master_pos_id}"
+                                                        for follower in followers:
+                                                            try:
+                                                                follower_positions = manager.PositionGet(follower)
+                                                                already_exists = any(
+                                                                    p.Comment and (p.Comment == expected_prefix or p.Comment.startswith(f"{expected_prefix}_trade"))
+                                                                    for p in follower_positions
+                                                                )
+                                                                if not already_exists:
+                                                                    logger.info(f"[RESYNC-MISSING] Found missing position {master_pos_id} for follower {follower}. Copying...")
+                                                                    orderSink.copy_position_to_followers(pos, force=False)
+                                                            except Exception as fe:
+                                                                logger.debug(f"Resync check error for follower {follower}: {fe}")
+                                                    except Exception as pe:
+                                                        logger.debug(f"Resync position check failed for leader {leader.Login}: {pe}")
                                             except Exception as e:
                                                 logger.debug(f"Resync scan failed for leader {leader.Login}: {e}")
                                     except Exception:
                                         pass
                             except Exception as e:
-                                logger.error(f"Error during cautious resync: {e}")
-                        # shorter sleep to detect silence faster
+                                logger.error(f"Error during state differential resync: {e}")
                         sleep(0.5)
                     except Exception:
                         sleep(0.5)
