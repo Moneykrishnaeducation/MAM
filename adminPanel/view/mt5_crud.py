@@ -1,15 +1,13 @@
 import json
 import logging
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount, ClientUser
 from adminPanel.mt5.services import MT5ManagerActions
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 
 logger = logging.getLogger(__name__)
@@ -54,14 +52,14 @@ async def _send_credentials_email(*, user: ClientUser, account_type: str, login:
         master_password=master_password,
         investor_password=investor_password,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[user.email],
+        source=f"mt5_{account_type.lower()}_credentials",
+        payload={"account_type": account_type, "login": str(login), "group": group, "account_name": account_name, "leverage": leverage},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 # ================= SERVER SETTING CRUD =================
 

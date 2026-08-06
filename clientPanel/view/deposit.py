@@ -3,15 +3,13 @@
 import json
 import logging
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
@@ -56,14 +54,14 @@ async def _send_deposit_email(*, user_name: str, email: str, account_number: str
         status=status,
         created_at=created_at,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[email],
+        source="client_deposit_submission",
+        payload={"user_name": user_name, "account_number": account_number, "amount": amount, "payment_method": payment_method, "proof_name": proof_name, "notes": notes, "status": status, "created_at": created_at},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @csrf_exempt

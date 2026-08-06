@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import logging
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -26,7 +25,6 @@ from clientPanel.view.common import (
     get_latest_profile_request_status,
     get_latest_payment_request_status,
 )
-from adminPanel.view.mail import _mail_from_address
 from django.core.files.storage import default_storage
 from pathlib import Path
 
@@ -75,14 +73,14 @@ async def _send_profile_update_email(
         status=status,
         created_at=created_at,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[email],
+        source="client_profile_submission",
+        payload={"user_name": user_name, "status": status, "created_at": created_at},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @csrf_exempt

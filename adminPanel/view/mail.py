@@ -1,15 +1,11 @@
-"""Admin mail compose and delivery endpoints."""
+"""Admin mail compose and queue endpoints."""
 
 from __future__ import annotations
 
 import json
 from email.utils import parseaddr
 
-from asgiref.sync import sync_to_async
-from django.conf import settings
-from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.http import JsonResponse
-from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
@@ -53,17 +49,11 @@ def _coerce_bool(value, default: bool = False) -> bool:
     return bool(value)
 
 
-def _mail_from_address() -> str:
-    return str(
-        getattr(settings, "DEFAULT_FROM_EMAIL", None)
-        or getattr(settings, "EMAIL_HOST_USER", None)
-        or "no-reply@example.com"
-    ).strip()
-
-
 def _serialize_mail_message(message: AdminMailMessage) -> dict:
     return {
         "id": message.id,
+        "source": message.source,
+        "from_email": message.from_email,
         "subject": message.subject,
         "body": message.body,
         "html_body": message.html_body,
@@ -72,6 +62,12 @@ def _serialize_mail_message(message: AdminMailMessage) -> dict:
         "bcc": message.bcc_recipients or [],
         "reply_to": message.reply_to or [],
         "status": message.status,
+        "payload": message.payload or {},
+        "attempt_count": message.attempt_count,
+        "queued_at": message.queued_at.strftime("%Y-%m-%d %H:%M:%S") if message.queued_at else None,
+        "last_attempt_at": message.last_attempt_at.strftime("%Y-%m-%d %H:%M:%S")
+        if message.last_attempt_at
+        else None,
         "error_message": message.error_message,
         "sent_at": message.sent_at.strftime("%Y-%m-%d %H:%M:%S") if message.sent_at else None,
         "created_at": message.created_at.strftime("%Y-%m-%d %H:%M:%S") if message.created_at else None,
@@ -80,45 +76,11 @@ def _serialize_mail_message(message: AdminMailMessage) -> dict:
     }
 
 
-async def _send_mail_message(message: AdminMailMessage) -> None:
-    from_email = _mail_from_address()
-    to_recipients = message.to_recipients or []
-    cc_recipients = message.cc_recipients or []
-    bcc_recipients = message.bcc_recipients or []
-    reply_to = message.reply_to or []
-    body = message.body or ""
-    html_body = message.html_body or ""
-
-    if html_body.strip():
-        email_message = EmailMultiAlternatives(
-            subject=message.subject,
-            body=body,
-            from_email=from_email,
-            to=to_recipients,
-            cc=cc_recipients,
-            bcc=bcc_recipients,
-            reply_to=reply_to or None,
-        )
-        email_message.attach_alternative(html_body, "text/html")
-    else:
-        email_message = EmailMessage(
-            subject=message.subject,
-            body=body,
-            from_email=from_email,
-            to=to_recipients,
-            cc=cc_recipients,
-            bcc=bcc_recipients,
-            reply_to=reply_to or None,
-        )
-
-    await sync_to_async(email_message.send, thread_sensitive=True)(fail_silently=False)
-
-
 @csrf_exempt
 @permission_required(IsAdmin)
 @require_http_methods(["GET", "POST"])
 async def admin_mails(request):
-    """List stored mail drafts/sends or compose and deliver a new mail."""
+    """List stored mail drafts/queue entries or create a new queued mail."""
     await ensure_db_initialized()
 
     if request.method == "GET":
@@ -137,6 +99,7 @@ async def admin_mails(request):
         payload = [_serialize_mail_message(message) for message in messages]
         summary = {
             "draft": await AdminMailMessage.filter(status="draft").count(),
+            "queued": await AdminMailMessage.filter(status="queued").count(),
             "sending": await AdminMailMessage.filter(status="sending").count(),
             "sent": await AdminMailMessage.filter(status="sent").count(),
             "failed": await AdminMailMessage.filter(status="failed").count(),
@@ -170,6 +133,8 @@ async def admin_mails(request):
 
     mail_message = await AdminMailMessage.create(
         created_by_id=created_by,
+        source="admin",
+        from_email=None,
         subject=subject,
         body=message_body,
         html_body=html_body,
@@ -177,7 +142,7 @@ async def admin_mails(request):
         cc_recipients=cc_recipients,
         bcc_recipients=bcc_recipients,
         reply_to=reply_to,
-        status="draft" if not send_now else "sending",
+        status="draft" if not send_now else "queued",
     )
 
     if not send_now:
@@ -191,27 +156,21 @@ async def admin_mails(request):
         )
 
     try:
-        await _send_mail_message(mail_message)
+        from django.utils import timezone
+
+        mail_message.status = "queued"
+        mail_message.queued_at = timezone.now()
+        await mail_message.save(update_fields=["status", "queued_at", "updated_at"])
     except Exception as exc:
         mail_message.status = "failed"
         mail_message.error_message = str(exc)
-        mail_message.sent_at = None
-        await mail_message.save(update_fields=["status", "error_message", "sent_at", "updated_at"])
-        return _error(
-            "Unable to send email",
-            status=502,
-            mail=_serialize_mail_message(mail_message),
-        )
-
-    mail_message.status = "sent"
-    mail_message.error_message = None
-    mail_message.sent_at = timezone.now()
-    await mail_message.save(update_fields=["status", "error_message", "sent_at", "updated_at"])
+        await mail_message.save(update_fields=["status", "error_message", "updated_at"])
+        return _error("Unable to queue email", status=502, mail=_serialize_mail_message(mail_message))
 
     return JsonResponse(
         {
             "status": "ok",
-            "message": "Mail sent successfully",
+            "message": "Mail queued successfully",
             "mail": _serialize_mail_message(mail_message),
         },
         status=201,

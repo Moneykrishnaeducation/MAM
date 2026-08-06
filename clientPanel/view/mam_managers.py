@@ -3,15 +3,13 @@
 import json
 import logging
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _resolve_client_user_id
@@ -64,14 +62,14 @@ async def _send_investor_credentials_email(
         master_password=master_password,
         investor_password=investor_password,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[user.email],
+        source="mam_investor_credentials",
+        payload={"account_name": account_name, "login": str(login), "group": group, "leverage": leverage},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @permission_required(IsClient)

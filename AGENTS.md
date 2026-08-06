@@ -67,6 +67,9 @@ Recent additions:
 - `clientPanel/view/profile.py`, `clientPanel/view/documents.py`, and `clientPanel/view/payment_details.py` now send submission emails for profile edits, identity/address proof uploads, and bank/crypto payment-detail updates when a client submits a pending request.
 - `templates/emails/profile_update_notification_email.*`, `templates/emails/document_submission_notification_email.*`, and `templates/emails/payment_details_submission_notification_email.*` hold the client-facing request-submission email templates used by those flows.
 - `Frontend/apps/web/src/lib/authApiInterceptor.ts` installs a browser-wide API fetch interceptor that logs out the current admin or client session on `403`/`404` responses from browser API calls, using the current app area or request path to choose the logout endpoint.
+- `backendPanel/mail_queue.py` now stores outbound mail in the database-backed `admin_mail_messages` queue, and `adminPanel/management/commands/process_mail_queue.py` can be run as a separate worker to flush queued mail.
+- `adminPanel/management/commands/mail_worker.py` is the continuous mail queue worker you can run as a separate process, while `process_mail_queue` remains a one-shot manual flush command.
+- `backendPanel/asgi.py` no longer starts the mail queue automatically, so the main web server stays separate from mail delivery.
 - `adminPanel/view/mam_accounts.py` now sends branded MT5 credential emails to the related client after MAM or investor account creation, including the login, group, and generated passwords.
 - `templates/emails/mam_credentials_email.html` and `templates/emails/mam_credentials_email.txt` hold the standalone MAM credential email templates rendered by `adminPanel/view/mam_accounts.py`.
 - `adminPanel/view/dashboard.py` provides the admin dashboard API used by `/api/admin/dashboard`.

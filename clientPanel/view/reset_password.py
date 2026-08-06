@@ -3,9 +3,7 @@
 import json
 from urllib.parse import urlencode
 
-from asgiref.sync import sync_to_async
 from django.core import signing
-from django.core.mail import EmailMultiAlternatives
 from django.http import JsonResponse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -13,8 +11,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import AdminUser, ClientUser
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
+from backendPanel.mail_queue import queue_email_message
 from clientPanel.view.common import (
     _error,
     _get_client_profile_for_request,
@@ -63,8 +61,7 @@ def _read_password_reset_token(token: str) -> dict | None:
     return payload
 
 
-async def _send_password_reset_email(user: ClientUser, reset_url: str) -> None:
-    from_email = _mail_from_address()
+async def _send_password_reset_email(user, reset_url: str, *, user_type: str) -> None:
     recipient_name = str(user.name or user.email or "there").strip()
     subject = "Reset your password"
     plain_body = (
@@ -87,14 +84,14 @@ async def _send_password_reset_email(user: ClientUser, reset_url: str) -> None:
         "</div>"
     )
 
-    email_message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=from_email,
+        html_body=str(html_body),
         to=[user.email],
+        source=f"{user_type}_password_reset",
+        payload={"user_type": user_type, "email": user.email, "reset_url": reset_url},
     )
-    email_message.attach_alternative(str(html_body), "text/html")
-    await sync_to_async(email_message.send, thread_sensitive=True)(fail_silently=False)
 
 
 async def _find_password_reset_target_by_token(token: str) -> tuple[str, ClientUser | AdminUser] | None:
@@ -196,7 +193,7 @@ async def request_client_password_reset(request):
     reset_url = _password_reset_page_url(request, token)
 
     try:
-        await _send_password_reset_email(user, reset_url)
+        await _send_password_reset_email(user, reset_url, user_type=user_type)
     except Exception:
         return _error("Unable to send password reset email", status=502)
 

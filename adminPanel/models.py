@@ -251,7 +251,7 @@ class ActivityLog(models.Model):
 
 
 class AdminMailMessage(models.Model):
-    """Stored admin email draft / send log."""
+    """Stored mail queue entry, including admin drafts and queued system mail."""
 
     id = fields.IntField(primary_key=True)
     created_by = fields.ForeignKeyField(
@@ -260,6 +260,8 @@ class AdminMailMessage(models.Model):
         null=True,
         on_delete=fields.SET_NULL,
     )
+    source = fields.CharField(max_length=50, default="system")
+    from_email = fields.CharField(max_length=255, null=True)
     subject = fields.CharField(max_length=255)
     body = fields.TextField()
     html_body = fields.TextField(null=True)
@@ -268,6 +270,10 @@ class AdminMailMessage(models.Model):
     bcc_recipients = fields.JSONField(default=list)
     reply_to = fields.JSONField(default=list)
     status = fields.CharField(max_length=20, default="draft")
+    payload = fields.JSONField(default=dict, null=True)
+    attempt_count = fields.IntField(default=0)
+    queued_at = fields.DatetimeField(null=True)
+    last_attempt_at = fields.DatetimeField(null=True)
     error_message = fields.TextField(null=True)
     sent_at = fields.DatetimeField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)

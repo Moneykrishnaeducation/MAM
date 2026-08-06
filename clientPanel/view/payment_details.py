@@ -5,15 +5,13 @@ from __future__ import annotations
 import json
 import logging
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import (
@@ -72,14 +70,14 @@ async def _send_payment_submission_email(
         status=status,
         created_at=created_at,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=subject,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[email],
+        source=f"client_{payment_type}_submission",
+        payload={"user_name": user_name, "payment_type": payment_type, "status": status, "created_at": created_at},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 @csrf_exempt

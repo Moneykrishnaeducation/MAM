@@ -15,6 +15,7 @@ Architecture contract
 
 import logging
 import threading
+from contextvars import copy_context
 from time import sleep
 
 from django.db import close_old_connections, connection
@@ -238,9 +239,14 @@ def start_balance_sync_thread(interval_seconds: float = 5.0):
         if not _balance_thread_started:
             _balance_thread_started = True
             logger.info("[BALANCE-SYNC] Starting MT5 continuous balance sync background thread.")
+
+            worker_context = copy_context()
+
+            def _run_worker():
+                worker_context.run(continuous_balance_updater, interval_seconds=interval_seconds)
+
             t = threading.Thread(
-                target=continuous_balance_updater,
-                args=(interval_seconds,),
+                target=_run_worker,
                 daemon=True,
                 name="mt5-balance-sync",
             )

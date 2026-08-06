@@ -1050,11 +1050,6 @@ class TestAdminPanelModels:
         saved_draft = await AdminMailMessage.get(subject="Draft update")
         assert saved_draft.status == "draft"
 
-        async def fake_send_mail_message(message):
-            return None
-
-        monkeypatch.setattr("adminPanel.view.mail._send_mail_message", fake_send_mail_message)
-
         send_request = type(
             "Request",
             (),
@@ -1084,11 +1079,11 @@ class TestAdminPanelModels:
 
         assert send_response.status_code == 201
         assert send_payload["status"] == "ok"
-        assert send_payload["mail"]["status"] == "sent"
+        assert send_payload["mail"]["status"] == "queued"
 
         saved_sent = await AdminMailMessage.get(subject="Send update")
-        assert saved_sent.status == "sent"
-        assert saved_sent.sent_at is not None
+        assert saved_sent.status == "queued"
+        assert saved_sent.queued_at is not None
 
 
 class TestClientPanelModels:

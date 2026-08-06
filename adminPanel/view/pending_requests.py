@@ -7,8 +7,7 @@ import logging
 from collections.abc import Iterable
 from datetime import datetime
 
-from asgiref.sync import sync_to_async
-from django.core.mail import EmailMultiAlternatives
+from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -17,7 +16,6 @@ from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
 from adminPanel.models import ClientUser, PendingRequest
-from adminPanel.view.mail import _mail_from_address
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
@@ -254,14 +252,14 @@ async def _send_admin_approval_email(*, user: ClientUser, pending_request: Pendi
         reviewed_at=reviewed_at,
         payload=payload,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=title,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[user.email],
+        source="pending_request_approval",
+        payload={"pending_request_id": pending_request.id, "request_type": request_type, "approved_by": approved_by, "reviewed_at": reviewed_at},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 async def _send_admin_update_approval_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, approved_by: str, reviewed_at: str) -> None:
@@ -280,14 +278,14 @@ async def _send_admin_update_approval_email(*, user: ClientUser, pending_request
     }
     plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()
     html_body = render_to_string(f"emails/{template_prefix}.html", context)
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=title,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[user.email],
+        source="pending_request_update_approval",
+        payload={"pending_request_id": pending_request.id, "request_type": request_type, "approved_by": approved_by, "reviewed_at": reviewed_at},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 async def _send_admin_rejection_email(*, user: ClientUser, pending_request: PendingRequest, request_type: str, payload: dict, reviewed_by: str, reviewed_at: str, reason: str | None = None) -> None:
@@ -300,14 +298,14 @@ async def _send_admin_rejection_email(*, user: ClientUser, pending_request: Pend
         payload=payload,
         reason=reason,
     )
-    message = EmailMultiAlternatives(
+    await queue_email_message(
         subject=title,
         body=plain_body,
-        from_email=_mail_from_address(),
+        html_body=html_body,
         to=[user.email],
+        source="pending_request_rejection",
+        payload={"pending_request_id": pending_request.id, "request_type": request_type, "reviewed_by": reviewed_by, "reviewed_at": reviewed_at, "reason": reason},
     )
-    message.attach_alternative(html_body, "text/html")
-    await sync_to_async(message.send, thread_sensitive=True)(fail_silently=False)
 
 
 async def _resolve_user_for_pending_request(pending_request: PendingRequest) -> ClientUser | None:
