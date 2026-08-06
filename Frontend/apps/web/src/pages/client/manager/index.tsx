@@ -45,9 +45,9 @@ export async function fetchAdminManagers(page?: number, perPage?: number, search
     if (search) searchParams.set('search', search);
 
     const queryString = searchParams.toString();
-    const url = queryString ? `/api/admin/managers?${queryString}` : '/api/admin/managers';
+    const myClientUrl = queryString ? `/api/client/my-mam-managers?${queryString}` : '/api/client/my-mam-managers';
 
-    const res = await fetch(url);
+    let res = await fetch(myClientUrl);
     if (!res.ok) return null;
     const data = await res.json();
     if (page === undefined && perPage === undefined && !search) {

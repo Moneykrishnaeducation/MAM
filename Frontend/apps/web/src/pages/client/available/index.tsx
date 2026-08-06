@@ -249,7 +249,7 @@ export default function ClientAvailablePage() {
     setInvestSubmitError(null);
 
     try {
-      const response = await fetch('/api/client/accounts/create', {
+      let response = await fetch('/api/client/mam-managers/invest', {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -257,11 +257,26 @@ export default function ClientAvailablePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          type: 'investor',
           managerAccNumber: selectedManager.accountId,
           investmentPassword,
         }),
       });
+
+      if (!response.ok) {
+        response = await fetch('/api/client/accounts/create', {
+          method: 'POST',
+          credentials: 'include',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'investor',
+            managerAccNumber: selectedManager.accountId,
+            investmentPassword,
+          }),
+        });
+      }
 
       const data = await response.json().catch(() => null);
       const message = data?.message || 'Failed to create investor account';
