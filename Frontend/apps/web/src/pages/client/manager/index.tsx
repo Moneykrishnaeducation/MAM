@@ -102,6 +102,7 @@ export default function ClientManagerPage() {
   const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [selectedManager, setSelectedManager] = useState<ManagerRow | null>(null);
+  const [selectedManagerDetail, setSelectedManagerDetail] = useState<any>(null);
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
   const [clientAccount, setClientAccount] = useState<ClientAccountSummary | null>(null);
@@ -174,6 +175,37 @@ export default function ClientManagerPage() {
       setIsTogglingStatus(false);
     }
   };
+
+  useEffect(() => {
+    let active = true;
+    const accountId = selectedManager?.accountId;
+    if (!accountId) {
+      setSelectedManagerDetail(null);
+      return;
+    }
+
+    const loadManagerDetail = async () => {
+      try {
+        const res = await fetch(`/api/client/my-mam-managers/${accountId}/detail`, {
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          return;
+        }
+        const data = await res.json();
+        if (!active || !data?.manager) return;
+        setSelectedManagerDetail(data.manager);
+        setSelectedManager((prev) => (prev ? { ...prev, ...data.manager } : prev));
+      } catch {
+        // Keep the existing row data if the detail API fails.
+      }
+    };
+
+    loadManagerDetail();
+    return () => {
+      active = false;
+    };
+  }, [selectedManager?.accountId]);
 
   // Fetch only my-mam-managers for the My Manager page
   useEffect(() => {
@@ -264,6 +296,7 @@ export default function ClientManagerPage() {
   const activeManager =
     selectedManager ?? (hasQuery && highlightedManager ? highlightedManager : null);
   const showActiveManager = Boolean(activeManager);
+  const activeManagerView: any = activeManager ? { ...activeManager, ...(selectedManagerDetail || {}) } : null;
 
   // Check if the active manager is the client's assigned manager
   const isAssigned =
@@ -272,23 +305,19 @@ export default function ClientManagerPage() {
 
   const selectedInvestmentId = activeManager ? String(activeManager.id) : '';
 
-  const totalInvested = clientInvestments.reduce(
-    (sum, investment) => sum + toNumber(investment.allocated ?? investment.allocated_amount),
-    0,
+  const managerPerformance = activeManagerView?.performanceSummary || {};
+  const managerConfiguration = activeManagerView?.configuration || activeManagerView?.accountSettings || {};
+  const managerWallet = activeManagerView?.wallet || {};
+
+  const totalInvested = toNumber(
+    managerPerformance?.netBalance ??
+      managerWallet?.pending ??
+      activeManager?.balance ??
+      clientAccount?.balance ??
+      0,
   );
-  const totalProfit = clientInvestments.reduce((sum, investment) => {
-    const currentValue = toNumber(investment.current_value);
-    const allocatedAmount = toNumber(investment.allocated ?? investment.allocated_amount);
-    return sum + Math.max(0, currentValue - allocatedAmount);
-  }, 0);
-  const linkedManagerCount = Math.max(
-    1,
-    new Set(
-      clientInvestments
-        .map((investment) => String(investment.manager || investment.manager_name || '').trim())
-        .filter(Boolean),
-    ).size,
-  );
+  const totalProfit = toNumber(managerPerformance?.totalProfit ?? managerWallet?.settled ?? 0);
+  const linkedManagerCount = Number(managerWallet?.liveManagers ?? activeManagerView?.investorsCount ?? 0) || 0;
   const currentAccountLabel = activeManager?.accountId || managerInfo.accountId || clientAccount?.account_number || 'N/A';
 
   const loadOpenPositions = async () => {
@@ -441,11 +470,11 @@ export default function ClientManagerPage() {
                       ? managerInfo.role
                       : 'MAM Portfolio Manager'}
                   </p>
-                  {isAssigned && (
-                    <p className={`text-xs mt-1 ${softTextClass}`}>
-                      {managerInfo.experience}
-                    </p>
-                  )}
+                {isAssigned && (
+                  <p className={`text-xs mt-1 ${softTextClass}`}>
+                      {activeManagerView?.experience || managerInfo.experience}
+                  </p>
+                )}
                 </div>
 
                 {/* Contact chips */}
@@ -538,9 +567,9 @@ export default function ClientManagerPage() {
               {/* NET BALANCE Banner */}
               <div className={`rounded-[2rem] border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-white/[0.02] ${borderMutedClass}`}>
                 <div className="flex-1">
-                  <div className={`text-[10px] font-black uppercase tracking-widest ${softTextClass}`}>Net Balance</div>
+                    <div className={`text-[10px] font-black uppercase tracking-widest ${softTextClass}`}>Net Balance</div>
                   <div className="text-4xl font-black text-white mt-1 leading-none tracking-tight">
-                    {formatCurrency(clientAccount?.balance ?? totalInvested)} <span className={`text-sm font-black ml-1 ${softTextClass}`}>{clientAccount?.currency || 'USD'}</span>
+                    {formatCurrency(totalInvested)} <span className={`text-sm font-black ml-1 ${softTextClass}`}>{clientAccount?.currency || 'USD'}</span>
                   </div>
                   <div className="mt-5 flex items-center gap-3">
                     <button
@@ -564,11 +593,11 @@ export default function ClientManagerPage() {
                     <div className={softTextClass}>Total Profit</div>
                     <div className="text-[15px] font-extrabold text-white text-right">{formatCurrency(totalProfit)}</div>
                     <div className={softTextClass}>Performance Fee</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{activeManager?.share || '0%'}</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.performanceFee ? `${managerPerformance.performanceFee}%` : activeManager?.share || '0%'}</div>
                     <div className={softTextClass}>Status</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{activeManager?.status || 'Active'}</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.status || activeManager?.status || 'Active'}</div>
                     <div className={softTextClass}>Leverage</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{clientAccount?.leverage || '1:500'}</div>
+                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.leverage || clientAccount?.leverage || '1:500'}</div>
                   </div>
                 </div>
               </div>
@@ -579,10 +608,10 @@ export default function ClientManagerPage() {
                 <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
                   <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">MAM Configuration</h4>
                   <div className="space-y-4 text-sm">
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Account Name</span><span className="font-extrabold text-white">Naveen Test</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Payout Cycle</span><span className="font-extrabold text-white">weekly</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Algo Trading</span><span className="font-extrabold text-white">Manual</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Status</span><span className="font-extrabold text-white">Active</span></div>
+                    <div className="flex justify-between items-center"><span className={softTextClass}>Account Name</span><span className="font-extrabold text-white">{managerConfiguration?.accountName || activeManager?.name || 'N/A'}</span></div>
+                    <div className="flex justify-between items-center"><span className={softTextClass}>Payout Cycle</span><span className="font-extrabold text-white">{managerConfiguration?.payoutCycle || 'weekly'}</span></div>
+                    <div className="flex justify-between items-center"><span className={softTextClass}>Algo Trading</span><span className="font-extrabold text-white">{managerConfiguration?.algoTrading || 'Manual'}</span></div>
+                    <div className="flex justify-between items-center"><span className={softTextClass}>Status</span><span className="font-extrabold text-white">{managerConfiguration?.status || activeManager?.status || 'Active'}</span></div>
                   </div>
                 </div>
 
@@ -653,11 +682,11 @@ export default function ClientManagerPage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Pending Wallet</div>
-                    <div className="text-2xl font-black text-[#d9aa2b]">{formatCurrency(totalInvested)}</div>
+                    <div className="text-2xl font-black text-[#d9aa2b]">{formatCurrency(managerWallet?.pending ?? totalInvested)}</div>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Total Settled</div>
-                    <div className="text-2xl font-black text-white">{formatCurrency(totalProfit)}</div>
+                    <div className="text-2xl font-black text-white">{formatCurrency(managerWallet?.settled ?? totalProfit)}</div>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Live Managers</div>
