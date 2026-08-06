@@ -17,6 +17,7 @@ from clientPanel.view.investments import (
 from clientPanel.view.logout import logout_client
 from clientPanel.view.mam_managers import (
     get_manager_investors,
+    get_my_mam_manager_detail,
     invest_in_manager,
     list_mam_managers,
     list_my_mam_managers,
@@ -60,6 +61,11 @@ urlpatterns = [
     path("accounts/create", client_only(create_client_trading_account), name="create-account"),
     path("mam-managers", client_only(list_mam_managers), name="mam-managers-list"),
     path("my-mam-managers", client_only(list_my_mam_managers), name="my-mam-managers-list"),
+    path(
+        "my-mam-managers/<str:account_id>/detail",
+        client_only(get_my_mam_manager_detail),
+        name="my-mam-manager-detail",
+    ),
     path("mam-managers/invest", client_only(invest_in_manager), name="mam-managers-invest"),
     path(
         "mam-managers/<str:account_id>/investors",

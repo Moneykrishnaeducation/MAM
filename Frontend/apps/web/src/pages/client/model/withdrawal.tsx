@@ -410,36 +410,7 @@ export default function WithdrawalModal({
                     isDarkMode ? 'bg-black/40 border-amber-500/20 shadow-inner' : 'bg-white/60 border-amber-500/30'
                   }`}
                 >
-                  <div className="relative z-10 flex flex-col items-center text-center space-y-2">
-                    <div className="relative">
-                        <div className="w-9 h-9 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 border border-amber-500/20 rotate-45">
-                        <AlertCircle size={24} strokeWidth={2.5} className="-rotate-45" />
-                        </div>
-                        <div className="absolute -top-2 -right-2 w-5 h-5 bg-white rounded-full flex items-center justify-center text-amber-500 shadow-md">
-                            <Sparkles size={12} fill="currentColor" />
-                        </div>
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <h5 className={`text-sm font-black uppercase tracking-[0.3em] ${isDarkMode ? 'text-amber-500/80' : 'text-amber-600'}`}>
-                        Setup Required
-                      </h5>
-                      <p className={`text-[11px] font-bold leading-relaxed max-w-[240px] uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Establish a secure connection to your {activeTab} destination in your vault profile.
-                      </p>
-                    </div>
-
-                    <motion.button 
-                      whileHover={{ scale: 1.05, y: -2, boxShadow: `0 10px 20px -5px rgba(185, 138, 31, 0.3)` }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => router.push('/profile?activeTab=payment')}
-                      className="px-6 py-3 rounded-xl text-white text-[11px] font-black uppercase tracking-[0.25em] flex items-center gap-3 group relative overflow-hidden"
-                      style={{ background: `linear-gradient(135deg, ${GOLD} 0%, #8c6a1a 100%)` } as React.CSSProperties}
-                    >
-                      Connect {activeTab}
-                      <ArrowRight size={16} strokeWidth={3} className="group-hover:translate-x-1 transition-transform" />
-                    </motion.button>
-                  </div>
+                  
 
                   {/* Decorative Background for Vault */}
                   <div className="absolute -top-10 -left-10 w-32 h-32 rounded-full blur-3xl pointer-events-none opacity-20" style={{ background: ACCENT }} />

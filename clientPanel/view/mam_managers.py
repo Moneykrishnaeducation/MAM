@@ -17,6 +17,192 @@ from clientPanel.view.common import _error, _resolve_client_user_id
 logger = logging.getLogger(__name__)
 
 
+def _manager_avatar(name: str) -> str:
+    return (
+        f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=1e293b&color=34d399&size=128&bold=true"
+    )
+
+
+def _manager_label(mgr: TradingAccount) -> str:
+    return mgr.account_name or (mgr.user.name if mgr.user else "MAM Manager")
+
+
+def _manager_email(mgr: TradingAccount) -> str:
+    return mgr.user.email if mgr.user else "manager@mam.com"
+
+
+def _manager_status(mgr: TradingAccount) -> str:
+    return mgr.status or "Active"
+
+
+def _manager_strategy(mgr: TradingAccount) -> str:
+    return mgr.risk_level or "Quantitative Grid"
+
+
+def _manager_fee(mgr: TradingAccount) -> str:
+    return f"{mgr.profit_sharing_percentage or 20.0}%"
+
+
+def _manager_risk_label(status: str) -> str:
+    lowered = str(status or "").strip().lower()
+    if lowered == "active":
+        return "Low"
+    if lowered in {"inactive", "suspended", "disabled"}:
+        return "High"
+    return "Medium"
+
+
+def _serialize_manager_row(mgr: TradingAccount, investor_count: int) -> dict:
+    name = _manager_label(mgr)
+    email = _manager_email(mgr)
+    account_id = mgr.account_id or ""
+    status = _manager_status(mgr)
+    strategy = _manager_strategy(mgr)
+    fee = _manager_fee(mgr)
+    aum = float(mgr.balance)
+    avatar = _manager_avatar(name)
+    return {
+        "id": mgr.id,
+        "account_id": account_id,
+        "name": name,
+        "email": email,
+        "strategy": strategy,
+        "aum": aum,
+        "performance_fee": fee,
+        "status": status,
+        "investors_count": investor_count,
+        "risk": _manager_risk_label(status),
+        "balance": aum,
+        "profit": strategy,
+        "share": fee,
+        "investorsList": [],
+        "role": strategy,
+        "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
+        "phone": f"AUM ${aum:,.2f}",
+        "avatar": avatar,
+        "aum_label": f"${aum:,.2f}",
+        "account_name": _manager_label(mgr),
+        "payout_cycle": mgr.payout_frequency or "weekly",
+        "algo_trading": "Automatic" if mgr.copy_trade_enabled or mgr.dual_trade_enabled else "Manual",
+        "master_security": "Enabled" if mgr.is_enabled else "Disabled",
+        "account_settings": {
+            "account_name": _manager_label(mgr),
+            "payout_cycle": mgr.payout_frequency or "weekly",
+            "algo_trading": "Automatic" if mgr.copy_trade_enabled or mgr.dual_trade_enabled else "Manual",
+            "status": status,
+            "leverage": f"1:{mgr.leverage}",
+        },
+        "wallet": {
+            "pending": float(mgr.balance or 0.0),
+            "settled": float(max(float(mgr.balance or 0.0) - float(mgr.equity or 0.0), 0.0)),
+        },
+    }
+
+
+async def _manager_investor_rows(mgr: TradingAccount, user_id: int | None = None) -> list[dict]:
+    investors = (
+        await TradingAccount.filter(mam_master_account=mgr).prefetch_related("user").all()
+    )
+    client_name = (
+        (mgr.user.name if mgr.user else None)
+        or (mgr.account_name or "Investor")
+    )
+    return [
+        {
+            "id": f"INV-{inv.account_id}",
+            "accountId": inv.account_id,
+            "name": inv.user.name if inv.user else client_name,
+            "email": inv.user.email if inv.user else "",
+            "invested": f"${float(inv.equity):,.2f}",
+            "profit": f"${float(inv.balance):,.2f}",
+            "status": inv.status or "Active",
+        }
+        for inv in investors
+    ]
+
+
+async def _load_manager_detail(
+    *, user_id: int, account_id: str
+) -> tuple[TradingAccount | None, list[dict], int]:
+    manager = (
+        await TradingAccount.filter(account_type="MAM", user_id=user_id, account_id=str(account_id))
+        .prefetch_related("user")
+        .first()
+        or await TradingAccount.filter(account_type="MAM", user_id=user_id, id=account_id)
+        .prefetch_related("user")
+        .first()
+    )
+    if manager is None:
+        return None, [], 0
+
+    investors = await _manager_investor_rows(manager, user_id=user_id)
+    return manager, investors, len(investors)
+
+
+@permission_required(IsClient)
+async def get_my_mam_manager_detail(request, account_id: str):
+    """Return the expanded manager card data for a single client-owned MAM manager."""
+    await ensure_db_initialized()
+
+    user_id = await _resolve_client_user_id(request)
+    if user_id is None:
+        return _error("Authenticated session is required", status=401)
+
+    manager, investors, investor_count = await _load_manager_detail(user_id=user_id, account_id=account_id)
+    if manager is None:
+        return _error(f"MAM Manager account {account_id} not found or access denied", status=404)
+
+    manager_row = _serialize_manager_row(manager, investor_count)
+    pending_wallet = float(manager.balance or 0.0)
+    settled_value = float(max(float(manager.balance or 0.0) - float(manager.equity or 0.0), 0.0))
+    manager_row.update(
+        {
+            "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
+            "role": manager.risk_level or "MAM Portfolio Manager",
+            "phone": str(manager.account_id or ""),
+            "avatar": _manager_avatar(manager_row["name"]),
+            "investorsList": investors,
+            "investors_count": investor_count,
+            "accountSettings": {
+                "accountName": manager.account_name or manager_row["name"],
+                "payoutCycle": manager.payout_frequency or "weekly",
+                "algoTrading": "Automatic"
+                if manager.copy_trade_enabled or manager.dual_trade_enabled
+                else "Manual",
+                "status": manager.status or "Active",
+                "leverage": f"1:{manager.leverage}",
+                "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
+            },
+            "performanceSummary": {
+                "aum": float(manager.balance or 0.0),
+                "netBalance": float(manager.balance or 0.0),
+                "totalProfit": float(max(float(manager.balance or 0.0) - float(manager.equity or 0.0), 0.0)),
+                "performanceFee": manager.profit_sharing_percentage or 20.0,
+                "status": manager.status or "Active",
+                "leverage": f"1:{manager.leverage}",
+            },
+            "wallet": {
+                "pending": pending_wallet,
+                "settled": settled_value,
+                "liveManagers": investor_count,
+            },
+            "configuration": {
+                "accountName": manager.account_name or manager_row["name"],
+                "payoutCycle": manager.payout_frequency or "weekly",
+                "algoTrading": "Automatic"
+                if manager.copy_trade_enabled or manager.dual_trade_enabled
+                else "Manual",
+                "status": manager.status or "Active",
+                "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
+                "strategy": manager.risk_level or "Quantitative Grid",
+                "performanceFee": f"{manager.profit_sharing_percentage or 20.0}%",
+            },
+        }
+    )
+
+    return JsonResponse({"status": "ok", "manager": manager_row})
+
+
 def _render_investor_credentials_email(
     *,
     user_name: str,
