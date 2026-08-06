@@ -7,12 +7,12 @@ from collections.abc import Iterable
 from datetime import datetime
 
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
-from adminPanel.models import ClientProfile, ClientUser, PendingRequest
+from adminPanel.models import ClientUser, PendingRequest
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
@@ -356,7 +356,9 @@ async def decide_pending_request(request, request_id: str):
             pending_request.reviewed_at = timezone.now()
             await pending_request.save()
 
-            from adminPanel.models import ClientTransaction, ClientAccount, TradingAccount
+            from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
+            from adminPanel.mt5.services import MT5ManagerActions
+
             payload = _pending_payload(pending_request)
             tx_id = payload.get("transaction_id")
             if tx_id:
@@ -368,7 +370,7 @@ async def decide_pending_request(request, request_id: str):
                     amount = float(tx.amount)
                     account_number = tx.account_number
 
-                    # 1. Update ClientAccount
+                    # 1. Update ClientAccount in DB
                     acc = await ClientAccount.filter(user_id=pending_request.user_id, account_number=account_number).first()
                     if acc:
                         if request_type in {"deposit", "deposits"}:
@@ -377,9 +379,25 @@ async def decide_pending_request(request, request_id: str):
                             acc.balance = float(acc.balance or 0.0) - amount
                         await acc.save()
 
-                    # 2. Update TradingAccount
+                    # 2. Execute MT5 operation and update TradingAccount in DB
                     t_acc = await TradingAccount.filter(user_id=pending_request.user_id, account_id=account_number).first()
+                    if not t_acc:
+                        t_acc = await TradingAccount.filter(account_id=account_number).first()
+
                     if t_acc:
+                        try:
+                            mt5 = MT5ManagerActions()
+                            mt5_login = int(t_acc.account_id)
+                            comment = f"Admin Request Approval ({request_type})"
+                            if request_type in {"deposit", "deposits"}:
+                                mt5.deposit_funds(mt5_login, amount, comment)
+                            else:
+                                mt5.withdraw_funds(mt5_login, amount, comment)
+                        except Exception as exc:
+                            import logging
+                            logger = logging.getLogger(__name__)
+                            logger.error(f"[MT5] Error executing {request_type} for account {account_number}: {exc}")
+
                         if request_type in {"deposit", "deposits"}:
                             t_acc.balance = float(t_acc.balance or 0.0) + amount
                         else:
