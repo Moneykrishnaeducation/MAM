@@ -168,7 +168,6 @@ async def client_documents(request):
             details={
                 "Document Type": _document_label(document_type),
                 "File Name": str(submission_payload.get("file_name") or ""),
-                "File URL": str(submission_payload.get("file_url") or ""),
             },
             status="Pending",
             created_at=timezone.now().strftime("%Y-%m-%d %H:%M:%S"),

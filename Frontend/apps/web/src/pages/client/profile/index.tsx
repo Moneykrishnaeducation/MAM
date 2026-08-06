@@ -898,10 +898,6 @@ export default function ClientProfilePage() {
                         <span className={softTextClass}>Register Date</span>
                         <span className={`font-bold ${headingTextClass}`}>Not available</span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className={softTextClass}>Account Type</span>
-                        <span className={`font-bold ${headingTextClass}`}>{profileTier || 'Not set'}</span>
-                      </div>
                     </div>
                   </div>
                 </div>
