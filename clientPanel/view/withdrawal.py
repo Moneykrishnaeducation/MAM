@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientAccount, ClientTransaction, TradingAccount
+from adminPanel.view.mail import _frontend_base_url
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request
@@ -46,6 +47,7 @@ def _render_withdrawal_email(
         "notes": notes or "",
         "status": status,
         "created_at": created_at or "",
+        "frontend_base_url": _frontend_base_url(),
     }
     subject = "Withdrawal request submitted"
     plain_body = render_to_string("emails/withdrawal_notification_email.txt", context).strip()

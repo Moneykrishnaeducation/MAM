@@ -12,6 +12,7 @@ from django.views.decorators.http import require_http_methods
 from adminPanel.models import ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
+from adminPanel.view.mail import _frontend_base_url
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +41,7 @@ def _render_credentials_email_body(
         "master_password": master_password or "",
         "investor_password": investor_password or "",
         "leverage": leverage,
+        "frontend_base_url": _frontend_base_url(),
     }
 
     subject = f"{display_account_type} account credentials"

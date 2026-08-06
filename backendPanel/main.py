@@ -30,6 +30,7 @@ if not settings.configured:
         EMAIL_HOST_USER=_app_settings.email_settings["EMAIL_HOST_USER"],
         EMAIL_HOST_PASSWORD=_app_settings.email_settings["EMAIL_HOST_PASSWORD"],
         DEFAULT_FROM_EMAIL=_app_settings.email_settings["DEFAULT_FROM_EMAIL"],
+        FRONTEND_BASE_URL=_app_settings.frontend_base_url,
         STATIC_URL=_app_settings.static_url,
         STATIC_ROOT=str(_app_settings.static_root),
         STATICFILES_DIRS=[str(d) for d in _app_settings.staticfiles_dirs],

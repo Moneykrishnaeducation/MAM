@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
 from adminPanel.models import ClientUser, PendingRequest
+from adminPanel.view.mail import _frontend_base_url
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
@@ -236,6 +237,7 @@ def _build_approval_email_context(
         "details": _build_approval_email_details(pending_request, request_type, payload),
         "reviewed_at": reviewed_at,
         "approved_by": approved_by,
+        "frontend_base_url": _frontend_base_url(),
     }
     plain_body = render_to_string("emails/admin_approval_notification.txt", context).strip()
     html_body = render_to_string("emails/admin_approval_notification.html", context)
@@ -261,6 +263,7 @@ def _build_rejection_email_context(
         "reviewed_at": reviewed_at,
         "approved_by": reviewed_by,
         "reason": reason or "",
+        "frontend_base_url": _frontend_base_url(),
     }
     plain_body = render_to_string("emails/admin_rejection_notification.txt", context).strip()
     html_body = render_to_string("emails/admin_rejection_notification.html", context)
@@ -320,6 +323,7 @@ async def _send_admin_update_approval_email(
         "details": _build_approval_email_details(pending_request, request_type, payload),
         "reviewed_at": reviewed_at,
         "approved_by": approved_by,
+        "frontend_base_url": _frontend_base_url(),
     }
     plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()
     html_body = render_to_string(f"emails/{template_prefix}.html", context)

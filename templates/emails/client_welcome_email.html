@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #061230;
+            color: #E8EEF9;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 20px auto;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(240, 200, 74, 0.25);
+            background: #0B1F4B;
+            border: 1px solid rgba(201, 162, 39, 0.35);
+        }
+        .header {
+            background: linear-gradient(145deg, #F0C84A, #C9A227);
+            color: #0B1F4B;
+            text-align: center;
+            padding: 26px 20px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+        .content {
+            padding: 24px 28px 30px;
+        }
+        .content h2 {
+            color: #F0C84A;
+            margin-top: 0;
+        }
+        .details {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px solid rgba(240, 200, 74, 0.3);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin: 18px 0 22px;
+        }
+        .details p {
+            margin: 8px 0;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        .button-wrap {
+            text-align: center;
+            margin: 22px 0 12px;
+        }
+        .button {
+            display: inline-block;
+            background: linear-gradient(145deg, #F0C84A, #C9A227);
+            color: #0B1F4B !important;
+            text-decoration: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: bold;
+            box-shadow: 0 0 10px rgba(240, 200, 74, 0.35);
+        }
+        .footer {
+            padding: 16px 20px 22px;
+            text-align: center;
+            font-size: 12px;
+            color: #8A9BC0;
+        }
+        .footer a {
+            color: #F0C84A;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {{ user_name }},</h2>
+            <p>Your VT Index client account has been created successfully.</p>
+
+            <div class="details">
+                <p><strong>User Code:</strong> {{ user_code }}</p>
+                <p><strong>Email:</strong> {{ email }}</p>
+                <p><strong>Phone:</strong> {{ phone|default:"-" }}</p>
+                <p><strong>Country:</strong> {{ country|default:"-" }}</p>
+                {% if temporary_password %}<p><strong>Temporary Password:</strong> {{ temporary_password }}</p>{% endif %}
+            </div>
+
+            <div class="button-wrap">
+                <a class="button" href="{{ login_url }}">Sign In</a>
+            </div>
+
+            <p>Please sign in and complete any remaining profile or KYC steps if needed.</p>
+            <p>If you did not expect this email, please contact support immediately.</p>
+        </div>
+        <div class="footer">
+            <p>Need help? Contact <a href="mailto:support@vtindex.com">support@vtindex.com</a></p>
+        </div>
+    </div>
+</body>
+</html>

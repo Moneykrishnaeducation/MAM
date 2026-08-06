@@ -14,6 +14,7 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
+from adminPanel.view.mail import _frontend_base_url
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import (
@@ -64,6 +65,7 @@ def _render_document_submission_email(
         "details": details,
         "status": status,
         "created_at": created_at or "",
+        "frontend_base_url": _frontend_base_url(),
     }
     subject = f"{label} submitted for approval"
     plain_body = render_to_string(

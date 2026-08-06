@@ -8,6 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from adminPanel.models import ServerSetting, MT5GroupConfig, TradeGroup, TradingAccount, ClientUser
 from adminPanel.mt5.services import MT5ManagerActions
+from adminPanel.view.mail import _frontend_base_url
 from backendPanel.database import ensure_db_initialized
 
 logger = logging.getLogger(__name__)
@@ -48,6 +49,7 @@ def _render_credentials_email(
         "leverage": leverage,
         "master_password": master_password or "",
         "investor_password": investor_password or "",
+        "frontend_base_url": _frontend_base_url(),
     }
     subject = f"{display_account_type} account credentials"
     plain_body = render_to_string(f"emails/{template_prefix}.txt", context).strip()

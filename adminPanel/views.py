@@ -5,17 +5,20 @@ import json
 import logging
 import random
 import re
+import secrets
 import string
 from pathlib import Path
 
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.http import JsonResponse
+from django.template.loader import render_to_string
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from tortoise import Tortoise
 
+from backendPanel.mail_queue import queue_email_message
 from adminPanel.models import (
     ActivityLog,
     AdminUser,
@@ -44,6 +47,22 @@ from backendPanel.database import ensure_db_initialized
 
 AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
 logger = logging.getLogger(__name__)
+
+CLIENT_LOGIN_URL = f"{getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000').rstrip('/')}/client/login"
+
+
+def _generate_temporary_password(length: int = 12) -> str:
+    """Generate a strong temporary password for new client accounts."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    while True:
+        candidate = "".join(secrets.choice(alphabet) for _ in range(length))
+        if (
+            any(ch.islower() for ch in candidate)
+            and any(ch.isupper() for ch in candidate)
+            and any(ch.isdigit() for ch in candidate)
+            and any(ch in "!@#$%^&*" for ch in candidate)
+        ):
+            return candidate
 
 
 def _save_avatar_data(avatar_base64: str, admin_id: int) -> str | None:
@@ -76,6 +95,58 @@ def _save_uploaded_document(uploaded_file, user_id: int, document_type: str) -> 
     saved_path = default_storage.save(relative_path, uploaded_file)
     file_url = default_storage.url(saved_path)
     return saved_path, file_url
+
+
+def _render_client_welcome_email(
+    *,
+    user_name: str,
+    email: str,
+    user_code: str,
+    phone: str | None,
+    country: str,
+    temporary_password: str | None,
+) -> tuple[str, str, str]:
+    context = {
+        "title": "Welcome to VT Index",
+        "user_name": user_name or "there",
+        "email": email,
+        "user_code": user_code,
+        "phone": phone or "",
+        "country": country or "",
+        "temporary_password": temporary_password or "",
+        "login_url": CLIENT_LOGIN_URL,
+    }
+    subject = "Welcome to VT Index"
+    plain_body = render_to_string("emails/client_welcome_email.txt", context).strip()
+    html_body = render_to_string("emails/client_welcome_email.html", context)
+    return subject, plain_body, html_body
+
+
+async def _send_client_welcome_email(
+    *,
+    user: ClientUser,
+    temporary_password: str | None,
+) -> None:
+    subject, plain_body, html_body = _render_client_welcome_email(
+        user_name=user.name or user.email or "there",
+        email=user.email,
+        user_code=user.user_code or f"USR-{user.id:03d}",
+        phone=user.phone,
+        country=user.country or "United States",
+        temporary_password=temporary_password,
+    )
+    await queue_email_message(
+        subject=subject,
+        body=plain_body,
+        html_body=html_body,
+        to=[user.email],
+        source="client_user_creation",
+        payload={
+            "user_code": user.user_code,
+            "email": user.email,
+            "login_url": CLIENT_LOGIN_URL,
+        },
+    )
 
 
 # Valid roles for AdminUser records (canonical title-case)
@@ -1012,7 +1083,8 @@ async def create_client_user(request):
     while await ClientUser.filter(user_code=user_code).exists():
         user_code = _generate_user_code("USR")
 
-    password_hash = hash_client_password(password) if password else None
+    temporary_password = password or _generate_temporary_password()
+    password_hash = hash_client_password(temporary_password)
 
     user = await ClientUser.create(
         user_code=user_code,
@@ -1035,6 +1107,11 @@ async def create_client_user(request):
         country=country,
     )
 
+    try:
+        await _send_client_welcome_email(user=user, temporary_password=temporary_password)
+    except Exception as exc:
+        logger.error(f"Failed to send client welcome email to {user.email}: {exc}")
+
     return JsonResponse(
         {
             "status": "ok",
@@ -1054,6 +1131,7 @@ async def create_client_user(request):
                 "bankCrypto": None,
                 "transactions": [],
                 "tickets": [],
+                "temporaryPassword": temporary_password,
             },
         },
         status=201,

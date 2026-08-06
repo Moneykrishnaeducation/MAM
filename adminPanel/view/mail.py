@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from email.utils import parseaddr
 
+from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -47,6 +48,14 @@ def _coerce_bool(value, default: bool = False) -> bool:
     if isinstance(value, str):
         return value.strip().lower() in {"1", "true", "yes", "on"}
     return bool(value)
+
+
+def _frontend_base_url() -> str:
+    return str(getattr(settings, "FRONTEND_BASE_URL", None) or "http://localhost:3000").rstrip("/")
+
+
+def _frontend_base_url() -> str:
+    return str(getattr(settings, "FRONTEND_BASE_URL", None) or "http://localhost:3000").rstrip("/")
 
 
 def _serialize_mail_message(message: AdminMailMessage) -> dict:

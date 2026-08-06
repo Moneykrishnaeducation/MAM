@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from adminPanel.models import ClientUser, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
+from adminPanel.view.mail import _frontend_base_url
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _resolve_client_user_id
@@ -222,6 +223,7 @@ def _render_investor_credentials_email(
         "leverage": leverage,
         "master_password": master_password or "",
         "investor_password": investor_password or "",
+        "frontend_base_url": _frontend_base_url(),
     }
     subject = "Investor account credentials"
     plain_body = render_to_string("emails/investor_credentials_email.txt", context).strip()

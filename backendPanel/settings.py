@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     mt5_default_agent: int = Field(default=426, alias="MT5_DEFAULT_AGENT")
+    frontend_base_url: str = Field(default="http://localhost:3000", alias="FRONTEND_BASE_URL")
 
     @field_validator("debug", mode="before")
     def parse_debug(cls, value: Any) -> bool:

@@ -1,0 +1,14 @@
+Hello {{ user_name }},
+
+Your VT Index client account has been created successfully.
+
+User Code: {{ user_code }}
+Email: {{ email }}
+Phone: {{ phone }}
+Country: {{ country }}
+Login URL: {{ login_url }}
+{% if temporary_password %}Temporary Password: {{ temporary_password }}
+{% endif %}
+Please sign in and complete any remaining profile or KYC steps if needed.
+
+If you did not expect this email, please contact support immediately.

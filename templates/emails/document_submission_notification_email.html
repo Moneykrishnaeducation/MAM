@@ -40,7 +40,7 @@
                 <p><strong>Status:</strong> {{ status }}</p>
                 {% if created_at %}<p><strong>Submitted At:</strong> {{ created_at }}</p>{% endif %}
             </div>
-            <div class="button-wrap"><a href="https://client.vtindex.com/" class="button">View Request</a></div>
+            <div class="button-wrap"><a href="{{ frontend_base_url }}/" class="button">View Request</a></div>
             <p class="welcome-message">Please keep this email for your records. Our team will review the request shortly.</p>
         </div>
         <div class="footer"><p>For support, contact us at <a href="mailto:support@vtindex.com">support@vtindex.com</a>.</p></div>
