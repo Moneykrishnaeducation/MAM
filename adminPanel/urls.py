@@ -25,6 +25,15 @@ from adminPanel.view.manager_fund_actions import (
     manager_withdraw_api,
     account_financial_action_api,
 )
+from adminPanel.view.investor_fund_actions import (
+    investor_credit_in_api,
+    investor_credit_out_api,
+    investor_deposit_api,
+    investor_equity_api,
+    investor_history_api,
+    investor_withdraw_api,
+)
+
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
     decide_pending_request,
@@ -163,6 +172,8 @@ urlpatterns = [
         admin_only(account_financial_action_api),
         name="financial-action",
     ),
+
+    # Manager Fund Actions
     path("managers/deposit", admin_only(manager_deposit_api), name="manager-deposit"),
     path("managers/withdraw", admin_only(manager_withdraw_api), name="manager-withdraw"),
     path("managers/credit-in", admin_only(manager_credit_in_api), name="manager-credit-in"),
@@ -175,6 +186,14 @@ urlpatterns = [
         admin_only(manager_investors_list_api),
         name="manager-investors-list",
     ),
+
+    # Investor Fund Actions
+    path("investors/deposit", investor_deposit_api, name="investor-deposit"),
+    path("investors/withdraw", investor_withdraw_api, name="investor-withdraw"),
+    path("investors/credit-in", investor_credit_in_api, name="investor-credit-in"),
+    path("investors/credit-out", investor_credit_out_api, name="investor-credit-out"),
+    path("investors/<str:account_id>/equity", investor_equity_api, name="investor-equity"),
+    path("investors/<str:account_id>/history", investor_history_api, name="investor-history"),
     # MT5 CRUD Routes
     path(
         "server-settings",

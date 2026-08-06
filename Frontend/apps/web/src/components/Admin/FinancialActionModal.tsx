@@ -54,17 +54,33 @@ export default function FinancialActionModal({
       setFetchError(null);
       fetch(`/api/admin/managers/${targetUser.accountId}/history`, { credentials: 'include' })
         .then(res => res.json())
-        .then(data => {
-          if (data.status === 'ok' && Array.isArray(data.history)) {
+        .then(async (data) => {
+          if (data.status === 'ok' && Array.isArray(data.history) && data.history.length > 0) {
             setHistoryLogs(data.history);
           } else {
-            setHistoryLogs([]);
-            if (data.message) setFetchError(data.message);
+            // Try investor history endpoint if manager endpoint returned no records
+            const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
+            const invData = await invRes.json();
+            if (invData.status === 'ok' && Array.isArray(invData.history)) {
+              setHistoryLogs(invData.history);
+            } else {
+              setHistoryLogs([]);
+              if (invData.message) setFetchError(invData.message);
+            }
           }
         })
-        .catch(err => {
-          console.error("Failed to fetch history:", err);
-          setFetchError("Failed to load history.");
+        .catch(async () => {
+          try {
+            const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
+            const invData = await invRes.json();
+            if (invData.status === 'ok' && Array.isArray(invData.history)) {
+              setHistoryLogs(invData.history);
+            } else {
+              setFetchError("Failed to load history.");
+            }
+          } catch {
+            setFetchError("Failed to load history.");
+          }
         })
         .finally(() => setFetchingData(false));
     } else if (modalType === 'investors_list') {

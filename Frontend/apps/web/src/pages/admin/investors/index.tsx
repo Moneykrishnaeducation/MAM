@@ -107,12 +107,20 @@ export default function AdminInvestorsPage() {
     setIsModalOpen(false);
 
     try {
-      const response = await fetch('/api/admin/accounts/financial-action', {
+      const endpointMap: Record<string, string> = {
+        deposit: '/api/admin/investors/deposit',
+        withdraw: '/api/admin/investors/withdraw',
+        'credit-in': '/api/admin/investors/credit-in',
+        'credit-out': '/api/admin/investors/credit-out',
+      };
+
+      const targetEndpoint = endpointMap[actionType] || '/api/admin/accounts/financial-action';
+
+      const response = await fetch(targetEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           accountId: targetUser.accountId,
-          actionType,
           amount: parseFloat(amount),
           note,
         }),
