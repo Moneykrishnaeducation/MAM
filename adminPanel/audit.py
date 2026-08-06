@@ -30,6 +30,85 @@ def _get_request_user_agent(request) -> str | None:
     return str(user_agent).strip() or None
 
 
+async def log_post_activity(request, response=None) -> ActivityLog | None:
+    """Automatic audit log recorder for POST/PUT/DELETE requests across all endpoints."""
+    if request.method not in {"POST", "PUT", "DELETE", "PATCH"}:
+        return None
+
+    try:
+        await ensure_db_initialized()
+        path = request.path or ""
+
+        # Ignore noisy / login status polling paths if needed
+        if path.endswith("/login") or path.endswith("/logout"):
+            return None
+
+        # Resolve user identity
+        user_name = "Unknown"
+        user_email = "Unknown"
+        user_role = "User"
+        user_id = None
+
+        from clientPanel.view.common import (
+            get_admin_request_token,
+            get_client_request_token,
+            load_admin_login_token,
+            load_client_login_token,
+        )
+
+        admin_token = get_admin_request_token(request)
+        if admin_token:
+            payload = load_admin_login_token(admin_token)
+            if payload:
+                user_name = payload.get("email", "Admin User")
+                user_email = payload.get("email", "admin@mam.com")
+                user_role = str(payload.get("role", "Admin")).capitalize()
+                user_id = payload.get("user_id") or payload.get("sub")
+
+        if user_name == "Unknown":
+            client_token = get_client_request_token(request)
+            if client_token:
+                payload = load_client_login_token(client_token)
+                if payload:
+                    user_id = payload.get("client_id") or payload.get("sub")
+                    user_email = payload.get("email", "client@mam.com")
+                    user_name = payload.get("email", "Client User")
+                    user_role = "Client"
+
+        # Determine module name and action from URL path
+        parts = [p for p in path.strip("/").split("/") if p]
+        module = parts[1] if len(parts) > 1 else (parts[0] if parts else "general")
+
+        # Parse request body payload
+        new_values = None
+        try:
+            if request.body:
+                import json
+                body_data = json.loads(request.body.decode("utf-8"))
+                if isinstance(body_data, dict):
+                    # Mask sensitive keys
+                    new_values = {
+                        k: ("***" if "password" in k.lower() or "secret" in k.lower() else v)
+                        for k, v in body_data.items()
+                    }
+        except Exception:
+            pass
+
+        return await create_audit_log(
+            request,
+            user_name=user_name,
+            user_email=user_email,
+            user_role=user_role,
+            action_type=f"{request.method} {path}",
+            module_name=module,
+            new_values=new_values,
+            user_id=user_id,
+        )
+    except Exception:
+        logger.exception("Failed to auto-log POST activity")
+        return None
+
+
 async def create_audit_log(
     request,
     *,
@@ -43,11 +122,7 @@ async def create_audit_log(
     new_values: dict[str, Any] | None = None,
     user_id: int | None = None,
 ) -> ActivityLog | None:
-    """Create a best-effort audit log row.
-
-    Logging errors should never block auth flows, so failures are swallowed
-    after being written to the application logger.
-    """
+    """Create a best-effort audit log row."""
     try:
         await ensure_db_initialized()
         return await ActivityLog.create(

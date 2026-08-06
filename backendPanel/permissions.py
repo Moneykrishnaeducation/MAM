@@ -203,7 +203,14 @@ def permission_required(permission_cls: type[BaseRolePermission]):
                 await ensure_db_initialized()
                 if not permission.has_permission(request, view_func):
                     return permission.denied_response()
-                return await view_func(request, *args, **kwargs)
+                res = await view_func(request, *args, **kwargs)
+                try:
+                    if request.method in {"POST", "PUT", "DELETE", "PATCH"}:
+                        from adminPanel.audit import log_post_activity
+                        await log_post_activity(request, res)
+                except Exception:
+                    pass
+                return res
 
             return async_wrapped
 
@@ -212,7 +219,14 @@ def permission_required(permission_cls: type[BaseRolePermission]):
             async_to_sync(ensure_db_initialized)()
             if not permission.has_permission(request, view_func):
                 return permission.denied_response()
-            return view_func(request, *args, **kwargs)
+            res = view_func(request, *args, **kwargs)
+            try:
+                if request.method in {"POST", "PUT", "DELETE", "PATCH"}:
+                    from adminPanel.audit import log_post_activity
+                    async_to_sync(log_post_activity)(request, res)
+            except Exception:
+                pass
+            return res
 
         return sync_wrapped
 
