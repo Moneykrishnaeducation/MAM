@@ -125,57 +125,66 @@ const normalizeTransaction = (transaction: any): ClientTransaction => ({
   account_id: transaction.account_number || transaction.account_id || 'N/A',
 });
 
+const isDeposit = (type: string) => {
+  const t = type.toLowerCase();
+  return t === 'deposit' || t === 'deposits';
+};
+
+const isWithdrawal = (type: string) => {
+  const t = type.toLowerCase();
+  return t === 'withdrawal' || t === 'withdrawals' || t === 'withdraw';
+};
+
 const getStatusStyles = (status: string, isDarkMode: boolean) => {
   switch (status.toLowerCase()) {
     case 'pending':
-      return isDarkMode
-        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-        : 'bg-amber-500/10 text-amber-300 border-amber-500/20';
     case 'processing':
       return isDarkMode
-        ? 'bg-sky-500/10 text-sky-400 border-sky-500/20'
-        : 'bg-sky-500/10 text-sky-300 border-sky-500/20';
+        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+        : 'bg-amber-500/10 text-amber-600 border-amber-500/20';
     case 'completed':
+    case 'approved':
+    case 'success':
       return isDarkMode
         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
+        : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
     case 'failed':
+    case 'rejected':
+    case 'cancelled':
       return isDarkMode
         ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-        : 'bg-rose-500/10 text-rose-300 border-rose-500/20';
+        : 'bg-rose-500/10 text-rose-600 border-rose-500/20';
     default:
       return isDarkMode
         ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-        : 'bg-blue-500/10 text-blue-200 border-blue-500/20';
+        : 'bg-blue-500/10 text-blue-600 border-blue-500/20';
   }
 };
 
 const getTypeStyles = (type: string, isDarkMode: boolean) => {
-  switch (type.toLowerCase()) {
-    case 'deposit':
-      return isDarkMode
-        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20';
-    case 'withdrawal':
-      return isDarkMode
-        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-        : 'bg-rose-500/10 text-rose-300 border-rose-500/20';
-    default:
-      return isDarkMode
-        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-        : 'bg-blue-500/10 text-blue-200 border-blue-500/20';
+  if (isDeposit(type)) {
+    return isDarkMode
+      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+      : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
   }
+  if (isWithdrawal(type)) {
+    return isDarkMode
+      ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+      : 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+  }
+  return isDarkMode
+    ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
+    : 'bg-blue-500/10 text-blue-600 border-blue-500/20';
 };
 
 const getTypeIcon = (type: string) => {
-  switch (type.toLowerCase()) {
-    case 'deposit':
-      return ArrowDownCircle;
-    case 'withdrawal':
-      return ArrowUpCircle;
-    default:
-      return FileText;
+  if (isDeposit(type)) {
+    return ArrowDownCircle;
   }
+  if (isWithdrawal(type)) {
+    return ArrowUpCircle;
+  }
+  return FileText;
 };
 
 const createEmptyTransactionCounts = (): TransactionCounts => ({
@@ -676,12 +685,7 @@ export default function TransactionHistory() {
                       Amount
                     </div>
                   </th>
-                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
-                    <div className="inline-flex items-center gap-2">
-                      <FileText size={14} className="text-[#6484c9]" />
-                      Reference
-                    </div>
-                  </th>
+                  
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
                     <div className="inline-flex items-center gap-2">
                       <Flag size={14} className="text-[#6484c9]" />
@@ -707,12 +711,11 @@ export default function TransactionHistory() {
                 ) : transactions.length > 0 ? (
                   transactions.map((transaction) => {
                     const TypeIcon = getTypeIcon(transaction.type);
-                    const amountClass =
-                      transaction.type.toLowerCase() === 'withdrawal'
-                        ? 'text-rose-400'
-                        : transaction.type.toLowerCase() === 'deposit'
-                          ? 'text-emerald-400'
-                          : isDarkMode ? 'text-white' : 'text-white';
+                    const amountClass = isWithdrawal(transaction.type)
+                      ? 'text-rose-500 font-extrabold'
+                      : isDeposit(transaction.type)
+                        ? 'text-emerald-400 font-extrabold'
+                        : isDarkMode ? 'text-white' : 'text-slate-900';
 
                     return (
                       <tr
@@ -745,7 +748,7 @@ export default function TransactionHistory() {
                         </td>
                         <td className={`px-6 py-5 whitespace-nowrap font-bold ${isDarkMode ? 'text-gray-300' : 'text-[#dbe8ff]'}`}>{transaction.method}</td>
                         <td className={`px-6 py-5 whitespace-nowrap font-bold ${amountClass}`}>{formatMoney(transaction.amount)}</td>
-                        <td className="px-6 py-5 whitespace-nowrap font-mono text-sky-400">{`TXN-${transaction.id}`}</td>
+                        
                         <td className="px-6 py-5 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${getStatusStyles(transaction.status, isDarkMode)}`}

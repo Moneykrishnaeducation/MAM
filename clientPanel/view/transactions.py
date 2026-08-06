@@ -15,8 +15,12 @@ def _normalize_transaction_tab(raw_tab: str | None) -> str | None:
     value = str(raw_tab or "").strip().lower()
     if value in {"", "all", "*"}:
         return None
-    if value in {"deposit", "pending", "withdraw", "withdrawal"}:
-        return "withdrawal" if value == "withdraw" else value
+    if value in {"deposit", "deposits"}:
+        return "deposit"
+    if value in {"withdraw", "withdrawal", "withdrawals"}:
+        return "withdrawal"
+    if value in {"pending", "processing"}:
+        return "pending"
     return None
 
 
@@ -31,9 +35,9 @@ def _transaction_matches_tab(transaction: ClientTransaction, tab: str | None) ->
         return status in {"pending", "processing"}
 
     if tab == "deposit":
-        return transaction_type == "deposit"
+        return transaction_type in {"deposit", "deposits"}
 
-    return transaction_type == "withdrawal"
+    return transaction_type in {"withdrawal", "withdrawals", "withdraw"}
 
 
 def _parse_positive_int(raw_value: str | None, default: int, *, minimum: int = 1, maximum: int | None = None) -> int:
