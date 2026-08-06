@@ -35,7 +35,8 @@ async def get_client_activity_logs(request):
     if error:
         return error
 
-    activity_logs = await ActivityLog.filter(user_id=profile.user_id).order_by("-timestamp").limit(5)
+    user_id = getattr(profile, "user_id", None) or profile.id
+    activity_logs = await ActivityLog.filter(user_id=user_id).order_by("-timestamp").limit(5)
 
     return JsonResponse(
         {
