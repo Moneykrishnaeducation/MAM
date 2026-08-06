@@ -326,26 +326,29 @@ export default function AdminPendingRequestsPage() {
         <title>Pending Requests | Admin Portal</title>
       </Head>
 
-        <div className="p-6 md:p-8">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 mx-auto text-slate-100 max-w-7xl">
           {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-semibold mb-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f0b91f]/10 border border-[#f0b91f]/20 text-[#f0b91f] text-xs font-semibold mb-3">
                 <Clock size={13} /> Approvals & Verification Queue
               </div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-white">Pending Requests</h1>
-              <p className="text-slate-400 text-sm mt-1">Review requests across tabs. Click "View Details" to inspect full data and approve or reject.</p>
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+                <h1 className="text-3xl font-extrabold tracking-tight text-white">Pending Requests</h1>
+              </div>
+              <p className="text-[#8db5ff] text-sm mt-2">Review requests across tabs. Click "View Details" to inspect full data and approve or reject.</p>
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-3 bg-slate-900 px-4 py-2 rounded-2xl border border-slate-800">
-                <Search size={16} className="text-slate-400 shrink-0" />
+              <div className="flex items-center gap-3 bg-[#081d5f] px-4 py-2.5 rounded-2xl border border-[#214fbf] focus-within:border-[#3aa0ff] transition-all">
+                <Search size={16} className="text-[#8db5ff] shrink-0" />
                 <input 
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search request ID or user..."
-                  className="bg-transparent border-none text-xs text-white outline-none w-48 placeholder-slate-500" 
+                  className="bg-transparent border-none text-xs text-white outline-none w-48 placeholder-[#8db5ff]" 
                 />
               </div>
             </div>
@@ -362,66 +365,66 @@ export default function AdminPendingRequestsPage() {
           )}
 
           {/* Summary Stat Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
+          {/* <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+            <div className="bg-[#040f2d] border border-[#153d9f] rounded-[2rem] p-6 shadow-xl flex items-center justify-between transition-all hover:bg-[#0a205f]">
               <div>
-                <div className="text-slate-400 text-xs font-medium">Total Pending Items</div>
-                <div className="text-3xl font-black text-amber-400 mt-1">{totalPending} Items</div>
+                <div className="text-[#8db5ff] text-xs font-bold uppercase tracking-widest">Total Pending</div>
+                <div className="text-3xl font-black text-white mt-1">{totalPending}</div>
               </div>
               <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 <Clock size={24} />
               </div>
             </div>
 
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
+            <div className="bg-[#040f2d] border border-[#153d9f] rounded-[2rem] p-6 shadow-xl flex items-center justify-between transition-all hover:bg-[#0a205f]">
               <div>
-                <div className="text-slate-400 text-xs font-medium">Pending Deposits</div>
-                <div className="text-3xl font-black text-emerald-400 mt-1">{formatVal(totalDepositAmount)}</div>
+                <div className="text-[#8db5ff] text-xs font-bold uppercase tracking-widest">Pending Deposits</div>
+                <div className="text-3xl font-black text-white mt-1">{formatVal(totalDepositAmount)}</div>
               </div>
               <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 <ArrowDownCircle size={24} />
               </div>
             </div>
 
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
+            <div className="bg-[#040f2d] border border-[#153d9f] rounded-[2rem] p-6 shadow-xl flex items-center justify-between transition-all hover:bg-[#0a205f]">
               <div>
-                <div className="text-slate-400 text-xs font-medium">Pending Withdrawals</div>
-                <div className="text-3xl font-black text-blue-400 mt-1">{formatVal(totalWithdrawAmount)}</div>
+                <div className="text-[#8db5ff] text-xs font-bold uppercase tracking-widest">Pending Withdraws</div>
+                <div className="text-3xl font-black text-white mt-1">{formatVal(totalWithdrawAmount)}</div>
               </div>
               <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
                 <ArrowUpCircle size={24} />
               </div>
             </div>
 
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
+            <div className="bg-[#040f2d] border border-[#153d9f] rounded-[2rem] p-6 shadow-xl flex items-center justify-between transition-all hover:bg-[#0a205f]">
               <div>
-                <div className="text-slate-400 text-xs font-medium">KYC Documents</div>
-                <div className="text-3xl font-black text-purple-400 mt-1">{pendingDocs} Verification</div>
+                <div className="text-[#8db5ff] text-xs font-bold uppercase tracking-widest">KYC Documents</div>
+                <div className="text-3xl font-black text-white mt-1">{pendingDocs}</div>
               </div>
               <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-400 border border-purple-500/20">
                 <FileText size={24} />
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* MAIN TAB NAVIGATION BAR */}
-          <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-2 mb-8 shadow-xl">
+          <div className="bg-[#040f2d] border border-[#153d9f] rounded-3xl p-2 mb-8 shadow-xl">
             <div className="flex items-center gap-2 overflow-x-auto text-xs scrollbar-none">
               
               {/* TAB 1: DEPOSIT */}
               <button
                 onClick={() => setActiveTab('deposit')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'deposit' 
-                    ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <ArrowDownCircle size={16} />
                   <span>Deposit</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'deposit' ? 'bg-white/20 text-white' : 'bg-slate-800 text-emerald-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'deposit' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingDeposits}
                 </span>
               </button>
@@ -429,17 +432,17 @@ export default function AdminPendingRequestsPage() {
               {/* TAB 2: WITHDRAW */}
               <button
                 onClick={() => setActiveTab('withdraw')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'withdraw' 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <ArrowUpCircle size={16} />
                   <span>Withdraw</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'withdraw' ? 'bg-white/20 text-white' : 'bg-slate-800 text-blue-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'withdraw' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingWithdrawals}
                 </span>
               </button>
@@ -447,17 +450,17 @@ export default function AdminPendingRequestsPage() {
               {/* TAB 3: DOCUMENTS */}
               <button
                 onClick={() => setActiveTab('documents')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'documents' 
-                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <FileText size={16} />
+                  <FileCheck size={16} />
                   <span>Documents</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'documents' ? 'bg-white/20 text-white' : 'bg-slate-800 text-purple-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'documents' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingDocs}
                 </span>
               </button>
@@ -465,17 +468,17 @@ export default function AdminPendingRequestsPage() {
               {/* TAB 4: PROFILE */}
               <button
                 onClick={() => setActiveTab('profile')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'profile' 
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <User size={16} />
                   <span>Profile</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'profile' ? 'bg-white/20 text-white' : 'bg-slate-800 text-indigo-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'profile' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingProfiles}
                 </span>
               </button>
@@ -483,17 +486,17 @@ export default function AdminPendingRequestsPage() {
               {/* TAB 5: BANK */}
               <button
                 onClick={() => setActiveTab('bank')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'bank' 
-                    ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <Building size={16} />
-                  <span>Bank</span>
+                  <span>Bank Accounts</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'bank' ? 'bg-white/20 text-white' : 'bg-slate-800 text-teal-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'bank' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingBanks}
                 </span>
               </button>
@@ -501,17 +504,17 @@ export default function AdminPendingRequestsPage() {
               {/* TAB 6: CRYPTO */}
               <button
                 onClick={() => setActiveTab('crypto')}
-                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap ${
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
                   activeTab === 'crypto' 
-                    ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/20' 
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg' 
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <Wallet size={16} />
-                  <span>Crypto</span>
+                  <span>Crypto Wallets</span>
                 </div>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'crypto' ? 'bg-white/20 text-white' : 'bg-slate-800 text-amber-400'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] ${activeTab === 'crypto' ? 'bg-[#2858cd] text-white' : 'bg-[#0b226a] text-[#8db5ff]'}`}>
                   {pendingCryptos}
                 </span>
               </button>
@@ -523,286 +526,343 @@ export default function AdminPendingRequestsPage() {
 
           {/* 1. DEPOSIT LIST */}
           {activeTab === 'deposit' && (
-            <div className="space-y-4">
-              {deposits.filter(d => d.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || d.id.toLowerCase().includes(searchTerm.toLowerCase())).map((d) => (
-                <div 
-                  key={d.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    d.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : d.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={d.avatar} alt={d.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{d.requesterName}</span>
-                          <span className="font-mono text-blue-400">({d.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-                            {d.method}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Method / Ref</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Date</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Amount</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {deposits.filter(d => d.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || d.id.toLowerCase().includes(searchTerm.toLowerCase())).map((d) => (
+                    <tr key={d.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={d.avatar} alt={d.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{d.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{d.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300 mb-2">Reference: <strong className="text-slate-100 font-mono">{d.referenceNo}</strong></p>
-                        <div className="text-[11px] text-slate-400">Submitted {d.date}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-6 self-end lg:self-center">
-                      <div className="text-right">
-                        <div className="text-slate-400 text-[11px]">Deposit Amount</div>
-                        <div className="text-2xl font-black text-emerald-400">{d.amount}</div>
-                      </div>
-
-                      {d.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'deposit', data: d })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${d.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs mb-1 inline-block">
+                          {d.method}
+                        </span>
+                        <div className="text-[11px] font-mono text-[#8db5ff]">{d.referenceNo}</div>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-[#8db5ff]">{d.date}</td>
+                      <td className="px-6 py-4 text-sm font-black text-white">{d.amount}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${d.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : d.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {d.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'deposit', data: d })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {deposits.filter(d => d.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || d.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No deposits found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* 2. WITHDRAW LIST */}
           {activeTab === 'withdraw' && (
-            <div className="space-y-4">
-              {withdrawals.filter(w => w.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || w.id.toLowerCase().includes(searchTerm.toLowerCase())).map((w) => (
-                <div 
-                  key={w.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    w.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : w.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={w.avatar} alt={w.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{w.requesterName}</span>
-                          <span className="font-mono text-blue-400">({w.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold">
-                            {w.method}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Destination</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Date</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Amount</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {withdrawals.filter(w => w.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || w.id.toLowerCase().includes(searchTerm.toLowerCase())).map((w) => (
+                    <tr key={w.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={w.avatar} alt={w.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{w.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{w.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300 mb-1">Destination: <strong className="text-slate-100">{w.payoutDestination}</strong></p>
-                        <div className="text-[11px] text-slate-400">Submitted {w.date}</div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-6 self-end lg:self-center">
-                      <div className="text-right">
-                        <div className="text-slate-400 text-[11px]">Requested Payout</div>
-                        <div className="text-2xl font-black text-blue-400">{w.amount}</div>
-                      </div>
-
-                      {w.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'withdraw', data: w })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${w.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs mb-1 inline-block">
+                          {w.method}
+                        </span>
+                        <div className="text-[11px] font-mono text-[#8db5ff]">{w.payoutDestination}</div>
+                      </td>
+                      <td className="px-6 py-4 text-xs text-[#8db5ff]">{w.date}</td>
+                      <td className="px-6 py-4 text-sm font-black text-white">{w.amount}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${w.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : w.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {w.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'withdraw', data: w })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {withdrawals.filter(w => w.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || w.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No withdrawals found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* 3. DOCUMENTS LIST */}
           {activeTab === 'documents' && (
-            <div className="space-y-4">
-              {documents.filter(doc => doc.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || doc.id.toLowerCase().includes(searchTerm.toLowerCase())).map((doc) => (
-                <div 
-                  key={doc.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    doc.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : doc.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={doc.avatar} alt={doc.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{doc.requesterName}</span>
-                          <span className="font-mono text-blue-400">({doc.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 font-semibold">
-                            {doc.documentType}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Doc Type</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Doc Number</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {documents.filter(doc => doc.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || doc.id.toLowerCase().includes(searchTerm.toLowerCase())).map((doc) => (
+                    <tr key={doc.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={doc.avatar} alt={doc.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{doc.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{doc.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300 mb-1">Doc Number: <strong className="text-slate-100 font-mono">{doc.docNumber}</strong></p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end lg:self-center">
-                      {doc.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'documents', data: doc })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${doc.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs inline-block">
+                          {doc.documentType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-white">{doc.docNumber}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${doc.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : doc.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {doc.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'documents', data: doc })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {documents.filter(doc => doc.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || doc.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No documents found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* 4. PROFILE LIST */}
           {activeTab === 'profile' && (
-            <div className="space-y-4">
-              {profiles.filter(p => p.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())).map((p) => (
-                <div 
-                  key={p.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    p.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : p.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={p.avatar} alt={p.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{p.requesterName}</span>
-                          <span className="font-mono text-blue-400">({p.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-                            {p.fieldToUpdate}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Field</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Requested Change</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {profiles.filter(p => p.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())).map((p) => (
+                    <tr key={p.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={p.avatar} alt={p.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{p.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{p.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300">
-                          Requested Change:{' '}
-                          <strong className="text-emerald-400 font-bold">{p.profileSummary || p.requestedValue}</strong>
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end lg:self-center">
-                      {p.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'profile', data: p })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${p.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs inline-block">
+                          {p.fieldToUpdate}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-emerald-400 font-bold">{p.profileSummary || p.requestedValue}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${p.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : p.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {p.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'profile', data: p })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {profiles.filter(p => p.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || p.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No profile requests found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* 5. BANK LIST */}
           {activeTab === 'bank' && (
-            <div className="space-y-4">
-              {banks.filter(b => b.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || b.id.toLowerCase().includes(searchTerm.toLowerCase())).map((b) => (
-                <div 
-                  key={b.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    b.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : b.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={b.avatar} alt={b.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{b.requesterName}</span>
-                          <span className="font-mono text-blue-400">({b.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-teal-500/10 text-teal-400 border border-teal-500/20 font-semibold">
-                            {b.bankName}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Bank Name</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Account Mask</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {banks.filter(b => b.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || b.id.toLowerCase().includes(searchTerm.toLowerCase())).map((b) => (
+                    <tr key={b.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={b.avatar} alt={b.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{b.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{b.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300">Account Mask: <strong className="text-slate-100 font-mono">{b.accountNumber}</strong></p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end lg:self-center">
-                      {b.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'bank', data: b })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${b.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs inline-block">
+                          {b.bankName}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-white">{b.accountNumber}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${b.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : b.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {b.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'bank', data: b })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {banks.filter(b => b.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || b.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No bank accounts found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
           {/* 6. CRYPTO LIST */}
           {activeTab === 'crypto' && (
-            <div className="space-y-4">
-              {cryptos.filter(c => c.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toLowerCase().includes(searchTerm.toLowerCase())).map((c) => (
-                <div 
-                  key={c.id}
-                  className={`bg-slate-900/70 border rounded-3xl p-6 shadow-xl transition-all ${
-                    c.status === 'Approved' ? 'border-emerald-500/40 bg-emerald-500/5' : c.status === 'Rejected' ? 'border-red-500/40 bg-red-500/5' : 'border-slate-800'
-                  }`}
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 text-xs">
-                    <div className="flex items-start gap-4">
-                      <img src={c.avatar} alt={c.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-700 shrink-0" />
-                      <div>
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-bold text-white text-base">{c.requesterName}</span>
-                          <span className="font-mono text-blue-400">({c.id})</span>
-                          <span className="px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
-                            {c.network}
-                          </span>
+            <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+              <table className="w-full text-left border-collapse whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0b226a]">
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">User / ID</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Network</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Wallet Address</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                    <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-[#9ec0ff]">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#153d9f]">
+                  {cryptos.filter(c => c.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toLowerCase().includes(searchTerm.toLowerCase())).map((c) => (
+                    <tr key={c.id} className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={c.avatar} alt={c.requesterName} className="w-10 h-10 rounded-xl object-cover ring-2 ring-[#153d9f] shrink-0" />
+                          <div>
+                            <div className="font-bold text-white text-sm">{c.requesterName}</div>
+                            <div className="text-[11px] font-mono text-[#f0b91f]">{c.id}</div>
+                          </div>
                         </div>
-                        <p className="text-slate-300 font-mono">Address: <strong className="text-emerald-400">{c.walletAddress}</strong></p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3 self-end lg:self-center">
-                      {c.status === 'Pending' ? (
-                        <button 
-                          onClick={() => setSelectedDetail({ type: 'crypto', data: c })}
-                          className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl transition-all shadow-md shadow-blue-600/20"
-                        >
-                          <Eye size={16} /> View Details & Action
-                        </button>
-                      ) : (
-                        <span className={`px-4 py-2 rounded-xl font-bold border ${c.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-xs inline-block">
+                          {c.network}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-mono text-white">{c.walletAddress}</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${c.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : c.status === 'Rejected' ? 'bg-red-500/10 text-red-400 border-red-500/30' : 'bg-amber-500/10 text-amber-400 border-amber-500/30'}`}>
                           {c.status}
                         </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="px-6 py-4">
+                        <button 
+                          onClick={() => setSelectedDetail({ type: 'crypto', data: c })}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] border border-[#2858cd]"
+                        >
+                          <Eye size={14} /> View
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {cryptos.filter(c => c.requesterName.toLowerCase().includes(searchTerm.toLowerCase()) || c.id.toLowerCase().includes(searchTerm.toLowerCase())).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-[#8db5ff] text-sm">No crypto wallets found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
@@ -810,31 +870,20 @@ export default function AdminPendingRequestsPage() {
 
       {/* POPUP MODAL FOR REQUEST DETAIL VIEW & APPROVE / REJECT ACTIONS */}
       {selectedDetail && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto">
-            
-            {/* POPUP HEADER */}
-            <div className="p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <img src={selectedDetail.data.avatar} alt={selectedDetail.data.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-blue-500/40" />
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-bold text-white text-base">{selectedDetail.data.requesterName}</h3>
-                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20 font-semibold text-[10px] uppercase tracking-wider">
-                      {formatRequestTypeLabel(selectedDetail.type)}
-                    </span>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#020817]/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-[#040f2d] border border-[#153d9f] rounded-3xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-[0_0_50px_rgba(11,34,106,0.3)]">
+              <div className="sticky top-0 bg-[#040f2d]/95 backdrop-blur-sm border-b border-[#153d9f] px-6 py-5 flex items-center justify-between z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-6 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+                  <div>
+                    <h2 className="text-lg font-black text-white">{formatRequestTypeLabel(selectedDetail.type)}</h2>
+                    <p className="text-[#8db5ff] text-[11px] mt-0.5">ID: {selectedDetail.data.id}</p>
                   </div>
-                  <p className="text-xs text-slate-400">{selectedDetail.data.id} | {selectedDetail.data.requesterEmail}</p>
                 </div>
+                <button onClick={closeModal} className="p-2 hover:bg-[#0b226a] rounded-full transition-colors text-[#8db5ff] hover:text-white">
+                  <X size={20} />
+                </button>
               </div>
-
-              <button 
-                onClick={closeModal}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
 
             {/* POPUP BODY FOR EACH TYPE */}
             <div className="p-6 text-xs space-y-4">
@@ -842,33 +891,19 @@ export default function AdminPendingRequestsPage() {
               {/* DEPOSIT MODAL BODY */}
               {selectedDetail.type === 'deposit' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div>
-                      <div className="text-slate-400 text-[11px]">Deposit Method</div>
-                      <div className="font-bold text-emerald-400 text-sm">{selectedDetail.data.method}</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Deposit Amount</div>
+                      <div className="text-lg font-black text-white">{selectedDetail.data.amount}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-slate-400 text-[11px]">Deposit Amount</div>
-                      <div className="text-2xl font-black text-emerald-400">{selectedDetail.data.amount}</div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Reference / Tx Hash:</span>
-                      <span className="font-mono text-white font-bold">{selectedDetail.data.referenceNo}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Submission Date:</span>
-                      <span className="text-slate-200">{selectedDetail.data.date}</span>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Method</div>
+                      <div className="text-sm font-bold text-white">{selectedDetail.data.method}</div>
                     </div>
                   </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-300">Payment Receipt Slip</span>
-                    <button className="flex items-center gap-1 text-blue-400 hover:underline font-semibold">
-                      <Eye size={14} /> Preview Payment Receipt PDF
-                    </button>
+                  <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                    <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Reference Number</div>
+                    <div className="text-sm font-mono text-white break-all">{selectedDetail.data.referenceNo}</div>
                   </div>
                 </div>
               )}
@@ -876,26 +911,19 @@ export default function AdminPendingRequestsPage() {
               {/* WITHDRAW MODAL BODY */}
               {selectedDetail.type === 'withdraw' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between bg-slate-950 p-4 rounded-2xl border border-slate-800">
-                    <div>
-                      <div className="text-slate-400 text-[11px]">Payout Method</div>
-                      <div className="font-bold text-blue-400 text-sm">{selectedDetail.data.method}</div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Requested Amount</div>
+                      <div className="text-lg font-black text-white">{selectedDetail.data.amount}</div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-slate-400 text-[11px]">Requested Payout</div>
-                      <div className="text-2xl font-black text-blue-400">{selectedDetail.data.amount}</div>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Available Balance</div>
+                      <div className="text-sm font-bold text-[#f0b91f]">{selectedDetail.data.availableBalance}</div>
                     </div>
                   </div>
-
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">User Available Balance:</span>
-                      <span className="font-bold text-emerald-400">{selectedDetail.data.availableBalance}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Payout Destination:</span>
-                      <span className="font-bold text-white">{selectedDetail.data.payoutDestination}</span>
-                    </div>
+                  <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                    <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Payout Destination ({selectedDetail.data.method})</div>
+                    <div className="text-sm font-mono text-white break-all">{selectedDetail.data.payoutDestination}</div>
                   </div>
                 </div>
               )}
@@ -903,74 +931,26 @@ export default function AdminPendingRequestsPage() {
               {/* DOCUMENTS MODAL BODY */}
               {selectedDetail.type === 'documents' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Document Type:</span>
-                      <span className="font-bold text-purple-400 text-sm">{selectedDetail.data.documentType}</span>
+                  <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                    <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-2 flex items-center justify-between">
+                      <span>Preview Attached</span>
+                      <a href={selectedDetail.data.previewUrl!} target="_blank" rel="noopener noreferrer" className="text-xs text-[#f0b91f] hover:underline flex items-center gap-1">
+                        <ExternalLink size={12} /> Open Full
+                      </a>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Document Serial / ID:</span>
-                      <span className="font-mono text-white font-bold">{selectedDetail.data.docNumber}</span>
-                    </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">File Name:</span>
-                      <span className="text-slate-200">{selectedDetail.data.fileName}</span>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl bg-slate-950 border border-slate-800 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-slate-800 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileCheck size={16} className="text-purple-400" />
-                        <span className="text-sm font-semibold text-slate-200">Document Preview</span>
-                      </div>
-                      {selectedDetail.data.previewUrl && (
-                        <a
-                          href={selectedDetail.data.previewUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1.5 text-blue-400 hover:underline text-xs font-semibold"
-                        >
-                          <ExternalLink size={14} /> Open Full Size
-                        </a>
-                      )}
-                    </div>
-
-                    {selectedDetail.data.previewUrl ? (
-                      getDocumentPreviewKind(selectedDetail.data.previewUrl) === 'image' ? (
-                        <div className="bg-slate-900 p-3">
-                          <img
-                            src={selectedDetail.data.previewUrl}
-                            alt={selectedDetail.data.fileName}
-                            className="w-full max-h-[520px] object-contain rounded-xl border border-slate-800 bg-black/20"
-                          />
-                        </div>
-                      ) : getDocumentPreviewKind(selectedDetail.data.previewUrl) === 'pdf' ? (
-                        <iframe
-                          src={selectedDetail.data.previewUrl}
-                          title={selectedDetail.data.fileName}
-                          className="h-[520px] w-full bg-slate-900"
-                        />
+                    <div className="rounded-xl overflow-hidden bg-black/40 flex items-center justify-center min-h-[120px] p-2 border border-white/5">
+                      {getDocumentPreviewKind(selectedDetail.data.previewUrl) === 'image' ? (
+                        <img src={selectedDetail.data.previewUrl!} alt="Document Preview" className="max-h-64 object-contain rounded-lg" />
                       ) : (
-                        <div className="p-8 rounded-2xl text-center flex flex-col items-center justify-center gap-2">
-                          <FileCheck size={36} className="text-purple-400" />
-                          <span className="font-semibold text-slate-200">Preview is not available for this file type.</span>
-                          <a
-                            href={selectedDetail.data.previewUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="flex items-center gap-1.5 text-blue-400 hover:underline text-xs font-semibold mt-1"
-                          >
-                            <ExternalLink size={14} /> Open File
+                        <div className="text-center p-6">
+                          <FileText size={32} className="text-[#8db5ff] mx-auto mb-2 opacity-60" />
+                          <span className="text-xs text-white break-all">{selectedDetail.data.fileName}</span>
+                          <a href={selectedDetail.data.previewUrl!} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white text-xs font-bold border border-[#2858cd]">
+                            View Document
                           </a>
                         </div>
-                      )
-                    ) : (
-                      <div className="p-8 rounded-2xl border-t border-slate-800 border-dashed text-center flex flex-col items-center justify-center gap-2">
-                        <FileCheck size={36} className="text-purple-400" />
-                        <span className="font-semibold text-slate-200">No preview file available.</span>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -978,24 +958,21 @@ export default function AdminPendingRequestsPage() {
               {/* PROFILE MODAL BODY */}
               {selectedDetail.type === 'profile' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                    <div className="text-indigo-400 font-bold text-sm">Update Field: {selectedDetail.data.fieldToUpdate}</div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {(selectedDetail.data.profileFields || []).length > 0 ? (
-                        selectedDetail.data.profileFields!.map((field) => (
-                          <div key={field.label} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                            <div className="text-slate-400 text-[11px]">{field.label}:</div>
-                            <div className="text-emerald-400 font-bold text-sm break-words">{field.value}</div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                          <div className="text-slate-400 text-[11px]">Requested Record:</div>
-                          <div className="text-emerald-400 font-bold text-sm break-words">{selectedDetail.data.requestedValue}</div>
-                        </div>
-                      )}
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f] flex items-center gap-4">
+                      <div className="flex-1">
+                        <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Current Value</div>
+                        <div className="text-sm text-[#8db5ff]/80 line-through">{selectedDetail.data.currentValue}</div>
+                      </div>
+                      <div className="flex-1">
+                        <div className="text-[10px] text-emerald-400 uppercase tracking-wider mb-1">Requested Value</div>
+                        <div className="text-sm font-bold text-emerald-400">{selectedDetail.data.requestedValue}</div>
+                      </div>
                     </div>
-                    <div className="text-slate-400 text-[11px]">User Reason: {selectedDetail.data.reason}</div>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Reason for change</div>
+                      <div className="text-sm text-white italic">"{selectedDetail.data.reason}"</div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -1003,22 +980,22 @@ export default function AdminPendingRequestsPage() {
               {/* BANK MODAL BODY */}
               {selectedDetail.type === 'bank' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Bank Name:</span>
-                      <span className="font-bold text-teal-400 text-sm">{selectedDetail.data.bankName}</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Bank Name</div>
+                      <div className="text-sm font-black text-white">{selectedDetail.data.bankName}</div>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Account Holder Name:</span>
-                      <span className="font-bold text-white">{selectedDetail.data.accountHolder}</span>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Account Holder</div>
+                      <div className="text-sm font-bold text-white">{selectedDetail.data.accountHolder}</div>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Account Number / IBAN:</span>
-                      <span className="font-mono text-white font-bold">{selectedDetail.data.accountNumber}</span>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Account Number</div>
+                      <div className="text-sm font-mono text-[#f0b91f]">{selectedDetail.data.accountNumber}</div>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">SWIFT / BIC Code:</span>
-                      <span className="font-mono text-teal-400 font-bold">{selectedDetail.data.swiftCode}</span>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">SWIFT / BIC</div>
+                      <div className="text-sm font-mono text-white">{selectedDetail.data.swiftCode}</div>
                     </div>
                   </div>
                 </div>
@@ -1027,19 +1004,19 @@ export default function AdminPendingRequestsPage() {
               {/* CRYPTO MODAL BODY */}
               {selectedDetail.type === 'crypto' && (
                 <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Blockchain Network:</span>
-                      <span className="font-bold text-amber-400 text-sm">{selectedDetail.data.network}</span>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Network</div>
+                      <div className="text-sm font-black text-white">{selectedDetail.data.network}</div>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Wallet Address:</span>
-                      <span className="font-mono text-emerald-400 font-bold">{selectedDetail.data.walletAddress}</span>
+                    <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                      <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Tag / Label</div>
+                      <div className="text-sm font-bold text-white">{selectedDetail.data.label}</div>
                     </div>
-                    <div className="flex justify-between text-slate-300">
-                      <span className="text-slate-400">Wallet Tag / Label:</span>
-                      <span className="text-slate-200">{selectedDetail.data.label}</span>
-                    </div>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#0b226a]/30 border border-[#153d9f]">
+                    <div className="text-[10px] text-[#8db5ff] uppercase tracking-wider mb-1">Wallet Address</div>
+                    <div className="text-sm font-mono text-[#f0b91f] break-all">{selectedDetail.data.walletAddress}</div>
                   </div>
                 </div>
               )}
@@ -1047,15 +1024,8 @@ export default function AdminPendingRequestsPage() {
             </div>
 
             {/* POPUP FOOTER WITH APPROVE / REJECT BUTTONS */}
-            <div className="p-6 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-4">
-              <button 
-                onClick={closeModal}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs transition-colors"
-              >
-                Close Without Action
-              </button>
-
-              <div className="flex items-center gap-3">
+            <div className="p-6 bg-[#040f2d] border-t border-[#153d9f] rounded-b-3xl">
+              <div className="flex items-center justify-end gap-3">
                 {/* REJECT BUTTON */}
                 <button 
                   onClick={() => {
@@ -1066,7 +1036,7 @@ export default function AdminPendingRequestsPage() {
                     if (selectedDetail.type === 'bank') updateBankStatus(selectedDetail.data.id, 'Rejected');
                     if (selectedDetail.type === 'crypto') updateCryptoStatus(selectedDetail.data.id, 'Rejected');
                   }}
-                  className="flex items-center gap-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-300 hover:text-red-400 border border-slate-700 hover:border-red-500/40 font-semibold px-4 py-2.5 rounded-xl text-xs transition-all"
+                  className="flex items-center gap-1.5 bg-[#0b226a] hover:bg-[#102c7c] text-[#d7e5ff] hover:text-red-400 border border-[#2858cd] hover:border-red-500/40 font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md"
                 >
                   <X size={16} /> Reject Request
                 </button>
@@ -1081,7 +1051,7 @@ export default function AdminPendingRequestsPage() {
                     if (selectedDetail.type === 'bank') updateBankStatus(selectedDetail.data.id, 'Approved');
                     if (selectedDetail.type === 'crypto') updateCryptoStatus(selectedDetail.data.id, 'Approved');
                   }}
-                  className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-xs transition-all shadow-md shadow-emerald-500/20"
+                  className="flex items-center gap-1.5 bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)] hover:opacity-90 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs transition-all shadow-lg"
                 >
                   <Check size={16} /> Approve Request
                 </button>

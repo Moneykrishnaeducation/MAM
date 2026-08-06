@@ -42,12 +42,12 @@ const tabs = [
 
 function formatStatus(status: TransactionStatus) {
   const mapping = {
-    Pending: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
-    Processing: 'bg-sky-500/10 text-sky-300 border-sky-500/20',
-    Completed: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-    Failed: 'bg-red-500/10 text-red-300 border-red-500/20',
+    Pending: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    Processing: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    Completed: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    Failed: 'bg-red-500/10 text-red-400 border-red-500/30',
   };
-  return mapping[status];
+  return mapping[status] || 'bg-slate-500/10 text-slate-400 border-slate-500/30';
 }
 
 export default function AdminTransactionsPage() {
@@ -112,131 +112,141 @@ export default function AdminTransactionsPage() {
         <title>Transactions | Admin Portal</title>
       </Head>
 
-      <div className="p-6 md:p-8">
-        <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+      <div className="p-4 sm:p-6 lg:p-8 space-y-6 mx-auto text-slate-100 max-w-7xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#f0b91f]/10 border border-[#f0b91f]/20 text-[#f0b91f] text-xs font-semibold mb-3">
               <ArrowUpCircle size={13} /> Transaction Management
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Transactions</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Transactions</h1>
+            </div>
+            <p className="mt-2 text-sm text-[#8db5ff]">
               View and manage deposit, withdraw, internal transfer, and pending transaction records.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex items-center gap-2 rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-2">
-              <Search size={16} className="text-slate-400" />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-3 bg-[#081d5f] px-4 py-2.5 rounded-2xl border border-[#214fbf] focus-within:border-[#3aa0ff] transition-all">
+              <Search size={16} className="text-[#8db5ff] shrink-0" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search transactions..."
-                className="w-56 border-none bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+                className="bg-transparent border-none text-xs text-white outline-none w-48 placeholder-[#8db5ff]"
               />
             </div>
-            <button className="inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-all hover:bg-slate-700">
+            <button className="flex items-center gap-2 rounded-2xl border border-[#2858cd] bg-[#0b226a] px-5 py-2.5 text-xs font-bold uppercase tracking-[0.16em] text-[#d7e5ff] transition-all hover:bg-[#102c7c]">
               <CheckCircle2 size={14} /> Export CSV
             </button>
           </div>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
+        <div className="bg-[#040f2d] border border-[#153d9f] rounded-3xl p-2 mb-8 shadow-xl">
+          <div className="flex items-center gap-2 overflow-x-auto text-xs scrollbar-none">
           {tabs.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-semibold transition ${
-                  isActive ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                className={`flex items-center justify-between gap-3 px-5 py-3 rounded-2xl font-bold transition-all whitespace-nowrap border ${
+                  isActive
+                    ? 'bg-[#0b226a] border-[#2858cd] text-white shadow-lg'
+                    : 'border-transparent text-[#8db5ff] hover:text-white hover:bg-[#0b226a]/50'
                 }`}
               >
                 {tab.label}
               </button>
             );
           })}
+          </div>
         </div>
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6 shadow-xl">
-          <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="overflow-x-auto bg-[#040f2d] rounded-3xl border border-[#153d9f] shadow-xl">
+          <div className="p-6 border-b border-[#153d9f] flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-[#8db5ff]">
                 Showing <span className="font-semibold text-white">{filteredTransactions.length}</span> transactions in{' '}
                 <span className="font-semibold text-white">{tabs.find((tab) => tab.id === activeTab)?.label}</span>
               </p>
               {summary?.total_transactions !== undefined && (
-                <p className="mt-1 text-xs text-slate-500">
-                  Total on record: <span className="font-semibold text-slate-300">{summary.total_transactions}</span>
+                <p className="mt-1 text-xs text-[#8db5ff]/70">
+                  Total on record: <span className="font-semibold text-white">{summary.total_transactions}</span>
                 </p>
               )}
             </div>
-            <div className="text-xs text-slate-500">{loading ? 'Loading transactions...' : 'Updated just now'}</div>
+            <div className="text-xs text-[#8db5ff]/70">{loading ? 'Loading transactions...' : 'Updated just now'}</div>
           </div>
 
           {error && (
-            <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            <div className="m-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400 font-bold">
               {error}
             </div>
           )}
 
-          <div className="overflow-x-auto">
-            <table className="w-full border-separate border-spacing-y-2 text-left text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  <th className="px-3 pb-3">ID</th>
-                  <th className="px-3 pb-3">Type</th>
-                  <th className="px-3 pb-3">User</th>
-                  <th className="px-3 pb-3">Amount</th>
-                  <th className="px-3 pb-3">Method</th>
-                  <th className="px-3 pb-3">Destination</th>
-                  <th className="px-3 pb-3">Status</th>
-                  <th className="px-3 pb-3">Date</th>
+          <table className="w-full text-left text-xs border-collapse whitespace-nowrap">
+            <thead>
+              <tr className="bg-[#0b226a]">
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">ID</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Type</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">User</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Amount</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Method</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Destination</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#153d9f]">
+              {filteredTransactions.map((item) => (
+                <tr
+                  key={item.id}
+                  className="text-[#dbe8ff] hover:bg-[#0a205f] transition-colors"
+                >
+                  <td className="px-6 py-4 font-mono font-bold text-[#f0b91f]">{item.id}</td>
+                  <td className="px-6 py-4">{item.type}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-bold text-white">{item.user}</div>
+                    <div className="text-[11px] text-[#9ec0ff]">{item.email}</div>
+                  </td>
+                  <td className="px-6 py-4 font-bold text-white">{item.amount}</td>
+                  <td className="px-6 py-4">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[#0b226a] text-[#8db5ff] border border-[#214fbf] font-semibold text-[10px] inline-block">
+                      {item.method}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-[11px]">{item.destination}</td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-widest border ${formatStatus(
+                        item.status
+                      )}`}
+                    >
+                      {item.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-[#8db5ff]">{item.date}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredTransactions.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="rounded-3xl border border-slate-800 bg-slate-950/80 transition-all hover:bg-slate-900/95"
-                  >
-                    <td className="px-3 py-4 font-mono text-sky-300">{item.id}</td>
-                    <td className="px-3 py-4 text-sm font-semibold text-slate-200">{item.type}</td>
-                    <td className="px-3 py-4">
-                      <div className="font-semibold text-slate-100">{item.user}</div>
-                      <div className="text-[11px] text-slate-500">{item.email}</div>
-                    </td>
-                    <td className="px-3 py-4 font-semibold text-white">{item.amount}</td>
-                    <td className="px-3 py-4 text-slate-300">{item.method}</td>
-                    <td className="px-3 py-4 text-slate-300">{item.destination}</td>
-                    <td className="px-3 py-4">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold ${formatStatus(
-                          item.status
-                        )}`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 text-slate-400">{item.date}</td>
-                  </tr>
-                ))}
-                {!loading && filteredTransactions.length === 0 && (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
-                      No transactions match the current filter.
-                    </td>
-                  </tr>
-                )}
-                {loading && (
-                  <tr>
-                    <td colSpan={8} className="px-3 py-8 text-center text-slate-500">
-                      Loading transactions...
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {!loading && filteredTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-[#8db5ff] text-sm">
+                    No transactions match the current filter.
+                  </td>
+                </tr>
+              )}
+              {loading && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-[#8db5ff] text-sm">
+                    <div className="flex justify-center mb-2"><div className="w-5 h-5 border-2 border-[#8db5ff] border-t-transparent rounded-full animate-spin"></div></div>
+                    Loading transactions...
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </>

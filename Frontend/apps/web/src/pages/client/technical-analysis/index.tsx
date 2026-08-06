@@ -73,6 +73,20 @@ function getBrowserTimezoneOptions() {
 interface RawSession { day: string; open: string; close: string; }
 interface ConvertedSession { day: string; open: string; close: string; }
 
+const CLIENT_BASE_URL = 'https://client.vtindex.com';
+
+function resolveClientUrl(path: string) {
+  if (typeof window === 'undefined') {
+    return path;
+  }
+
+  try {
+    return new URL(path, CLIENT_BASE_URL).toString();
+  } catch {
+    return path;
+  }
+}
+
 function convertSessions(
   sessions: RawSession[],
   targetOffsetMinutes: number,
@@ -181,7 +195,7 @@ function ReportPDF() {
   const fetchReports = useCallback(async (signal: AbortSignal) => {
     setLoading(true);
     try {
-      const res = await fetch('/api/reports/', { signal });
+      const res = await fetch(`${CLIENT_BASE_URL}/api/reports/`, { signal, credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       let fetchedReports: ReportItem[] = data.reports || [];
@@ -315,13 +329,42 @@ function ReportPDF() {
               </div>
             </div>
             <GlassCard noPadding className="p-1 border-4">
-              <div className="relative rounded-[2.2rem] overflow-hidden bg-slate-900">
-                <iframe
-                  src={selected.url}
-                  title={selected.name}
-                  className="w-full"
-                  style={{ height: '75vh' }}
-                />
+              <div className="relative overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-950 p-6 sm:p-8">
+                <div className="absolute -top-20 right-0 h-40 w-40 rounded-full bg-blue-500/10 blur-3xl" />
+                <div className="absolute -bottom-16 left-0 h-40 w-40 rounded-full bg-yellow-400/10 blur-3xl" />
+
+                <div className="relative flex min-h-[48vh] flex-col items-center justify-center text-center">
+                  <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-yellow-400 shadow-[0_20px_60px_rgba(0,0,0,0.25)]">
+                    <FileText size={30} />
+                  </div>
+                  <h5 className="text-2xl font-black uppercase tracking-tight text-white">
+                    Preview blocked by browser policy
+                  </h5>
+                  <p className="mt-3 max-w-xl text-sm leading-6 text-slate-300/80">
+                    This report is hosted with <code className="rounded bg-white/10 px-1.5 py-0.5 text-[11px] text-slate-100">X-Frame-Options: sameorigin</code>,
+                    so it can’t be embedded from another origin. Open it in a new tab to view the PDF directly.
+                  </p>
+
+                  <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                    <a
+                      href={resolveClientUrl(selected.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-3 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 transition-transform hover:scale-[1.01]"
+                    >
+                      <Eye size={16} />
+                      Open Report
+                    </a>
+                    <a
+                      href={resolveClientUrl(selected.url)}
+                      download
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-bold text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
+                    >
+                      <Download size={16} />
+                      Download PDF
+                    </a>
+                  </div>
+                </div>
               </div>
             </GlassCard>
           </motion.div>
