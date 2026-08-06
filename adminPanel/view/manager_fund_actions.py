@@ -50,7 +50,7 @@ async def manager_credit_out_api(request):
 @permission_required(IsAdmin)
 @require_http_methods(["GET"])
 async def manager_history_api(request, account_id: str):
-    """Fetch real transaction history directly from DB for a specific manager account."""
+    """Fetch real transaction history directly from DB for a specific manager account with full fields."""
     trading_acc = await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
     if not trading_acc:
         return JsonResponse({"status": "error", "message": f"Trading account {account_id} not found"}, status=404)
@@ -65,10 +65,18 @@ async def manager_history_api(request, account_id: str):
     history_records = [
         {
             "id": f"TX-{tx.id}",
+            "raw_id": tx.id,
             "type": tx.transaction_type.capitalize(),
+            "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",
+            "raw_amount": tx.amount,
+            "payment_method": tx.payment_method or "Admin Manual Adjustment",
+            "role": tx.role or (trading_acc.user.role if trading_acc.user else "Manager"),
+            "email": tx.email or (trading_acc.user.email if trading_acc.user else "N/A"),
+            "description": tx.description or tx.transaction_type.capitalize(),
             "status": tx.status or "Completed",
-            "date": tx.created_at.strftime("%b %d, %Y %H:%M") if tx.created_at else "N/A"
+            "date": tx.created_at.strftime("%b %d, %Y %H:%M") if tx.created_at else "N/A",
+            "timestamp": tx.created_at.isoformat() if tx.created_at else None
         }
         for tx in transactions
     ]
@@ -78,6 +86,7 @@ async def manager_history_api(request, account_id: str):
         "account_id": trading_acc.account_id,
         "history": history_records
     })
+
 
 
 @csrf_exempt

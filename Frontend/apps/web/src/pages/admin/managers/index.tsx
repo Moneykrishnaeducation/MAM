@@ -27,6 +27,8 @@ export interface ManagerData {
   email: string;
   accountId: string;
   balance: string;
+  credit: string;
+  equity: string;
   profit: string;
   share: string;
   risk: 'Low' | 'Medium' | 'High';
@@ -49,6 +51,11 @@ export default function AdminManagersPage() {
   const [managers, setManagers] = useState<ManagerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const formatCurrency = (value: number | string | null | undefined) => {
+    const numericValue = Number(value ?? 0);
+    return `$${numericValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   const fetchManagers = async () => {
     setIsLoading(true);
     try {
@@ -60,7 +67,9 @@ export default function AdminManagersPage() {
           name: m.name,
           email: m.email,
           accountId: m.accountId || m.account_id || 'MAM-MGR-00' + m.id,
-          balance: typeof m.balance === 'string' ? m.balance : `$${(m.aum || m.balance || 0).toLocaleString()}`,
+          balance: formatCurrency(m.balance ?? m.aum ?? 0),
+          credit: formatCurrency(m.credit ?? 0),
+          equity: formatCurrency(m.equity ?? m.balance ?? m.aum ?? 0),
           profit: typeof m.profit === 'string' ? m.profit : `+${m.strategy || '12.5%'}`,
           share: m.share || m.performance_fee || '20%',
           risk: m.risk ? m.risk : (m.strategy?.toLowerCase().includes('high') ? 'High' : m.strategy?.toLowerCase().includes('low') ? 'Low' : 'Medium'),
@@ -98,6 +107,8 @@ export default function AdminManagersPage() {
       email: mgr.email,
       accountId: mgr.accountId,
       balance: mgr.balance,
+      credit: mgr.credit,
+      equity: mgr.equity,
       profit: mgr.profit,
       investors: mgr.investorsList,
     });
@@ -341,7 +352,9 @@ export default function AdminManagersPage() {
                   <th className="py-3.5 px-4 font-bold">Manager ID</th>
                   <th className="py-3.5 px-4 font-bold">Manager Details</th>
                   <th className="py-3.5 px-4 font-bold">Account ID</th>
-                  <th className="py-3.5 px-4 font-bold">Balance (AUM)</th>
+                  <th className="py-3.5 px-4 font-bold">Balance</th>
+                  <th className="py-3.5 px-4 font-bold">Credit</th>
+                  <th className="py-3.5 px-4 font-bold">Equity</th>
                   <th className="py-3.5 px-4 font-bold">Profit Gain</th>
                   <th className="py-3.5 px-4 font-bold">Fee Share</th>
                   <th className="py-3.5 px-4 font-bold">Risk Level</th>
@@ -351,7 +364,7 @@ export default function AdminManagersPage() {
               <tbody className="divide-y divide-blue-900/40 bg-[#0f172a]/60">
                 {filteredManagers.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400 font-medium">
+                    <td colSpan={10} className="py-12 text-center text-slate-400 font-medium">
                       No manager profiles found matching your criteria.
                     </td>
                   </tr>
@@ -398,6 +411,16 @@ export default function AdminManagersPage() {
                           {/* BALANCE */}
                           <td className="py-4 px-4 font-black text-white text-sm">
                             {m.balance}
+                          </td>
+
+                          {/* CREDIT */}
+                          <td className="py-4 px-4 font-semibold text-amber-300 text-sm">
+                            {m.credit}
+                          </td>
+
+                          {/* EQUITY */}
+                          <td className="py-4 px-4 font-semibold text-cyan-300 text-sm">
+                            {m.equity}
                           </td>
 
                           {/* PROFIT */}
@@ -450,7 +473,7 @@ export default function AdminManagersPage() {
                         {/* EXPANDED ACTION PANEL */}
                         {isExpanded && (
                           <tr className="bg-[#0b1329] border-b border-blue-900/80">
-                            <td colSpan={8} className="p-4 sm:p-5">
+                            <td colSpan={10} className="p-4 sm:p-5">
                               <div className="bg-[#0f172a] rounded-2xl border border-blue-900/80 p-4 sm:p-5 shadow-2xl space-y-4">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-900/60 pb-3">
                                   <div className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-2">

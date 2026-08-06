@@ -18,6 +18,8 @@ export interface FinancialUserTarget {
   email: string;
   accountId: string;
   balance: string;
+  credit?: string;
+  equity?: string;
   profit?: string;
   investors?: Array<{ id: string; name: string; email: string; invested: string; profit: string }>;
 }
@@ -125,8 +127,7 @@ export default function FinancialActionModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto">
-        
+<div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-[900px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto">  
         {/* MODAL HEADER */}
         <div className="p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
           <div>
@@ -146,44 +147,165 @@ export default function FinancialActionModal({
         </div>
 
         {/* USER BALANCE SUMMARY BAR */}
-        <div className="px-6 py-3 bg-slate-950/70 border-b border-slate-800 flex items-center justify-between text-xs">
+        <div className="px-6 py-3 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
           <div>
             <span className="text-slate-400">Current Balance:</span> <strong className="text-emerald-400 font-bold text-sm ml-1">{targetUser.balance}</strong>
           </div>
-          {targetUser.profit && (
-            <div>
-              <span className="text-slate-400">Total Profit:</span> <strong className="text-blue-400 font-bold text-sm ml-1">{targetUser.profit}</strong>
-            </div>
-          )}
+          <div>
+            <span className="text-slate-400">Current Credit:</span> <strong className="text-amber-400 font-bold text-sm ml-1">{targetUser.credit || '$0.00'}</strong>
+          </div>
+          <div>
+            <span className="text-slate-400">Current Equity:</span> <strong className="text-cyan-400 font-bold text-sm ml-1">{targetUser.equity || targetUser.balance}</strong>
+          </div>
         </div>
 
         {/* MODAL BODY */}
         <div className="p-6 text-xs">
           
-          {/* HISTORY VIEW */}
+          {/* HISTORY VIEW - TABLE FORMAT */}
           {modalType === 'history' && (
-            <div className="space-y-3">
-              <h4 className="font-bold text-slate-200">Recent Transaction & Credit Logs</h4>
+            <div className="space-y-4">
+              {/* Header section with summary stats */}
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+                <div>
+                  <h4 className="font-bold text-slate-100 text-base tracking-tight flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
+                    Transaction & Credit Logs
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">Audit history and balance movements for this account</p>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl shadow-inner">
+                  <span className="text-[11px] text-slate-400 font-medium">Total Records:</span>
+                  <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                    {historyLogs.length}
+                  </span>
+                </div>
+              </div>
+              
               {fetchingData ? (
-                <div className="py-8 text-center text-slate-400 font-medium">Loading history from backend...</div>
+                <div className="py-16 text-center">
+                  <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+                  <p className="text-sm text-slate-400 font-medium">Loading history logs from database...</p>
+                </div>
               ) : fetchError ? (
-                <div className="py-4 text-center text-rose-400 font-medium">{fetchError}</div>
+                <div className="py-8 px-4 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                  <p className="text-sm text-rose-400 font-medium">{fetchError}</p>
+                </div>
               ) : historyLogs.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 font-medium">No history logs found for this account.</div>
+                <div className="py-16 text-center bg-slate-900/40 rounded-2xl border border-slate-800/60">
+                  <svg className="w-12 h-12 mx-auto text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <p className="text-slate-400 font-medium text-sm">No transaction or credit records found.</p>
+                </div>
               ) : (
-                <div className="divide-y divide-slate-800/80 max-h-72 overflow-y-auto pr-1">
-                  {historyLogs.map((item) => (
-                    <div key={item.id} className="py-3 flex items-center justify-between">
-                      <div>
-                        <div className="font-semibold text-slate-200">{item.type} <span className="text-[11px] text-slate-400 font-mono">({item.id})</span></div>
-                        <div className="text-[11px] text-slate-400">{item.date}</div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`font-bold ${item.amount.startsWith('+') ? 'text-emerald-400' : 'text-blue-400'}`}>{item.amount}</div>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">{item.status}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-left border-collapse">
+                    <thead className="sticky top-0 bg-[#0b1329] border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400 z-10">
+                      <tr>
+                        <th scope="col" className="py-3 px-4">Type / ID</th>
+                        <th scope="col" className="py-3 px-4">Description</th>
+                        <th scope="col" className="py-3 px-4">Date</th>
+                        <th scope="col" className="py-3 px-4">Role</th>
+                        <th scope="col" className="py-3 px-4 text-right">Amount</th>
+                        <th scope="col" className="py-3 px-4 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 text-xs">
+                      {historyLogs.map((item: any) => {
+                        const amountStr = String(item.amount || "0");
+                        const isPositive = !amountStr.startsWith("-");
+                        const typeRaw = (item.type || item.transaction_type || "").toLowerCase();
+
+                        let badgeStyle = "bg-purple-500/10 text-purple-400 border-purple-500/30";
+                        if (typeRaw.includes("deposit")) {
+                          badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+                        } else if (typeRaw.includes("credit-in") || typeRaw.includes("in")) {
+                          badgeStyle = "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                        } else if (typeRaw.includes("credit-out") || typeRaw.includes("out") || typeRaw.includes("withdraw")) {
+                          badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/30";
+                        }
+
+                        const isCompleted = item.status?.toLowerCase() === "completed";
+
+                        return (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-slate-900/60 transition-colors duration-150 group"
+                          >
+                            {/* Type & ID */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                                    isPositive
+                                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                      : "bg-rose-500/15 text-rose-400 border border-rose-500/20"
+                                  }`}
+                                >
+                                  {isPositive ? "↗" : "↘"}
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border inline-block w-max leading-none ${badgeStyle}`}>
+                                    {item.type || "LOG"}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-slate-500 mt-1">
+                                    #{item.id}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Description */}
+                            <td className="py-3.5 px-4 min-w-[180px]">
+                              <p className="text-slate-200 font-medium leading-snug line-clamp-2">
+                                {item.description || "-"}
+                              </p>
+                              {item.email && item.email !== "N/A" && (
+                                <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                                  {item.email}
+                                </p>
+                              )}
+                            </td>
+
+                            {/* Date & Payment Method */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
+                              <p className="text-xs text-slate-300 font-medium">{item.date || "-"}</p>
+                              {item.payment_method && (
+                                <span className="text-[10px] text-slate-500 block mt-0.5">
+                                  {item.payment_method}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Role */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-medium">
+                              {item.role || "-"}
+                            </td>
+
+                            {/* Amount */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-right font-mono font-bold text-sm">
+                              <span className={isPositive ? "text-emerald-400" : "text-rose-400"}>
+                                {item.amount}
+                              </span>
+                            </td>
+
+                            {/* Status */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border leading-none ${
+                                isCompleted
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                  : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                              }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+                                {item.status || "Pending"}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

@@ -2,6 +2,7 @@
 
 import base64
 import json
+import logging
 import random
 import re
 import string
@@ -24,6 +25,7 @@ from adminPanel.models import (
     PendingRequest,
     TradingAccount,
 )
+from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.crud import create_client_profile
 from clientPanel.view.common import (
@@ -41,6 +43,7 @@ from clientPanel.view.common import (
 from backendPanel.database import ensure_db_initialized
 
 AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
+logger = logging.getLogger(__name__)
 
 
 def _save_avatar_data(avatar_base64: str, admin_id: int) -> str | None:
@@ -618,13 +621,29 @@ async def list_managers(request):
             if search_q not in haystack:
                 continue
 
+        balance_value = float(m.balance or 0.0)
+        equity_value = float(m.equity or 0.0)
+        credit_value = float(m.credit or 0.0)
+
+        try:
+            mt5 = MT5ManagerActions()
+            account_data = mt5.get_account_data(acc_id, use_cache=True) if acc_id else None
+            if account_data:
+                balance_value = float(account_data.get("balance", balance_value))
+                equity_value = float(account_data.get("equity", equity_value))
+        except Exception as exc:
+            logger.warning("MT5 manager lookup failed for %s: %s", acc_id, exc)
+
         results.append({
             "id": m.id,
             "account_id": acc_id,
             "name": name,
             "email": email,
             "strategy": m.risk_level or "Quantitative Grid",
-            "aum": float(m.balance),
+            "aum": balance_value,
+            "balance": balance_value,
+            "credit": credit_value,
+            "equity": equity_value,
             "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
             "status": m.status or "Active",
         })
