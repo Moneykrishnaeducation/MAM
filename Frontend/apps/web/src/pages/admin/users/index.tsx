@@ -2478,74 +2478,95 @@ export default function AdminUsersPage() {
         <title>Users Directory | Admin Portal</title>
       </Head>
 
-      <div className="p-6 md:p-8">
+      <div className="relative p-6 md:p-10 space-y-10 overflow-hidden">
+        {/* ── Background Ambient Glow (Ticket Page Style) ── */}
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
+        </div>
+
         {/* ── Page Header ── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-              <Users size={13} /> User Management
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#8db5ff] text-xs font-black uppercase tracking-widest mb-3 backdrop-blur-md">
+              <Users size={14} className="text-[#f0b91f]" /> User Management
             </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Users Directory</h1>
-            <p className="text-slate-400 text-sm mt-1">
-              Expand rows to manage KYC, trading accounts, profile, bank/crypto and more.
+            <h1 className="text-4xl font-black tracking-tighter text-white">
+              Users <span className="text-[#f0b91f]">Directory</span>
+            </h1>
+            <p className="text-slate-400 text-sm font-medium mt-1">
+              Expand user records to inspect and manage KYC, live trading accounts, profile information, bank/crypto vault details and transactions.
             </p>
           </div>
           <button
             onClick={() => openSubRowModal(null, 'create_user')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
+            className="px-6 py-3.5 rounded-[1.2rem] font-black text-sm hover:scale-105 transition-all flex items-center gap-2 bg.gradient-to-r bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)] self-start md:self-auto shrink-0"
           >
-            <Plus size={16} /> Add New User
+            <Plus size={18} /> Add New User
           </button>
         </div>
 
         {/* ── Floating Animated Toast Notification ── */}
         {toastMessage && (
-          <div className="fixed top-6 right-6 z-[9999] max-w-sm w-full bg-slate-900 border border-blue-500/30 text-blue-300 p-4 rounded-2xl shadow-2xl shadow-black/80 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="fixed top-6 right-6 z-[9999] max-w-sm w-full bg-[#081d5f] border border-[#214fbf] text-[#dbe8ff] p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
             <span className="flex items-center gap-2.5 text-xs font-bold">
-              <CheckCircle2 size={16} className="text-blue-400 shrink-0" />
+              <CheckCircle2 size={16} className="text-[#f0b91f] shrink-0" />
               {toastMessage}
             </span>
             <button
               onClick={() => setToastMessage(null)}
-              className="p-1 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800 transition-colors"
+              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
             >
               <X size={14} />
             </button>
           </div>
         )}
 
-        {/* ── Table ── */}
-        <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2.5 rounded-2xl w-72 md:w-96 border border-slate-700/50">
-              <Search size={16} className="text-slate-400 shrink-0" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by name, email, or user ID..."
-                className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-500"
-              />
+        {/* ── Main Directory Card Container (Ticket Page Aesthetic) ── */}
+        <div className="border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)] rounded-[2.5rem] overflow-hidden relative z-10">
+          
+          {/* Header Bar */}
+          <div className="p-6 md:p-8 border-b border-[#1745b3] flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <div>
+                <h2 className="text-xl font-black text-white">Client Accounts &amp; Users</h2>
+                <p className="text-xs text-[#8db5ff] font-medium">Filtered &amp; Active Directory List</p>
+              </div>
             </div>
-            <span className="text-xs text-slate-400 font-medium">
-              Total: <strong className="text-white">{loading ? '...' : filteredUsers.length}</strong>
-            </span>
+
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="relative flex-1 min-w-0 md:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8db5ff]" size={18} />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search by name, email, or user ID..."
+                  className="w-full pl-11 pr-4 py-3 rounded-[1.1rem] border border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7] outline-none font-medium focus:border-[#3aa0ff] transition-all text-xs"
+                />
+              </div>
+              <div className="px-4 py-2.5 rounded-[1.1rem] border border-[#214fbf] bg-[#081d5f] text-xs font-bold text-[#8db5ff]">
+                Total Users: <strong className="text-[#f0b91f] font-mono text-sm ml-1">{loading ? '...' : filteredUsers.length}</strong>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="text-slate-400 border-b border-slate-800">
-                  <th className="pb-3 pl-2 font-semibold">User ID</th>
-                  <th className="pb-3 font-semibold">Name &amp; Email</th>
-                  <th className="pb-3 font-semibold">Role</th>
-                  <th className="pb-3 font-semibold">Verification</th>
-                  <th className="pb-3 font-semibold">Status</th>
-                  <th className="pb-3 font-semibold">Joined</th>
-                  <th className="pb-3 pr-2 text-right font-semibold">Actions</th>
+                <tr className="bg-[#0b226a] border-b border-[#153d9f]">
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">User ID</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Name &amp; Email</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Role</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Verification</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Joined</th>
+                  <th className="px-6 py-4 text-right font-black uppercase tracking-widest text-[#9ec0ff]">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60">
+              <tbody className="divide-y divide-[#153d9f] text-[#dbe8ff]">
                 {loading ? (
                   /* ── Pulsating Skeleton Rows ── */
                   Array.from({ length: 5 }).map((_, idx) => (
@@ -2594,85 +2615,91 @@ export default function AdminUsersPage() {
                       <React.Fragment key={u.id}>
                         <tr
                           onClick={() => toggleDropdownRow(u.id)}
-                          className={`cursor-pointer transition-colors ${isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/30'}`}
+                          className={`cursor-pointer transition-colors ${
+                            isExpanded ? 'bg-[#0a205f]' : 'hover:bg-[#0a205f]/60'
+                          }`}
                         >
-                          <td className="py-4 pl-2 font-mono text-blue-400 font-bold">{u.id}</td>
-                          <td className="py-4">
+                          <td className="px-6 py-5">
+                            <span className="font-mono font-bold px-3 py-1 rounded-lg border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]">
+                              {u.id}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5">
                             <div className="flex items-center gap-3">
                               <img
                                 src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=1e3a5f&color=7dd3fc&size=80`}
                                 alt={u.name}
-                                className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-700"
+                                className="w-10 h-10 rounded-2xl object-cover ring-2 ring-[#214fbf]"
                               />
                               <div>
-                                <div className="font-bold text-slate-100">{u.name}</div>
-                                <div className="text-[11px] text-slate-400">{u.email}</div>
+                                <div className="font-bold text-white text-sm">{u.name}</div>
+                                <div className="text-xs text-[#9ec0ff] font-medium">{u.email}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="py-4 text-slate-300 font-medium">{u.role}</td>
-                          <td className="py-4">
+                          <td className="px-6 py-5 text-white font-bold">{u.role}</td>
+                          <td className="px-6 py-5">
                             <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
                           </td>
-                          <td className="py-4">
+                          <td className="px-6 py-5">
                             <StatusBadge status={u.status} />
                           </td>
-                          <td className="py-4 text-slate-400">{u.joined}</td>
-                          <td className="py-4 pr-2 text-right">
+                          <td className="px-6 py-5 font-medium text-[#9ec0ff]">{u.joined}</td>
+                          <td className="px-6 py-5 text-right">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleDropdownRow(u.id); }}
-                              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs border border-slate-700 transition-colors"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c] font-bold text-xs transition-all shadow-sm"
                             >
                               <span>Actions</span>
-                              {isExpanded ? <ChevronUp size={14} className="text-blue-400" /> : <ChevronDown size={14} />}
+                              {isExpanded ? <ChevronUp size={14} className="text-[#f0b91f]" /> : <ChevronDown size={14} />}
                             </button>
                           </td>
                         </tr>
 
-                      {/* ── Expanded Sub-Row ── */}
+                      {/* ── Expanded Sub-Row Drawer (Ticket Style) ── */}
                       {isExpanded && (
-                        <tr className="bg-slate-900/90 border-b border-slate-800">
-                          <td colSpan={7} className="p-4 sm:p-5">
-                            <div className="bg-slate-950/90 rounded-2xl border border-slate-800 p-4 shadow-inner">
-                              <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                                <span>Actions for <strong className="text-white">{u.name}</strong></span>
-                                <span className="text-slate-600">•</span>
-                                <span className="text-blue-400">Click to open modal</span>
+                        <tr className="bg-[#051442] border-b border-[#153d9f]">
+                          <td colSpan={7} className="p-4 sm:p-6">
+                            <div className="bg-[#081d5f] rounded-2xl border border-[#214fbf] p-5 shadow-inner">
+                              <div className="text-xs font-black uppercase tracking-widest text-[#9ec0ff] mb-4 flex items-center gap-2">
+                                <span>Actions for <strong className="text-[#f0b91f] font-extrabold">{u.name}</strong></span>
+                                <span className="text-[#214fbf]">•</span>
+                                <span className="text-white">Management Console</span>
                               </div>
-                              <div className="flex flex-wrap items-center gap-2.5">
-                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-blue-600/20 text-slate-200 hover:text-blue-300 border border-slate-800 hover:border-blue-500/40 text-xs font-semibold transition-all">
-                                  <ShieldCheck size={15} className="text-blue-400" /> KYC Verify
+                              <div className="flex flex-wrap items-center gap-3">
+                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <ShieldCheck size={16} className="text-[#f0b91f]" /> KYC Verify
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-emerald-600/20 text-slate-200 hover:text-emerald-300 border border-slate-800 hover:border-emerald-500/40 text-xs font-semibold transition-all">
-                                  <TrendingUp size={15} className="text-emerald-400" /> Trading
+                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <TrendingUp size={16} className="text-emerald-400" /> Trading
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-purple-600/20 text-slate-200 hover:text-purple-300 border border-slate-800 hover:border-purple-500/40 text-xs font-semibold transition-all">
-                                  <User size={15} className="text-purple-400" /> Profile
+                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <User size={16} className="text-purple-300" /> Profile
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-amber-600/20 text-slate-200 hover:text-amber-300 border border-slate-800 hover:border-amber-500/40 text-xs font-semibold transition-all">
-                                  <CreditCard size={15} className="text-amber-400" /> Bank/Crypto
+                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <CreditCard size={16} className="text-amber-300" /> Bank/Crypto
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-teal-600/20 text-slate-200 hover:text-teal-300 border border-slate-800 hover:border-teal-500/40 text-xs font-semibold transition-all">
-                                  <ArrowUpRight size={15} className="text-teal-400" /> Transactions
+                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <ArrowUpRight size={16} className="text-teal-300" /> Transactions
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-indigo-600/20 text-slate-200 hover:text-indigo-300 border border-slate-800 hover:border-indigo-500/40 text-xs font-semibold transition-all">
-                                  <Ticket size={15} className="text-indigo-400" /> Tickets ({u.tickets?.length || 0})
+                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
+                                  <Ticket size={16} className="text-indigo-300" /> Tickets ({u.tickets?.length || 0})
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 text-xs font-bold transition-all">
-                                  <PlusCircle size={15} /> Add Account
+                                <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white text-xs font-black uppercase tracking-wider transition-all shadow-md">
+                                  <PlusCircle size={16} /> Add Account
                                 </button>
                                 <button
                                   onClick={() => openSubRowModal(u, 'account_active')}
-                                  className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition-all ${
+                                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
                                     isAccountActive(u.status)
                                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                                       : 'bg-red-500/10 text-red-400 border-red-500/30'
                                   }`}
                                 >
-                                  <Power size={15} /> {getAccountStatusLabel(u.status)}
+                                  <Power size={16} /> {getAccountStatusLabel(u.status)}
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
-                                  <Trash2 size={15} /> Delete
+                                <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
+                                  <Trash2 size={16} /> Delete
                                 </button>
                               </div>
                             </div>
