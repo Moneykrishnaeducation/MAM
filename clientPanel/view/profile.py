@@ -23,6 +23,10 @@ from clientPanel.view.common import (
 )
 
 
+from django.core.files.storage import default_storage
+from pathlib import Path
+
+
 @csrf_exempt
 @permission_required(IsClient)
 @require_http_methods(["GET", "PUT"])
@@ -80,5 +84,42 @@ async def get_client_profile(request):
             "profile": _serialize_client_profile(profile),
             "payment_details": payment_details,
             "profile_request_status": "pending",
+        }
+    )
+
+
+@csrf_exempt
+@permission_required(IsClient)
+@require_http_methods(["POST"])
+async def upload_client_avatar(request):
+    """Upload client profile picture / avatar."""
+    await ensure_db_initialized()
+    profile, error = await _get_client_profile_for_request(request)
+    if error:
+        return error
+
+    uploaded_file = (
+        request.FILES.get("avatarFile")
+        or request.FILES.get("avatar")
+        or request.FILES.get("file")
+        or next(iter(request.FILES.values()), None)
+    )
+    if uploaded_file is None:
+        return _error("avatarFile is required", status=400)
+
+    original_name = Path(getattr(uploaded_file, "name", "") or "avatar.png").name
+    relative_path = f"client_avatars/{profile.id}/{original_name}"
+
+    saved_path = default_storage.save(relative_path, uploaded_file)
+    file_url = default_storage.url(saved_path)
+
+    profile.avatar = file_url
+    await profile.save(update_fields=["avatar"])
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Profile uploaded successfully",
+            "avatar": file_url,
         }
     )

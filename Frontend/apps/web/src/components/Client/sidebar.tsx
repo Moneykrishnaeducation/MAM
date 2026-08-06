@@ -196,33 +196,7 @@ export default function ClientSidebar() {
           </nav>
         </div>
 
-        {/* Client User Card at bottom */}
-        <div className="mt-2 border-t border-white/10 pt-5">
-          <div className="group flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0b1740]/90 p-3 shadow-inner transition-all hover:border-blue-400/20 hover:bg-[#111d4d]">
-            <div className="relative">
-              <img
-                src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80"
-                alt="Client Avatar"
-                className="h-10 w-10 rounded-xl object-cover ring-2 ring-blue-500/20 transition-all group-hover:ring-blue-400/40"
-              />
-              <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-[#0b1740] bg-emerald-500" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <h4 className="truncate text-sm font-extrabold text-white">Alex Rivera</h4>
-              <div className="mt-0.5 truncate text-[10px] font-bold uppercase tracking-wider text-blue-100/70">
-                Premium Client
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={requestLogout}
-              className="text-blue-300/50 hover:text-red-400 transition-colors p-2 rounded-xl hover:bg-red-500/10"
-              title="Logout"
-            >
-              <LogOut size={16} strokeWidth={2.5} />
-            </button>
-          </div>
-        </div>
+
       </aside>
     </>
   );

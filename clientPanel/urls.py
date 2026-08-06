@@ -24,7 +24,7 @@ from clientPanel.view.mam_managers import (
 )
 from clientPanel.view.OpenPositions import get_client_open_positions
 from clientPanel.view.payment_details import client_payment_details
-from clientPanel.view.profile import get_client_profile
+from clientPanel.view.profile import get_client_profile, upload_client_avatar
 from clientPanel.view.reset_password import (
     change_client_password,
     request_client_password_reset,
@@ -50,6 +50,7 @@ urlpatterns = [
     path("deposit", create_client_deposit, name="deposit"),
     path("withdrawal", create_client_withdrawal, name="withdrawal"),
     path("profile", get_client_profile, name="profile"),
+    path("profile/avatar", upload_client_avatar, name="profile-avatar"),
     path("payment-details", client_payment_details, name="payment-details"),
     path("documents", client_documents, name="documents"),
     path("account", get_client_account, name="account"),
@@ -57,9 +58,15 @@ urlpatterns = [
     path("mam-managers", list_mam_managers, name="mam-managers-list"),
     path("my-mam-managers", list_my_mam_managers, name="my-mam-managers-list"),
     path("mam-managers/invest", invest_in_manager, name="mam-managers-invest"),
-    path("mam-managers/<str:account_id>/investors", get_manager_investors, name="mam-manager-investors"),
+    path(
+        "mam-managers/<str:account_id>/investors",
+        get_manager_investors,
+        name="mam-manager-investors",
+    ),
     path("mam-managers/<str:account_id>/status", toggle_manager_status, name="mam-manager-status"),
-    path("mam-managers/reset-password", reset_investor_password, name="mam-managers-reset-password"),
+    path(
+        "mam-managers/reset-password", reset_investor_password, name="mam-managers-reset-password"
+    ),
     path("reset-investor-password", reset_investor_password, name="reset-investor-password"),
     path("invest", invest_in_manager, name="mam-invest"),
     path("my-investments", get_client_investments, name="my-investments"),
@@ -67,7 +74,9 @@ urlpatterns = [
     path("my-investments/start", start_copying_api, name="start-copying"),
     path("my-investments/coefficient", deploy_coefficient_config_api, name="deploy-coefficient"),
     path("open-positions/<int:account_id>/", get_client_open_positions, name="open-positions"),
-    path("open-positions/<int:account_id>", get_client_open_positions, name="open-positions-no-slash"),
+    path(
+        "open-positions/<int:account_id>", get_client_open_positions, name="open-positions-no-slash"
+    ),
     path("transactions", get_client_transactions, name="transactions"),
     path("tickets", get_client_tickets, name="tickets"),
     path("tickets/create", create_client_ticket, name="ticket-create"),

@@ -7,7 +7,7 @@ from clientPanel.view.deposit import create_client_deposit
 from clientPanel.view.investments import get_client_investments
 from clientPanel.view.logout import logout_client
 from clientPanel.view.login import login_client
-from clientPanel.view.profile import get_client_profile
+from clientPanel.view.profile import get_client_profile, upload_client_avatar
 from clientPanel.view.reset_password import (
     change_client_password,
     request_client_password_reset,
@@ -32,6 +32,7 @@ __all__ = [
     "create_client_deposit",
     "create_client_withdrawal",
     "get_client_profile",
+    "upload_client_avatar",
     "get_client_account",
     "get_client_investments",
     "get_client_transactions",

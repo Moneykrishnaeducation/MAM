@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
@@ -123,6 +123,7 @@ type ClientProfileApi = {
   address?: string | null;
   city?: string | null;
   postalCode?: string | null;
+  avatar?: string | null;
 };
 
 type ClientPaymentDetailsApi = {
@@ -403,6 +404,9 @@ export default function ClientProfilePage() {
         setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
         setProfileTier(String(profile.tier || ''));
         setProfileKycStatus(String(profile.kyc_status || ''));
+        if (profile.avatar) {
+          setAvatarSrc(profile.avatar);
+        }
         setPaymentDetails(normalizePaymentDetails(data.payment_details));
         if (documentData?.documents) {
           setDocuments(normalizeDocumentCards(documentData.documents));
@@ -493,7 +497,7 @@ export default function ClientProfilePage() {
     avatarInputRef.current?.click();
   };
 
-  const handleAvatarChange = (file: File | undefined) => {
+  const handleAvatarChange = async (file: File | undefined) => {
     if (!file) {
       return;
     }
@@ -502,9 +506,44 @@ export default function ClientProfilePage() {
     reader.onload = () => {
       if (typeof reader.result === 'string') {
         setAvatarSrc(reader.result);
+        window.dispatchEvent(
+          new CustomEvent('client-avatar-update', {
+            detail: { avatar: reader.result },
+          })
+        );
       }
     };
     reader.readAsDataURL(file);
+
+    try {
+      const formData = new FormData();
+      formData.append('avatarFile', file);
+
+      const response = await fetch('/api/client/profile/avatar', {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to upload profile picture.');
+      }
+
+      if (data?.avatar) {
+        setAvatarSrc(data.avatar);
+        window.dispatchEvent(
+          new CustomEvent('client-avatar-update', {
+            detail: { avatar: data.avatar },
+          })
+        );
+      }
+      showProfileToast('Profile picture updated successfully.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to upload profile picture.';
+      showProfileToast(message);
+    }
   };
 
   const handlePersonalSave = async (e: React.FormEvent) => {

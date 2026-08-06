@@ -2,9 +2,34 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { LogOut, X, Menu, TrendingUp } from 'lucide-react';
+import { LogOut, X, Menu, TrendingUp, Bell } from 'lucide-react';
+import { useTheme } from 'next-themes';
+
+const formatRelativeTime = (timestampStr: string) => {
+  if (!timestampStr) return 'Recently';
+  try {
+    // Standardize to ISO format if space is present
+    const cleanStr = timestampStr.includes(' ') ? timestampStr.replace(' ', 'T') : timestampStr;
+    const date = new Date(cleanStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    if (isNaN(diffMs) || diffMs < 0) return 'Recently';
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return 'Recently';
+  }
+};
 
 export default function ClientHeader() {
+  const { theme } = useTheme();
+  const isDarkMode = theme === 'dark';
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window === 'undefined') {
       return true;
@@ -15,6 +40,9 @@ export default function ClientHeader() {
   const [displayName, setDisplayName] = useState('Client Portal');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState('https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80');
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<{ id: string | number; title: string; message: string; time: string; read: boolean }[]>([]);
 
   useEffect(() => {
     const handleSidebarStateChange = (event: Event) => {
@@ -38,6 +66,18 @@ export default function ClientHeader() {
   }, []);
 
   useEffect(() => {
+    const handleAvatarUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ avatar: string }>).detail;
+      if (detail?.avatar) {
+        setAvatarUrl(detail.avatar);
+      }
+    };
+
+    window.addEventListener('client-avatar-update', handleAvatarUpdate);
+    return () => window.removeEventListener('client-avatar-update', handleAvatarUpdate);
+  }, []);
+
+  useEffect(() => {
     if (typeof document === 'undefined') {
       return;
     }
@@ -57,42 +97,78 @@ export default function ClientHeader() {
   useEffect(() => {
     let isMounted = true;
 
-    const loadClientName = async () => {
+    const loadClientData = async () => {
       try {
-        const response = await fetch('/api/client/profile', {
-          credentials: 'include',
-          headers: {
-            Accept: 'application/json',
-          },
-        });
+        const [profileRes, logsRes] = await Promise.all([
+          fetch('/api/client/profile', {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          }),
+          fetch('/api/client/activity-logs', {
+            credentials: 'include',
+            headers: { Accept: 'application/json' },
+          }),
+        ]);
 
-        if (!response.ok) {
-          return;
+        if (profileRes.ok) {
+          const profileData = await profileRes.json();
+          const profile = profileData?.profile;
+          const fullName = String(profile?.full_name || '').trim();
+          const email = String(profile?.email || '').trim();
+          const fallbackName = email ? email.split('@')[0].replace(/[._-]+/g, ' ') : '';
+          const nextName = fullName || fallbackName || 'Client Portal';
+
+          if (isMounted) {
+            setDisplayName(nextName);
+            if (profile?.avatar) {
+              setAvatarUrl(profile.avatar);
+            }
+          }
         }
 
-        const data = await response.json();
-        const profile = data?.profile;
-        const fullName = String(profile?.full_name || '').trim();
-        const email = String(profile?.email || '').trim();
-        const fallbackName = email ? email.split('@')[0].replace(/[._-]+/g, ' ') : '';
-        const nextName = fullName || fallbackName || 'Client Portal';
-
-        if (isMounted) {
-          setDisplayName(nextName);
+        if (logsRes.ok) {
+          const logsData = await logsRes.json();
+          if (isMounted && Array.isArray(logsData?.activity_logs)) {
+            const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
+            const mapped = logsData.activity_logs.map((log: any) => ({
+              id: log.id,
+              title: log.action || 'Activity Alert',
+              message: log.details || 'Recent activity recorded.',
+              time: formatRelativeTime(log.timestamp || log.time),
+              read: seenIds.has(log.id),
+            }));
+            setNotifications(mapped);
+          }
         }
-      } catch {
-        if (isMounted) {
-          setDisplayName('Client Portal');
-        }
+      } catch (err) {
+        console.error('Error loading client header data:', err);
       }
     };
 
-    void loadClientName();
+    void loadClientData();
 
     return () => {
       isMounted = false;
     };
   }, []);
+
+  // Update seen status when opening notifications
+  useEffect(() => {
+    if (isNotificationsOpen && notifications.length > 0) {
+      const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
+      notifications.forEach((n) => seenIds.add(n.id));
+      localStorage.setItem('seen-notifications', JSON.stringify(Array.from(seenIds)));
+
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    }
+  }, [isNotificationsOpen]);
+
+  const markAllAsRead = () => {
+    const seenIds = new Set(JSON.parse(localStorage.getItem('seen-notifications') || '[]'));
+    notifications.forEach((n) => seenIds.add(n.id));
+    localStorage.setItem('seen-notifications', JSON.stringify(Array.from(seenIds)));
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  };
 
   const toggleSidebar = () => {
     window.dispatchEvent(
@@ -127,6 +203,13 @@ export default function ClientHeader() {
     }
   };
 
+  // Styling based on theme config matching the tickets page
+  const dropdownClass = isDarkMode
+    ? 'border-slate-800 bg-slate-900 shadow-[0_12px_40px_rgba(0,0,0,0.5)]'
+    : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
+  const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
+  const softTextClass = isDarkMode ? 'text-gray-400' : 'text-[#8fb8ff]';
+
   return (
     <header className="h-16 flex items-center justify-between px-6 bg-gradient-to-r from-blue-950 via-blue-900 to-blue-950 border-b border-blue-800/50 sticky top-0 z-30 w-full shadow-md shadow-blue-900/20">
       {/* Left: Sidebar Toggle */}
@@ -151,21 +234,76 @@ export default function ClientHeader() {
         </span>
       </div>
 
-      {/* Right: User Profile */}
+      {/* Right: User Profile & Notifications */}
       <div className="flex items-center gap-3">
+        {/* Notifications Icon & Dropdown */}
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+            className="relative flex items-center justify-center h-9 w-9 rounded-xl border border-blue-800/40 text-blue-200 hover:text-white hover:bg-blue-800/30 transition-colors cursor-pointer"
+            title="Notifications"
+          >
+            <Bell size={16} />
+            {notifications.some(n => !n.read) && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-emerald-400 ring-2 ring-blue-900 animate-pulse" />
+            )}
+          </button>
+
+          {isNotificationsOpen && (
+            <>
+              {/* Overlay backdrop to close when clicked outside */}
+              <div 
+                className="fixed inset-0 z-45" 
+                onClick={() => setIsNotificationsOpen(false)}
+              />
+              <div className={`absolute right-0 mt-3 w-80 rounded-2xl border p-4 z-50 animate-in fade-in slide-in-from-top-3 duration-250 ${dropdownClass}`}>
+                <div className={`flex items-center justify-between pb-3 border-b mb-3 ${borderMutedClass}`}>
+                  <span className="text-sm font-extrabold text-white">Notifications</span>
+                  <button 
+                    onClick={markAllAsRead}
+                    className="text-[10px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <div className="space-y-3 max-h-64 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-blue-800">
+                  {notifications.length === 0 ? (
+                    <div className={`text-center py-6 text-xs ${softTextClass}`}>No notifications</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <div 
+                        key={n.id} 
+                        className={`p-2.5 rounded-xl border transition-all ${
+                          n.read 
+                            ? (isDarkMode ? 'border-slate-800/80 bg-slate-950/20 text-slate-400' : 'border-blue-900/10 bg-blue-950/10 text-slate-400')
+                            : 'border-emerald-500/10 bg-emerald-500/5 text-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-xs font-bold leading-tight text-white">{n.title}</span>
+                          <span className={`text-[10px] whitespace-nowrap ${softTextClass}`}>{n.time}</span>
+                        </div>
+                        <p className={`text-[11px] leading-relaxed ${n.read ? softTextClass : 'text-slate-300'}`}>{n.message}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <Link 
           href="/client/profile"
-          className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          className="flex items-center gap-3 hover:opacity-85 transition-opacity cursor-pointer"
         >
-          <div className="hidden sm:block text-right">
-            <div className="text-xs font-bold text-slate-200">{displayName}</div>
-            <div className="text-[10px] text-emerald-400 font-semibold">MAM Investor</div>
-          </div>
           <img 
-            src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=120&q=80" 
+            src={avatarUrl} 
             alt="Client Profile" 
             className="w-8 h-8 rounded-xl border-2 border-emerald-500/60 object-cover shadow-sm"
           />
+          
         </Link>
         <button
           type="button"
