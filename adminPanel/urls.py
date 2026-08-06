@@ -17,6 +17,7 @@ from adminPanel.view.manager_fund_actions import (
     manager_history_api,
     manager_investors_list_api,
     manager_withdraw_api,
+    account_financial_action_api,
 )
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
@@ -96,6 +97,7 @@ urlpatterns = [
     path("users/create", create_client_user, name="create-client-user"),
     path("accounts/create", create_account_api, name="create-account"),
     path("accounts/sync-balances", sync_trading_balances_api, name="sync-balances"),
+    path("accounts/financial-action", account_financial_action_api, name="financial-action"),
     path("managers/deposit", manager_deposit_api, name="manager-deposit"),
     path("managers/withdraw", manager_withdraw_api, name="manager-withdraw"),
     path("managers/credit-in", manager_credit_in_api, name="manager-credit-in"),

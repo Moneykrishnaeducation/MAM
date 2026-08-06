@@ -48,6 +48,23 @@ async def manager_credit_out_api(request):
 
 @csrf_exempt
 @permission_required(IsAdmin)
+@require_http_methods(["POST"])
+async def account_financial_action_api(request):
+    """Process generic financial action (deposit/withdraw/credit) based on body actionType."""
+    try:
+        body = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, ValueError):
+        return JsonResponse({"status": "error", "message": "Invalid JSON body"}, status=400)
+    
+    action_type = body.get("actionType")
+    if not action_type or action_type not in ["deposit", "withdraw", "credit-in", "credit-out"]:
+        return JsonResponse({"status": "error", "message": "Invalid or missing actionType"}, status=400)
+        
+    return await _process_financial_action(request, action_type=action_type)
+
+
+@csrf_exempt
+@permission_required(IsAdmin)
 @require_http_methods(["GET"])
 async def manager_history_api(request, account_id: str):
     """Fetch real transaction history directly from DB for a specific manager account with full fields."""
