@@ -246,8 +246,8 @@ async def invest_in_manager(request):
         phone=user.phone or "",
         country=user.country or "United States",
         leverage=mam_master.leverage,
-        master_password=investment_pwd,
-        investor_password=investment_pwd,
+        master_password=None,  # Generates a random master password so user cannot execute manual trades
+        investor_password=investment_pwd,  # User's chosen password is set as read-only Investor Password
         mam_master_login=int(mam_master.account_id),
         initial_balance=0.0,
         user_id=user.id,

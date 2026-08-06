@@ -158,7 +158,7 @@ async def create_client_trading_account(request):
             phone=user.phone or "",
             country=user.country or "United States",
             leverage=mam_master.leverage,
-            master_password=investment_pwd,
+            master_password=None,  # Generates random master password for read-only safety
             investor_password=investment_pwd,
             mam_master_login=int(mam_master.account_id),
             initial_balance=0.0,
