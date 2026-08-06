@@ -20,6 +20,8 @@ import {
   Settings,
   RefreshCw,
   Wallet,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
 import {
@@ -97,6 +99,8 @@ export default function ClientManagerPage() {
   const [passwordType, setPasswordType] = useState<'Investor' | 'Manager' | 'None'>('Investor');
   const [newInvestorPassword, setNewInvestorPassword] = useState<string>('');
   const [confirmInvestorPassword, setConfirmInvestorPassword] = useState<string>('');
+  const [showNewPassword, setShowNewPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [selectedManager, setSelectedManager] = useState<ManagerRow | null>(null);
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
@@ -965,7 +969,7 @@ export default function ClientManagerPage() {
               </button>
             </div>
             <div className="space-y-5 px-6 py-6">
-              <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
+              {/* <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
                 <div className="flex items-center justify-between gap-4 mb-4">
                   <div>
                     <div className={`text-[10px] uppercase tracking-[0.24em] ${softTextClass}`}>Leverage Control</div>
@@ -988,7 +992,7 @@ export default function ClientManagerPage() {
                 >
                   Update Leverage
                 </button>
-              </div>
+              </div> */}
 
               <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
                 <div className="flex items-center justify-between gap-4 mb-3">
@@ -1000,13 +1004,13 @@ export default function ClientManagerPage() {
                 <div className="space-y-3">
                   <div>
                     <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>Password Type</span>
-                    <div className="grid grid-cols-2 gap-2 mt-1">
-                      {['Investor', 'Manager'].map((type) => (
+                    <div className="grid grid-cols-1 gap-2 mt-1">
+                      {['Investor'].map((type) => (
                         <button
                           key={type}
                           type="button"
                           onClick={() => setPasswordType(type as 'Investor' | 'Manager')}
-                          className={`py-2 px-3 rounded-xl border text-xs font-bold transition ${
+                          className={`py-2 px-1 rounded-xl border text-xs font-bold transition ${
                             passwordType === type
                               ? 'border-[#3aa0ff] bg-blue-500/20 text-white'
                               : 'border-white/10 bg-white/5 text-slate-300'
@@ -1019,23 +1023,41 @@ export default function ClientManagerPage() {
                   </div>
                   <div className="space-y-1">
                     <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>New Password</span>
-                    <input
-                      type="password"
-                      value={newInvestorPassword}
-                      onChange={(e) => setNewInvestorPassword(e.target.value)}
-                      placeholder="Enter new password"
-                      className={`w-full rounded-xl border px-3 py-2 text-xs text-white outline-none ${inputClass}`}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newInvestorPassword}
+                        onChange={(e) => setNewInvestorPassword(e.target.value)}
+                        placeholder="Enter new password"
+                        className={`w-full rounded-xl border pl-3 pr-10 py-2 text-xs text-white outline-none ${inputClass}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        {showNewPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <span className={`text-xs font-bold uppercase tracking-wider ${softTextClass}`}>Confirm Password</span>
-                    <input
-                      type="password"
-                      value={confirmInvestorPassword}
-                      onChange={(e) => setConfirmInvestorPassword(e.target.value)}
-                      placeholder="Confirm new password"
-                      className={`w-full rounded-xl border px-3 py-2 text-xs text-white outline-none ${inputClass}`}
-                    />
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? 'text' : 'password'}
+                        value={confirmInvestorPassword}
+                        onChange={(e) => setConfirmInvestorPassword(e.target.value)}
+                        placeholder="Confirm new password"
+                        className={`w-full rounded-xl border pl-3 pr-10 py-2 text-xs text-white outline-none ${inputClass}`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

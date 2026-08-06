@@ -1393,43 +1393,42 @@ export default function ClientMyInvestPage() {
             <form onSubmit={handleInvestorPasswordSubmit} className="space-y-5 px-6 py-6">
               <div className="space-y-2">
                 <label className={`block text-[11px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>New Investor Password</label>
-                <input
-                  type={showPasswordText ? 'text' : 'password'}
-                  value={newInvestorPassword}
-                  onChange={(e) => setNewInvestorPassword(e.target.value)}
-                  placeholder="Enter new investor password"
-                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={newInvestorPassword}
+                    onChange={(e) => setNewInvestorPassword(e.target.value)}
+                    placeholder="Enter new investor password"
+                    className={`w-full rounded-2xl border pl-4 pr-12 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    {showPasswordText ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-2">
                 <label className={`block text-[11px] font-black uppercase tracking-[0.24em] ${softTextClass}`}>Confirm Investor Password</label>
-                <input
-                  type={showPasswordText ? 'text' : 'password'}
-                  value={confirmInvestorPassword}
-                  onChange={(e) => setConfirmInvestorPassword(e.target.value)}
-                  placeholder="Confirm new investor password"
-                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-3">
-                <label className={`inline-flex items-center gap-2 text-sm cursor-pointer text-slate-200`}>
+                <div className="relative">
                   <input
-                    type="checkbox"
-                    checked={showPasswordText}
-                    onChange={() => setShowPasswordText(!showPasswordText)}
-                    className="accent-blue-400"
+                    type={showPasswordText ? 'text' : 'password'}
+                    value={confirmInvestorPassword}
+                    onChange={(e) => setConfirmInvestorPassword(e.target.value)}
+                    placeholder="Confirm new investor password"
+                    className={`w-full rounded-2xl border pl-4 pr-12 py-3 text-sm text-slate-100 outline-none transition ${inputClass}`}
                   />
-                  Show password
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setShowPasswordText(!showPasswordText)}
-                  className="inline-flex items-center gap-2 rounded-full border border-blue-500/40 bg-blue-900/40 px-3 py-2 text-xs font-bold text-blue-100 hover:bg-blue-800 transition"
-                >
-                  {showPasswordText ? <EyeOff size={14} /> : <Eye size={14} />} {showPasswordText ? 'Hide' : 'Reveal'}
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                  >
+                    {showPasswordText ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
 
               {passwordError && (
