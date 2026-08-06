@@ -111,6 +111,11 @@ export async function fetchClientProfile() {
   return data?.profile || null;
 }
 
+export async function fetchClientDocuments() {
+  const data = await fetchClientEndpoint<{ documents?: any }>('/api/client/documents');
+  return data?.documents || null;
+}
+
 export async function fetchClientAccount() {
   const data = await fetchClientEndpoint<{ account?: any }>('/api/client/account');
   return data?.account || null;

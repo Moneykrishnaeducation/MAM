@@ -60,6 +60,8 @@ interface ProfileRequest extends BaseRequest {
   currentValue: string;
   requestedValue: string;
   reason: string;
+  profileFields?: Array<{ label: string; value: string }>;
+  profileSummary?: string;
 }
 
 interface BankRequest extends BaseRequest {
@@ -188,6 +190,25 @@ export default function AdminPendingRequestsPage() {
   };
 
   const closeModal = () => setSelectedDetail(null);
+
+  const formatRequestTypeLabel = (type: RequestTab) => {
+    switch (type) {
+      case 'deposit':
+        return 'Deposit Request';
+      case 'withdraw':
+        return 'Withdrawal Request';
+      case 'documents':
+        return 'Document Request';
+      case 'profile':
+        return 'Profile Update';
+      case 'bank':
+        return 'Bank Account';
+      case 'crypto':
+        return 'Crypto Wallet';
+      default:
+        return 'Request';
+    }
+  };
 
   const updateRequestStatus = async (
     requestId: string,
@@ -665,10 +686,13 @@ export default function AdminPendingRequestsPage() {
                           <span className="font-bold text-white text-base">{p.requesterName}</span>
                           <span className="font-mono text-blue-400">({p.id})</span>
                           <span className="px-2.5 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-semibold">
-                            Update {p.fieldToUpdate}
+                            {p.fieldToUpdate}
                           </span>
                         </div>
-                        <p className="text-slate-300">Requested Change: <strong className="text-emerald-400 font-bold">{p.requestedValue}</strong></p>
+                        <p className="text-slate-300">
+                          Requested Change:{' '}
+                          <strong className="text-emerald-400 font-bold">{p.profileSummary || p.requestedValue}</strong>
+                        </p>
                       </div>
                     </div>
 
@@ -794,8 +818,13 @@ export default function AdminPendingRequestsPage() {
               <div className="flex items-center gap-3">
                 <img src={selectedDetail.data.avatar} alt={selectedDetail.data.requesterName} className="w-12 h-12 rounded-2xl object-cover ring-2 ring-blue-500/40" />
                 <div>
-                  <h3 className="font-bold text-white text-base">{selectedDetail.data.requesterName}</h3>
-                  <p className="text-xs text-slate-400">{selectedDetail.data.id} • {selectedDetail.data.requesterEmail}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-white text-base">{selectedDetail.data.requesterName}</h3>
+                    <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20 font-semibold text-[10px] uppercase tracking-wider">
+                      {formatRequestTypeLabel(selectedDetail.type)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400">{selectedDetail.data.id} | {selectedDetail.data.requesterEmail}</p>
                 </div>
               </div>
 
@@ -951,17 +980,21 @@ export default function AdminPendingRequestsPage() {
                 <div className="space-y-4">
                   <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
                     <div className="text-indigo-400 font-bold text-sm">Update Field: {selectedDetail.data.fieldToUpdate}</div>
-                    
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                      <div className="text-slate-400 text-[11px]">Current Old Record:</div>
-                      <div className="text-red-400 font-bold line-through">{selectedDetail.data.currentValue}</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {(selectedDetail.data.profileFields || []).length > 0 ? (
+                        selectedDetail.data.profileFields!.map((field) => (
+                          <div key={field.label} className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                            <div className="text-slate-400 text-[11px]">{field.label}:</div>
+                            <div className="text-emerald-400 font-bold text-sm break-words">{field.value}</div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
+                          <div className="text-slate-400 text-[11px]">Requested Record:</div>
+                          <div className="text-emerald-400 font-bold text-sm break-words">{selectedDetail.data.requestedValue}</div>
+                        </div>
+                      )}
                     </div>
-
-                    <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1">
-                      <div className="text-slate-400 text-[11px]">Requested New Record:</div>
-                      <div className="text-emerald-400 font-bold text-sm">{selectedDetail.data.requestedValue}</div>
-                    </div>
-
                     <div className="text-slate-400 text-[11px]">User Reason: {selectedDetail.data.reason}</div>
                   </div>
                 </div>
