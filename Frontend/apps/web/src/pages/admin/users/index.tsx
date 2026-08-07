@@ -2224,6 +2224,11 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState<number>(1);
+  const [perPage, setPerPage] = useState<number>(10);
+  const [total, setTotal] = useState<number | null>(null);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+
   const [kycDetailsByUserId, setKycDetailsByUserId] = useState<
     Record<string, { loading: boolean; error: string | null; data: AdminUserKycDetails | null }>
   >({});
@@ -2242,22 +2247,63 @@ export default function AdminUsersPage() {
   const isViewerAdmin = useMemo(() => isViewerRole(adminRole), [adminRole]);
 
   useEffect(() => {
+    let active = true;
     setLoading(true);
-    // Simulate minor network delay for smooth skeleton loader feel
     const timer = setTimeout(() => {
-      fetch('/api/admin/users')
+      const params = new URLSearchParams();
+      if (page) params.set('page', String(page));
+      if (perPage) params.set('per_page', String(perPage));
+      if (searchTerm) params.set('search', searchTerm);
+      fetch(`/api/admin/users?${params.toString()}`)
         .then((res) => res.json())
         .then((data) => {
-          if (data?.users && Array.isArray(data.users)) setUsers(data.users);
-          else setUsers(getAdminUsers() as UserData[]);
+          if (!active) return;
+          if (data?.users && Array.isArray(data.users)) {
+            setUsers(data.users);
+            if (data.pagination) {
+              setTotal(Number(data.pagination.total ?? data.users.length));
+              setTotalPages(Number(data.pagination.total_pages ?? Math.ceil((data.pagination.total ?? data.users.length) / perPage)));
+            } else {
+              setTotal(data.users.length);
+              setTotalPages(1);
+            }
+          } else {
+            // fallback to mock data
+            const mock = getAdminUsers() as UserData[];
+            const filteredMock = mock.filter(
+              (u) =>
+                u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                u.id.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+            setTotal(filteredMock.length);
+            setTotalPages(Math.max(1, Math.ceil(filteredMock.length / perPage)));
+            setUsers(filteredMock.slice((page - 1) * perPage, page * perPage));
+          }
         })
         .catch(() => {
-          setUsers(getAdminUsers() as UserData[]);
+          if (!active) return;
+          const mock = getAdminUsers() as UserData[];
+          const filteredMock = mock.filter(
+            (u) =>
+              u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              u.id.toLowerCase().includes(searchTerm.toLowerCase())
+          );
+          setTotal(filteredMock.length);
+          setTotalPages(Math.max(1, Math.ceil(filteredMock.length / perPage)));
+          setUsers(filteredMock.slice((page - 1) * perPage, page * perPage));
         })
-        .finally(() => setLoading(false));
-    }, 800);
-    return () => clearTimeout(timer);
-  }, []);
+        .finally(() => {
+          if (active) setLoading(false);
+        });
+    }, 400);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [page, perPage, searchTerm]);
 
   const showToast = (msg: string) => {
     setToastMessage(null);
@@ -2707,12 +2753,8 @@ export default function AdminUsersPage() {
     refreshUsers();
   };
 
-  const filteredUsers = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.id.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  // users state already contains the paginated and filtered list of users for the current page
+  const renderedUsers = users;
 
   const MODAL_TITLES: Record<string, string> = {
     verifi: 'KYC & Document Verification',
@@ -2851,19 +2893,22 @@ export default function AdminUsersPage() {
                 <input 
                   type="text" 
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   placeholder="Search user ID, name, email, or country..." 
                   className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
                 />
                 {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
+                  <button onClick={() => { setSearchTerm(''); setPage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
                     <X size={12} />
                   </button>
                 )}
               </div>
 
               <div className="text-xs text-slate-400 font-bold">
-                Showing <span className="text-white font-mono">{filteredUsers.length}</span> of <span className="text-slate-300 font-mono">{users.length}</span> users
+                Total clients: <span className="text-[#d4af37] font-mono">{total ?? users.length}</span>
               </div>
             </div>
 
@@ -2920,14 +2965,14 @@ export default function AdminUsersPage() {
                       </td>
                     </tr>
                   ))
-                ) : filteredUsers.length === 0 ? (
+                ) : total === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-10 text-center text-slate-500">
                       No users match the search filter.
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((u) => {
+                  renderedUsers.map((u) => {
                     const isExpanded = expandedRowId === u.id;
                     const isViewer = isViewerAdmin;
                     const kycState = kycDetailsByUserId[u.id];
@@ -3064,6 +3109,61 @@ export default function AdminUsersPage() {
               )}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-white/5 pt-4">
+            <div className="flex flex-wrap items-center gap-4">
+              {total !== null ? (
+                <span>
+                  Showing <strong className="text-white">{(page - 1) * perPage + 1}</strong> - <strong className="text-white">{Math.min(page * perPage, total)}</strong> of <strong className="text-white">{total}</strong> users
+                </span>
+              ) : (
+                <span>Showing results</span>
+              )}
+
+              <div className="flex items-center gap-2">
+                <span className="text-slate-400">Rows per page:</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
+                >
+                  <option value={10}>10</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={500}>500</option>
+                  <option value={1000}>1000</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={loading || page <= 1}
+                className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              >
+                Previous
+              </button>
+
+              <span className="text-xs text-slate-400">
+                Page <strong className="text-white">{page}</strong> {totalPages ? `of ${totalPages}` : ''}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={loading || totalPages === null || page >= totalPages}
+                className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>

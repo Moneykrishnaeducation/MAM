@@ -81,9 +81,19 @@ export default function AdminManagersPage() {
   const [managers, setManagers] = useState<ManagerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const [page, setPage] = useState<number>(1);
+  const [perPage, setPerPage] = useState<number>(10);
+  const [total, setTotal] = useState<number | null>(null);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+
   useEffect(() => {
     setAdminRole(getAdminRole());
   }, []);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, riskFilter, perPage]);
 
   const isViewer = useMemo(() => isViewerOnly(adminRole) || adminRole.toLowerCase() === 'viewer', [adminRole]);
 
@@ -95,7 +105,12 @@ export default function AdminManagersPage() {
   const fetchManagers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/managers', { credentials: 'include' });
+      const params = new URLSearchParams();
+      params.set('page', String(page));
+      params.set('per_page', String(perPage));
+      if (searchTerm) params.set('search', searchTerm);
+
+      const res = await fetch(`/api/admin/managers?${params.toString()}`, { credentials: 'include' });
       const data = await res.json();
       if (data && data.managers && Array.isArray(data.managers)) {
         const mapped = data.managers.map((m: any) => ({
@@ -112,20 +127,34 @@ export default function AdminManagersPage() {
           investorsCount: m.investorsCount || (m.investorsList ? m.investorsList.length : 0),
           investorsList: m.investorsList || [],
         }));
-        if (mapped.length > 0) {
-          setManagers(mapped);
+        setManagers(mapped);
+        if (data.pagination) {
+          setTotal(Number(data.pagination.total ?? data.managers.length));
+          setTotalPages(Number(data.pagination.total_pages ?? 1));
+        } else {
+          setTotal(data.managers.length);
+          setTotalPages(1);
         }
+      } else {
+        setManagers([]);
+        setTotal(0);
+        setTotalPages(1);
       }
     } catch {
-      // Fallback state handle
+      setManagers([]);
+      setTotal(0);
+      setTotalPages(1);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchManagers();
-  }, []);
+    const timer = setTimeout(() => {
+      fetchManagers();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [page, perPage, searchTerm]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -570,6 +599,60 @@ export default function AdminManagersPage() {
               </table>
             </div>
 
+            {/* Pagination Controls */}
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-white/5 pt-4">
+              <div className="flex flex-wrap items-center gap-4">
+                {total !== null ? (
+                  <span>
+                    Showing <strong className="text-white">{(page - 1) * perPage + 1}</strong> - <strong className="text-white">{Math.min(page * perPage, total)}</strong> of <strong className="text-white">{total}</strong> managers
+                  </span>
+                ) : (
+                  <span>Showing results</span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Rows per page:</span>
+                  <select
+                    value={perPage}
+                    onChange={(e) => {
+                      setPerPage(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={isLoading || page <= 1}
+                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  Previous
+                </button>
+
+                <span className="text-xs text-slate-400">
+                  Page <strong className="text-white">{page}</strong> {totalPages ? `of ${totalPages}` : ''}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={isLoading || totalPages === null || page >= totalPages}
+                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

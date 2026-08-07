@@ -56,6 +56,14 @@ interface TransactionsApiResponse {
     total_volume?: number;
   };
   transactions?: TransactionItem[];
+  pagination?: {
+    page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_previous: boolean;
+  };
   message?: string;
 }
 
@@ -139,6 +147,16 @@ export default function AdminTransactionsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [page, setPage] = useState<number>(1);
+  const [perPage, setPerPage] = useState<number>(10);
+  const [total, setTotal] = useState<number | null>(null);
+  const [totalPages, setTotalPages] = useState<number | null>(null);
+
+  // Reset page on filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, searchTerm, statusFilter, perPage]);
+
   const loadTransactions = async () => {
     setLoading(true);
     setError(null);
@@ -146,6 +164,10 @@ export default function AdminTransactionsPage() {
     try {
       const params = new URLSearchParams();
       params.set('tab', activeTab);
+      params.set('page', String(page));
+      params.set('per_page', String(perPage));
+      if (searchTerm) params.set('search', searchTerm);
+      if (statusFilter !== 'All') params.set('status', statusFilter);
 
       const response = await fetch(`/api/admin/transactions?${params.toString()}`, {
         credentials: 'include',
@@ -159,6 +181,13 @@ export default function AdminTransactionsPage() {
 
       setTransactions(Array.isArray(data?.transactions) ? data.transactions : []);
       setSummary(data?.summary || {});
+      if (data?.pagination) {
+        setTotal(Number(data.pagination.total ?? data.transactions?.length ?? 0));
+        setTotalPages(Number(data.pagination.total_pages ?? 1));
+      } else {
+        setTotal(data?.transactions?.length ?? 0);
+        setTotalPages(1);
+      }
     } catch (fetchError: any) {
       setTransactions([]);
       setSummary({});
@@ -169,23 +198,13 @@ export default function AdminTransactionsPage() {
   };
 
   useEffect(() => {
-    loadTransactions();
-  }, [activeTab]);
+    const timer = setTimeout(() => {
+      loadTransactions();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [activeTab, page, perPage, searchTerm, statusFilter]);
 
-  const filteredTransactions = useMemo(() => {
-    return transactions.filter((item) => {
-      const matchesSearch = [
-        item.id, item.user, item.email, item.type, item.method,
-        item.account, item.approved_by, item.approval_date,
-        item.description, item.source, item.destination
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase());
-      const matchesStatus = statusFilter === 'All' || item.status.toLowerCase() === statusFilter.toLowerCase();
-      return matchesSearch && matchesStatus;
-    });
-  }, [transactions, searchTerm, statusFilter]);
+  const filteredTransactions = transactions;
 
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) return;
@@ -504,6 +523,61 @@ export default function AdminTransactionsPage() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-white/5 pt-4">
+              <div className="flex flex-wrap items-center gap-4">
+                {total !== null ? (
+                  <span>
+                    Showing <strong className="text-white">{(page - 1) * perPage + 1}</strong> - <strong className="text-white">{Math.min(page * perPage, total)}</strong> of <strong className="text-white">{total}</strong> transactions
+                  </span>
+                ) : (
+                  <span>Showing results</span>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">Rows per page:</span>
+                  <select
+                    value={perPage}
+                    onChange={(e) => {
+                      setPerPage(Number(e.target.value));
+                      setPage(1);
+                    }}
+                    className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                    <option value={500}>500</option>
+                    <option value={1000}>1000</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={loading || page <= 1}
+                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  Previous
+                </button>
+
+                <span className="text-xs text-slate-400">
+                  Page <strong className="text-white">{page}</strong> {totalPages ? `of ${totalPages}` : ''}
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={loading || totalPages === null || page >= totalPages}
+                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           </div>
 

@@ -178,10 +178,11 @@ def _transaction_matches_search(transaction: ClientTransaction, search: str) -> 
 @permission_required(IsAdmin)
 @require_http_methods(["GET"])
 async def list_admin_transactions(request):
-    """Return transaction data for the main admin transactions page."""
+    """Return transaction data for the main admin transactions page with status filter."""
 
     tab = _normalize_transaction_tab(request.GET.get("tab") or request.GET.get("type"))
     search = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
+    status_q = str(request.GET.get("status") or "").strip().lower()
 
     queryset = ClientTransaction.all().order_by("-created_at", "-id").prefetch_related("user")
     transactions = await queryset
@@ -191,6 +192,7 @@ async def list_admin_transactions(request):
         for transaction in transactions
         if _transaction_matches_tab(transaction, tab)
         and _transaction_matches_search(transaction, search)
+        and (not status_q or status_q == "all" or str(transaction.status or "").strip().lower() == status_q)
     ]
 
     summary = {
@@ -212,14 +214,56 @@ async def list_admin_transactions(request):
         "total_volume": sum(float(transaction.amount or 0.0) for transaction in transactions),
     }
 
-    return JsonResponse(
-        {
-            "status": "ok",
-            "tab": tab or "all",
-            "search": search,
-            "summary": summary,
-            "transactions": [
-                _serialize_transaction(transaction) for transaction in filtered_transactions
-            ],
-        }
-    )
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
+    total = len(filtered_transactions)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        paginated_txs = filtered_transactions[start_idx:end_idx]
+
+        return JsonResponse(
+            {
+                "status": "ok",
+                "tab": tab or "all",
+                "search": search,
+                "summary": summary,
+                "transactions": [
+                    _serialize_transaction(transaction) for transaction in paginated_txs
+                ],
+                "pagination": {
+                    "page": page,
+                    "per_page": per_page,
+                    "total": total,
+                    "total_pages": total_pages,
+                    "has_next": page < total_pages,
+                    "has_previous": page > 1,
+                },
+            }
+        )
+    else:
+        return JsonResponse(
+            {
+                "status": "ok",
+                "tab": tab or "all",
+                "search": search,
+                "summary": summary,
+                "transactions": [
+                    _serialize_transaction(transaction) for transaction in filtered_transactions
+                ],
+            }
+        )

@@ -163,6 +163,8 @@ export default function AdminActivityPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [serverTotal, setServerTotal] = useState(0);
+  const [serverTotalPages, setServerTotalPages] = useState(1);
 
   // Inspection Modal State
   const [inspectRow, setInspectRow] = useState<ActivityLogRow | null>(null);
@@ -196,15 +198,19 @@ export default function AdminActivityPage() {
   useEffect(() => {
     let active = true;
 
-    const readEndpoint = async (endpoint: string) => {
-      const res = await fetch(endpoint);
-      const data = (await res.json().catch(() => ({}))) as { activities?: ActivityApiItem[]; message?: string };
+    const readEndpoint = async (endpoint: string, pg: number, pp: number, search: string) => {
+      const params = new URLSearchParams();
+      params.set('page', String(pg));
+      params.set('per_page', String(pp));
+      if (search) params.set('search', search);
+      const res = await fetch(`${endpoint}?${params.toString()}`, { credentials: 'include' });
+      const data = (await res.json().catch(() => ({}))) as { activities?: ActivityApiItem[]; pagination?: { total?: number; total_pages?: number; page?: number; per_page?: number; has_next?: boolean; has_previous?: boolean }; message?: string };
 
       if (!res.ok) {
         throw new Error(data?.message || 'Failed to load activity logs');
       }
 
-      return mapActivityRows(data.activities);
+      return { rows: mapActivityRows(data.activities), pagination: data.pagination };
     };
 
     const loadData = async () => {
@@ -212,12 +218,19 @@ export default function AdminActivityPage() {
       setError(null);
 
       try {
-        const rows = await readEndpoint(ACTIVITY_ENDPOINTS[activeTab]);
+        const { rows, pagination } = await readEndpoint(ACTIVITY_ENDPOINTS[activeTab], currentPage, perPage, searchTerm);
         if (!active) return;
 
         setLogs(rows);
         setLogsByTab((prev) => ({ ...prev, [activeTab]: rows }));
         setLastUpdated(new Date());
+        if (pagination) {
+          setServerTotal(pagination.total ?? rows.length);
+          setServerTotalPages(pagination.total_pages ?? 1);
+        } else {
+          setServerTotal(rows.length);
+          setServerTotalPages(1);
+        }
       } catch (err) {
         if (!active) return;
         setLogs([]);
@@ -227,40 +240,20 @@ export default function AdminActivityPage() {
       }
     };
 
-    void loadData();
+    const timer = setTimeout(() => {
+      void loadData();
+    }, 400);
 
     return () => {
       active = false;
+      clearTimeout(timer);
     };
-  }, [activeTab, reloadToken]);
+  }, [activeTab, currentPage, perPage, searchTerm, reloadToken]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, searchTerm, perPage]);
 
-  const filteredLogs = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-
-    return logs.filter((log) => {
-      if (!query) return true;
-
-      return [
-        log.id,
-        log.userName,
-        log.userRole,
-        log.actionType,
-        log.moduleName,
-        log.recordId,
-        log.ipAddress,
-        log.userAgent,
-        log.time,
-        log.category,
-      ]
-        .join(' ')
-        .toLowerCase()
-        .includes(query);
-    });
-  }, [logs, searchTerm]);
 
   const tabCounts = useMemo(() => {
     return {
@@ -271,15 +264,13 @@ export default function AdminActivityPage() {
     };
   }, [logsByTab, logs]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / perPage));
+  const totalPages = serverTotalPages;
   const safePage = Math.min(currentPage, totalPages);
-  const showingStart = filteredLogs.length > 0 ? (safePage - 1) * perPage + 1 : 0;
-  const showingEnd = filteredLogs.length > 0 ? Math.min(showingStart + perPage - 1, filteredLogs.length) : 0;
+  const showingStart = logs.length > 0 ? (safePage - 1) * perPage + 1 : 0;
+  const showingEnd = logs.length > 0 ? Math.min(showingStart + perPage - 1, serverTotal) : 0;
 
-  const paginatedLogs = useMemo(() => {
-    const start = (safePage - 1) * perPage;
-    return filteredLogs.slice(start, start + perPage);
-  }, [filteredLogs, perPage, safePage]);
+  // Server already paginates - use logs directly
+  const paginatedLogs = logs;
 
   const paginationItems = useMemo<Array<number | 'ellipsis'>>(() => {
     if (totalPages <= 7) {
@@ -587,7 +578,7 @@ export default function AdminActivityPage() {
             {/* PAGINATION FOOTER */}
             <div className="flex flex-col gap-2 border-t border-white/10 pt-3 mt-3 sm:flex-row sm:items-center sm:justify-between text-xs">
               <div className="text-slate-400 font-mono text-[10px]">
-                Showing <span className="font-bold text-slate-200">{showingStart}</span> to <span className="font-bold text-slate-200">{showingEnd}</span> of <span className="font-bold text-slate-200">{filteredLogs.length}</span> entries
+                Showing <span className="font-bold text-slate-200">{showingStart}</span> to <span className="font-bold text-slate-200">{showingEnd}</span> of <span className="font-bold text-slate-200">{serverTotal}</span> entries
               </div>
 
               <div className="flex items-center gap-3">

@@ -390,6 +390,22 @@ async def admin_profile(request):
 async def list_client_users(request):
     """List client users directly from database."""
     await ensure_db_initialized()
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    search_q = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
+
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
+
     client_users = await ClientUser.all()
     results = []
     for user in client_users:
@@ -487,7 +503,42 @@ async def list_client_users(request):
                 "tickets": [],
             }
         )
-    return JsonResponse({"status": "ok", "users": results})
+    total = len(results)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+
+        # Apply basic search filtering on the server side if requested
+        if search_q:
+            filtered = [r for r in results if search_q in (str(r.get('name') or '') + ' ' + str(r.get('email') or '') + ' ' + str(r.get('id') or '')).lower()]
+            total = len(filtered)
+            total_pages = max(1, (total + per_page - 1) // per_page)
+            page = min(page, total_pages)
+            start_index = (page - 1) * per_page
+            end_index = start_index + per_page
+            paginated_results = filtered[start_index:end_index]
+        else:
+            paginated_results = results[start_index:end_index]
+
+        response = {
+            "status": "ok",
+            "users": paginated_results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        }
+    else:
+        response = {"status": "ok", "users": results}
+
+    return JsonResponse(response)
 
 
 @csrf_exempt
@@ -822,12 +873,36 @@ async def list_managers(request):
 
 
 async def list_investors(request):
-    """List investors directly from database."""
+    """List investors directly from database with optional search and pagination."""
     await ensure_db_initialized()
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    search_q = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
+
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
+
     investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
     results = []
     for i in investors:
-        # `mam_master_account` is an async relation in Tortoise — await it to get the related object.
+        name = i.user.name if i.user else "Investor User"
+        email = i.user.email if i.user else "investor@mam.com"
+        acc_id = i.account_id or ""
+
+        if search_q:
+            haystack = f"{name} {email} {acc_id}".lower()
+            if search_q not in haystack:
+                continue
+
         try:
             mam_master = await i.mam_master_account
         except Exception:
@@ -836,9 +911,9 @@ async def list_investors(request):
         results.append(
             {
                 "id": i.id,
-                "account_id": i.account_id,
-                "name": i.user.name if i.user else "Investor User",
-                "email": i.user.email if i.user else "investor@mam.com",
+                "account_id": acc_id,
+                "name": name,
+                "email": email,
                 "equity": float(i.equity),
                 "allocated_mam_name": mam_master.account_name if mam_master else None,
                 "allocated_mam": mam_master.account_id if mam_master else None,
@@ -846,7 +921,34 @@ async def list_investors(request):
             }
         )
 
-    return JsonResponse({"status": "ok", "investors": results})
+    total = len(results)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_results = results[start_index:end_index]
+
+        response = {
+            "status": "ok",
+            "investors": paginated_results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        }
+    else:
+        response = {
+            "status": "ok",
+            "investors": results,
+        }
+
+    return JsonResponse(response)
 
 
 def _classify_activity_log(log: ActivityLog) -> str:
@@ -930,36 +1032,85 @@ def _serialize_activity_log(log: ActivityLog) -> dict:
     }
 
 
-async def _list_activity_logs_by_category(category: str | None = None):
+async def _list_activity_logs_by_category(request, category: str | None = None):
     """Return serialized activity logs filtered by category when requested."""
     await ensure_db_initialized()
+    raw_page = request.GET.get("page")
+    raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    search_q = str(request.GET.get("search") or request.GET.get("q") or "").strip().lower()
+
+    paginate = raw_page is not None or raw_per_page is not None
+
+    def _parse_positive_int(val, default):
+        try:
+            parsed = int(str(val).strip())
+            return max(1, parsed)
+        except (ValueError, TypeError):
+            return default
+
+    page = _parse_positive_int(raw_page, 1)
+    per_page = _parse_positive_int(raw_per_page, 10)
+
     logs = await ActivityLog.all().order_by("-timestamp")
     results = [_serialize_activity_log(log) for log in logs]
 
     if category and category != "all":
         results = [log for log in results if log["category"] == category]
 
-    return JsonResponse({"status": "ok", "activities": results})
+    if search_q:
+        results = [
+            r for r in results
+            if search_q in f"{r.get('user_name') or ''} {r.get('user_role') or ''} {r.get('action_type') or ''} {r.get('module_name') or ''} {r.get('details') or ''}".lower()
+        ]
+
+    total = len(results)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        paginated_results = results[start_index:end_index]
+
+        response = {
+            "status": "ok",
+            "activities": paginated_results,
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+        }
+    else:
+        response = {
+            "status": "ok",
+            "activities": results,
+        }
+
+    return JsonResponse(response)
 
 
 async def list_activity_logs(request):
     """List system activity logs directly from database."""
-    return await _list_activity_logs_by_category("all")
+    return await _list_activity_logs_by_category(request, "all")
 
 
 async def list_admin_activity_logs(request):
     """List admin-category activity logs directly from database."""
-    return await _list_activity_logs_by_category("admin")
+    return await _list_activity_logs_by_category(request, "admin")
 
 
 async def list_client_activity_logs(request):
     """List client-category activity logs directly from database."""
-    return await _list_activity_logs_by_category("client")
+    return await _list_activity_logs_by_category(request, "client")
 
 
 async def list_error_activity_logs(request):
     """List error-category activity logs directly from database."""
-    return await _list_activity_logs_by_category("error")
+    return await _list_activity_logs_by_category(request, "error")
 
 
 # ── POST views ─────────────────────────────────────────────────────────────────
