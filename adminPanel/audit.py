@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 from adminPanel.models import ActivityLog
+from adminPanel.view.admin_identity import resolve_admin_display_name
 from backendPanel.database import ensure_db_initialized
 
 logger = logging.getLogger(__name__)
@@ -60,7 +61,8 @@ async def log_post_activity(request, response=None) -> ActivityLog | None:
         if admin_token:
             payload = load_admin_login_token(admin_token)
             if payload:
-                user_name = payload.get("email", "Admin User")
+                resolved_name = await resolve_admin_display_name(request)
+                user_name = resolved_name or payload.get("email", "Admin User")
                 user_email = payload.get("email", "admin@mam.com")
                 user_role = str(payload.get("role", "Admin")).capitalize()
                 user_id = payload.get("user_id") or payload.get("sub")

@@ -2,6 +2,11 @@ export interface UserTransaction {
   id: string;
   type: 'Deposit' | 'Withdrawal';
   amount: string;
+  account?: string;
+  approvedBy?: string;
+  approvalDate?: string;
+  description?: string;
+  source?: string;
   status: 'Completed' | 'Pending';
   date: string;
 }

@@ -243,6 +243,50 @@ function ProfileSelectField({
   );
 }
 
+type PaymentFieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  className?: string;
+  disabled?: boolean;
+  editing: boolean;
+  mono?: boolean;
+  type?: string;
+};
+
+function PaymentField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  className = '',
+  disabled = false,
+  editing,
+  mono = false,
+  type = 'text',
+}: PaymentFieldProps) {
+  return (
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</label>
+      <input
+        type={type}
+        value={value}
+        disabled={!editing || disabled}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete="off"
+        spellCheck={false}
+        className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs transition-all ${
+          !editing || disabled
+            ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
+            : 'border-[#1745b3] focus:border-amber-500'
+        } ${mono ? 'font-mono uppercase' : ''}`}
+      />
+    </div>
+  );
+}
+
 function normalizeKycDoc(doc?: AdminKycDocument | null) {
   return {
     file_name: doc?.file_name ?? null,
@@ -332,6 +376,15 @@ type AdminTransactionApiItem = {
   amount?: number | string | null;
   payment_method?: string | null;
   method?: string | null;
+  account?: string | null;
+  role?: string | null;
+  approved_by?: string | null;
+  approval_date?: string | null;
+  description?: string | null;
+  source?: string | null;
+  account_number?: string | null;
+  account_id_from?: string | null;
+  account_id_to?: string | null;
   status?: string | null;
   created_at?: string | null;
   date?: string | null;
@@ -404,11 +457,37 @@ function normalizeTransactionAmount(amount?: number | string | null): string {
   return String(amount);
 }
 
+function formatTransactionSource(tx: Pick<AdminTransactionApiItem, 'source' | 'transaction_type' | 'type' | 'payment_method' | 'role'>): string {
+  const source = String(tx.source ?? '').trim();
+  if (source) {
+    const lowered = source.toLowerCase();
+    if (lowered !== 'admin' && lowered !== 'admin operation') {
+      return lowered.startsWith('admin ') ? source.slice(6).trim() : source;
+    }
+  }
+
+  const action = String(tx.transaction_type ?? tx.type ?? tx.payment_method ?? 'Transaction')
+    .trim()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ');
+  return [tx.role?.trim(), action || 'Transaction'].filter(Boolean).join(' ') || 'Transaction';
+}
+
 function normalizeTransactionRecord(tx: AdminTransactionApiItem): UserTransaction {
+  const account = String(
+    tx.account ?? tx.account_number ?? tx.account_id_from ?? tx.account_id_to ?? 'N/A'
+  );
+  const approvalDate = String(tx.approval_date ?? tx.created_at ?? tx.date ?? '');
+  const approvedBy = String(tx.approved_by ?? '').trim();
   return {
     id: String(tx.id),
     type: normalizeTransactionType(tx.transaction_type ?? tx.type),
     amount: normalizeTransactionAmount(tx.amount),
+    account,
+    approvedBy: approvedBy && approvedBy.toLowerCase() !== 'admin' ? approvedBy : undefined,
+    approvalDate,
+    description: String(tx.description ?? tx.type ?? tx.transaction_type ?? ''),
+    source: formatTransactionSource(tx),
     status: normalizeTransactionStatus(tx.status),
     date: String(tx.created_at ?? tx.date ?? ''),
   };
@@ -1296,9 +1375,13 @@ function BankCryptoModal({ user }: { user: UserData }) {
   const [networks, setNetworks]     = useState<string[]>(FALLBACK_NETWORKS);
   const [netLoading, setNetLoading] = useState(false);
   const [saving, setSaving]         = useState(false);
+  const bankDirtyRef = useRef(false);
+  const cryptoDirtyRef = useRef(false);
 
   useEffect(() => {
     let active = true;
+    bankDirtyRef.current = false;
+    cryptoDirtyRef.current = false;
     setLoadingPayment(true);
 
     fetch(`/api/admin/users/${getAdminUserApiId(user)}/payment/details`, { credentials: 'include' })
@@ -1320,18 +1403,22 @@ function BankCryptoModal({ user }: { user: UserData }) {
             ? 'bank'
             : (cryptoData?.wallet_address ? 'crypto' : 'bank');
         setPayType(nextType);
-        setBank({
-          accountHolder: bankData?.account_holder ?? user.name,
-          accountNumber: bankData?.account_number ?? '',
-          bankName: bankData?.bank_name ?? '',
-          ifscSwift: bankData?.ifsc_swift ?? '',
-          branch: bankData?.branch ?? '',
-          country: bankData?.country ?? user.country,
-        });
-        setCrypto({
-          cryptoAddress: cryptoData?.wallet_address ?? '',
-          network: cryptoData?.network ?? 'USDT-TRC20',
-        });
+        if (!bankDirtyRef.current) {
+          setBank({
+            accountHolder: bankData?.account_holder ?? user.name,
+            accountNumber: bankData?.account_number ?? '',
+            bankName: bankData?.bank_name ?? '',
+            ifscSwift: bankData?.ifsc_swift ?? '',
+            branch: bankData?.branch ?? '',
+            country: bankData?.country ?? user.country,
+          });
+        }
+        if (!cryptoDirtyRef.current) {
+          setCrypto({
+            cryptoAddress: cryptoData?.wallet_address ?? '',
+            network: cryptoData?.network ?? 'USDT-TRC20',
+          });
+        }
       })
       .catch((error) => {
         if (!active) return;
@@ -1388,7 +1475,8 @@ function BankCryptoModal({ user }: { user: UserData }) {
       <div className="flex items-center justify-between border-b border-[#1745b3] pb-3 mb-4">
         <SectionTitle icon={CreditCard} label="Bank & Crypto Payment Details" color="text-amber-400" />
         <button
-          onClick={() => setIsEditing(!isEditing)}
+          type="button"
+          onClick={() => setIsEditing((prev) => !prev)}
           className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
             isEditing
               ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3]'
@@ -1408,6 +1496,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
       {/* Type Toggle */}
       <div className="flex items-center gap-2 p-1 bg-[#081d5f] rounded-2xl border border-[#1745b3]">
         <button
+          type="button"
           onClick={() => setPayType('bank')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             payType === 'bank' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
@@ -1417,6 +1506,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
           Bank Transfer
         </button>
         <button
+          type="button"
           onClick={() => setPayType('crypto')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             payType === 'crypto' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
@@ -1444,20 +1534,18 @@ function BankCryptoModal({ user }: { user: UserData }) {
                 { key: 'branch',        label: 'Branch (optional)',     placeholder: 'e.g. Mumbai Main Branch',      mono: false },
                 { key: 'country',       label: 'Bank Country',          placeholder: 'e.g. India',                   mono: false },
               ].map(({ key, label, placeholder, mono }) => (
-                <div key={key} className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</label>
-                  <input
-                    value={(bank as any)[key]}
-                    disabled={!isEditing}
-                    onChange={(e) => setBank((p) => ({ ...p, [key]: e.target.value }))}
-                    placeholder={placeholder}
-                    className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs transition-all ${
-                      !isEditing
-                        ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
-                        : 'border-[#1745b3] focus:border-amber-500'
-                    } ${mono ? 'font-mono uppercase' : ''}`}
-                  />
-                </div>
+                <PaymentField
+                  key={key}
+                  label={label}
+                  value={(bank as any)[key]}
+                  onChange={(value) => {
+                    bankDirtyRef.current = true;
+                    setBank((p) => ({ ...p, [key]: value }));
+                  }}
+                  placeholder={placeholder}
+                  mono={mono}
+                  editing={isEditing}
+                />
               ))}
             </div>
           </div>
@@ -1476,41 +1564,30 @@ function BankCryptoModal({ user }: { user: UserData }) {
           </div>
 
           {/* Network Input */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-              <Bitcoin size={11} className="text-slate-400" /> Network / Coin Type
-            </label>
-            <input
-              type="text"
-              value={crypto.network}
-              disabled={!isEditing}
-              onChange={(e) => setCrypto((p) => ({ ...p, network: e.target.value }))}
-              placeholder="e.g. USDT-TRC20, BTC, ERC20"
-              className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs font-mono transition-all ${
-                !isEditing
-                  ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
-                  : 'border-[#1745b3] focus:border-orange-500'
-              }`}
-            />
-          </div>
+          <PaymentField
+            label="Network / Coin Type"
+            value={crypto.network}
+            onChange={(value) => {
+              cryptoDirtyRef.current = true;
+              setCrypto((p) => ({ ...p, network: value }));
+            }}
+            placeholder="e.g. USDT-TRC20, BTC, ERC20"
+            mono
+            editing={isEditing}
+          />
 
           {/* Wallet Address */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
-              Wallet Address
-            </label>
-            <input
-              value={crypto.cryptoAddress}
-              disabled={!isEditing}
-              onChange={(e) => setCrypto((p) => ({ ...p, cryptoAddress: e.target.value }))}
-              placeholder="e.g. 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
-              className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs font-mono transition-all ${
-                !isEditing
-                  ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
-                  : 'border-[#1745b3] focus:border-orange-500'
-              }`}
-            />
-          </div>
+          <PaymentField
+            label="Wallet Address"
+            value={crypto.cryptoAddress}
+            onChange={(value) => {
+              cryptoDirtyRef.current = true;
+              setCrypto((p) => ({ ...p, cryptoAddress: value }));
+            }}
+            placeholder="e.g. 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
+            mono
+            editing={isEditing}
+          />
 
         </div>
       )}
@@ -1518,6 +1595,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
       {isEditing && (
         <div className="flex justify-end pt-2 border-t border-[#1745b3]">
           <button
+            type="button"
             onClick={handleSave}
             disabled={saving}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs disabled:opacity-60 transition-all"
@@ -2945,9 +3023,13 @@ export default function AdminUsersPage() {
                               <thead className="sticky top-0 z-10">
                                 <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Tx ID</th>
+                                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Account</th>
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Type</th>
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Amount</th>
-                                  <th className="px-4 py-3 font-semibold whitespace-nowrap hidden sm:table-cell">Date</th>
+                                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Approved By</th>
+                                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Approval Date</th>
+                                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Description</th>
+                                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Source</th>
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap text-right">Status</th>
                                 </tr>
                               </thead>
@@ -2955,6 +3037,7 @@ export default function AdminUsersPage() {
                                 {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).map((tx) => (
                                   <tr key={tx.id} className="hover:bg-[#0a205f]/60 transition-colors">
                                     <td className="px-4 py-3 font-mono text-blue-400 font-bold whitespace-nowrap">{tx.id}</td>
+                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{tx.account || 'N/A'}</td>
                                     <td className="px-4 py-3">
                                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                         tx.type === 'Deposit'
@@ -2968,7 +3051,14 @@ export default function AdminUsersPage() {
                                     <td className={`px-4 py-3 font-bold ${
                                       tx.type === 'Deposit' ? 'text-emerald-400' : 'text-red-400'
                                     }`}>{tx.amount}</td>
-                                    <td className="px-4 py-3 text-slate-400 hidden sm:table-cell whitespace-nowrap">{tx.date}</td>
+                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{tx.approvedBy || '-'}</td>
+                                    <td className="px-4 py-3 text-slate-400 whitespace-nowrap">{tx.approvalDate || tx.date}</td>
+                                    <td className="px-4 py-3 text-slate-300">
+                                      <div className="max-w-[240px] truncate" title={tx.description || tx.type}>
+                                        {tx.description || tx.type}
+                                      </div>
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-300 whitespace-nowrap">{tx.source || tx.type}</td>
                                     <td className="px-4 py-3 text-right">
                                       <StatusBadge status={tx.status} />
                                     </td>

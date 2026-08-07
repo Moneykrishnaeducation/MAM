@@ -24,6 +24,38 @@ export interface FinancialUserTarget {
   investors?: Array<{ id: string; name: string; email: string; invested: string; profit: string }>;
 }
 
+interface HistoryLogItem {
+  id: string;
+  type: string;
+  amount: string;
+  status: string;
+  date: string;
+  account?: string;
+  approved_by?: string;
+  approval_date?: string;
+  description?: string;
+  source?: string;
+  role?: string;
+  payment_method?: string;
+  email?: string;
+  transaction_type?: string;
+}
+
+function formatHistorySource(item: HistoryLogItem): string {
+  const source = String(item.source ?? '').trim();
+  if (source) {
+    const lowered = source.toLowerCase();
+    if (lowered !== 'admin' && lowered !== 'admin operation') {
+      return lowered.startsWith('admin ') ? source.slice(6).trim() : source;
+    }
+  }
+
+  const action = String(item.type || item.transaction_type || item.payment_method || 'Transaction')
+    .trim()
+    .replace(/\s+/g, ' ');
+  return [item.role?.trim(), action || 'Transaction'].filter(Boolean).join(' ') || 'Transaction';
+}
+
 interface FinancialActionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -41,7 +73,7 @@ export default function FinancialActionModal({
 }: FinancialActionModalProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [historyLogs, setHistoryLogs] = useState<Array<{ id: string; type: string; amount: string; status: string; date: string }>>([]);
+  const [historyLogs, setHistoryLogs] = useState<HistoryLogItem[]>([]);
   const [investorsList, setInvestorsList] = useState<Array<{ id: string; name: string; email: string; invested: string; profit: string }>>([]);
   const [fetchingData, setFetchingData] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -220,8 +252,11 @@ export default function FinancialActionModal({
                     <thead className="sticky top-0 bg-[#0b1329] border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400 z-10">
                       <tr>
                         <th scope="col" className="py-3 px-4">Type / ID</th>
+                        <th scope="col" className="py-3 px-4">Account</th>
                         <th scope="col" className="py-3 px-4">Description</th>
-                        <th scope="col" className="py-3 px-4">Date</th>
+                        <th scope="col" className="py-3 px-4">Approval Date</th>
+                        <th scope="col" className="py-3 px-4">Approved By</th>
+                        <th scope="col" className="py-3 px-4">Source</th>
                         <th scope="col" className="py-3 px-4">Role</th>
                         <th scope="col" className="py-3 px-4 text-right">Amount</th>
                         <th scope="col" className="py-3 px-4 text-center">Status</th>
@@ -242,7 +277,9 @@ export default function FinancialActionModal({
                           badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/30";
                         }
 
-                        const isCompleted = item.status?.toLowerCase() === "completed";
+                        const statusRaw = String(item.status || "").toLowerCase();
+                        const isCompleted = ["completed", "approved"].includes(statusRaw);
+                        const isRejected = ["rejected", "failed"].includes(statusRaw);
 
                         return (
                           <tr
@@ -272,6 +309,11 @@ export default function FinancialActionModal({
                               </div>
                             </td>
 
+                            {/* Account */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-mono">
+                              {item.account || "-"}
+                            </td>
+
                             {/* Description */}
                             <td className="py-3.5 px-4 min-w-[180px]">
                               <p className="text-slate-200 font-medium leading-snug line-clamp-2">
@@ -284,14 +326,21 @@ export default function FinancialActionModal({
                               )}
                             </td>
 
-                            {/* Date & Payment Method */}
+                            {/* Approval Date */}
                             <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
-                              <p className="text-xs text-slate-300 font-medium">{item.date || "-"}</p>
-                              {item.payment_method && (
-                                <span className="text-[10px] text-slate-500 block mt-0.5">
-                                  {item.payment_method}
-                                </span>
-                              )}
+                              <p className="text-xs text-slate-300 font-medium">{item.approval_date || item.date || "-"}</p>
+                            </td>
+
+                            {/* Approved By */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-medium">
+                              {item.approved_by || "-"}
+                            </td>
+
+                            {/* Source */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                              <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-300">
+                                {formatHistorySource(item)}
+                              </span>
                             </td>
 
                             {/* Role */}
@@ -309,11 +358,21 @@ export default function FinancialActionModal({
                             {/* Status */}
                             <td className="py-3.5 px-4 whitespace-nowrap text-center">
                               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border leading-none ${
-                                isCompleted
+                                isRejected
+                                  ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                  : isCompleted
                                   ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
                                   : "bg-amber-500/10 text-amber-400 border-amber-500/30"
                               }`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isCompleted ? "bg-emerald-400" : "bg-amber-400 animate-pulse"}`} />
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    isRejected
+                                      ? "bg-rose-400"
+                                      : isCompleted
+                                        ? "bg-emerald-400"
+                                        : "bg-amber-400 animate-pulse"
+                                  }`}
+                                />
                                 {item.status || "Pending"}
                               </span>
                             </td>

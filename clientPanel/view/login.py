@@ -129,7 +129,12 @@ async def login_client(request):
         admin_user.last_login = timezone.now()
         await admin_user.save(update_fields=["last_login"])
 
-        token = create_admin_login_token(admin_user.id, admin_user.email, role_canonical)
+        token = create_admin_login_token(
+            admin_user.id,
+            admin_user.email,
+            role_canonical,
+            admin_user.name,
+        )
         await create_audit_log(
             request,
             user_name=admin_user.name,

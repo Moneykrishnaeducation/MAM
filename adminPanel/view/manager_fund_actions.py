@@ -3,15 +3,37 @@
 import json
 import logging
 from django.http import JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
 from adminPanel.models import TradingAccount, ClientTransaction
+from adminPanel.view.admin_identity import (
+    normalize_approved_by,
+    normalize_transaction_source,
+    resolve_admin_display_name,
+)
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsAdmin, permission_required
 
 logger = logging.getLogger(__name__)
+
+
+def _build_transaction_source(action_type: str) -> str:
+    action_label = str(action_type or "").replace("-", " ").replace("_", " ").strip().title()
+    return " ".join(part for part in ["Manager", action_label or "Transaction"] if part).strip()
+
+
+def _format_transaction_source(transaction: ClientTransaction, default_role: str = "Manager") -> str:
+    source_value = normalize_transaction_source(transaction.source)
+    if source_value:
+        return source_value
+
+    role = str(transaction.role or default_role or "").strip()
+    action_label = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+    action_label = action_label.replace("-", " ").replace("_", " ").title() or "Transaction"
+    return " ".join(part for part in [role, action_label] if part).strip() or "Transaction"
 
 
 @csrf_exempt
@@ -78,24 +100,34 @@ async def manager_history_api(request, account_id: str):
             {"status": "error", "message": f"Trading account {account_id} not found"}, status=404
         )
 
-    # Filter strictly by account_number matching the requested account_id
+     # Filter strictly by account_number matching the requested account_id
     q_filter = Q(account_number=str(account_id))
+    
 
     transactions = await ClientTransaction.filter(q_filter).order_by("-created_at").limit(50)
+    account_label = trading_acc.account_id
 
     history_records = [
         {
             "id": f"TX-{tx.id}",
             "raw_id": tx.id,
-            "account_number": tx.account_number or str(account_id),
+			 "account_number": tx.account_number or str(account_id),
             "type": tx.transaction_type.capitalize(),
             "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",
             "raw_amount": tx.amount,
-            "payment_method": tx.payment_method or "Admin Manual Adjustment",
+            "payment_method": tx.payment_method or "Manual Adjustment",
             "role": tx.role or (trading_acc.user.role if trading_acc.user else "Manager"),
             "email": tx.email or (trading_acc.user.email if trading_acc.user else "N/A"),
+            "account": tx.account_number or account_label,
+            "approved_by": normalize_approved_by(tx.approved_by),
+            "approval_date": (
+                tx.approval_date.strftime("%Y-%m-%d %H:%M")
+                if tx.approval_date
+                else (tx.created_at.strftime("%Y-%m-%d %H:%M") if tx.created_at else "N/A")
+            ),
             "description": tx.description or tx.transaction_type.capitalize(),
+            "source": _format_transaction_source(tx),
             "status": tx.status or "Completed",
             "date": tx.created_at.strftime("%b %d, %Y %H:%M") if tx.created_at else "N/A",
             "timestamp": tx.created_at.isoformat() if tx.created_at else None,
@@ -180,8 +212,11 @@ async def _process_financial_action(request, action_type: str):
         )
 
     mt5_login = int(trading_acc.account_id)
-    comment = note if note else f"Admin Manager {action_type.capitalize()}"
+    comment = note if note else f"Manager {action_type.capitalize()}"
     success = False
+    approved_by = await resolve_admin_display_name(request)
+    approval_date = timezone.now()
+    transaction_source = _build_transaction_source(action_type)
 
     if action_type == "deposit":
         success = mt5.deposit_funds(mt5_login, amount, comment)
@@ -226,10 +261,13 @@ async def _process_financial_action(request, action_type: str):
         account_number=str(trading_acc.account_id),
         transaction_type=action_type.capitalize(),
         amount=amount,
-        payment_method="Admin Manual Adjustment",
+        payment_method="Manual Adjustment",
         role=user_role,
         email=user_email,
+        approved_by=approved_by,
+        approval_date=approval_date,
         description=comment,
+        source=transaction_source,
         status="Completed",
     )
 
