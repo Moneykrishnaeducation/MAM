@@ -107,7 +107,7 @@ async def server_settings_list_create(request):
             is_real = st_param.lower() in ("true", "1")
             settings = await ServerSetting.filter(server_type=is_real).order_by("-created_at")
         else:
-            settings = await ServerSetting.all().order_by("-created_at")
+            settings = await ServerSetting.filter(server_type=True).order_by("-created_at")
         results = [
             {
                 "id": s.id,
