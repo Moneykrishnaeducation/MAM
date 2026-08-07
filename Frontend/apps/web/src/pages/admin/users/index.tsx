@@ -105,6 +105,28 @@ function getAccountStatusLabel(status?: string | null) {
   return isAccountActive(status) ? 'Active' : 'Inactive';
 }
 
+function isViewerRole(role?: string | null) {
+  return String(role ?? '').trim().toLowerCase() === 'viewer';
+}
+
+function getAdminRole(): string {
+  try {
+    const nameEQ = 'role=';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i += 1) {
+      const cookie = cookies[i].trim();
+      if (cookie.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
+        } catch {
+          return cookie.substring(nameEQ.length).trim();
+        }
+      }
+    }
+  } catch {}
+  return '';
+}
+
 function getAdminUserApiId(user?: Pick<UserData, 'id' | 'user_id'> | null) {
   if (!user) return '';
   if (typeof user.user_id === 'number' && Number.isFinite(user.user_id)) {
@@ -583,10 +605,12 @@ function VerifyModal({
   user,
   onVerify,
   onSaved,
+  isViewerAdmin = false,
 }: {
   user: UserData;
   onVerify: (userId: string, verified: boolean) => void;
   onSaved: (userId: string, payload: AdminUserKycDetails) => void;
+  isViewerAdmin?: boolean;
 }) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [kycPayload, setKycPayload] = useState<AdminUserKycDetails | null>(user.kyc ?? null);
@@ -703,6 +727,7 @@ function VerifyModal({
   };
 
   const allApproved = docStates.every((d) => d.status === 'approved');
+  const canEdit = !isViewerAdmin;
 
   return (
     <div className="space-y-5 text-xs">
@@ -725,16 +750,18 @@ function VerifyModal({
           <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Overall KYC Status</p>
           <StatusBadge status={String(kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus ?? (user.verified ? 'Verified' : 'Pending'))} />
         </div>
-        <button
-          onClick={() => onVerify(user.id, !user.verified)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            user.verified
-              ? 'bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30'
-              : 'bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30'
-          }`}
-        >
-          {user.verified ? <><Ban size={14} /> Revoke Verification</> : <><CheckCheck size={14} /> Approve KYC</>}
-        </button>
+        {canEdit && (
+          <button
+            onClick={() => onVerify(user.id, !user.verified)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+              user.verified
+                ? 'bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30'
+                : 'bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30'
+            }`}
+          >
+            {user.verified ? <><Ban size={14} /> Revoke Verification</> : <><CheckCheck size={14} /> Approve KYC</>}
+          </button>
+        )}
       </div>
 
       {/* Documents Grid */}
@@ -809,56 +836,58 @@ function VerifyModal({
               )}
 
               {/* Upload / Re-upload button */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => fileRefs.current[doc.type]?.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-slate-300 text-[11px] font-semibold border border-[#1745b3] transition-all"
-                >
-                  {isUploaded ? <RotateCcw size={12} /> : <Upload size={12} />}
-                  {isUploaded ? 'Re-upload' : 'Upload'}
-                </button>
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png,.webp"
-                  className="hidden"
-                  ref={(el) => { fileRefs.current[doc.type] = el; }}
-                  onChange={(e) => e.target.files?.[0] && handleFileChange(doc.type, e.target.files[0])}
-                />
+              {canEdit && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => fileRefs.current[doc.type]?.click()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-slate-300 text-[11px] font-semibold border border-[#1745b3] transition-all"
+                  >
+                    {isUploaded ? <RotateCcw size={12} /> : <Upload size={12} />}
+                    {isUploaded ? 'Re-upload' : 'Upload'}
+                  </button>
+                  <input
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                    className="hidden"
+                    ref={(el) => { fileRefs.current[doc.type] = el; }}
+                    onChange={(e) => e.target.files?.[0] && handleFileChange(doc.type, e.target.files[0])}
+                  />
 
-                {/* Approve / Reject buttons (only if uploaded) */}
-                {(doc.status === 'uploaded' || doc.status === 'pending') && (
-                  <>
-                    <button
-                      onClick={() => changeDocStatus(doc.type, 'approved')}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold border border-emerald-500/30 transition-all"
-                    >
-                      <CheckCircle2 size={12} /> Approve
-                    </button>
+                  {/* Approve / Reject buttons (only if uploaded) */}
+                  {(doc.status === 'uploaded' || doc.status === 'pending') && (
+                    <>
+                      <button
+                        onClick={() => changeDocStatus(doc.type, 'approved')}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/15 hover:bg-emerald-600 text-emerald-400 hover:text-white text-[11px] font-bold border border-emerald-500/30 transition-all"
+                      >
+                        <CheckCircle2 size={12} /> Approve
+                      </button>
+                      <button
+                        onClick={() => changeDocStatus(doc.type, 'rejected')}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white text-[11px] font-bold border border-red-500/30 transition-all"
+                      >
+                        <Ban size={12} /> Reject
+                      </button>
+                    </>
+                  )}
+                  {doc.status === 'approved' && (
                     <button
                       onClick={() => changeDocStatus(doc.type, 'rejected')}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white text-[11px] font-bold border border-red-500/30 transition-all"
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-600/15 text-red-400 text-[11px] font-bold border border-red-500/30 transition-all hover:bg-red-600 hover:text-white"
                     >
                       <Ban size={12} /> Reject
                     </button>
-                  </>
-                )}
-                {doc.status === 'approved' && (
-                  <button
-                    onClick={() => changeDocStatus(doc.type, 'rejected')}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-red-600/15 text-red-400 text-[11px] font-bold border border-red-500/30 transition-all hover:bg-red-600 hover:text-white"
-                  >
-                    <Ban size={12} /> Reject
-                  </button>
-                )}
-                {doc.status === 'rejected' && (
-                  <button
-                    onClick={() => changeDocStatus(doc.type, 'approved')}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/15 text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all hover:bg-emerald-600 hover:text-white"
-                  >
-                    <CheckCircle2 size={12} /> Approve
-                  </button>
-                )}
-              </div>
+                  )}
+                  {doc.status === 'rejected' && (
+                    <button
+                      onClick={() => changeDocStatus(doc.type, 'approved')}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600/15 text-emerald-400 text-[11px] font-bold border border-emerald-500/30 transition-all hover:bg-emerald-600 hover:text-white"
+                    >
+                      <CheckCircle2 size={12} /> Approve
+                    </button>
+                  )}
+                </div>
+              )}
 
               {doc.uploadedAt && (
                 <p className="text-slate-600 text-[10px]">Uploaded: {doc.uploadedAt}</p>
@@ -869,7 +898,7 @@ function VerifyModal({
       </div>
 
       <div className="flex justify-end gap-3 pt-2 border-t border-[#1745b3]">
-        {allApproved && !user.verified && (
+        {canEdit && allApproved && !user.verified && (
           <button
             onClick={() => onVerify(user.id, true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"
@@ -1035,9 +1064,11 @@ function TradingModal({ user }: { user: UserData }) {
 function ProfileModal({
   user,
   onSave,
+  isViewerAdmin = false,
 }: {
   user: UserData;
   onSave: (userId: string, data: Partial<UserData>) => void;
+  isViewerAdmin?: boolean;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -1056,6 +1087,8 @@ function ProfileModal({
   });
   const [saving, setSaving] = useState(false);
   const avatarRef = useRef<HTMLInputElement>(null);
+  const canEdit = !isViewerAdmin;
+  const editingEnabled = isEditing && canEdit;
 
   const set = (key: string, val: string) => setForm((p) => ({ ...p, [key]: val }));
 
@@ -1158,7 +1191,7 @@ function ProfileModal({
             alt={form.name}
             className="w-20 h-20 rounded-2xl object-cover ring-2 ring-[#214fbf]"
           />
-          {isEditing && (
+          {editingEnabled && (
             <>
               <button
                 onClick={() => avatarRef.current?.click()}
@@ -1179,7 +1212,7 @@ function ProfileModal({
         <div>
           <p className="font-bold text-white text-sm">{form.name}</p>
           <p className="text-slate-400 text-xs mt-0.5">{form.email}</p>
-          {isEditing && (
+          {editingEnabled && (
             <button
               onClick={() => avatarRef.current?.click()}
               className="mt-2 flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 font-semibold"
@@ -1202,7 +1235,7 @@ function ProfileModal({
           onChange={(value) => set('name', value)}
           icon={User}
           placeholder="Enter full name"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Email Address"
@@ -1210,7 +1243,7 @@ function ProfileModal({
           onChange={(value) => set('email', value)}
           icon={Mail}
           disabled
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Phone Number"
@@ -1218,7 +1251,7 @@ function ProfileModal({
           onChange={(value) => set('phone', value)}
           icon={Phone}
           placeholder="+1 555 123 4567"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Country"
@@ -1226,7 +1259,7 @@ function ProfileModal({
           onChange={(value) => set('country', value)}
           icon={Globe}
           placeholder="Country"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Date of Birth"
@@ -1235,7 +1268,7 @@ function ProfileModal({
           icon={Calendar}
           type="date"
           className="sm:col-span-2"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="City"
@@ -1243,7 +1276,7 @@ function ProfileModal({
           onChange={(value) => set('city', value)}
           icon={MapPin}
           placeholder="City"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Address"
@@ -1251,7 +1284,7 @@ function ProfileModal({
           onChange={(value) => set('address', value)}
           icon={MapPin}
           placeholder="Street address"
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileField
           label="Postal Code"
@@ -1260,7 +1293,7 @@ function ProfileModal({
           icon={MapPin}
           placeholder="Postal code"
           className="sm:col-span-2"
-          editing={isEditing}
+          editing={editingEnabled}
         />
       </div>
 
@@ -1273,7 +1306,7 @@ function ProfileModal({
           icon={Shield}
           options={['Standard', 'Premium', 'VIP', 'VIP Premium', 'Elite']}
           helper="Controls the visible client tier and access level."
-          editing={isEditing}
+          editing={editingEnabled}
         />
         <ProfileSelectField
           label="KYC Status"
@@ -1282,7 +1315,7 @@ function ProfileModal({
           icon={ShieldCheck}
           options={['Pending', 'Verified', 'Rejected', 'Under Review']}
           helper="Tracks the current identity verification state."
-          editing={isEditing}
+          editing={editingEnabled}
         />
       </div>
 
@@ -1298,17 +1331,19 @@ function ProfileModal({
           </p>
         </div>
         <div className="flex flex-nowrap items-center gap-2 sm:justify-end">
-          <button
-            onClick={() => setIsEditing((prev) => !prev)}
-            className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all ${
-              isEditing
-                ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3] hover:bg-[#102c7c]'
-                : 'bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600 hover:text-white'
-            }`}
-          >
-            {isEditing ? 'Cancel Edit' : 'Edit Details'}
-          </button>
-          {isEditing && (
+          {canEdit && (
+            <button
+              onClick={() => setIsEditing((prev) => !prev)}
+              className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all ${
+                isEditing
+                  ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3] hover:bg-[#102c7c]'
+                  : 'bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600 hover:text-white'
+              }`}
+            >
+              {isEditing ? 'Cancel Edit' : 'Edit Details'}
+            </button>
+          )}
+          {canEdit && isEditing && (
             <button
               onClick={handleSave}
               disabled={saving}
@@ -1344,9 +1379,10 @@ const NETWORK_META: Record<string, { color: string; bg: string; symbol: string }
 };
 const FALLBACK_NETWORKS = Object.keys(NETWORK_META);
 
-function BankCryptoModal({ user }: { user: UserData }) {
+function BankCryptoModal({ user, isViewerAdmin = false }: { user: UserData; isViewerAdmin?: boolean }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingPayment, setLoadingPayment] = useState(true);
+  const canEdit = !isViewerAdmin;
   /* Determine type from backend or legacy field */
   const initType: 'bank' | 'crypto' = (() => {
     if (user.paymentDetails?.paymentType) return user.paymentDetails.paymentType;
@@ -1474,17 +1510,19 @@ function BankCryptoModal({ user }: { user: UserData }) {
     <div className="space-y-5 text-xs">
       <div className="flex items-center justify-between border-b border-[#1745b3] pb-3 mb-4">
         <SectionTitle icon={CreditCard} label="Bank & Crypto Payment Details" color="text-amber-400" />
-        <button
-          type="button"
-          onClick={() => setIsEditing((prev) => !prev)}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-            isEditing
-              ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3]'
-              : 'bg-amber-600/10 text-amber-400 border-amber-500/30 hover:bg-amber-600 hover:text-white'
-          }`}
-        >
-          {isEditing ? 'Cancel Edit' : 'Edit Details'}
-        </button>
+        {canEdit && (
+          <button
+            type="button"
+            onClick={() => setIsEditing((prev) => !prev)}
+            className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+              isEditing
+                ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3]'
+                : 'bg-amber-600/10 text-amber-400 border-amber-500/30 hover:bg-amber-600 hover:text-white'
+            }`}
+          >
+            {isEditing ? 'Cancel Edit' : 'Edit Details'}
+          </button>
+        )}
       </div>
 
       {loadingPayment && (
@@ -1500,7 +1538,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
           onClick={() => setPayType('bank')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             payType === 'bank' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
-          } disabled:opacity-50`}
+          }`}
         >
           <Building2 size={14} className={payType === 'bank' ? 'text-amber-400' : 'text-slate-500'} />
           Bank Transfer
@@ -1510,7 +1548,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
           onClick={() => setPayType('crypto')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             payType === 'crypto' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
-          } disabled:opacity-50`}
+          }`}
         >
           <Bitcoin size={14} className={payType === 'crypto' ? 'text-orange-400' : 'text-slate-500'} />
           Cryptocurrency
@@ -1544,7 +1582,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
                   }}
                   placeholder={placeholder}
                   mono={mono}
-                  editing={isEditing}
+                  editing={canEdit && isEditing}
                 />
               ))}
             </div>
@@ -1573,7 +1611,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
             }}
             placeholder="e.g. USDT-TRC20, BTC, ERC20"
             mono
-            editing={isEditing}
+            editing={canEdit && isEditing}
           />
 
           {/* Wallet Address */}
@@ -1586,13 +1624,13 @@ function BankCryptoModal({ user }: { user: UserData }) {
             }}
             placeholder="e.g. 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
             mono
-            editing={isEditing}
+            editing={canEdit && isEditing}
           />
 
         </div>
       )}
 
-      {isEditing && (
+      {canEdit && isEditing && (
         <div className="flex justify-end pt-2 border-t border-[#1745b3]">
           <button
             type="button"
@@ -2170,6 +2208,12 @@ function AddAccountModal({
    MAIN PAGE
 ───────────────────────────────────────────────────────────── */
 export default function AdminUsersPage() {
+  const [adminRole, setAdminRole] = useState(() => {
+    if (typeof document === 'undefined') {
+      return '';
+    }
+    return getAdminRole();
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRowId, setExpandedRowId] = useState<string | null>('USR-001');
 
@@ -2189,6 +2233,12 @@ export default function AdminUsersPage() {
     Record<string, AdminTicketModalState>
   >({});
   const [statusSavingByUserId, setStatusSavingByUserId] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setAdminRole(getAdminRole());
+  }, []);
+
+  const isViewerAdmin = useMemo(() => isViewerRole(adminRole), [adminRole]);
 
   useEffect(() => {
     setLoading(true);
@@ -2756,7 +2806,7 @@ export default function AdminUsersPage() {
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-[#0b226a] border-b border-[#153d9f]">
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">User ID</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">ID</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Name</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Email</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Phone</th>
@@ -2814,6 +2864,7 @@ export default function AdminUsersPage() {
                 ) : (
                   filteredUsers.map((u) => {
                     const isExpanded = expandedRowId === u.id;
+                    const isViewer = isViewerAdmin;
                     const kycState = kycDetailsByUserId[u.id];
                     const rowKyc = kycState?.data ?? u.kyc ?? null;
                     return (
@@ -2826,7 +2877,7 @@ export default function AdminUsersPage() {
                         >
                           <td className="px-6 py-5">
                             <span className="font-mono font-bold px-3 py-1 rounded-lg border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]">
-                              {u.id}
+                              {u.user_id}
                             </span>
                           </td>
                           <td className="px-6 py-5">
@@ -2850,20 +2901,24 @@ export default function AdminUsersPage() {
                             <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
                           </td>
                           <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => { void toggleUserActiveStatus(u.id); }}
-                              disabled={Boolean(statusSavingByUserId[u.id])}
-                              title={`Click to set account ${isAccountActive(u.status) ? 'Inactive' : 'Active'}`}
-                              className="inline-flex items-center gap-1.5 transition-transform active:scale-95 disabled:opacity-50"
-                            >
-                              {statusSavingByUserId[u.id] ? (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/20 bg-blue-500/10 text-blue-300">
-                                  <RefreshCw size={11} className="animate-spin" /> Saving...
-                                </span>
-                              ) : (
-                                <StatusBadge status={u.status} />
-                              )}
-                            </button>
+                            {isViewer ? (
+                              <StatusBadge status={u.status} />
+                            ) : (
+                              <button
+                                onClick={() => { void toggleUserActiveStatus(u.id); }}
+                                disabled={Boolean(statusSavingByUserId[u.id])}
+                                title={`Click to set account ${isAccountActive(u.status) ? 'Inactive' : 'Active'}`}
+                                className="inline-flex items-center gap-1.5 transition-transform active:scale-95 disabled:opacity-50"
+                              >
+                                {statusSavingByUserId[u.id] ? (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/20 bg-blue-500/10 text-blue-300">
+                                    <RefreshCw size={11} className="animate-spin" /> Saving...
+                                  </span>
+                                ) : (
+                                  <StatusBadge status={u.status} />
+                                )}
+                              </button>
+                            )}
                           </td>
                           <td className="px-6 py-5 font-medium text-[#9ec0ff]">{u.joined}</td>
                           <td className="px-6 py-5 font-bold text-white">{u.country || 'United States'}</td>
@@ -2907,22 +2962,26 @@ export default function AdminUsersPage() {
                                 <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
                                   <Ticket size={16} className="text-indigo-300" /> Tickets ({u.tickets?.length || 0})
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white text-xs font-black uppercase tracking-wider transition-all shadow-md">
-                                  <PlusCircle size={16} /> Add Account
-                                </button>
-                                <button
-                                  onClick={() => openSubRowModal(u, 'account_active')}
-                                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                                    isAccountActive(u.status)
-                                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                      : 'bg-red-500/10 text-red-400 border-red-500/30'
-                                  }`}
-                                >
-                                  <Power size={16} /> {getAccountStatusLabel(u.status)}
-                                </button>
-                                <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
-                                  <Trash2 size={16} /> Delete
-                                </button>
+                                {!isViewer && (
+                                  <>
+                                    <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white text-xs font-black uppercase tracking-wider transition-all shadow-md">
+                                      <PlusCircle size={16} /> Add Account
+                                    </button>
+                                    <button
+                                      onClick={() => openSubRowModal(u, 'account_active')}
+                                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                                        isAccountActive(u.status)
+                                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                          : 'bg-red-500/10 text-red-400 border-red-500/30'
+                                      }`}
+                                    >
+                                      <Power size={16} /> {getAccountStatusLabel(u.status)}
+                                    </button>
+                                    <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
+                                      <Trash2 size={16} /> Delete
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </div>
                           </td>
@@ -2982,7 +3041,12 @@ export default function AdminUsersPage() {
               {activeModalUser && (
                 <>
                   {activeModalType === 'verifi' && (
-                    <VerifyModal user={activeModalUser} onVerify={toggleVerification} onSaved={handleDocumentsSaved} />
+                    <VerifyModal
+                      user={activeModalUser}
+                      onVerify={toggleVerification}
+                      onSaved={handleDocumentsSaved}
+                      isViewerAdmin={isViewerAdmin}
+                    />
                   )}
 
                   {activeModalType === 'trading' && (
@@ -2990,11 +3054,11 @@ export default function AdminUsersPage() {
                   )}
 
                   {activeModalType === 'profile' && (
-                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} />
+                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} isViewerAdmin={isViewerAdmin} />
                   )}
 
                   {activeModalType === 'bank_crypto' && (
-                    <BankCryptoModal user={activeModalUser} />
+                    <BankCryptoModal user={activeModalUser} isViewerAdmin={isViewerAdmin} />
                   )}
 
                   {activeModalType === 'transactions' && (
