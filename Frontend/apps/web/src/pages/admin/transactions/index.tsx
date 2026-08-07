@@ -17,20 +17,28 @@ import {
   Wallet, 
   Activity,
   XCircle,
-  CreditCard
+  CreditCard,
+  ShieldCheck,
+  Ban
 } from 'lucide-react';
 
 type TransactionType = 'Deposit' | 'Withdraw' | 'Internal Transfer';
 
-type TransactionStatus = 'Pending' | 'Completed' | 'Failed' | 'Processing';
+type TransactionStatus = 'Pending' | 'Completed' | 'Failed' | 'Processing' | 'Approved' | 'Rejected';
 
 interface TransactionItem {
   id: string;
   type: TransactionType;
   user: string;
   email: string;
+  role?: string;
+  account?: string;
   amount: string;
   method: string;
+  approved_by?: string;
+  approval_date?: string;
+  description?: string;
+  source?: string;
   status: TransactionStatus;
   date: string;
   destination: string;
@@ -78,11 +86,23 @@ function formatStatusBadge(status: TransactionStatus) {
         dot: 'bg-emerald-400',
         icon: CheckCircle2
       };
+    case 'Approved':
+      return {
+        style: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
+        dot: 'bg-emerald-400',
+        icon: ShieldCheck
+      };
     case 'Failed':
       return {
         style: 'bg-red-500/15 text-red-400 border-red-500/30',
         dot: 'bg-red-400',
         icon: XCircle
+      };
+    case 'Rejected':
+      return {
+        style: 'bg-red-500/15 text-red-400 border-red-500/30',
+        dot: 'bg-red-400',
+        icon: Ban
       };
     default:
       return {
@@ -154,7 +174,11 @@ export default function AdminTransactionsPage() {
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter((item) => {
-      const matchesSearch = [item.id, item.user, item.email, item.type, item.method, item.destination]
+      const matchesSearch = [
+        item.id, item.user, item.email, item.type, item.method,
+        item.account, item.approved_by, item.approval_date,
+        item.description, item.source, item.destination
+      ]
         .join(' ')
         .toLowerCase()
         .includes(searchTerm.toLowerCase());
@@ -165,9 +189,11 @@ export default function AdminTransactionsPage() {
 
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) return;
-    const headers = ["ID", "Type", "User", "Email", "Amount", "Method", "Destination", "Status", "Date"];
+    const headers = ["ID", "Type", "User", "Email", "Account", "Amount", "Method", "Approved By", "Approval Date", "Description", "Source",  "Status", "Date"];
     const rows = filteredTransactions.map(t => [
-      t.id, t.type, t.user, t.email, t.amount, t.method, t.destination, t.status, t.date
+      t.id, t.type, t.user, t.email, t.account || '', t.amount, t.method,
+      t.approved_by || '', t.approval_date || '', t.description || '',
+      t.source || '', t.destination, t.status, t.date
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.map(cell => `"${cell}"`).join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -335,6 +361,8 @@ export default function AdminTransactionsPage() {
                     <option value="Pending" className="bg-slate-900 text-slate-200">Pending</option>
                     <option value="Completed" className="bg-slate-900 text-slate-200">Completed</option>
                     <option value="Processing" className="bg-slate-900 text-slate-200">Processing</option>
+                    <option value="Approved" className="bg-slate-900 text-slate-200">Approved</option>
+                    <option value="Rejected" className="bg-slate-900 text-slate-200">Rejected</option>
                     <option value="Failed" className="bg-slate-900 text-slate-200">Failed</option>
                   </select>
                 </div>
@@ -360,9 +388,14 @@ export default function AdminTransactionsPage() {
                     <th className="pb-2.5 px-3">Tx ID</th>
                     <th className="pb-2.5 px-3">Type</th>
                     <th className="pb-2.5 px-3">User Details</th>
+                    <th className="pb-2.5 px-3">Account</th>
                     <th className="pb-2.5 px-3">Amount</th>
                     <th className="pb-2.5 px-3">Method</th>
-                    <th className="pb-2.5 px-3">Destination</th>
+                    <th className="pb-2.5 px-3">Approved By</th>
+                    <th className="pb-2.5 px-3">Approval Date</th>
+                    <th className="pb-2.5 px-3">Description</th>
+                    <th className="pb-2.5 px-3">Source</th>
+                    
                     <th className="pb-2.5 px-3">Status</th>
                     <th className="pb-2.5 px-3 text-right">Date & Time</th>
                   </tr>
@@ -370,14 +403,14 @@ export default function AdminTransactionsPage() {
                 <tbody className="divide-y divide-white/5">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="p-12 text-center">
+                      <td colSpan={13} className="p-12 text-center">
                         <div className="mx-auto mb-2.5 h-8 w-8 animate-spin rounded-full border-3 border-[#d4af37] border-t-transparent" />
                         <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Fetching transactions...</p>
                       </td>
                     </tr>
                   ) : filteredTransactions.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-12 text-center text-slate-400">
+                      <td colSpan={13} className="p-12 text-center text-slate-400">
                         <Activity className="mx-auto mb-2 text-slate-600 h-8 w-8" />
                         <p className="mb-0.5 text-xs font-bold text-white">No transactions match your search or filter</p>
                         <p className="text-[11px] text-slate-500">Select a different tab or refine your query.</p>
@@ -416,6 +449,10 @@ export default function AdminTransactionsPage() {
                             </div>
                           </td>
 
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-300">
+                            {item.account || item.destination || '-'}
+                          </td>
+
                           <td className="py-3 px-3 font-mono font-bold text-white text-sm">
                             {item.amount}
                           </td>
@@ -426,9 +463,30 @@ export default function AdminTransactionsPage() {
                             </span>
                           </td>
 
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-300">
-                            {item.destination}
+                          <td className="py-3 px-3 text-slate-300 text-[11px]">
+                            {item.approved_by || '-'}
                           </td>
+
+                          <td className="py-3 px-3 font-mono text-[11px] text-slate-400">
+                            {item.approval_date || item.date}
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <div className="max-w-[200px] truncate text-[11px] text-slate-300" title={item.description || '-'}>
+                              {item.description || '-'}
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            {item.source ? (
+                              <span className="px-2 py-0.5 rounded-md bg-[#d4af37]/10 text-[#e6c687] border border-[#d4af37]/25 font-semibold text-[10px] inline-block">
+                                {item.source}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500 text-[11px]">-</span>
+                            )}
+                          </td>
+
 
                           <td className="py-3 px-3">
                             <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest border ${statusMeta.style}`}>
