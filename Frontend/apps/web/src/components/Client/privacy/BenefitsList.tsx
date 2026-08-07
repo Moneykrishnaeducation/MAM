@@ -13,10 +13,10 @@ export default function BenefitsList({ items }: BenefitsListProps) {
           const Icon = benefit.icon;
           return (
             <div key={benefit.title} className="relative pb-6 last:pb-0">
-              <div className="absolute left-[-3px] top-1.5 h-5 w-5 rounded-full border border-cyan-300/40 bg-[#0d1a40] shadow-[0_0_0_4px_rgba(34,211,238,0.05)]" />
-              <div className="group rounded-[28px] border border-blue-900/35 bg-[#0b1533]/75 p-5 md:p-6 transition-all duration-300 hover:border-cyan-400/25 hover:bg-[#10214a]/80 hover:translate-x-1">
+              <div className="absolute left-[-3px] top-1.5 h-5 w-5 rounded-full border border-cyan-300/40 bg-[#0b226a] shadow-[0_0_0_4px_rgba(34,211,238,0.05)]" />
+              <div className="group rounded-[28px] border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] p-5 md:p-6 shadow-[0_24px_60px_rgba(4,15,54,0.36)] transition-all duration-300 hover:border-cyan-400/25 hover:translate-x-1">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-blue-600/20 border border-cyan-300/20 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-300">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 border border-cyan-300/20 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform duration-300">
                 <Icon
                   size={24}
                   className="text-cyan-200 drop-shadow-[0_0_8px_rgba(103,232,249,0.35)]"
