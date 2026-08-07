@@ -1,5 +1,6 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
+import { toast } from 'sonner';
 import {
   User,
   Mail,
@@ -56,8 +57,13 @@ export default function AdminProfilePage() {
   const [newPassword, setNewPassword] = useState('');
   const [verifyPassword, setVerifyPassword] = useState('');
 
-  const triggerSaveToast = (message: string) => {
+  const triggerSaveToast = (message: string, isError = false) => {
     setToastMessage(message);
+    if (isError) {
+      toast.error(message);
+    } else {
+      toast.success(message);
+    }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };

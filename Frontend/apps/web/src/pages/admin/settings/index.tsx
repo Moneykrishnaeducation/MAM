@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Head from "next/head";
+import { toast as sonnerToast } from "sonner";
 import { useRouter } from "next/router";
 import {
   Server,
@@ -503,6 +504,11 @@ export default function AdminSettingsPage() {
 
   const showToast = (message: string, variant: string = 'success') => {
     setToast({ message, variant });
+    if (variant === 'error') {
+      sonnerToast.error(message);
+    } else {
+      sonnerToast.success(message);
+    }
     setTimeout(() => setToast(null), 4000);
   };
 

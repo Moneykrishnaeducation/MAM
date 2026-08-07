@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import { toast as sonnerToast } from 'sonner';
 import {
   Mail, Search, Send, Star, Inbox, Trash2, X, ChevronDown,
   Bold, Italic, Underline, List, Link2, Paperclip, AlertCircle,
@@ -606,6 +607,11 @@ export default function AdminMailsPage() {
 
   const showToast = (message: string, variant: 'success' | 'error' = 'success') => {
     setToast({ message, variant });
+    if (variant === 'error') {
+      sonnerToast.error(message);
+    } else {
+      sonnerToast.success(message);
+    }
     setTimeout(() => setToast(null), 4000);
   };
 

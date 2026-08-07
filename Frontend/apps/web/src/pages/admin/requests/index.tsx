@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import { toast } from 'sonner';
 import { 
   Clock, 
   CheckCircle2, 
@@ -215,8 +216,13 @@ export default function AdminPendingRequestsPage() {
   const [banks, setBanks] = useState<BankRequest[]>([]);
   const [cryptos, setCryptos] = useState<CryptoRequest[]>([]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, isError = false) => {
     setToastMessage(msg);
+    if (isError) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -268,10 +274,11 @@ export default function AdminPendingRequestsPage() {
       updateState((data?.request?.status as 'Approved' | 'Rejected' | undefined) || newStatus);
       await Promise.all([loadRequestCounts(), loadActiveTabData()]);
       closeModal();
-      showToast(data?.message || successMessage);
+      const isRejection = newStatus === 'Rejected';
+      showToast(data?.message || successMessage, isRejection);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to update request status.';
-      showToast(message);
+      showToast(message, true);
     }
   };
 

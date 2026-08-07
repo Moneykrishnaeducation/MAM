@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
+import { toast as sonnerToast } from 'sonner';
 import { 
   ShieldCheck, 
   UserPlus, 
@@ -140,6 +141,11 @@ export default function AdminUsersManagementPage() {
 
   const showToast = (message: string, variant: 'success' | 'error' = 'success', title?: string) => {
     setToast({ message, variant, title });
+    if (variant === 'error') {
+      sonnerToast.error(title ? `${title}: ${message}` : message);
+    } else {
+      sonnerToast.success(title ? `${title}: ${message}` : message);
+    }
     setTimeout(() => setToast(null), 5000);
   };
 

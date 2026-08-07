@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import Head from 'next/head';
+import { toast } from 'sonner';
 import {
   Users,
   Search,
@@ -2305,8 +2306,13 @@ export default function AdminUsersPage() {
     };
   }, [page, perPage, searchTerm]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, isError = false) => {
     setToastMessage(null);
+    if (isError) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
     // Use timeout to allow React to trigger animation redraw
     setTimeout(() => {
       setToastMessage(msg);
@@ -2656,7 +2662,7 @@ export default function AdminUsersPage() {
               kyc: nextKyc,
             };
             if (activeModalUser?.id === userId) setActiveModalUser(updated);
-            showToast(`User ${u.name} KYC ${verified ? 'Verified' : 'Revoked'}`);
+            showToast(`User ${u.name} KYC ${verified ? 'Verified' : 'Revoked'}`, !verified);
             return updated;
           }),
         );

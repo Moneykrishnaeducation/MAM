@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Head from "next/head";
+import { toast } from "sonner";
 import { useRouter } from "next/router";
 import { Info, ShieldCheck, Sparkles, ChevronLeft, Search } from "lucide-react";
 
@@ -273,13 +274,13 @@ export default function GroupConfiguration() {
       });
       const data = await res.json();
       if (res.ok && data.status === "ok") {
-        alert("Groups synchronized directly from MT5 successfully!");
+        toast.success("Groups synchronized directly from MT5 successfully!");
         await loadData();
       } else {
-        alert(data.message || "Failed to synchronize groups from MT5");
+        toast.error(data.message || "Failed to synchronize groups from MT5");
       }
     } catch (err: any) {
-      alert("Error syncing from MT5: " + err.message);
+      toast.error("Error syncing from MT5: " + err.message);
     } finally {
       setSyncing(false);
     }
@@ -289,7 +290,7 @@ export default function GroupConfiguration() {
     const endpoint = "/api/save-group-configuration/";
 
     if (!selectedDefault) {
-      alert("Please select a Default group for real accounts.");
+      toast.error("Please select a Default group for real accounts.");
       return;
     }
 
@@ -309,14 +310,14 @@ export default function GroupConfiguration() {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        alert(data.message || "Failed to save group configuration");
+        toast.error(data.message || "Failed to save group configuration");
         return;
       }
 
-      alert("Group configuration saved successfully!");
+      toast.success("Group configuration saved successfully!");
       await loadData();
     } catch (err: any) {
-      alert("Error saving configuration: " + err.message);
+      toast.error("Error saving configuration: " + err.message);
     }
   };
 

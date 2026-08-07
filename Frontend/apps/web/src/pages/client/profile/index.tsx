@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
+import { toast } from 'sonner';
 import {
   User, 
   Mail, 
@@ -331,8 +332,13 @@ export default function ClientProfilePage() {
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
-  const showProfileToast = (message: string) => {
+  const showProfileToast = (message: string, isError = false) => {
     setToastMessage(message);
+    if (isError) {
+      toast.error(message);
+    } else {
+      toast.success(message);
+    }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
@@ -791,10 +797,12 @@ export default function ClientProfilePage() {
         setDocuments(normalizeDocumentCards(data.documents));
       }
 
-      setUploadNotice(`${file.name} uploaded and sent for review.`);
+      const successMsg = `${file.name} uploaded and submitted for review.`;
+      setUploadNotice(successMsg);
+      showProfileToast(data?.message || successMsg);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to submit document.';
-      showProfileToast(message);
+      showProfileToast(message, true);
       setDocuments((prev) => ({
         ...prev,
         [slot]: EMPTY_DOCUMENT_CARD(slot),
@@ -815,6 +823,7 @@ export default function ClientProfilePage() {
     },
     { total: 0, approved: 0, pending: 0, rejected: 0 },
   );
+
   const paymentMethodsCount = [
     paymentDetails.bank.bankName,
     paymentDetails.bank.accountNumber,

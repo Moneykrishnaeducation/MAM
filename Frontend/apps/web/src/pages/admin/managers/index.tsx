@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import { toast } from 'sonner';
 import { 
   UserCheck, 
   Search, 
@@ -156,8 +157,13 @@ export default function AdminManagersPage() {
     return () => clearTimeout(timer);
   }, [page, perPage, searchTerm]);
 
-  const showToast = (msg: string) => {
+  const showToast = (msg: string, isError = false) => {
     setToastMessage(msg);
+    if (isError) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -211,10 +217,11 @@ export default function AdminManagersPage() {
       if (!response.ok || data.status === 'error') {
         throw new Error(data.message || 'Failed to process financial operation');
       }
-      showToast(data.message || `Action "${actionType.toUpperCase()}" of $${amount} processed successfully!`);
+      const isWithdrawal = actionType === 'withdraw';
+      showToast(data.message || `Action "${actionType.toUpperCase()}" of $${amount} processed successfully!`, isWithdrawal);
       fetchManagers();
     } catch (err: any) {
-      showToast(err.message || 'Error executing financial action');
+      showToast(err.message || 'Error executing financial action', true);
     } finally {
       setIsLoading(false);
     }

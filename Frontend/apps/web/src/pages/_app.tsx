@@ -5,6 +5,7 @@ import ClientSidebar from '@/components/Client/sidebar';
 import ClientHeader from '@/components/Client/header';
 import AdminSidebar from '@/components/Admin/sidebar';
 import AdminHeader from '@/components/Admin/header';
+import { Toaster } from '@/components/ui/sonner';
 import { installAuthApiInterceptor } from '@/lib/authApiInterceptor';
 import { fetchClientDocuments, fetchClientProfile } from '@/lib/apiClient';
 import '../index.css';
@@ -141,49 +142,48 @@ export default function App({ Component, pageProps }: AppProps) {
 
   const shouldBlockClientPage = shouldEnforceClientKycGate && clientKycGateState !== 'allowed';
 
-  if (isClientRoute && !isClientResetPasswordRoute) {
-    return (
-      <div className="flex h-screen w-screen overflow-hidden bg-[#0e2250] text-slate-100 font-sans antialiased">
-        <ClientSidebar />
-        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-          <ClientHeader />
-          <main className="flex-1 overflow-y-auto relative">
-            {shouldBlockClientPage ? (
-              <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#071532]/85 backdrop-blur-sm">
-                <div className="flex flex-col items-center gap-4 rounded-[1.75rem] border border-white/10 bg-[#0b1f4d] px-8 py-7 text-center shadow-2xl">
-                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-400 border-t-transparent" />
-                  <div>
-                    <p className="text-sm font-black uppercase tracking-[0.2em] text-white">
-                      Verifying KYC
-                    </p>
-                    <p className="mt-1 text-xs text-slate-300">
-                      Redirecting to your profile until identity and address details are complete.
-                    </p>
+  return (
+    <>
+      <Toaster richColors position="top-right" />
+      {isClientRoute && !isClientResetPasswordRoute ? (
+        <div className="flex h-screen w-screen overflow-hidden bg-[#0e2250] text-slate-100 font-sans antialiased">
+          <ClientSidebar />
+          <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+            <ClientHeader />
+            <main className="flex-1 overflow-y-auto relative">
+              {shouldBlockClientPage ? (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-[#071532]/85 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-4 rounded-[1.75rem] border border-white/10 bg-[#0b1f4d] px-8 py-7 text-center shadow-2xl">
+                    <div className="h-10 w-10 animate-spin rounded-full border-4 border-blue-400 border-t-transparent" />
+                    <div>
+                      <p className="text-sm font-black uppercase tracking-[0.2em] text-white">
+                        Verifying KYC
+                      </p>
+                      <p className="mt-1 text-xs text-slate-300">
+                        Redirecting to your profile until identity and address details are complete.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ) : (
+              ) : (
+                <Component {...pageProps} />
+              )}
+            </main>
+          </div>
+        </div>
+      ) : isAdminRoute ? (
+        <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
+          <AdminSidebar />
+          <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+            <AdminHeader />
+            <main className="flex-1 overflow-y-auto relative">
               <Component {...pageProps} />
-            )}
-          </main>
+            </main>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  if (isAdminRoute) {
-    return (
-      <div className="flex h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 font-sans antialiased">
-        <AdminSidebar />
-        <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-          <AdminHeader />
-          <main className="flex-1 overflow-y-auto relative">
-            <Component {...pageProps} />
-          </main>
-        </div>
-      </div>
-    );
-  }
-
-  return <Component {...pageProps} />;
+      ) : (
+        <Component {...pageProps} />
+      )}
+    </>
+  );
 }
