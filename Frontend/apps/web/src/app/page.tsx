@@ -467,14 +467,14 @@ function LoginCard({
         throw new Error(data?.message || "Login failed");
       }
 
-      const role = String(data?.role || data?.client?.role || data?.admin?.role || "").toLowerCase();
-      const isAdmin = role.includes("admin");
+      const role = String(data?.role || data?.client?.role || data?.admin?.role || "").toLowerCase().trim();
+      const isAdminPanel = role === "admin" || role === "superadmin" || role === "super_admin" || role === "viewer";
 
       toast.success("Access Granted!", {
         description: `Welcome back to VTIndex. Initializing session for ${email}`,
       });
 
-      router.push(isAdmin ? "/admin/dashboard" : "/client/dashboard");
+      router.push(isAdminPanel ? "/admin/dashboard" : "/client/dashboard");
     } catch (error: any) {
       toast.error("Login failed", {
         description: error?.message || "Please check your credentials and try again.",

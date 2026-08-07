@@ -49,7 +49,7 @@ from adminPanel.view.pending_requests import (
 from adminPanel.view.transactions import list_admin_transactions
 from adminPanel.view.logout import logout_admin
 from adminPanel.view.mail import admin_mails
-from backendPanel.permissions import IsAdmin, IsSuperAdmin, permission_required
+from backendPanel.permissions import IsAdmin, IsAdminOrSuperAdmin, IsSuperAdmin, permission_required
 from adminPanel.views import (
     admin_profile,
     create_admin_user,
@@ -72,6 +72,7 @@ from adminPanel.views import (
 app_name = "adminPanel"
 
 admin_only = permission_required(IsAdmin)
+admin_write_only = permission_required(IsAdminOrSuperAdmin)  # Viewer excluded from write ops
 super_admin_only = permission_required(IsSuperAdmin)
 
 urlpatterns = [
@@ -84,15 +85,15 @@ urlpatterns = [
     path("requests/profiles", admin_only(list_pending_profiles), name="requests-profiles"),
     path("requests/banks", admin_only(list_pending_banks), name="requests-banks"),
     path("requests/cryptos", admin_only(list_pending_cryptos), name="requests-cryptos"),
-    path("requests/decision", admin_only(decide_pending_request), name="request-decision-legacy"),
+    path("requests/decision", admin_write_only(decide_pending_request), name="request-decision-legacy"),
     path(
         "requests/<str:request_id>/decision",
-        admin_only(decide_pending_request),
+        admin_write_only(decide_pending_request),
         name="request-decision",
     ),
     path("admin-users", admin_only(list_admin_system_users), name="admin-users"),
     path(
-        "admin-users/<str:user_id>/update", admin_only(update_admin_user), name="update-admin-user"
+        "admin-users/<str:user_id>/update", admin_write_only(update_admin_user), name="update-admin-user"
     ),
     path("logout", admin_only(logout_admin), name="logout"),
     path("profile", admin_only(admin_profile), name="profile"),
@@ -100,17 +101,17 @@ urlpatterns = [
     path("users/<str:user_id>/kyc", admin_only(get_client_user_kyc), name="client-kyc"),
     path(
         "users/<str:user_id>/documents",
-        admin_only(update_client_user_documents),
+        admin_write_only(update_client_user_documents),
         name="update-client-documents",
     ),
     path(
         "users/<str:user_id>/status",
-        admin_only(update_client_user_status),
+        admin_write_only(update_client_user_status),
         name="update-client-status",
     ),
     path(
         "users/<str:user_id>/profile",
-        admin_only(update_client_profile),
+        admin_write_only(update_client_profile),
         name="update-client-profile",
     ),
     path(
@@ -120,7 +121,7 @@ urlpatterns = [
     ),
     path(
         "users/<str:user_id>/payment",
-        admin_only(update_client_payment_details),
+        admin_write_only(update_client_payment_details),
         name="update-client-payment",
     ),
     path(
@@ -128,7 +129,7 @@ urlpatterns = [
         admin_only(get_client_payment_details_api),
         name="get-client-payment-details",
     ),
-    path("users/<str:user_id>/delete", admin_only(delete_user), name="delete-user"),
+    path("users/<str:user_id>/delete", admin_write_only(delete_user), name="delete-user"),
     path("users/<str:user_id>/tickets", admin_only(list_client_tickets), name="client-tickets"),
     path(
         "users/<str:user_id>/transactions",
@@ -164,21 +165,21 @@ urlpatterns = [
     path("activity/error", admin_only(list_error_activity_logs), name="activity-error"),
     path("mails", admin_only(admin_mails), name="mails"),
     path("transactions", admin_only(list_admin_transactions), name="transactions"),
-    path("admin-users/create", admin_only(create_admin_user), name="create-admin-user"),
-    path("users/create", admin_only(create_client_user), name="create-client-user"),
-    path("accounts/create", admin_only(create_account_api), name="create-account"),
-    path("accounts/sync-balances", admin_only(sync_trading_balances_api), name="sync-balances"),
+    path("admin-users/create", admin_write_only(create_admin_user), name="create-admin-user"),
+    path("users/create", admin_write_only(create_client_user), name="create-client-user"),
+    path("accounts/create", admin_write_only(create_account_api), name="create-account"),
+    path("accounts/sync-balances", admin_write_only(sync_trading_balances_api), name="sync-balances"),
     path(
         "accounts/financial-action",
-        admin_only(account_financial_action_api),
+        admin_write_only(account_financial_action_api),
         name="financial-action",
     ),
 
-    # Manager Fund Actions
-    path("managers/deposit", admin_only(manager_deposit_api), name="manager-deposit"),
-    path("managers/withdraw", admin_only(manager_withdraw_api), name="manager-withdraw"),
-    path("managers/credit-in", admin_only(manager_credit_in_api), name="manager-credit-in"),
-    path("managers/credit-out", admin_only(manager_credit_out_api), name="manager-credit-out"),
+    # Manager Fund Actions — write ops, Viewer blocked
+    path("managers/deposit", admin_write_only(manager_deposit_api), name="manager-deposit"),
+    path("managers/withdraw", admin_write_only(manager_withdraw_api), name="manager-withdraw"),
+    path("managers/credit-in", admin_write_only(manager_credit_in_api), name="manager-credit-in"),
+    path("managers/credit-out", admin_write_only(manager_credit_out_api), name="manager-credit-out"),
     path(
         "managers/<str:account_id>/history", admin_only(manager_history_api), name="manager-history"
     ),
@@ -188,13 +189,13 @@ urlpatterns = [
         name="manager-investors-list",
     ),
 
-    # Investor Fund Actions
-    path("investors/deposit", investor_deposit_api, name="investor-deposit"),
-    path("investors/withdraw", investor_withdraw_api, name="investor-withdraw"),
-    path("investors/credit-in", investor_credit_in_api, name="investor-credit-in"),
-    path("investors/credit-out", investor_credit_out_api, name="investor-credit-out"),
-    path("investors/<str:account_id>/equity", investor_equity_api, name="investor-equity"),
-    path("investors/<str:account_id>/history", investor_history_api, name="investor-history"),
+    # Investor Fund Actions — write ops, Viewer blocked
+    path("investors/deposit", admin_write_only(investor_deposit_api), name="investor-deposit"),
+    path("investors/withdraw", admin_write_only(investor_withdraw_api), name="investor-withdraw"),
+    path("investors/credit-in", admin_write_only(investor_credit_in_api), name="investor-credit-in"),
+    path("investors/credit-out", admin_write_only(investor_credit_out_api), name="investor-credit-out"),
+    path("investors/<str:account_id>/equity", admin_only(investor_equity_api), name="investor-equity"),
+    path("investors/<str:account_id>/history", admin_only(investor_history_api), name="investor-history"),
     # MT5 CRUD Routes
     path(
         "server-settings",
