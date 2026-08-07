@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
 import {
@@ -124,6 +124,7 @@ export default function ClientManagerPage() {
   const [popupInvestors, setPopupInvestors] = useState<any[]>([]);
   const [isPopupInvestorsLoading, setIsPopupInvestorsLoading] = useState<boolean>(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
+  const managerCardRef = useRef<HTMLDivElement | null>(null);
 
   const fetchManagerInvestorsList = async (accountId: string) => {
     setIsPopupInvestorsLoading(true);
@@ -281,6 +282,13 @@ export default function ClientManagerPage() {
     setCurrentPage(1);
   };
 
+  const openManagerCard = (mgr: ManagerRow) => {
+    setSelectedManager(mgr);
+    window.requestAnimationFrame(() => {
+      managerCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  };
+
   const closeActiveManagerCard = () => {
     setSelectedManager(null);
     setQuery('');
@@ -421,7 +429,7 @@ export default function ClientManagerPage() {
 
         {/* ── Manager Profile Card / Details ── */}
         {showActiveManager && activeManager ? (
-          <div className={`relative overflow-hidden border rounded-[2rem] shadow-2xl ${panelClass}`}>
+          <div ref={managerCardRef} className={`relative overflow-hidden border rounded-[2rem] shadow-2xl ${panelClass}`}>
             {/* Subtle glow accent */}
             <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
             <button
@@ -834,7 +842,7 @@ export default function ClientManagerPage() {
                           <div className="flex items-center gap-2 whitespace-nowrap">
                             <button
                               type="button"
-                              onClick={() => setSelectedManager(mgr)}
+                              onClick={() => openManagerCard(mgr)}
                               className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all duration-200 ${isDarkMode ? 'bg-royal/10 text-royal hover:bg-royal hover:text-white border-royal/20' : 'border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c]'}`}
                             >
                               <ChevronRight size={14} className="mr-1 inline" />

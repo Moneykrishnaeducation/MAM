@@ -45,23 +45,18 @@ const ModalWrapper = ({
         initial={{ scale: 0.96, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.96, opacity: 0, y: 20 }}
-        className={`relative w-full max-w-[640px] max-h-[calc(100vh-3rem)] overflow-hidden rounded-[32px] border bg-white shadow-2xl ${panelClassName}`}
-        style={{ backgroundColor: isDarkMode ? '#0a1435' : '#ffffff' } as React.CSSProperties}
+        className={`relative w-full max-w-[640px] max-h-[calc(100vh-3rem)] overflow-hidden rounded-[32px] border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-2xl ${panelClassName}`}
       >
-        <div className={`relative border-b px-5 py-4 ${isDarkMode ? 'border-blue-900/30 bg-[#0a1435] text-white' : 'border-slate-200 bg-slate-50 text-slate-900'}`}>
+        <div className="relative border-b border-white/10 bg-[linear-gradient(135deg,#071a57_0%,#082468_100%)] px-5 py-4 text-white">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-900 text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-[#d3a11a] text-white">
               {HeaderIcon ? <HeaderIcon size={24} /> : null}
             </div>
             <h2 className="text-xl font-black">{title}</h2>
           </div>
           <button
             onClick={onClose}
-            className={`absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border transition ${
-              isDarkMode 
-                ? 'border-blue-900/30 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white' 
-                : 'border-slate-200 bg-white/90 text-slate-700 hover:bg-slate-100 shadow-sm'
-            }`}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/70 transition hover:bg-white/10 hover:text-white"
           >
             <X size={18} />
           </button>

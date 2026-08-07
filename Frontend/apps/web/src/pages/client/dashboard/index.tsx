@@ -526,14 +526,14 @@ const DashboardWithdrawalModal = ({
           initial={{ scale: 0.96, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0, y: 20 }}
-          className="relative w-full max-w-[430px] max-h-[calc(100vh-1.5rem)] overflow-y-auto overflow-x-hidden rounded-[28px] border border-slate-200 bg-[#F6F8FD] shadow-2xl"
+          className="relative w-full max-w-[560px] max-h-[calc(100vh-1.5rem)] overflow-y-auto overflow-x-hidden rounded-[28px] border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-2xl"
         >
-          <div className="flex items-center justify-between border-b border-slate-200 bg-gradient-to-b from-[#fbfcff] to-[#eef2fb] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-white/10 bg-[linear-gradient(135deg,#071a57_0%,#082468_100%)] px-4 py-3">
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-[#d9dee8] bg-[#f1eadf] text-[#0B1F4B] shadow-sm">
+              <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-[#d3a11a] text-white shadow-sm">
                 <ArrowUpRight size={18} />
               </div>
-              <h3 className="text-[20px] font-black tracking-tight text-[#0B1F4B]">
+              <h3 className="text-[20px] font-black tracking-tight text-white">
                 Withdraw Funds
               </h3>
             </div>
@@ -541,18 +541,18 @@ const DashboardWithdrawalModal = ({
             <button
               type="button"
               onClick={() => !submitting && onClose()}
-              className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 transition hover:bg-slate-50"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
             >
               <X size={17} />
             </button>
           </div>
 
           <form className="space-y-3 px-4 pb-4 pt-3 sm:px-5" onSubmit={handleSubmit}>
-            <div className="rounded-[24px] bg-[linear-gradient(135deg,#2d57bf_0%,#3562ce_50%,#20479f_100%)] p-3.5 text-white shadow-[0_18px_40px_rgba(33,85,196,0.22)]">
+            <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-3.5 text-white shadow-[0_18px_40px_rgba(4,15,54,0.24)]">
               <div className="mb-3.5 flex items-center justify-between">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 backdrop-blur-md">
                   <Wallet size={13} className="text-[#d4af37]" />
-                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-50">
+                  <span className="text-[9px] font-black uppercase tracking-[0.18em] text-blue-100/80">
                     Treasury Balance
                   </span>
                 </div>
@@ -568,7 +568,7 @@ const DashboardWithdrawalModal = ({
                 {formatWithdrawalCurrency(availableBalance, currencyLabel)}
               </div>
 
-              <div className="mt-3 rounded-[22px] border border-white/10 bg-black/10 p-2.5 backdrop-blur-md">
+              <div className="mt-3 rounded-[22px] border border-white/10 bg-white/5 p-2.5 backdrop-blur-md">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/10">
@@ -600,41 +600,41 @@ const DashboardWithdrawalModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-blue-100/60">
                 Source Ledger
               </label>
               <div className="relative">
                 <select
                   value={selectedAccount}
                   onChange={(event) => setSelectedAccount(event.target.value)}
-                  className="w-full appearance-none rounded-[22px] border border-[#ced6e6] bg-white px-4 py-3.5 pr-12 text-[15px] font-black tracking-wide text-[#0B1F4B] outline-none transition focus:border-[#2c59c9]"
+                  className="w-full appearance-none rounded-[22px] border border-white/10 bg-white/[0.04] px-4 py-3.5 pr-12 text-[15px] font-black tracking-wide text-white outline-none transition focus:border-[#d3a11a]"
                 >
-                  <option value="" disabled>
+                  <option value="" disabled className="bg-[#071a57] text-white">
                     Select Account
                   </option>
                   {accountNumber ? (
-                    <option value={accountNumber}>
+                    <option value={accountNumber} className="bg-[#071a57] text-white">
                       Portal Wallet ({maskWithdrawalAccount(accountNumber)}) — {formatWithdrawalCurrency(accountBalance ?? 0, currencyLabel)}
                     </option>
                   ) : null}
                   {tradingAccounts?.map((acc) => (
-                    <option key={acc.account_id} value={acc.account_id}>
+                    <option key={acc.account_id} value={acc.account_id} className="bg-[#071a57] text-white">
                       {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({maskWithdrawalAccount(acc.account_id)}) — {formatWithdrawalCurrency(acc.balance, currencyLabel)}
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                <ChevronDown className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-blue-100/60" size={17} />
               </div>
             </div>
 
             <div className="space-y-2.5">
               <div className="flex items-end justify-between gap-4 px-1">
-                <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+                <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-blue-100/60">
                   Select Destination
                 </label>
                 <a
                   href="/client/profile?activeTab=payment"
-                  className="inline-flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.22em] text-[#2c59c9] transition hover:opacity-80"
+                  className="inline-flex items-center gap-1.5 text-[8px] font-black uppercase tracking-[0.22em] text-[#d3a11a] transition hover:opacity-80"
                 >
                   Manage Vault
                   <ArrowUpRight size={10} />
@@ -654,34 +654,34 @@ const DashboardWithdrawalModal = ({
                       onClick={() => setDestinationType(destination.id)}
                       className={`relative flex flex-col gap-2.5 rounded-[22px] border-2 p-3.5 text-left shadow-sm transition-all ${
                         isActive
-                          ? 'border-[#2c59c9] bg-white shadow-[0_12px_30px_rgba(44,89,201,0.12)]'
-                          : 'border-slate-200 bg-white hover:border-slate-300'
+                          ? 'border-[#d3a11a] bg-white/10 shadow-[0_12px_30px_rgba(4,15,54,0.18)]'
+                          : 'border-white/10 bg-white/[0.04] hover:border-white/20'
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className={`flex h-9 w-9 items-center justify-center rounded-[14px] ${
-                          isActive ? 'bg-[#bb8e16] text-white' : 'bg-slate-100 text-slate-400'
+                          isActive ? 'bg-[#d3a11a] text-white' : 'bg-white/10 text-blue-100/60'
                         }`}>
                           <Icon size={18} strokeWidth={2.5} />
                         </div>
 
                         {isActive ? (
-                          <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[#2c59c9]/20 bg-white text-[#2c59c9] shadow-sm">
+                          <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-white/10 bg-white text-[#071a57] shadow-sm">
                             <CheckCircle2 size={14} strokeWidth={2.5} />
                           </div>
                         ) : (
-                          <div className="h-[22px] w-[22px] rounded-full border border-slate-200 bg-slate-50" />
+                          <div className="h-[22px] w-[22px] rounded-full border border-white/10 bg-white/5" />
                         )}
                       </div>
 
                       <div>
                         <h4 className={`text-[10px] font-black uppercase tracking-[0.2em] ${
-                          isActive ? 'text-[#0B1F4B]' : 'text-slate-400'
+                          isActive ? 'text-white' : 'text-blue-100/50'
                         }`}>
                           {destination.label}
                         </h4>
                         <p className={`mt-0.5 text-[8px] font-semibold tracking-wide ${
-                          isActive ? 'text-[#2c59c9]' : 'text-slate-400'
+                          isActive ? 'text-blue-100/70' : 'text-blue-100/50'
                         }`}>
                           {destination.description}
                         </p>
@@ -701,12 +701,12 @@ const DashboardWithdrawalModal = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-[#8f99ae]">
+              <label className="block text-[9px] font-black uppercase tracking-[0.24em] text-blue-100/60">
                 Withdrawal Amount
               </label>
-              <div className="rounded-[24px] border border-slate-200 bg-white px-[18px] py-4 shadow-sm">
+              <div className="rounded-[24px] border border-white/10 bg-white/[0.04] px-[18px] py-4 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl font-black tracking-tight text-slate-400">
+                  <span className="text-2xl font-black tracking-tight text-blue-100/60">
                     $
                   </span>
                   <input
@@ -720,11 +720,11 @@ const DashboardWithdrawalModal = ({
                         setAmount(value);
                       }
                     }}
-                    className="w-full border-0 bg-transparent py-1.5 text-center text-[24px] font-black tracking-tight text-[#0B1F4B] outline-none placeholder:text-slate-300"
+                    className="w-full border-0 bg-transparent py-1.5 text-center text-[24px] font-black tracking-tight text-white outline-none placeholder:text-blue-100/30"
                   />
                 </div>
               </div>
-              <p className="px-1 text-[10px] font-semibold text-slate-400">
+              <p className="px-1 text-[10px] font-semibold text-blue-100/50">
                 Minimum withdrawal amount is {formatWithdrawalCurrency(WITHDRAWAL_MIN_AMOUNT, currencyLabel)}.
               </p>
             </div>
@@ -735,7 +735,7 @@ const DashboardWithdrawalModal = ({
               className={`flex w-full items-center justify-center gap-3 rounded-[20px] px-4 py-3.5 text-[11px] font-black uppercase tracking-[0.32em] transition ${
                 canSubmit
                   ? 'bg-[#2c59c9] text-white shadow-[0_16px_30px_rgba(44,89,201,0.22)] hover:translate-y-[-1px]'
-                  : 'cursor-not-allowed bg-[#d6d8dd] text-white/80'
+                  : 'cursor-not-allowed bg-white/10 text-white/50'
               }`}
               >
               <span>Confirm</span>
@@ -762,6 +762,7 @@ export default function ClientDashboardPage() {
   const [currency, setCurrency] = useState<'USD' | 'INR'>('USD');
   const [proof, setProof] = useState<File | null>(null);
   const [selectedDepositAccount, setSelectedDepositAccount] = useState('');
+  const [depositAccountMenuOpen, setDepositAccountMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -1042,7 +1043,7 @@ export default function ClientDashboardPage() {
                   initial={{ scale: 0.95, opacity: 0, y: 20 }}
                   animate={{ scale: 1, opacity: 1, y: 0 }}
                   exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                  className={`relative w-full max-w-[580px] overflow-hidden rounded-[32px] border shadow-2xl ${isDarkMode ? 'bg-[#070b14] border-white/10' : 'bg-[#F4F7FD] border-[#E8EEF9]'}`}
+                  className="relative w-full max-w-[580px] overflow-hidden rounded-[32px] border shadow-2xl bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] border-[#1745b3]"
                 >
                   <AnimatePresence mode="wait">
                     {submitting && (
@@ -1051,25 +1052,22 @@ export default function ClientDashboardPage() {
                   </AnimatePresence>
 
                   <div className="relative border-b p-6 sm:p-8" style={{
-                    borderColor: 
-                    isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(201, 162, 39, 0.2)',
-                    background: isDarkMode
-                      ? 'linear-gradient(135deg, rgba(11,31,75,0.4) 0%, rgba(10,22,45,0.1) 100%)'
-                      : 'linear-gradient(135deg, rgba(232,238,249,0.9) 0%, rgba(244,247,253,0.6) 100%)',
+                    borderColor: 'rgba(255,255,255,0.05)',
+                    background: 'linear-gradient(135deg, #071a57 0%, #082468 100%)',
                   }}>
                     <div className="flex items-start gap-5">
                       <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] shadow-lg bg-[#C9A227] text-white">
                         <Wallet className="h-7 w-7" />
                       </div>
                       <div className="pt-1">
-                        <h3 className="text-2xl font-black tracking-tight" style={{ color: isDarkMode ? WHITE_COL : NAVY }}>
+                        <h3 className="text-2xl font-black tracking-tight text-white">
                           Deposit Funds
                         </h3>
                         {selectedDepositAccount ? (
                           <div className="flex items-center gap-2 mt-1">
                             <ShieldCheck className="h-4 w-4 text-green-500" />
-                            <span className="text-[13px] font-bold" style={{ color: TEXT_SOFT }}>
-                              Account: <span className="font-mono text-[#2155C4]">{selectedDepositAccount}</span>
+                            <span className="text-[13px] font-bold text-blue-100/70">
+                              Account: <span className="font-mono text-[#8bb4ff]">{selectedDepositAccount}</span>
                             </span>
                           </div>
                         ) : null}
@@ -1078,45 +1076,75 @@ export default function ClientDashboardPage() {
 
                     <button
                       onClick={() => setShowDepositModal(false)}
-                      className={`absolute right-6 top-8 flex h-10 w-10 items-center justify-center rounded-full border transition-all ${isDarkMode ? 'hover:bg-white/10 border-white/10 text-white' : 'hover:bg-black/5 border-black/5 text-[#0B1F4B]'}`}
+                      className="absolute right-6 top-8 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-white transition-all hover:bg-white/10"
                     >
                       <X className="h-5 w-5" />
                     </button>
                   </div>
 
                   <div className="px-6 sm:px-8 pt-4">
-                    <div className="rounded-2xl border border-blue-100 bg-[#F4F7FD] p-4">
-                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-[#2155C4]">Manual Deposit</h4>
-                      <p className="mt-1 text-xs text-slate-500">Upload proof to fund your live account manually.</p>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+                      <h4 className="text-sm font-black uppercase tracking-[0.2em] text-blue-200">Manual Deposit</h4>
+                      <p className="mt-1 text-xs text-blue-100/60">Upload proof to fund your live account manually.</p>
                     </div>
                   </div>
 
                   <div className="max-h-[60vh] overflow-y-auto p-8 pt-6">
-                    <div className="mb-6">
-                      <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
+                    <div className="mb-6 relative">
+                      <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em] text-blue-100/60">
                         Trading Account
                       </label>
-                      <div className="rounded-2xl border px-4 py-3.5 border-[rgba(26,58,140,0.12)] bg-white">
-                        <select
-                          value={selectedDepositAccount}
-                          onChange={(e) => setSelectedDepositAccount(e.target.value)}
-                          className="w-full bg-transparent text-sm font-black focus:outline-none cursor-pointer text-slate-900"
-                        >
+                      <button
+                        type="button"
+                        onClick={() => setDepositAccountMenuOpen((open) => !open)}
+                        className="flex w-full items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3.5 text-left text-sm font-black text-white transition hover:border-[#d3a11a] hover:bg-white/[0.06]"
+                      >
+                        <span className="truncate">
+                          {selectedDepositAccount
+                            ? (() => {
+                                if (selectedDepositAccount === clientAccount?.account_number) {
+                                  return `Portal Wallet (${clientAccount?.account_number}) - ${formatCurrency(clientAccount?.balance)}`;
+                                }
+                                const matchedAccount = dashboardData?.trading_accounts?.find((acc) => acc.account_id === selectedDepositAccount);
+                                if (matchedAccount) {
+                                  return `${matchedAccount.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} (${matchedAccount.account_id}) - ${formatCurrency(matchedAccount.balance)}`;
+                                }
+                                return selectedDepositAccount;
+                              })()
+                            : 'Select account'}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-white/70 transition-transform ${depositAccountMenuOpen ? 'rotate-180' : ''}`} />
+                      </button>
+                      {depositAccountMenuOpen && (
+                        <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#071a57] shadow-2xl custom-scrollbar">
                           {clientAccount?.account_number && (
-                            <option value={clientAccount.account_number}>
-                              Portal Wallet ({clientAccount.account_number}) — {formatCurrency(clientAccount.balance)}
-                            </option>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedDepositAccount(clientAccount.account_number);
+                                setDepositAccountMenuOpen(false);
+                              }}
+                              className="block w-full px-4 py-3 text-left text-sm font-black text-white transition hover:bg-white/10"
+                            >
+                              Portal Wallet ({clientAccount.account_number}) - {formatCurrency(clientAccount.balance)}
+                            </button>
                           )}
                           {dashboardData?.trading_accounts?.map((acc) => (
-                            <option key={acc.account_id} value={acc.account_id}>
-                              {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({acc.account_id}) — {formatCurrency(acc.balance)}
-                            </option>
+                            <button
+                              key={acc.account_id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedDepositAccount(acc.account_id);
+                                setDepositAccountMenuOpen(false);
+                              }}
+                              className="block w-full px-4 py-3 text-left text-sm font-black text-white transition hover:bg-white/10"
+                            >
+                              {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({acc.account_id}) - {formatCurrency(acc.balance)}
+                            </button>
                           ))}
-                        </select>
-                      </div>
-                    </div>
-
-                    <motion.form
+                        </div>
+                      )}
+                    </div>                    <motion.form
                       key="manual"
                       initial={{ opacity: 0, x: 10 }}
                       animate={{ opacity: 1, x: 0 }}
@@ -1124,29 +1152,29 @@ export default function ClientDashboardPage() {
                       onSubmit={handleManualDepositSubmit}
                       className="space-y-6"
                     >
-                      <div className="rounded-3xl border border-[#C9A227]/20 bg-[#E8EEF9]/50 p-6 border-dashed">
-                        <div className="flex items-center gap-3 mb-3 text-[#C9A227]">
+                      <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 border-dashed">
+                        <div className="flex items-center gap-3 mb-3 text-[#d3a11a]">
                           <Info className="h-5 w-5" />
-                          <span className="font-black text-sm uppercase tracking-wider">Instructions</span>
+                          <span className="font-black text-sm uppercase tracking-wider text-blue-100/80">Instructions</span>
                         </div>
-                        <p className="text-[13px] font-bold leading-relaxed" style={{ color: isDarkMode ? '#cbd5e1' : NAVY }}>
-                          For bank details, contact <span className="text-[#C9A227] underline cursor-pointer">Support</span>.
+                        <p className="text-[13px] font-bold leading-relaxed text-blue-100/70">
+                          For bank details, contact <span className="text-[#d3a11a] underline cursor-pointer">Support</span>.
                         </p>
                       </div>
 
                       <div className="space-y-6">
                         <div className="flex flex-col items-center gap-3">
-                          <span className="text-[11px] font-black uppercase tracking-wider" style={{ color: TEXT_SOFT }}>
+                          <span className="text-[11px] font-black uppercase tracking-wider text-blue-100/60">
                             Currency
                           </span>
-                          <div className="flex rounded-2xl border overflow-hidden" style={{ borderColor: isDarkMode ? '#1e2d4d' : 'rgba(26,58,140,0.12)' }}>
+                          <div className="flex rounded-2xl border overflow-hidden border-white/10">
                             {['USD', 'INR'].map((curr) => (
                               <button
                                 key={curr}
                                 type="button"
                                 onClick={() => setCurrency(curr as 'USD' | 'INR')}
                                 className={`px-10 py-3 text-[13px] font-black transition-all ${
-                                  currency === curr ? 'bg-[#C9A227] text-white' : isDarkMode ? 'text-gray-500 hover:bg-[#162545]' : 'bg-white text-gray-500'
+                                  currency === curr ? 'bg-[#d3a11a] text-white' : 'bg-white/5 text-blue-100/60 hover:bg-white/10'
                                 }`}
                               >
                                 {curr}
@@ -1156,7 +1184,7 @@ export default function ClientDashboardPage() {
                         </div>
 
                         <div className="group">
-                          <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
+                          <label className="mb-2 block text-[11px] font-black uppercase tracking-[0.1em] text-blue-100/60">
                             Deposit Amount ({currency})
                           </label>
                           <div className="relative">
@@ -1175,19 +1203,17 @@ export default function ClientDashboardPage() {
                                 }
                               }}
                               required
-                              className={`w-full rounded-2xl border bg-transparent py-4 pl-12 pr-6 text-xl font-black transition-all focus:ring-2 focus:ring-[#C9A227]/20 ${
-                                isDarkMode ? 'border-white/10 text-white focus:border-[#2155C4]' : 'border-[rgba(26,58,140,0.12)] text-[#0B1F4B] focus:border-[#C9A227]'
-                              }`}
+                              className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-4 pl-12 pr-6 text-xl font-black text-white placeholder-blue-100/30 transition-all focus:border-[#d3a11a] focus:ring-2 focus:ring-[#d3a11a]/20"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.1em]" style={{ color: TEXT_SOFT }}>
+                          <label className="mb-1.5 block text-[11px] font-black uppercase tracking-[0.1em] text-blue-100/60">
                             Upload Transaction Proof
                           </label>
-                          <label className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:bg-[#C9A227]/5 ${
-                            proof ? 'border-green-500 bg-green-500/5' : 'border-[rgba(26,58,140,0.12)] hover:border-[#C9A227]'
+                          <label className={`group relative flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-all hover:bg-white/5 ${
+                            proof ? 'border-green-500 bg-green-500/5' : 'border-white/10 hover:border-[#d3a11a]'
                           }`}>
                             {proof ? (
                               <>
@@ -1195,20 +1221,20 @@ export default function ClientDashboardPage() {
                                   <Send className="h-4 w-4 text-white" />
                                 </div>
                                 <div className="min-w-0">
-                                  <p className="text-sm font-black text-green-600 truncate">{proof.name}</p>
-                                  <p className="text-[10px] uppercase font-bold text-green-600/60">Ready for verification</p>
+                                  <p className="text-sm font-black text-green-300 truncate">{proof.name}</p>
+                                  <p className="text-[10px] uppercase font-bold text-green-300/60">Ready for verification</p>
                                 </div>
                               </>
                             ) : (
                               <>
-                                <div className="h-8 w-8 shrink-0 rounded-full bg-[#C9A227]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                                  <UploadCloud className="h-4 w-4 text-[#C9A227]" />
+                                <div className="h-8 w-8 shrink-0 rounded-full bg-[#d3a11a]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                  <UploadCloud className="h-4 w-4 text-[#d3a11a]" />
                                 </div>
                                 <div>
-                                  <p className="text-sm font-black" style={{ color: NAVY }}>
+                                  <p className="text-sm font-black text-white">
                                     Drop or click to upload
                                   </p>
-                                  <p className="text-[11px] font-bold opacity-50" style={{ color: TEXT_SOFT }}>
+                                  <p className="text-[11px] font-bold text-blue-100/50">
                                     JPG, PNG or PDF
                                   </p>
                                 </div>
@@ -1262,3 +1288,4 @@ export default function ClientDashboardPage() {
       </>
   );
 }
+
