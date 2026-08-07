@@ -1,11 +1,33 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import {
   Mail, Search, Send, Star, Inbox, Trash2, X, ChevronDown,
   Bold, Italic, Underline, List, Link2, Paperclip, AlertCircle,
-  Plus, Minimize2, Maximize2, RotateCcw,
+  Plus, Minimize2, Maximize2, RefreshCw, Sparkles, CheckCircle2,
+  Clock, User, Check
 } from 'lucide-react';
 import proxy from '@/lib/proxy';
+
+/* ─── Cookie & Role Helpers ────────────────────────────── */
+function getAdminRole(): string {
+  try {
+    const nameEQ = 'role=';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
+        } catch {
+          return cookie.substring(nameEQ.length).trim();
+        }
+      }
+    }
+  } catch {}
+  return '';
+}
+
+const isViewerOnly = (role: string) => role.toLowerCase() === 'viewer';
 
 /* ─── Types ─────────────────────────────────────────────── */
 interface MailItem {
@@ -21,9 +43,9 @@ type Priority = 'normal' | 'high' | 'urgent';
 
 /* ─── Sample data ────────────────────────────────────────── */
 const fallbackMails: MailItem[] = [
-  { id: 1, sender: 'Alex Rivera', subject: 'Inquiry regarding Course Valuation module', snippet: 'Hello Admin, I had a quick question regarding module 4 access...', time: '10:45 AM', unread: true },
-  { id: 2, sender: 'Apex Education Ventures', subject: 'Q3 Financial Distribution Report', snippet: 'Attached is the quarterly investment summary for review...', time: 'Yesterday', unread: true },
-  { id: 3, sender: 'System Audit Bot', subject: 'Weekly Automated Backup Status: Success', snippet: 'All database tables successfully backed up to cloud storage...', time: 'Jul 29', unread: false },
+  { id: 1, sender: 'Alex Rivera', subject: 'Inquiry regarding Course Valuation module', snippet: 'Hello Admin, I had a quick question regarding module 4 access and performance statistics...', time: '10:45 AM', unread: true },
+  { id: 2, sender: 'Apex Education Ventures', subject: 'Q3 Financial Distribution Report', snippet: 'Attached is the quarterly investment summary for review and management validation...', time: 'Yesterday', unread: true },
+  { id: 3, sender: 'System Audit Bot', subject: 'Weekly Automated Backup Status: Success', snippet: 'All database tables successfully backed up to cloud storage without warnings...', time: 'Jul 29', unread: false },
 ];
 
 /* ─── Compose Modal ──────────────────────────────────────── */
@@ -54,7 +76,6 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
   const [attachments, setAttachments] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
-  const modalRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(false);
 
   /* mount animation */
@@ -176,43 +197,39 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
   const canSend = resolvedTo.trim() && subject.trim() && !sending && !sent;
 
   return (
-    /* Backdrop */
     <div
       style={{
         position: 'fixed', inset: 0, zIndex: 60,
-        background: 'rgba(0,0,0,0.55)',
-        backdropFilter: 'blur(6px)',
+        background: 'rgba(5, 12, 30, 0.75)',
+        backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end',
-        padding: '1.5rem',
+        padding: '1.25rem',
         opacity: visible ? 1 : 0,
-        transition: 'opacity 0.28s ease',
+        transition: 'opacity 0.25s ease',
       }}
       onClick={(e) => { if (e.target === e.currentTarget) handleClose(); }}
     >
-      {/* Modal window */}
       <div
-        ref={modalRef}
         style={{
           width: '100%', maxWidth: 580,
           borderRadius: '1.5rem',
-          background: 'linear-gradient(155deg, #0d1f4e 0%, #0b1a40 60%, #091535 100%)',
-          border: '1px solid rgba(59,130,246,0.22)',
-          boxShadow: '0 32px 80px -16px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04), inset 0 1px 0 rgba(255,255,255,0.06)',
+          background: 'linear-gradient(155deg, #0b1736 0%, #08122c 60%, #050b1e 100%)',
+          border: '1px solid rgba(212,175,55,0.3)',
+          boxShadow: '0 32px 80px -16px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.1)',
           display: 'flex', flexDirection: 'column',
           overflow: 'hidden',
-          transform: visible ? 'translateY(0) scale(1)' : 'translateY(40px) scale(0.97)',
-          transition: 'transform 0.32s cubic-bezier(0.34,1.56,0.64,1)',
-          maxHeight: minimised ? 60 : 640,
-          transition2: 'max-height 0.3s ease',
+          transform: visible ? 'translateY(0) scale(1)' : 'translateY(30px) scale(0.97)',
+          transition: 'transform 0.28s cubic-bezier(0.34,1.56,0.64,1)',
+          maxHeight: minimised ? 56 : 620,
         } as React.CSSProperties}
       >
-        {/* ── Header bar ── */}
+        {/* Header bar */}
         <div
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '0.85rem 1.1rem',
-            background: 'linear-gradient(90deg, rgba(37,99,235,0.18), rgba(30,64,175,0.1))',
-            borderBottom: minimised ? 'none' : '1px solid rgba(59,130,246,0.15)',
+            padding: '0.75rem 1.1rem',
+            background: 'linear-gradient(90deg, rgba(212,175,55,0.12), rgba(37,99,235,0.12))',
+            borderBottom: minimised ? 'none' : '1px solid rgba(255,255,255,0.08)',
             cursor: minimised ? 'pointer' : 'default',
             userSelect: 'none',
           }}
@@ -220,15 +237,15 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 30, height: 30, borderRadius: '50%',
-              background: 'linear-gradient(135deg,rgba(59,130,246,0.3),rgba(37,99,235,0.2))',
-              border: '1px solid rgba(59,130,246,0.4)',
+              width: 28, height: 28, borderRadius: '50%',
+              background: 'linear-gradient(135deg,rgba(212,175,55,0.25),rgba(37,99,235,0.2))',
+              border: '1px solid rgba(212,175,55,0.4)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Send size={13} style={{ color: '#93c5fd' }} />
+              <Send size={12} style={{ color: '#d4af37' }} />
             </div>
-            <span style={{ color: '#e2e8f0', fontWeight: 700, fontSize: 13, letterSpacing: 0.3 }}>
-              New Message
+            <span style={{ color: '#f8fafc', fontWeight: 800, fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase' }}>
+              Compose New Message
             </span>
             {priority !== 'normal' && (
               <span style={{
@@ -244,27 +261,27 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <button
               onClick={() => setMinimised(v => !v)}
-              style={{ padding: '5px 7px', borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              style={{ padding: '4px 6px', borderRadius: 6, background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               className="hover:bg-slate-800 transition-colors"
               title={minimised ? 'Expand' : 'Minimise'}
             >
-              {minimised ? <Maximize2 size={14} /> : <Minimize2 size={14} />}
+              {minimised ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
             </button>
             <button
               onClick={handleClose}
-              style={{ padding: '5px 7px', borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              style={{ padding: '4px 6px', borderRadius: 6, background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
               className="hover:bg-slate-800 hover:text-red-400 transition-colors"
               title="Discard"
             >
-              <X size={14} />
+              <X size={13} />
             </button>
           </div>
         </div>
 
         {!minimised && (
           <>
-            {/* ── Address fields ── */}
-            <div style={{ borderBottom: '1px solid rgba(59,130,246,0.1)', padding: '0 1.1rem' }}>
+            {/* Address fields */}
+            <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', padding: '0 1.1rem' }}>
               {/* To */}
               <FieldRow label="To">
                 <input
@@ -276,76 +293,60 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                     setRecipientSummary('');
                     setManualTo(e.target.value);
                   }}
-                  placeholder="Recipients…"
+                  placeholder="Recipient email addresses..."
                   style={fieldInputStyle}
                 />
-                <div style={{ display: 'flex', gap: 6 }}>
+                <div style={{ display: 'flex', gap: 5 }}>
                   <button
                     onClick={() => loadRecipients('client')}
                     disabled={recipientLoading === 'admin'}
-                    style={{
-                      ...ccBtnStyle,
-                      opacity: recipientLoading === 'client' ? 0.75 : 1,
-                      cursor: recipientLoading === 'admin' ? 'not-allowed' : 'pointer',
-                    }}
+                    style={ccBtnStyle}
                   >
-                    {recipientLoading === 'client' ? 'Loading Clients…' : 'Client'}
+                    {recipientLoading === 'client' ? 'Loading...' : 'Client List'}
                   </button>
                   <button
                     onClick={() => loadRecipients('admin')}
                     disabled={recipientLoading === 'client'}
-                    style={{
-                      ...ccBtnStyle,
-                      opacity: recipientLoading === 'admin' ? 0.75 : 1,
-                      cursor: recipientLoading === 'client' ? 'not-allowed' : 'pointer',
-                    }}
+                    style={ccBtnStyle}
                   >
-                    {recipientLoading === 'admin' ? 'Loading Admins…' : 'Admin'}
+                    {recipientLoading === 'admin' ? 'Loading...' : 'Admin List'}
                   </button>
                   <button
                     onClick={() => loadRecipients('both')}
                     disabled={recipientLoading === 'client' || recipientLoading === 'admin'}
-                    style={{
-                      ...ccBtnStyle,
-                      opacity: recipientLoading === 'both' ? 0.75 : 1,
-                      cursor: recipientLoading === 'client' || recipientLoading === 'admin' ? 'not-allowed' : 'pointer',
-                    }}
+                    style={ccBtnStyle}
                   >
-                    {recipientLoading === 'both' ? 'Loading Both…' : 'Both'}
+                    {recipientLoading === 'both' ? 'Loading...' : 'Both'}
                   </button>
                 </div>
               </FieldRow>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 8 }}>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 6 }}>
                 <span style={{ fontSize: 10, color: '#64748b' }}>
-                  Click Client or Admin to auto-fill all emails from that table.
+                  Click buttons to auto-fill recipient lists from database.
                 </span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  {!showCc && (
-                    <button onClick={() => setShowCc(true)} style={ccBtnStyle}>Cc</button>
-                  )}
-                  {!showBcc && (
-                    <button onClick={() => setShowBcc(true)} style={ccBtnStyle}>Bcc</button>
-                  )}
+                  {!showCc && <button onClick={() => setShowCc(true)} style={ccBtnStyle}>Cc</button>}
+                  {!showBcc && <button onClick={() => setShowBcc(true)} style={ccBtnStyle}>Bcc</button>}
                 </div>
               </div>
+
               {recipientMessage && (
-                <div style={{ paddingBottom: 8, fontSize: 10, color: recipientMessage.startsWith('Loaded') ? '#60a5fa' : '#f87171' }}>
+                <div style={{ paddingBottom: 6, fontSize: 10, color: recipientMessage.startsWith('Loaded') ? '#60a5fa' : '#f87171' }}>
                   {recipientMessage}
                 </div>
               )}
 
-              {/* Cc */}
               {showCc && (
                 <FieldRow label="Cc">
-                  <input value={cc} onChange={e => setCc(e.target.value)} placeholder="Cc…" style={fieldInputStyle} />
+                  <input value={cc} onChange={e => setCc(e.target.value)} placeholder="Cc..." style={fieldInputStyle} />
                   <button onClick={() => { setShowCc(false); setCc(''); }} style={ccBtnStyle}><X size={11} /></button>
                 </FieldRow>
               )}
 
-              {/* Bcc */}
               {showBcc && (
                 <FieldRow label="Bcc">
-                  <input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="Bcc…" style={fieldInputStyle} />
+                  <input value={bcc} onChange={e => setBcc(e.target.value)} placeholder="Bcc..." style={fieldInputStyle} />
                   <button onClick={() => { setShowBcc(false); setBcc(''); }} style={ccBtnStyle}><X size={11} /></button>
                 </FieldRow>
               )}
@@ -356,16 +357,15 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   id="compose-subject"
                   value={subject}
                   onChange={e => setSubject(e.target.value)}
-                  placeholder="Subject…"
-                  style={{ ...fieldInputStyle, fontWeight: 600 }}
+                  placeholder="Subject line..."
+                  style={{ ...fieldInputStyle, fontWeight: 700 }}
                 />
-                {/* Priority picker */}
                 <div style={{ position: 'relative' }}>
                   <button
                     onClick={() => setShowPriorityMenu(v => !v)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 4,
-                      padding: '4px 9px', borderRadius: 8, border: `1px solid ${prColor}40`,
+                      padding: '3px 8px', borderRadius: 8, border: `1px solid ${prColor}40`,
                       background: prBg, color: prColor,
                       fontSize: 10, fontWeight: 700, cursor: 'pointer',
                       whiteSpace: 'nowrap',
@@ -378,9 +378,9 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   {showPriorityMenu && (
                     <div style={{
                       position: 'absolute', right: 0, top: '110%', zIndex: 10,
-                      background: '#0f2060', border: '1px solid rgba(59,130,246,0.25)',
+                      background: '#0a1636', border: '1px solid rgba(212,175,55,0.3)',
                       borderRadius: 10, overflow: 'hidden', minWidth: 110,
-                      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
                     }}>
                       {(Object.keys(priorityConfig) as Priority[]).map(p => (
                         <button
@@ -405,11 +405,11 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               </FieldRow>
             </div>
 
-            {/* ── Formatting toolbar ── */}
+            {/* Formatting toolbar */}
             <div style={{
               display: 'flex', alignItems: 'center', gap: 2,
-              padding: '6px 1.1rem',
-              borderBottom: '1px solid rgba(59,130,246,0.08)',
+              padding: '5px 1.1rem',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
             }}>
               {[
                 { icon: <Bold size={13} />, cmd: 'bold', title: 'Bold' },
@@ -420,7 +420,7 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   {icon}
                 </button>
               ))}
-              <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.08)', margin: '0 4px' }} />
+              <div style={{ width: 1, height: 14, background: 'rgba(255,255,255,0.1)', margin: '0 4px' }} />
               <button onClick={() => execFormat('insertUnorderedList')} title="Bullet list" style={toolbarBtnStyle}>
                 <List size={13} />
               </button>
@@ -434,14 +434,14 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               <input ref={fileRef} type="file" multiple hidden onChange={handleAttach} />
             </div>
 
-            {/* ── Body ── */}
+            {/* Body */}
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
               <textarea
                 ref={bodyRef}
                 id="compose-body"
                 value={body}
                 onChange={e => setBody(e.target.value)}
-                placeholder="Write your message here…"
+                placeholder="Write your email body message here..."
                 style={{
                   flex: 1,
                   resize: 'none',
@@ -449,33 +449,32 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                   border: 'none',
                   outline: 'none',
                   color: '#cbd5e1',
-                  fontSize: 13,
-                  lineHeight: 1.7,
-                  padding: '1rem 1.1rem',
+                  fontSize: 12.5,
+                  lineHeight: 1.6,
+                  padding: '0.85rem 1.1rem',
                   fontFamily: 'inherit',
-                  minHeight: 180,
+                  minHeight: 160,
                 }}
               />
 
-              {/* Attachments chips */}
               {attachments.length > 0 && (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 1.1rem 0.6rem' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 1.1rem 0.5rem' }}>
                   {attachments.map((name, i) => (
                     <span
                       key={i}
                       style={{
                         display: 'inline-flex', alignItems: 'center', gap: 5,
-                        padding: '3px 9px', borderRadius: 999,
-                        background: 'rgba(59,130,246,0.1)',
-                        border: '1px solid rgba(59,130,246,0.25)',
-                        color: '#93c5fd', fontSize: 10, fontWeight: 600,
+                        padding: '3px 8px', borderRadius: 999,
+                        background: 'rgba(212,175,55,0.12)',
+                        border: '1px solid rgba(212,175,55,0.3)',
+                        color: '#e6c687', fontSize: 10, fontWeight: 600,
                       }}
                     >
                       <Paperclip size={9} />
                       {name}
                       <button
                         onClick={() => setAttachments(prev => prev.filter((_, j) => j !== i))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: 0, lineHeight: 1 }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 0 }}
                       >
                         <X size={10} />
                       </button>
@@ -485,62 +484,61 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
               )}
             </div>
 
-            {/* ── Footer / Send bar ── */}
+            {/* Error banner */}
+            {errorMessage && (
+              <div style={{ padding: '6px 1.1rem', background: 'rgba(239,68,68,0.15)', color: '#f87171', fontSize: 11, fontWeight: 600, borderTop: '1px solid rgba(239,68,68,0.3)' }}>
+                {errorMessage}
+              </div>
+            )}
+
+            {/* Footer / Send bar */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '0.75rem 1.1rem',
-              borderTop: '1px solid rgba(59,130,246,0.1)',
-              background: 'rgba(9,21,53,0.6)',
+              padding: '0.65rem 1.1rem',
+              borderTop: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgba(5,11,30,0.8)',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Send button */}
                 <button
                   id="compose-send-btn"
                   onClick={handleSend}
                   disabled={!canSend}
                   style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '9px 20px', borderRadius: 12,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '8px 18px', borderRadius: 10,
                     background: sent
                       ? 'linear-gradient(135deg,#16a34a,#15803d)'
                       : canSend
-                        ? 'linear-gradient(135deg,#2563eb,#1d4ed8)'
-                        : 'rgba(37,99,235,0.25)',
+                        ? 'linear-gradient(135deg,#d4af37,#b38728)'
+                        : 'rgba(212,175,55,0.2)',
                     border: 'none',
-                    color: canSend || sent ? '#fff' : '#475569',
-                    fontSize: 12, fontWeight: 700, cursor: canSend ? 'pointer' : 'not-allowed',
-                    boxShadow: canSend && !sent ? '0 4px 14px rgba(37,99,235,0.35)' : 'none',
+                    color: canSend || sent ? '#0f172a' : '#475569',
+                    fontSize: 12, fontWeight: 900, cursor: canSend ? 'pointer' : 'not-allowed',
+                    boxShadow: canSend && !sent ? '0 4px 14px rgba(212,175,55,0.3)' : 'none',
                     transition: 'all 0.25s ease',
-                    position: 'relative', overflow: 'hidden',
                   }}
                 >
-                  {/* shimmer sweep on hover handled via inline onMouseEnter/Leave */}
                   {sending ? (
                     <>
-                      <span style={{
-                        width: 13, height: 13, border: '2px solid rgba(255,255,255,0.3)',
-                        borderTopColor: '#fff', borderRadius: '50%',
-                        animation: 'spin 0.7s linear infinite', display: 'inline-block',
-                      }} />
-                      Sending…
+                      <RefreshCw size={12} className="animate-spin text-slate-900" />
+                      Sending...
                     </>
                   ) : sent ? (
-                    <>✓ Sent!</>
+                    <>✓ Message Sent!</>
                   ) : (
-                    <><Send size={13} strokeWidth={2.5} /> Send</>
+                    <><Send size={12} strokeWidth={2.5} /> Dispatch Mail</>
                   )}
                 </button>
 
-                {/* Discard button */}
                 {!sent && (
                   <button
                     onClick={handleClose}
                     style={{
-                      padding: '9px 14px', borderRadius: 12,
+                      padding: '8px 12px', borderRadius: 10,
                       background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#64748b', fontSize: 12, fontWeight: 600,
-                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6,
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      color: '#94a3b8', fontSize: 11, fontWeight: 600,
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
                     }}
                     className="hover:border-red-500/30 hover:text-red-400 transition-colors"
                   >
@@ -549,50 +547,26 @@ function ComposeModal({ onClose, onSent }: ComposeModalProps) {
                 )}
               </div>
 
-              {/* Char count */}
-              <span style={{ fontSize: 10, color: charCount > 4000 ? '#f87171' : '#475569', fontVariantNumeric: 'tabular-nums' }}>
+              <span style={{ fontSize: 10, color: charCount > 4000 ? '#f87171' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
                 {charCount.toLocaleString()} chars
               </span>
             </div>
-
-            {/* Sending shimmer bar */}
-            {sending && (
-              <div style={{ height: 2, background: 'rgba(37,99,235,0.15)', overflow: 'hidden', position: 'relative' }}>
-                <div style={{
-                  position: 'absolute', inset: 0,
-                  background: 'linear-gradient(90deg,transparent,#3b82f6,transparent)',
-                  animation: 'shimmerBar 1.2s ease-in-out infinite',
-                }} />
-              </div>
-            )}
           </>
         )}
       </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes shimmerBar {
-          0%   { transform: translateX(-100%); }
-          100% { transform: translateX(200%); }
-        }
-        .hover\\:bg-slate-800:hover { background: rgba(30,41,59,0.7) !important; }
-        .hover\\:border-red-500\\/30:hover { border-color: rgba(239,68,68,0.3) !important; }
-        .hover\\:text-red-400:hover { color: #f87171 !important; }
-        .transition-colors { transition: color 0.2s, background 0.2s, border-color 0.2s; }
-      `}</style>
     </div>
   );
 }
 
-/* ── Shared sub-components ────────────────────────────────── */
+/* ── Shared Sub-components ────────────────────────────────── */
 function FieldRow({ label, children, last }: { label: string; children: React.ReactNode; last?: boolean }) {
   return (
     <div style={{
-      display: 'flex', alignItems: 'center', gap: 10,
-      padding: '8px 0',
-      borderBottom: last ? 'none' : '1px solid rgba(59,130,246,0.08)',
+      display: 'flex', alignItems: 'center', gap: 8,
+      padding: '6px 0',
+      borderBottom: last ? 'none' : '1px solid rgba(255,255,255,0.06)',
     }}>
-      <span style={{ fontSize: 11, fontWeight: 700, color: '#475569', width: 46, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, color: '#94a3b8', width: 44, flexShrink: 0 }}>{label}</span>
       {children}
     </div>
   );
@@ -600,41 +574,56 @@ function FieldRow({ label, children, last }: { label: string; children: React.Re
 
 const fieldInputStyle: React.CSSProperties = {
   flex: 1, background: 'transparent', border: 'none', outline: 'none',
-  color: '#e2e8f0', fontSize: 12.5, fontFamily: 'inherit',
+  color: '#f8fafc', fontSize: 12, fontFamily: 'inherit',
 };
 
 const ccBtnStyle: React.CSSProperties = {
   padding: '3px 8px', borderRadius: 6,
-  background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
-  color: '#60a5fa', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+  background: 'rgba(212,175,55,0.12)', border: '1px solid rgba(212,175,55,0.25)',
+  color: '#e6c687', fontSize: 10, fontWeight: 700, cursor: 'pointer',
   display: 'flex', alignItems: 'center', gap: 3,
 };
 
 const toolbarBtnStyle: React.CSSProperties = {
-  padding: '5px 7px', borderRadius: 7,
+  padding: '4px 6px', borderRadius: 6,
   background: 'transparent', border: 'none',
-  color: '#64748b', cursor: 'pointer',
+  color: '#94a3b8', cursor: 'pointer',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
-  transition: 'background 0.15s, color 0.15s',
 };
 
-/* ─── Main page ──────────────────────────────────────────── */
+/* ─── Main Page Component ─────────────────────────────────── */
 export default function AdminMailsPage() {
+  const [adminRole, setAdminRole] = useState('');
   const [selectedMail, setSelectedMail] = useState<number>(1);
   const [composeOpen, setComposeOpen] = useState(false);
   const [mails, setMails] = useState<MailItem[]>(fallbackMails);
   const [loadingMails, setLoadingMails] = useState(false);
   const [mailError, setMailError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [replyText, setReplyText] = useState('');
+  const [replySending, setReplySending] = useState(false);
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error' } | null>(null);
 
-  const currentMail = mails.find(m => m.id === selectedMail) || mails[0];
+  const showToast = (message: string, variant: 'success' | 'error' = 'success') => {
+    setToast({ message, variant });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => {
-    let mounted = true;
-    setLoadingMails(true);
+    setAdminRole(getAdminRole());
+  }, []);
+
+  const isViewer = useMemo(() => isViewerOnly(adminRole) || adminRole.toLowerCase() === 'viewer', [adminRole]);
+
+  const currentMail = useMemo(() => {
+    return mails.find(m => m.id === selectedMail) || mails[0] || fallbackMails[0];
+  }, [mails, selectedMail]);
+
+  const loadMailsData = (silent = false) => {
+    if (!silent) setLoadingMails(true);
 
     proxy.get('/api/admin/mails')
       .then((response) => {
-        if (!mounted) return;
         const apiMails = Array.isArray(response.data?.messages) ? response.data.messages : [];
         const normalized: MailItem[] = apiMails.map((mail: any, index: number) => ({
           id: Number(mail.id || index + 1),
@@ -654,47 +643,58 @@ export default function AdminMailsPage() {
         setMailError('');
       })
       .catch((err) => {
-        if (!mounted) return;
         setMailError(err?.message || 'Unable to load mail messages');
         setMails(fallbackMails);
       })
       .finally(() => {
-        if (mounted) setLoadingMails(false);
+        setLoadingMails(false);
       });
+  };
 
-    return () => {
-      mounted = false;
-    };
+  useEffect(() => {
+    loadMailsData();
   }, []);
 
-  function refreshMails() {
-    setLoadingMails(true);
-    proxy.get('/api/admin/mails')
-      .then((response) => {
-        const apiMails = Array.isArray(response.data?.messages) ? response.data.messages : [];
-        const normalized: MailItem[] = apiMails.map((mail: any, index: number) => ({
-          id: Number(mail.id || index + 1),
-          sender: Array.isArray(mail.to) && mail.to.length ? mail.to[0] : 'Admin Mail',
-          subject: mail.subject || 'No subject',
-          snippet: (mail.body || '').slice(0, 120) || 'No message body',
-          time: mail.sent_at || mail.created_at || 'Just now',
-          unread: mail.status !== 'sent',
-        }));
-        setMails(normalized.length ? normalized : fallbackMails);
-        setSelectedMail((current) => {
-          if (normalized.some((mail: MailItem) => mail.id === current)) {
-            return current;
-          }
-          return normalized[0]?.id ?? fallbackMails[0].id;
-        });
-        setMailError('');
+  const filteredMails = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return mails;
+    return mails.filter(
+      (m) =>
+        m.sender.toLowerCase().includes(q) ||
+        m.subject.toLowerCase().includes(q) ||
+        m.snippet.toLowerCase().includes(q)
+    );
+  }, [mails, searchQuery]);
+
+  const getInitials = (name: string) => {
+    if (!name || name === '-') return 'ML';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const handleSendReply = () => {
+    if (!replyText.trim() || replySending || isViewer) return;
+    setReplySending(true);
+
+    proxy.post('/api/admin/mails', {
+      to: [currentMail.sender],
+      subject: `Re: ${currentMail.subject}`,
+      body: replyText,
+      send_now: true,
+    })
+      .then(() => {
+        setReplyText('');
+        showToast('Reply dispatched successfully!', 'success');
+        loadMailsData(true);
       })
       .catch((err) => {
-        setMailError(err?.message || 'Unable to load mail messages');
-        setMails(fallbackMails);
+        showToast(err?.message || 'Failed to dispatch reply', 'error');
       })
-      .finally(() => setLoadingMails(false));
-  }
+      .finally(() => {
+        setReplySending(false);
+      });
+  };
 
   return (
     <>
@@ -702,112 +702,246 @@ export default function AdminMailsPage() {
         <title>Mails &amp; Messages | Admin Portal</title>
       </Head>
 
-      <div className="p-6 md:p-8 flex-1 flex flex-col">
-        {/* ── Page header ── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-              <Mail size={13} /> Internal Communications
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Inbox</h1>
-            <p className="text-slate-400 text-sm mt-1">Manage incoming inquiries, user messages, and system notifications.</p>
-          </div>
+      <div className="w-full text-slate-100 font-sans antialiased">
+        {/* Ambient decorative glow rings */}
+        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-          <button
-            id="compose-mail-btn"
-            onClick={() => setComposeOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
-          >
-            <Plus size={15} strokeWidth={2.5} />
-            Compose Mail
-          </button>
-        </div>
-
-        {/* ── Mail panel ── */}
-        <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl min-h-[500px]">
-          {/* Mail List */}
-          <div className="border-r border-slate-800 pr-4 space-y-2">
-            <div className="flex items-center gap-2 bg-slate-800/60 px-3 py-2 rounded-xl border border-slate-700/50 mb-4">
-              <Search size={15} className="text-slate-400" />
-              <input type="text" placeholder="Search emails..." className="bg-transparent border-none text-xs text-white outline-none w-full" />
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
+          
+          {/* HEADER BANNER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
+                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> Internal Messaging Hub
+                </div>
+                <h1 className="text-lg font-black tracking-tight text-white uppercase">
+                  Admin Communication Inbox
+                </h1>
+                <p className="text-[11px] text-slate-400">
+                  Manage corporate broadcasts, user inquiries, and queued SMTP email dispatches.
+                </p>
+              </div>
             </div>
 
-            {loadingMails && (
-              <div className="text-[11px] text-slate-400 px-1">Loading messages...</div>
-            )}
-
-            {mailError && (
-              <div className="text-[11px] text-red-400 px-1">{mailError}</div>
-            )}
-
-            {mails.map((m) => (
-              <div
-                key={m.id}
-                onClick={() => setSelectedMail(m.id)}
-                className={`p-3.5 rounded-2xl cursor-pointer transition-all ${
-                  selectedMail === m.id
-                    ? 'bg-blue-600/15 border border-blue-500/40'
-                    : 'bg-slate-800/40 border border-slate-800/80 hover:bg-slate-800/80'
-                }`}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => loadMailsData()}
+                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
               >
-                <div className="flex justify-between items-center text-xs mb-1">
-                  <span className="font-bold text-slate-200 flex items-center gap-1.5">
-                    {m.unread && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />}
-                    {m.sender}
-                  </span>
-                  <span className="text-[11px] text-slate-400">{m.time}</span>
-                </div>
-                <h4 className="text-xs font-semibold text-blue-400 truncate mb-1">{m.subject}</h4>
-                <p className="text-[11px] text-slate-400 line-clamp-2">{m.snippet}</p>
-              </div>
-            ))}
+                <RefreshCw size={13} className={loadingMails ? "animate-spin text-[#d4af37]" : ""} />
+                <span>Sync Mail</span>
+              </button>
+
+              {!isViewer && (
+                <button
+                  id="compose-mail-btn"
+                  onClick={() => setComposeOpen(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-gold-glow active:scale-95 shrink-0"
+                >
+                  <Plus size={15} strokeWidth={2.5} />
+                  Compose Mail
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Mail Detail */}
-          <div className="lg:col-span-2 pl-2 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
-                <div>
-                  <h2 className="text-lg font-bold text-white">{currentMail.subject}</h2>
-                  <p className="text-xs text-slate-400">From: <span className="text-slate-200 font-semibold">{currentMail.sender}</span></p>
-                </div>
-                <div className="flex items-center gap-2 text-slate-400">
-                  <button className="p-2 hover:bg-slate-800 rounded-xl"><Star size={16} /></button>
-                  <button className="p-2 hover:bg-slate-800 hover:text-red-400 rounded-xl"><Trash2 size={16} /></button>
-                </div>
-              </div>
-
-              <div className="text-xs text-slate-300 space-y-4 leading-relaxed">
-                <p>{currentMail.snippet}</p>
-                <p>Please review the details and let us know if additional documentation or authorization is required.</p>
-                <p className="text-slate-400 mt-6">Best regards,<br />{currentMail.sender}</p>
-              </div>
-            </div>
-
-            {/* Reply box */}
-            <div className="mt-8 pt-4 border-t border-slate-800">
-              <div className="flex items-center gap-3 bg-slate-800/60 p-3 rounded-2xl border border-slate-700/60">
+          {/* MAIN MAIL CONTAINER */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl min-h-[480px]">
+            
+            {/* MAIL LIST SIDEBAR */}
+            <div className="lg:border-r border-white/10 lg:pr-3 space-y-2">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder={`Reply to ${currentMail.sender}…`}
-                  className="bg-transparent border-none text-xs text-white outline-none flex-1"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search inbox..."
+                  className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all"
                 />
-                <button className="bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-xl transition-all">
-                  <Send size={15} />
-                </button>
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              {loadingMails && (
+                <div className="text-[11px] font-semibold text-slate-400 px-1 py-2 flex items-center gap-1.5">
+                  <RefreshCw size={12} className="animate-spin text-[#d4af37]" /> Syncing messages...
+                </div>
+              )}
+
+              {mailError && (
+                <div className="text-[11px] text-red-400 font-semibold px-2 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20">
+                  {mailError}
+                </div>
+              )}
+
+              <div className="space-y-1.5 max-h-[400px] overflow-y-auto pr-1">
+                {filteredMails.length === 0 && !loadingMails && (
+                  <div className="p-6 text-center text-slate-500 text-xs">
+                    <Inbox className="w-6 h-6 mx-auto mb-1 text-slate-600" />
+                    No emails match search criteria.
+                  </div>
+                )}
+
+                {filteredMails.map((m) => {
+                  const isSelected = selectedMail === m.id;
+                  const initials = getInitials(m.sender);
+
+                  return (
+                    <div
+                      key={m.id}
+                      onClick={() => setSelectedMail(m.id)}
+                      className={`p-3 rounded-xl cursor-pointer transition-all border ${
+                        isSelected
+                          ? 'bg-slate-800/90 border-[#d4af37]/50 shadow-md'
+                          : 'bg-slate-950/40 border-white/5 hover:bg-slate-800/50 hover:border-white/10'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="font-bold text-slate-200 flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-300 text-[9px] shrink-0">
+                            {initials}
+                          </div>
+                          {m.unread && <span className="w-1.5 h-1.5 rounded-full bg-[#d4af37] animate-pulse shrink-0" />}
+                          <span className="truncate max-w-[120px]">{m.sender}</span>
+                        </span>
+                        <span className="text-[10px] font-mono text-slate-500">{m.time}</span>
+                      </div>
+
+                      <h4 className="text-xs font-bold text-slate-100 truncate mb-0.5">{m.subject}</h4>
+                      <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">{m.snippet}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Compose modal ── */}
-      {composeOpen && (
-        <ComposeModal
-          onClose={() => setComposeOpen(false)}
-          onSent={refreshMails}
-        />
-      )}
+            {/* MAIL DETAIL VIEW */}
+            <div className="lg:col-span-2 lg:pl-3 flex flex-col justify-between">
+              {currentMail ? (
+                <>
+                  <div>
+                    <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-4">
+                      <div>
+                        <h2 className="text-base font-bold text-white tracking-tight">{currentMail.subject}</h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs text-slate-400">From:</span>
+                          <span className="text-xs text-[#d4af37] font-bold font-mono">{currentMail.sender}</span>
+                          <span className="text-[10px] text-slate-500 font-mono ml-2">• {currentMail.time}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <button className="p-1.5 hover:bg-slate-800 hover:text-[#d4af37] rounded-lg transition-colors" title="Bookmark">
+                          <Star size={15} />
+                        </button>
+                        <button className="p-1.5 hover:bg-slate-800 hover:text-red-400 rounded-lg transition-colors" title="Delete email">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-300 space-y-3 leading-relaxed p-4 rounded-xl bg-slate-950/60 border border-white/5">
+                      <p>{currentMail.snippet}</p>
+                      <p className="text-slate-400">
+                        This communication was dispatched via the VTIndex secure SMTP mail relay. Please ensure response protocols are followed.
+                      </p>
+                      <div className="pt-4 text-slate-500 font-mono text-[11px] border-t border-white/5">
+                        Regards,<br />
+                        <span className="text-slate-300 font-bold">{currentMail.sender}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* REPLY BAR */}
+                  <div className="mt-6 pt-3 border-t border-white/10">
+                    <div className="flex items-center gap-2 bg-slate-950/80 p-2 rounded-xl border border-white/10 focus-within:border-[#d4af37]/50 transition-all">
+                      <input
+                        type="text"
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        disabled={isViewer || replySending}
+                        placeholder={isViewer ? "Viewer mode: reply restricted..." : `Quick reply to ${currentMail.sender}...`}
+                        className="bg-transparent border-none text-xs text-white outline-none flex-1 px-2 placeholder:text-slate-500 disabled:opacity-50"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSendReply();
+                          }
+                        }}
+                      />
+                      {!isViewer && (
+                        <button 
+                          onClick={handleSendReply}
+                          disabled={!replyText.trim() || replySending}
+                          className="bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black p-2 rounded-lg transition-all hover:shadow-gold-glow disabled:opacity-50"
+                        >
+                          {replySending ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                  <Mail className="w-10 h-10 mb-2 text-slate-600" />
+                  Select an email from the inbox to read.
+                </div>
+              )}
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* COMPOSE MODAL (Hidden for Viewer) */}
+        {composeOpen && !isViewer && (
+          <ComposeModal onClose={() => setComposeOpen(false)} onSent={() => loadMailsData(true)} />
+        )}
+
+        {/* TOAST CONTAINER */}
+        {toast && (
+          <div className="fixed top-20 right-8 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+            <div className={`w-auto max-w-sm px-5 py-4 rounded-2xl flex items-start gap-3 border shadow-2xl backdrop-blur-xl ${
+              toast.variant === 'error' 
+                ? 'bg-red-950/90 border-red-500/60 text-red-100 shadow-red-500/20' 
+                : 'bg-emerald-950/90 border-emerald-500/60 text-emerald-100 shadow-emerald-500/20'
+            }`}>
+              {toast.variant === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <div className="text-xs font-black uppercase tracking-wider mb-0.5">
+                  {toast.variant === 'error' ? 'Dispatch Error' : 'Success'}
+                </div>
+                <div className="text-xs font-medium text-slate-200">{toast.message}</div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setToast(null)} 
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
     </>
   );
 }
