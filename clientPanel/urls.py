@@ -39,6 +39,7 @@ from clientPanel.view.tickets import (
 )
 from clientPanel.view.transactions import get_client_transactions
 from clientPanel.view.withdrawal import create_client_withdrawal
+from clientPanel.view.profit_share import list_client_profit_share
 
 app_name = "clientPanel"
 
@@ -91,6 +92,7 @@ urlpatterns = [
     path("my-investments", client_only(get_client_investments), name="my-investments"),
     path("my-investments/pause", client_only(pause_copying_api), name="pause-copying"),
     path("my-investments/start", client_only(start_copying_api), name="start-copying"),
+    path("profit-share/history", client_only(list_client_profit_share), name="profit-share-history"),
     path(
         "my-investments/coefficient",
         client_only(deploy_coefficient_config_api),

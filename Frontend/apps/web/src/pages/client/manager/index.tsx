@@ -35,6 +35,7 @@ import {
   type ManagerRow,
 } from '@/lib/live-manager-data';
 import { ManagerSkeleton } from '@/components/client-page-skeletons';
+import ProfitShareHistory from '@/components/ProfitShareHistory';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import AccountOpenModal from '../model/accountopen';
@@ -78,7 +79,7 @@ const riskBadge = (risk: string, isDarkMode: boolean) => {
 
 export default function ClientManagerPage() {
   const { theme } = useTheme();
-  const isDarkMode = theme === 'dark';
+  const isDarkMode = true;
 
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(10);
@@ -86,6 +87,7 @@ export default function ClientManagerPage() {
   const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
   const [showInvestorListModal, setShowInvestorListModal] = useState(false);
   const [showPerformanceModal, setShowPerformanceModal] = useState(false);
+  const [showProfitShareModal, setShowProfitShareModal] = useState(false);
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showAccountOpenModal, setShowAccountOpenModal] = useState(false);
@@ -683,6 +685,13 @@ export default function ClientManagerPage() {
                         ? 'Deactivate'
                         : 'Activate'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowProfitShareModal(true)}
+                      className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white border border-purple-500/20 flex items-center justify-center gap-2`}
+                    >
+                      <TrendingUp size={16} /> Profit Shares
+                    </button>
                   </div>
                 </div>
               </div>
@@ -993,6 +1002,22 @@ export default function ClientManagerPage() {
         </div>
       </div>
 
+      {/* ── Profit Share History Modal ── */}
+      {showProfitShareModal && activeManager && (
+        <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className={`w-full max-w-5xl rounded-[2rem] border shadow-2xl max-h-[90vh] overflow-y-auto relative bg-slate-950 border-slate-800`}>
+            <button
+              type="button"
+              onClick={() => setShowProfitShareModal(false)}
+              className="absolute top-6 right-6 rounded-full p-2 hover:bg-black/10 transition-colors z-20"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600'}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            </button>
+            <ProfitShareHistory isAdmin={false} isDarkMode={isDarkMode} managerLogin={activeManager.accountId} />
+          </div>
+        </div>
+      )}
+
       {showAccountSettingsModal && activeManager && (
         <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md">
           <div className={`w-full max-w-md rounded-[2rem] border shadow-2xl overflow-hidden ${panelClass}`}>
@@ -1014,31 +1039,6 @@ export default function ClientManagerPage() {
               </button>
             </div>
             <div className="space-y-5 px-6 py-6">
-              {/* <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
-                <div className="flex items-center justify-between gap-4 mb-4">
-                  <div>
-                    <div className={`text-[10px] uppercase tracking-[0.24em] ${softTextClass}`}>Leverage Control</div>
-                    <div className="text-sm font-black text-white">Current Active</div>
-                  </div>
-                  <div className="rounded-2xl bg-blue-900/80 px-3 py-2 text-blue-100 text-sm font-black">{newLeverage}</div>
-                </div>
-                <select
-                  value={newLeverage}
-                  onChange={(e) => setNewLeverage(e.target.value)}
-                  className={`w-full rounded-2xl border px-4 py-3 text-sm text-white outline-none transition focus:ring-2 focus:ring-blue-500/20 ${inputClass}`}
-                >
-                  {['100','200','300','400','500','600','700','800','900','1000'].map((val) => (
-                    <option key={val} value={val} className="bg-slate-900 text-white">{val}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  className={`mt-4 w-full py-3 rounded-2xl font-black text-sm hover:scale-[1.02] transition-all uppercase tracking-widest ${goldButtonClass}`}
-                >
-                  Update Leverage
-                </button>
-              </div> */}
-
               <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
                 <div className="flex items-center justify-between gap-4 mb-3">
                   <div>

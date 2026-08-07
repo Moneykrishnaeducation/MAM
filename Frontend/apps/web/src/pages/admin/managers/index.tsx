@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
+import ProfitShareHistory from '@/components/ProfitShareHistory';
 
 /* ─── Cookie & Role Helpers ────────────────────────────── */
 function getAdminRole(): string {
@@ -77,6 +78,9 @@ export default function AdminManagersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<FinancialModalType>(null);
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
+
+  // Profit Share Modal State
+  const [profitShareModalManager, setProfitShareModalManager] = useState<ManagerData | null>(null);
 
   // Load state from API endpoint
   const [managers, setManagers] = useState<ManagerData[]>([]);
@@ -585,6 +589,15 @@ export default function AdminManagersPage() {
                                       <span>History Logs</span>
                                     </button>
 
+                                    {/* Profit Share History Button */}
+                                    <button 
+                                      onClick={() => setProfitShareModalManager(m)} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-purple-500/50 text-xs font-bold transition-all group"
+                                    >
+                                      <TrendingUp size={16} className="text-purple-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>Profit Shares</span>
+                                    </button>
+
                                     {/* Investors List Button (Visible for all roles including Viewer) */}
                                     <button 
                                       onClick={() => openFinancialModal(m, 'investors_list')} 
@@ -671,6 +684,22 @@ export default function AdminManagersPage() {
         modalType={modalType}
         onConfirmAction={handleConfirmAction}
       />
+      
+      {/* ── Profit Share History Modal ── */}
+      {profitShareModalManager && (
+        <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-5xl rounded-[2rem] border shadow-2xl bg-slate-950 border-slate-800 max-h-[90vh] overflow-y-auto relative">
+            <button
+              type="button"
+              onClick={() => setProfitShareModalManager(null)}
+              className="absolute top-6 right-6 rounded-full p-2 text-gray-400 hover:bg-white/10 hover:text-white transition-colors z-20"
+            >
+              <X size={20} />
+            </button>
+            <ProfitShareHistory isAdmin={true} isDarkMode={true} managerLogin={profitShareModalManager.accountId} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

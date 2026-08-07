@@ -49,6 +49,7 @@ from adminPanel.view.pending_requests import (
 from adminPanel.view.transactions import list_admin_transactions
 from adminPanel.view.logout import logout_admin
 from adminPanel.view.mail import admin_mails
+from adminPanel.view.profit_share import list_admin_profit_share
 from backendPanel.permissions import IsAdmin, IsAdminOrSuperAdmin, IsSuperAdmin, permission_required
 from adminPanel.views import (
     admin_profile,
@@ -165,6 +166,7 @@ urlpatterns = [
     path("activity/error", admin_only(list_error_activity_logs), name="activity-error"),
     path("mails", admin_only(admin_mails), name="mails"),
     path("transactions", admin_only(list_admin_transactions), name="transactions"),
+    path("profit-share/history", admin_only(list_admin_profit_share), name="profit-share-history"),
     path("admin-users/create", admin_write_only(create_admin_user), name="create-admin-user"),
     path("users/create", admin_write_only(create_client_user), name="create-client-user"),
     path("accounts/create", admin_write_only(create_account_api), name="create-account"),
