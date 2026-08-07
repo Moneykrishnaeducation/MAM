@@ -148,3 +148,138 @@ async def list_client_tickets(request, user_id: str):
             "tickets": [_serialize_ticket(ticket) for ticket in filtered_tickets],
         }
     )
+
+def _serialize_ticket_with_user(ticket: ClientTicket) -> dict:
+    user = getattr(ticket, "user", None)
+    user_code = getattr(user, "user_code", None) or (f"USR-{user.id:03d}" if user else "N/A")
+    user_name = getattr(user, "name", None) or "Unknown Client"
+    user_email = getattr(user, "email", None) or "N/A"
+    return {
+        "id": ticket.id,
+        "subject": ticket.subject,
+        "category": ticket.category,
+        "priority": ticket.priority,
+        "status": _canonical_ticket_status(ticket.status),
+        "description": ticket.description,
+        "date": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
+        "attachments": ticket.attachments or [],
+        "user_id": user_code,
+        "user_name": user_name,
+        "user_email": user_email,
+    }
+
+
+@permission_required(IsAdmin)
+@require_http_methods(["GET"])
+async def list_all_tickets(request):
+    """Return all client support tickets with user info for the admin tickets page."""
+    status_filter = _normalize_ticket_status(request.GET.get("status") or request.GET.get("tab"))
+    category_filter = _normalize_ticket_category(
+        request.GET.get("category") or request.GET.get("type")
+    )
+    search = str(request.GET.get("search") or "").strip().lower()
+
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+
+    try:
+        per_page = max(1, min(100, int(request.GET.get("per_page") or request.GET.get("perPage") or 10)))
+    except (ValueError, TypeError):
+        per_page = 10
+
+    tickets = await ClientTicket.all().prefetch_related("user").order_by("-created_at", "-id")
+
+    filtered_tickets = []
+    for ticket in tickets:
+        if not _ticket_matches_filters(ticket, status_filter, category_filter):
+            continue
+
+        if search:
+            user_name = str(getattr(ticket.user, "name", "") or "").lower()
+            user_email = str(getattr(ticket.user, "email", "") or "").lower()
+            subject = str(ticket.subject or "").lower()
+            ticket_id = str(ticket.id)
+            if not (
+                search in user_name
+                or search in user_email
+                or search in subject
+                or search in ticket_id
+            ):
+                continue
+
+        filtered_tickets.append(ticket)
+
+    total_filtered = len(filtered_tickets)
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start = (page - 1) * per_page
+    end = start + per_page
+    paginated_tickets = filtered_tickets[start:end]
+
+    summary = {
+        "total_tickets": len(tickets),
+        "open_count": sum(
+            1
+            for ticket in tickets
+            if str(ticket.status or "").strip().lower() in {"open", "new", "active"}
+        ),
+        "pending_count": sum(
+            1
+            for ticket in tickets
+            if str(ticket.status or "").strip().lower()
+            in {"pending", "in progress", "inprogress", "processing"}
+        ),
+        "closed_count": sum(
+            1
+            for ticket in tickets
+            if str(ticket.status or "").strip().lower()
+            in {"closed", "resolved", "completed", "done"}
+        ),
+    }
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "summary": summary,
+            "page": page,
+            "per_page": per_page,
+            "total": total_filtered,
+            "total_pages": total_pages,
+            "tickets": [_serialize_ticket_with_user(ticket) for ticket in paginated_tickets],
+        }
+    )
+
+
+@permission_required(IsAdmin)
+@require_http_methods(["POST", "PUT"])
+async def update_ticket_status(request, ticket_id: int):
+    """Update a client support ticket status (e.g. Open, Pending, Closed)."""
+    import json
+
+    ticket = await ClientTicket.filter(id=ticket_id).prefetch_related("user").first()
+    if not ticket:
+        return JsonResponse({"status": "error", "message": "Ticket not found"}, status=404)
+
+    try:
+        data = json.loads(request.body.decode("utf-8")) if request.body else {}
+    except Exception:
+        data = {}
+
+    new_status = data.get("status") or request.POST.get("status")
+    if not new_status:
+        return JsonResponse({"status": "error", "message": "Status is required"}, status=400)
+
+    canonical = _canonical_ticket_status(new_status)
+    ticket.status = canonical
+    await ticket.save()
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Ticket #{ticket.id} status updated to {canonical}.",
+            "ticket": _serialize_ticket_with_user(ticket),
+        }
+    )
+
