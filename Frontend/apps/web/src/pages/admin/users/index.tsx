@@ -2672,8 +2672,21 @@ export default function AdminUsersPage() {
                           <td className="px-6 py-5">
                             <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
                           </td>
-                          <td className="px-6 py-5">
-                            <StatusBadge status={u.status} />
+                          <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              onClick={() => { void toggleUserActiveStatus(u.id); }}
+                              disabled={Boolean(statusSavingByUserId[u.id])}
+                              title={`Click to set account ${isAccountActive(u.status) ? 'Inactive' : 'Active'}`}
+                              className="inline-flex items-center gap-1.5 transition-transform active:scale-95 disabled:opacity-50"
+                            >
+                              {statusSavingByUserId[u.id] ? (
+                                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border border-blue-500/20 bg-blue-500/10 text-blue-300">
+                                  <RefreshCw size={11} className="animate-spin" /> Saving...
+                                </span>
+                              ) : (
+                                <StatusBadge status={u.status} />
+                              )}
+                            </button>
                           </td>
                           <td className="px-6 py-5 font-medium text-[#9ec0ff]">{u.joined}</td>
                           <td className="px-6 py-5 font-bold text-white">{u.country || 'United States'}</td>

@@ -660,6 +660,8 @@ async def update_client_user_status(request, user_id: str):
     raw_status = str(body.get("status") or "").strip()
     raw_active = body.get("active")
 
+    old_status = user.status
+
     if raw_status:
         normalized = raw_status.lower()
         if normalized in {"active", "enabled", "enable"}:
@@ -674,6 +676,22 @@ async def update_client_user_status(request, user_id: str):
         user.status = "Inactive" if str(user.status or "").strip().lower() == "active" else "Active"
 
     await user.save(update_fields=["status", "updated_at"])
+
+    try:
+        await create_audit_log(
+            request,
+            user_name=user.name,
+            user_email=user.email,
+            user_role=user.role or "Client",
+            action_type="UpdateUserStatus",
+            module_name="UserManagement",
+            record_id=str(user.id),
+            old_values={"status": old_status},
+            new_values={"status": user.status},
+            user_id=user.id,
+        )
+    except Exception:
+        pass
 
     return JsonResponse(
         {

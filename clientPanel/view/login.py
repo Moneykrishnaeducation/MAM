@@ -179,6 +179,9 @@ async def login_client(request):
     if "admin" in role_value:
         return _error("Invalid credentials", status=401)
 
+    if str(user.status or "").strip().lower() != "active":
+        return _error("Account is inactive. Please contact support.", status=403)
+
     password_login = bool(user.password_hash) and verify_client_password(
         access_code, user.password_hash
     )
