@@ -140,6 +140,12 @@ class TradingAccount(models.Model):
 
     # ── Profit & risk ─────────────────────────────────────────────────────
     profit_sharing_percentage = fields.DecimalField(max_digits=5, decimal_places=2, null=True)
+    mam_plan = fields.ForeignKeyField(
+        "models.MAMPlan",
+        related_name="accounts",
+        null=True,
+        on_delete=fields.SET_NULL,
+    )
     risk_level = fields.CharField(max_length=10, null=True)  # e.g. "Low" | "Med" | "High"
     payout_frequency = fields.CharField(max_length=20, null=True)  # e.g. "Monthly"
 
@@ -589,3 +595,38 @@ class Notification(models.Model):
             related_object_type=related_object_type,
             related_object_id=related_object_id,
         )
+
+
+class MAMPlan(models.Model):
+    """MAM Plan model for profit share configuration."""
+
+    id = fields.IntField(primary_key=True)
+    name = fields.CharField(max_length=255)
+    profit_share_percentage = fields.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    minimum_profit = fields.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+
+    class Meta:
+        table = "mam_plans"
+
+
+class ProfitShareHistory(models.Model):
+    """Profit share transaction history."""
+
+    id = fields.IntField(primary_key=True)
+    master_login = fields.CharField(max_length=100)
+    investor_login = fields.CharField(max_length=100)
+    master_position = fields.CharField(max_length=100, null=True)
+    investor_position = fields.CharField(max_length=100)
+    profit = fields.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    commission_percentage = fields.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    commission_amount = fields.DecimalField(max_digits=12, decimal_places=2, default=0.0)
+    manager_account = fields.CharField(max_length=100, null=True)
+    investor_account = fields.CharField(max_length=100, null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    status = fields.CharField(max_length=50, default="Completed")
+
+    class Meta:
+        table = "profit_share_history"
+
