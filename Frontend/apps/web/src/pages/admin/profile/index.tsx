@@ -1,9 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import {
   User,
   Mail,
-  Phone,
   Calendar,
   Shield,
   Key,
@@ -14,11 +13,20 @@ import {
   Upload,
   Sparkles,
   Terminal,
-  Cpu
+  UserShield,
+  Cpu,
 } from 'lucide-react';
 
+type TabKey = 'personal' | 'security' | 'privileges' | 'logs';
+
+const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType }> = [
+  { key: 'personal', label: 'Personal Details', icon: User },
+  { key: 'security', label: 'Authentication', icon: Key },
+  { key: 'privileges', label: 'Privileges', icon: Cpu },
+];
+
 export default function AdminProfilePage() {
-  const [activeTab, setActiveTab] = useState<'personal' | 'security' | 'privileges' | 'logs'>('personal');
+  const [activeTab, setActiveTab] = useState<TabKey>('personal');
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -32,6 +40,9 @@ export default function AdminProfilePage() {
   const [adminRole, setAdminRole] = useState('');
   const [adminAvatar, setAdminAvatar] = useState('');
   const [adminDepartment, setAdminDepartment] = useState('');
+  const [adminStatus, setAdminStatus] = useState('');
+  const [adminLastLogin, setAdminLastLogin] = useState('');
+  const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -52,21 +63,23 @@ export default function AdminProfilePage() {
       }
       const data = await res.json();
       const roleMap: Record<string, string> = {
-        admin: "Administrator",
-        superadmin: "Super Administrator",
-        super_admin: "Super Administrator",
-        "super admin": "Super Administrator",
-        viewer: "Viewer",
+        admin: 'Administrator',
+        superadmin: 'Super Administrator',
+        super_admin: 'Super Administrator',
+        'super admin': 'Super Administrator',
+        viewer: 'Viewer',
       };
-
 
       if (data?.admin_user) {
         setAdminId(data.admin_user.id || '');
         setAdminName(data.admin_user.name || '');
         setAdminEmail(data.admin_user.email || '');
-        setAdminRole(roleMap[data.admin_user.role?.toLowerCase()] || data.admin_user.role || "");
+        setAdminRole(roleMap[data.admin_user.role?.toLowerCase()] || data.admin_user.role || '');
         setAdminAvatar(data.admin_user.avatar || '');
         setAdminDepartment(data.admin_user.department || '');
+        setAdminStatus(data.admin_user.status || '');
+        setAdminLastLogin(data.admin_user.lastLogin || '');
+        setAdminPermissions(Array.isArray(data.admin_user.permissions) ? data.admin_user.permissions : []);
       }
     } catch (err) {
       triggerSaveToast('Unable to load profile.');
@@ -180,13 +193,6 @@ export default function AdminProfilePage() {
     loadAdminProfile();
   }, []);
 
-  const adminLogs = [
-    { action: 'Approved Withdrawal Request #8492', target: 'User ID: 104', time: '10m ago', severity: 'Info' },
-    { action: 'Updated Global Settings (MFA requirement)', target: 'Platform Core', time: '1h ago', severity: 'Warning' },
-    { action: 'Deleted Inactive Student Account', target: 'User ID: 492', time: '3h ago', severity: 'Info' },
-    { action: 'Authenticated Admin session', target: 'IP: 192.168.1.100', time: '4h ago', severity: 'Success' },
-  ];
-
   return (
     <>
       <Head>
@@ -194,357 +200,465 @@ export default function AdminProfilePage() {
         <meta name="description" content="View and manage admin control credentials and platform privileges" />
       </Head>
 
-      <div className="p-6 md:p-8 z-10 flex-1">
-        {/* Toast Notification */}
-        {showToast && (
-          <div className="fixed bottom-6 right-6 bg-blue-600 text-white font-bold px-5 py-3 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center gap-2 border border-blue-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            <Check size={18} />
-            <span>{toastMessage}</span>
-          </div>
-        )}
+      <div className="relative min-h-full overflow-hidden bg-slate-950 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_24%),linear-gradient(to_bottom,rgba(2,6,23,0.94),rgba(2,6,23,1))]" />
+        <div className="absolute -top-32 left-[-4rem] h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
+        <div className="absolute top-24 right-[-5rem] h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
 
-        <div className="mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-            <Sparkles size={13} className="animate-pulse" /> Core Controls
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white">Admin Profile</h1>
-          <p className="text-slate-400 text-sm mt-1">Manage administrative details, credentials, and review activity audit logs.</p>
-        </div>
+        <div className="relative mx-auto flex h-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto p-6 md:p-8">
+          {showToast && (
+            <div className="fixed bottom-6 top-6 z-50 flex items-center gap-2 rounded-2xl border border-blue-400/40 bg-slate-950/95 px-5 py-3 font-bold text-white shadow-lg shadow-blue-500/20 backdrop-blur">
+              <Check size={18} />
+              <span>{toastMessage}</span>
+            </div>
+          )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Left Column - Admin Card */}
-          <div className="lg:col-span-4 space-y-6">
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl pointer-events-none"></div>
-
-              <div className="flex flex-col items-center text-center">
-                <div className="relative group mb-4">
-                  <img
-                    src={adminAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
-                    alt="Admin Avatar"
-                    className="w-28 h-28 rounded-3xl object-cover border-4 border-blue-500/40 shadow-xl transition-all duration-300 group-hover:scale-105"
-                  />
-                  <button
-                    type="button"
-                    onClick={openAvatarPicker}
-                    className="absolute bottom-1 right-1 bg-blue-500 hover:bg-blue-400 text-white p-2 rounded-xl border-4 border-slate-900 shadow-md transition-colors"
-                    title="Change Avatar"
-                  >
-                    <Upload size={14} />
-                  </button>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleAvatarFileChange(e.target.files?.[0])}
-                  />
-                </div>
-
-                <h3 className="text-xl font-bold text-white mb-0.5">{adminName || 'Admin Control'}</h3>
-                <p className="text-blue-400 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20 mb-4 inline-flex items-center gap-1">
-                  <Shield size={11} className="text-blue-400" /> {adminRole || 'Administrator'}
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                <Sparkles size={13} className="animate-pulse" />
+                Core Controls
+              </div>
+              <div className="space-y-2">
+                <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl">Admin Profile</h1>
+                <p className="max-w-2xl text-sm leading-6 text-slate-400">
+                  Manage administrative identity, credentials, system privileges, and audit activity from one control surface.
                 </p>
-
-                <div className="w-full space-y-3 pt-4 border-t border-slate-800/80 text-left text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Admin ID</span>
-                    <span className="text-slate-200 font-mono">{adminId || '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Email</span>
-                    <span className="text-slate-200 break-all text-right">{adminEmail || '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Role</span>
-                    <span className="text-slate-200">{adminRole || 'Administrator'}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Server Node</span>
-                    <span className="text-slate-200">Cluster-US-East</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Status Security Checklist */}
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-2xl">
-              <h4 className="font-bold text-sm text-slate-100 mb-4">Security Parameters</h4>
-              <div className="space-y-3.5 text-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                    <Check size={12} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-200">IP Binding Lockout</p>
-                    <p className="text-slate-400">Strict mode (authorized subnets)</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                    <Check size={12} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-200">Hardware FIDO Key</p>
-                    <p className="text-slate-400">Yubikey registered and bound</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center">
-                    <Check size={12} />
-                  </div>
-                  <div>
-                    <p className="font-medium text-slate-200">DB Superuser Encryption</p>
-                    <p className="text-slate-400">Enabled (AES-GCM-256)</p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Column - Navigation & Tabs Form */}
-          <div className="lg:col-span-8 space-y-6">
-            <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-2xl">
-              {/* Tabs Navigation */}
-              <div className="flex border-b border-slate-800 gap-6 mb-6 overflow-x-auto pb-1 scrollbar-hide">
-                <button
-                  onClick={() => setActiveTab('personal')}
-                  className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === 'personal'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  <User size={15} /> Personal Details
-                </button>
-                <button
-                  onClick={() => setActiveTab('security')}
-                  className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === 'security'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  <Key size={15} /> Authentication & Access
-                </button>
-                <button
-                  onClick={() => setActiveTab('privileges')}
-                  className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === 'privileges'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  <Cpu size={15} /> System Privileges
-                </button>
-                <button
-                  onClick={() => setActiveTab('logs')}
-                  className={`flex items-center gap-2 pb-3.5 text-xs font-semibold transition-all border-b-2 whitespace-nowrap ${activeTab === 'logs'
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
-                    }`}
-                >
-                  <Terminal size={15} /> Operations Audit Log
-                </button>
-              </div>
+          {loading && (
+            <div className="flex items-center gap-3 rounded-3xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
+              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-blue-400" />
+              Syncing profile data from the server...
+            </div>
+          )}
 
-              {/* Tab: Personal Info */}
-              {activeTab === 'personal' && (
-                <form onSubmit={savePersonalInfo} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Admin Profile Name</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <User size={15} className="text-slate-400" />
-                        <input
-                          type="text"
-                          value={adminName}
-                          onChange={(e) => setAdminName(e.target.value)}
-                          className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Administrative Contact Email</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Mail size={15} className="text-slate-400" />
-                        <input
-                          type="email"
-                          value={adminEmail}
-                          disabled
-                          className="bg-transparent border-none text-slate-500 outline-none w-full text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Department / Team</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Shield size={15} className="text-slate-400" />
-                        <input
-                          type="text"
-                          value={adminDepartment}
-                          onChange={(e) => setAdminDepartment(e.target.value)}
-                          className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Registration Cluster</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Calendar size={15} className="text-slate-400" />
-                        <input type="text" defaultValue="Superuser Hub Main" disabled className="bg-transparent border-none text-slate-500 outline-none w-full text-xs" />
-                      </div>
-                    </div>
-                  </div>
-                  <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
-                    {saving ? 'Saving...' : 'Update Personal Info'}
-                  </button>
-                </form>
-              )}
-
-              {/* Tab: Security */}
-              {activeTab === 'security' && (
-                <form onSubmit={saveSecurity} className="space-y-6">
-                  <div className="space-y-4 max-w-md">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Current Superuser Password</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Lock size={15} className="text-slate-400" />
-                        <input
-                          type={showPassword ? 'text' : 'password'}
-                          value={currentPassword}
-                          onChange={(e) => setCurrentPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((prev) => !prev)}
-                          className="text-slate-400 hover:text-blue-400 transition"
-                          aria-label={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">New Root Password</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Key size={15} className="text-slate-400" />
-                        <input
-                          type={showPassword1 ? 'text' : 'password'}
-                          value={newPassword}
-                          onChange={(e) => setNewPassword(e.target.value)}
-                          placeholder="Min 12 complex chars"
-                          className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword1((prev) => !prev)}
-                          className="text-slate-400 hover:text-blue-400 transition"
-                          aria-label={showPassword1 ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword1 ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Verify Root Password</label>
-                      <div className="flex items-center gap-2 bg-slate-800/40 border border-slate-700/60 rounded-xl px-4 py-2.5 focus-within:border-blue-500 transition-colors">
-                        <Key size={15} className="text-slate-400" />
-                        <input
-                          type={showPassword2 ? 'text' : 'password'}
-                          value={verifyPassword}
-                          onChange={(e) => setVerifyPassword(e.target.value)}
-                          placeholder="Confirm match"
-                          className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword2((prev) => !prev)}
-                          className="text-slate-400 hover:text-blue-400 transition"
-                          aria-label={showPassword2 ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword2 ? <EyeOff size={16} /> : <Eye size={16} />}
-                        </button>
-                      </div>
-                    </div>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+            <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-6">
+              <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl" />
+                <div className="relative flex flex-col items-center text-center">
+                  <div className="group relative mb-5">
+                    <img
+                      src={adminAvatar || ''}
+                      alt="Admin Avatar"
+                      className="h-32 w-32 rounded-[1.5rem] border border-blue-500/30 object-cover shadow-xl shadow-black/40 transition-transform duration-300 group-hover:scale-[1.02]"
+                    />
+                    <button
+                      type="button"
+                      onClick={openAvatarPicker}
+                      className="absolute bottom-2 right-2 rounded-xl border border-slate-900 bg-blue-500 p-2 text-white shadow-lg shadow-blue-500/30 transition-colors hover:bg-blue-400"
+                      title="Change Avatar"
+                    >
+                      <Upload size={14} />
+                    </button>
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleAvatarFileChange(e.target.files?.[0])}
+                    />
                   </div>
 
-                  {/* <div className="pt-4 border-t border-slate-800/80">
-                      <h4 className="text-xs font-bold text-slate-100 mb-2">Multifactor Authorization Hardware Token</h4>
-                      <p className="text-xs text-slate-400 mb-4">Required for executing any DB drop, data migrations or global setting overrides.</p>
-                      <button type="button" className="px-4 py-2 border border-blue-500/30 text-blue-400 hover:bg-blue-500/10 transition-colors rounded-xl text-xs font-semibold">
-                        Add Yubikey FIDO Device
-                      </button>
-                    </div> */}
+                  <h3 className="text-2xl font-bold text-white">{adminName || 'Admin Control'}</h3>
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                    <Shield size={11} />
+                    {adminRole || 'Administrator'}
+                  </p>
 
-                  <button type="submit" disabled={saving} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold px-6 py-2.5 rounded-xl text-xs transition-all shadow-md">
-                    {saving ? 'Saving...' : 'Apply Root Auth Upgrades'}
-                  </button>
-                </form>
-              )}
+                  <div className="mt-6 w-full overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/40">
+                    <table className="text-left text-sm">
+                      <tbody className="shadow-sm shadow-slate-800/20">
+                        <tr>
+                          <td className="w-1/3 px-3 py-3 text-[11px] font-semibold uppercase  text-slate-500">
+                            Email
+                          </td>
+                          <td className="px-3 py-3 text-slate-100 break-all">
+                            {adminEmail || "N/A"}
+                          </td>
+                        </tr>
 
-              {/* Tab: System Privileges */}
-              {activeTab === 'privileges' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="font-bold text-sm text-slate-100 mb-2">Database and App Permissions</h3>
-                    <p className="text-xs text-slate-400 mb-4">Review the access tokens and security scopes granted to this administrator profile.</p>
+                        <tr>
+                          <td className="px-3 py-3 text-[11px] font-semibold uppercase  text-slate-500">
+                            Department
+                          </td>
+                          <td className="px-3 py-3 text-slate-100">
+                            {adminDepartment || "Operations"}
+                          </td>
+                        </tr>
 
-                    <div className="space-y-3.5">
-                      <div className="p-3 bg-slate-800/30 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-semibold text-slate-200">Database Access</p>
-                          <p className="text-slate-500 text-[10px]">Read, Write, Update, Delete migrations</p>
-                        </div>
-                        <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Full Access</span>
-                      </div>
-                      <div className="p-3 bg-slate-800/30 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-semibold text-slate-200">User Management</p>
-                          <p className="text-slate-500 text-[10px]">Approve requests, KYC validation, Block users</p>
-                        </div>
-                        <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Full Access</span>
-                      </div>
-                      <div className="p-3 bg-slate-800/30 border border-slate-800 rounded-2xl flex items-center justify-between text-xs">
-                        <div>
-                          <p className="font-semibold text-slate-200">System Parameters Override</p>
-                          <p className="text-slate-500 text-[10px]">Change proxy configurations and credentials</p>
-                        </div>
-                        <span className="text-[10px] text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">Full Access</span>
-                      </div>
-                    </div>
+                        <tr>
+                          <td className="px-3 py-3 text-[11px] font-semibold uppercase  text-slate-500">
+                            Last Login
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="flex items-center gap-2 text-slate-100">
+                              <Calendar size={15} className="text-blue-400" />
+                              {adminLastLogin || "Not available"}
+                            </div>
+                          </td>
+                        </tr>
+
+                        <tr>
+                          <td className="px-3 py-3 text-[11px] font-semibold uppercase  text-slate-500">
+                            Account Status
+                          </td>
+                          <td className="px-3 py-3">
+                            <span
+                              className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${adminStatus === "Active"
+                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                }`}
+                            >
+                              <span className="h-2 w-2 rounded-full bg-current" />
+                              {adminStatus || "Active"}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
-              )}
+              </div>
+            </div>
 
-              {/* Tab: Logs */}
-              {activeTab === 'logs' && (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="text-xs font-bold text-slate-100">Superuser Audit Trail</h4>
-                    <button className="text-[10px] text-blue-400 hover:underline">Download system log dump (.csv)</button>
-                  </div>
+            <div className="lg:col-span-8">
+              <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-4">
+                  {TABS.map((tab) => {
+                    const Icon = tab.icon;
+                    const active = activeTab === tab.key;
+                    return (
+                      <button
+                        key={tab.key}
+                        onClick={() => setActiveTab(tab.key)}
+                        className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-semibold transition-all ${active
+                          ? 'border-blue-500/30 bg-blue-500/15 text-blue-300 shadow-lg shadow-blue-500/10'
+                          : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          }`}
+                      >
+                        <Icon size={14} />
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
 
-                  <div className="border border-slate-800/80 rounded-2xl overflow-hidden divide-y divide-slate-800">
-                    {adminLogs.map((log, idx) => (
-                      <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-2 text-xs hover:bg-slate-800/20 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1.5 shrink-0"></div>
+                <div className="pt-5">
+                  {activeTab === 'personal' && (
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.3fr_0.7fr]">
+                      <form onSubmit={savePersonalInfo} className="space-y-5 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <div>
+                          <p className="text-xs font-semibold uppercase  text-slate-500">Personal Information</p>
+                          <h3 className="mt-2 text-lg font-bold text-white">Edit profile details</h3>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <div>
-                            <p className="font-semibold text-slate-200">{log.action}</p>
-                            <p className="text-slate-400 text-[11px] mt-0.5">{log.target}</p>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400"> Name</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                              <User size={15} className="text-slate-400" />
+                              <input
+                                type="text"
+                                value={adminName}
+                                onChange={(e) => setAdminName(e.target.value)}
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Email</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/40 px-4 py-3">
+                              <Mail size={15} className="text-slate-400" />
+                              <input
+                                type="email"
+                                value={adminEmail}
+                                disabled
+                                className="w-full border-none bg-transparent text-sm text-slate-500 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Department / Team</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                              <Shield size={15} className="text-slate-400" />
+                              <input
+                                type="text"
+                                value={adminDepartment}
+                                onChange={(e) => setAdminDepartment(e.target.value)}
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Registration Cluster</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/40 px-4 py-3">
+                              <UserShield size={15} className="text-slate-400" />
+                              <input
+                                type="text"
+                                value={adminRole}
+                                onChange={(e) => setAdminRole(e.target.value)}
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div className="md:text-right flex items-center md:flex-col gap-2 md:gap-0.5 justify-between ml-4 md:ml-0">
-                          <span className="text-slate-300 text-[11px]">{log.time}</span>
-                          <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 text-[10px] font-bold border border-blue-500/20">
-                            {log.severity}
-                          </span>
+
+                        <button
+                          type="submit"
+                          disabled={saving}
+                          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {saving ? 'Saving...' : 'Update Personal Info'}
+                        </button>
+                      </form>
+
+                      <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <div>
+                          <p className="text-xs font-semibold uppercase  text-slate-500">Profile Summary</p>
+                          <h3 className="mt-2 text-lg font-bold text-white">Live account snapshot</h3>
+                        </div>
+
+                        <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/70">
+                          <table className="w-full">
+                            <tbody className="shadow-sm shadow-slate-800/20">
+                              <tr>
+                                <td className="w-40 px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                  Admin ID
+                                </td>
+                                <td className="px-3 py-3 text-sm font-medium text-slate-100">
+                                  {adminId || "N/A"}
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td className="px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                  Role
+                                </td>
+                                <td className="px-3 py-3 text-sm font-medium text-slate-100">
+                                  {adminRole || "Administrator"}
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td className="px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                  Department
+                                </td>
+                                <td className="px-3 py-3 text-sm font-medium text-slate-100">
+                                  {adminDepartment || "Operations"}
+                                </td>
+                              </tr>
+
+                              <tr>
+                                <td className="px-3 py-3 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                                  Status
+                                </td>
+                                <td className="px-3 py-3">
+                                  <span
+                                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${adminStatus === "Active"
+                                        ? "border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                                        : "border border-red-500/20 bg-red-500/10 text-red-400"
+                                      }`}
+                                  >
+                                    <span className="h-2 w-2 rounded-full bg-current" />
+                                    {adminStatus || "Active"}
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'security' && (
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+                      <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <div>
+                          <p className="text-xs font-semibold uppercase  text-slate-500">Security</p>
+                          <h3 className="mt-2 text-lg font-bold text-white">Authentication & access</h3>
+                          <p className="mt-1 text-xs text-slate-400">Use this panel to rotate the admin password and tighten access credentials.</p>
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                          <div className="flex items-center gap-2 text-xs font-semibold uppercase  text-slate-500">
+                            <Lock size={13} />
+                            Security posture
+                          </div>
+                          <ul className="mt-3 space-y-2 text-xs leading-6 text-slate-400">
+                            <li>- Password changes apply immediately to the current administrator profile.</li>
+                            <li>- Keep the new root password unique and at least 8 characters long.</li>
+                            <li>- Verify the confirmation field before submitting the form.</li>
+                          </ul>
+                        </div>
+                      </div>
+
+                      <form onSubmit={saveSecurity} className="space-y-5 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <div>
+                          <p className="text-xs font-semibold uppercase  text-slate-500">Password rotation</p>
+                          <h3 className="mt-2 text-lg font-bold text-white">Update root credentials</h3>
+                          <p className="mt-1 text-xs text-slate-400">Enter the current password, then define and confirm the new value.</p>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Superuser Password</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                              <Lock size={15} className="text-slate-400" />
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={currentPassword}
+                                onChange={(e) => setCurrentPassword(e.target.value)}
+                                placeholder="********"
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword((prev) => !prev)}
+                                className="text-slate-400 transition hover:text-blue-400"
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              >
+                                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">New Root Password</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                              <Key size={15} className="text-slate-400" />
+                              <input
+                                type={showPassword1 ? 'text' : 'password'}
+                                value={newPassword}
+                                onChange={(e) => setNewPassword(e.target.value)}
+                                placeholder="Min 8 complex chars"
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword1((prev) => !prev)}
+                                className="text-slate-400 transition hover:text-blue-400"
+                                aria-label={showPassword1 ? 'Hide password' : 'Show password'}
+                              >
+                                {showPassword1 ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Verify Root Password</label>
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                              <Key size={15} className="text-slate-400" />
+                              <input
+                                type={showPassword2 ? 'text' : 'password'}
+                                value={verifyPassword}
+                                onChange={(e) => setVerifyPassword(e.target.value)}
+                                placeholder="Confirm match"
+                                className="w-full border-none bg-transparent text-sm text-slate-100 outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowPassword2((prev) => !prev)}
+                                className="text-slate-400 transition hover:text-blue-400"
+                                aria-label={showPassword2 ? 'Hide password' : 'Show password'}
+                              >
+                                {showPassword2 ? <EyeOff size={16} /> : <Eye size={16} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={saving}
+                          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {saving ? 'Saving...' : 'Apply Root Auth Upgrades'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {activeTab === 'privileges' && (
+                    <div className="space-y-6">
+                      <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-900 p-6 shadow-2xl">
+                        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.16),transparent_28%),radial-gradient(circle_at_bottom_left,rgba(15,23,42,0.95),transparent_24%)]" />
+                        <div className="relative grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                          <div className="space-y-5">
+                            <div className="flex items-center gap-3">
+                              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
+                                <Cpu size={20} />
+                              </div>
+                              <div>
+                                <h3 className="text-sm font-bold text-slate-100">Database and App Permissions</h3>
+                                <p className="text-xs text-slate-400">Review the access tokens and security scopes granted to this administrator profile.</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                                <p className="text-[10px] uppercase  text-slate-500">Role</p>
+                                <p className="mt-2 text-sm font-semibold text-slate-100">{adminRole || 'Administrator'}</p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                                <p className="text-[10px] uppercase  text-slate-500">Department</p>
+                                <p className="mt-2 text-sm font-semibold text-slate-100">{adminDepartment || 'Operations'}</p>
+                              </div>
+                              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                                <p className="text-[10px] uppercase  text-slate-500">Scopes</p>
+                                <p className="mt-2 text-sm font-semibold text-slate-100">{adminPermissions.length} active</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                            <div className="mb-4 flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-xs font-semibold text-slate-100">Assigned Permissions</p>
+                                <p className="text-[11px] text-slate-500">Directly loaded from `/api/admin/profile`</p>
+                              </div>
+                              <div className="rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] text-blue-400">
+                                Live
+                              </div>
+                            </div>
+
+                            {adminPermissions.length > 0 ? (
+                              <div className="flex flex-wrap gap-3">
+                                {adminPermissions.map((permission) => (
+                                  <div
+                                    key={permission}
+                                    className="group flex min-w-[180px] flex-1 items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 px-4 py-3 transition-all hover:border-blue-500/30 hover:bg-slate-900"
+                                  >
+                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-blue-500/20 bg-blue-500/10 text-blue-400">
+                                      <Key size={16} />
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-slate-100">{permission}</p>
+                                      <p className="text-[10px] text-slate-500">Enabled through admin access scope</p>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 text-xs text-slate-400">
+                                No explicit permissions are assigned to this administrator profile.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
@@ -552,3 +666,4 @@ export default function AdminProfilePage() {
     </>
   );
 }
+
