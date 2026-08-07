@@ -276,6 +276,7 @@ export default function ClientProfilePage() {
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
   const [profileTier, setProfileTier] = useState('');
   const [profileKycStatus, setProfileKycStatus] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [isPersonalEditing, setIsPersonalEditing] = useState(false);
   const [isPersonalSaving, setIsPersonalSaving] = useState(false);
@@ -404,6 +405,7 @@ export default function ClientProfilePage() {
         setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
         setProfileTier(String(profile.tier || ''));
         setProfileKycStatus(String(profile.kyc_status || ''));
+        setProfileAddress(String(profile.address || profile.city || '').trim());
         if (profile.avatar) {
           setAvatarSrc(profile.avatar);
         }
@@ -427,6 +429,7 @@ export default function ClientProfilePage() {
           setProfileUserId(null);
           setProfileTier('');
           setProfileKycStatus('');
+          setProfileAddress('');
           setPaymentDetails(INITIAL_PAYMENT_DETAILS);
           setDocuments(INITIAL_DOCUMENTS);
         }
@@ -1098,6 +1101,21 @@ export default function ClientProfilePage() {
                             className={`w-full border-none bg-transparent text-xs outline-none text-white ${
                               isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Address</label>
+                        <div
+                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all cursor-not-allowed ${inputClass} ${borderMutedClass}`}
+                        >
+                          <House size={15} className="text-slate-400" />
+                          <input
+                            type="text"
+                            value={profileAddress || 'Not set'}
+                            readOnly
+                            tabIndex={-1}
+                            className="w-full cursor-not-allowed border-none bg-transparent text-xs text-slate-300 outline-none"
                           />
                         </div>
                       </div>
