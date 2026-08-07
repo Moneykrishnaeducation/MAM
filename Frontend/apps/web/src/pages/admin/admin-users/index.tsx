@@ -12,10 +12,20 @@ import {
   Pencil,
   AlertCircle,
   CheckCircle,
-  LayoutGrid
+  LayoutGrid,
+  X,
+  Eye,
+  EyeOff,
+  Mail,
+  Phone,
+  MapPin,
+  Key,
+  RefreshCw,
+  Sparkles,
+  Clock,
+  Filter
 } from 'lucide-react';
 import GroupConfiguration from '../groups';
-import GroupConfigurationDemo from '../groups-demo';
 
 // Helper to get a cookie value
 function getCookie(name: string): string {
@@ -61,7 +71,6 @@ const isSuperAdminRole = (role: string) => role.toLowerCase() === 'superadmin';
 const isAdminOrAbove   = (role: string) => ['superadmin', 'admin'].includes(role.toLowerCase());
 const isViewerOnly     = (role: string) => role.toLowerCase() === 'viewer';
 
-
 const formatDateTime = (value: string) => {
   if (!value || value === "-") return { date: "N/A", time: "N/A" };
 
@@ -92,23 +101,21 @@ export interface AdminUserRecord {
 
 export default function AdminUsersManagementPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'users' | 'groups' | 'groups-demo'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'groups'>('users');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [pendingDeleteItem, setPendingDeleteItem] = useState<AdminUserRecord | null>(null);
   
-  // Message Dialog State
-  const [isMessageOpen, setIsMessageOpen] = useState(false);
-  const [messageTitle, setMessageTitle] = useState('');
-  const [messageText, setMessageText] = useState('');
+  // Toast / Message Dialog State
+  const [toast, setToast] = useState<{ message: string; variant: 'success' | 'error'; title?: string } | null>(null);
+  const [showPasswordInModal, setShowPasswordInModal] = useState(false);
 
   // Role Edit Dialog State
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [selectedUserRow, setSelectedUserRow] = useState<AdminUserRecord | null>(null);
   const [editRoleValue, setEditRoleValue] = useState('admin');
-  const [editPassword, setEditPassword] = useState('');
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -123,13 +130,17 @@ export default function AdminUsersManagementPage() {
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [createLoading, setCreateLoading] = useState(false);
+  const [updateRoleLoading, setUpdateRoleLoading] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adminRole, setAdminRole] = useState('');
 
-  const showMessage = (title: string, text: string) => {
-    setMessageTitle(title);
-    setMessageText(text);
-    setIsMessageOpen(true);
+  const isViewer = useMemo(() => isViewerOnly(adminRole) || adminRole.toLowerCase() === 'viewer', [adminRole]);
+  const canCreateAdmin = useMemo(() => isAdminOrAbove(adminRole) && !isViewer, [adminRole, isViewer]);
+
+  const showToast = (message: string, variant: 'success' | 'error' = 'success', title?: string) => {
+    setToast({ message, variant, title });
+    setTimeout(() => setToast(null), 5000);
   };
 
   const fetchAdmins = async () => {
@@ -180,17 +191,21 @@ export default function AdminUsersManagementPage() {
     fetchAdmins();
   }, []);
 
-
   const handleCreateAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isViewer) {
+      showToast('Viewer accounts do not have permission to add administrators.', 'error', 'Permission Denied');
+      return;
+    }
+
     if (!formData.email || !formData.firstName || !formData.lastName) {
-      showMessage('Validation', 'Please provide first name, last name and email.');
+      showToast('Please provide first name, last name, and email.', 'error', 'Validation Error');
       return;
     }
 
     setCreateLoading(true);
     try {
-    const payload: any = {
+      const payload: any = {
         name: `${formData.firstName} ${formData.lastName}`.trim(),
         email: formData.email,
         first_name: formData.firstName,
@@ -227,12 +242,12 @@ export default function AdminUsersManagementPage() {
       setFormData({ firstName: '', lastName: '', email: '', phone: '', address: '', role: 'Admin', password: '' });
 
       if (body?.temp_password) {
-        showMessage('Created', `Created user successfully.\nTemporary Password: ${body.temp_password}`);
+        showToast(`User created. Temp password: ${body.temp_password}`, 'success', 'Admin Account Created');
       } else {
-        showMessage('Created', body?.message || 'Admin/manager created successfully.');
+        showToast(body?.message || 'Admin user created successfully.', 'success', 'Account Created');
       }
     } catch (err: any) {
-      showMessage('Error creating admin', err.message);
+      showToast(err.message || 'Failed to create user', 'error', 'Creation Error');
     } finally {
       setCreateLoading(false);
     }
@@ -240,13 +255,14 @@ export default function AdminUsersManagementPage() {
 
   const handleOpenStatusModal = (user: AdminUserRecord) => {
     setSelectedUserRow(user);
-    setEditRoleValue(user.role.toLowerCase() === 'manager' ? 'manager' : 'admin');
-    setEditPassword('');
+    const normalizedRole = user.role.toLowerCase();
+    setEditRoleValue(normalizedRole === 'superadmin' ? 'SuperAdmin' : normalizedRole === 'viewer' ? 'Viewer' : 'Admin');
     setIsRoleModalOpen(true);
   };
 
   const handleUpdateRole = async () => {
     if (!selectedUserRow) return;
+    setUpdateRoleLoading(true);
     try {
       const userId = selectedUserRow.userId;
       const payload: any = {
@@ -267,9 +283,11 @@ export default function AdminUsersManagementPage() {
 
       setAdminUsers(prev => prev.map(u => u.id === selectedUserRow.id ? { ...u, role: editRoleValue } : u));
       setIsRoleModalOpen(false);
-      showMessage('Success', 'Profile updated successfully.');
+      showToast('Admin role updated successfully.', 'success', 'Role Updated');
     } catch (err: any) {
-      showMessage('Error updating profile', err.message);
+      showToast(err.message || 'Failed to update role', 'error', 'Update Error');
+    } finally {
+      setUpdateRoleLoading(false);
     }
   };
 
@@ -281,8 +299,7 @@ export default function AdminUsersManagementPage() {
   const performDeleteConfirmed = async () => {
     if (!pendingDeleteItem) return;
     const userId = pendingDeleteItem.userId;
-    setIsConfirmDeleteOpen(false);
-    setPendingDeleteItem(null);
+    setDeleteLoading(true);
 
     try {
       const res = await fetch(`/api/admin/users/${userId}/delete`, {
@@ -296,9 +313,13 @@ export default function AdminUsersManagementPage() {
       }
 
       setAdminUsers(prev => prev.filter(u => u.id !== pendingDeleteItem.id));
-      showMessage('Deleted', 'User deleted successfully.');
+      setIsConfirmDeleteOpen(false);
+      setPendingDeleteItem(null);
+      showToast('Administrator user deleted successfully.', 'success', 'Account Removed');
     } catch (err: any) {
-      showMessage('Error deleting user', err.message);
+      showToast(err.message || 'Failed to delete user', 'error', 'Deletion Error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -306,11 +327,19 @@ export default function AdminUsersManagementPage() {
     return adminUsers.filter(u => {
       const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            u.role.toLowerCase().includes(searchTerm.toLowerCase());
+                            u.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            String(u.userId).includes(searchTerm);
       const matchesRole = roleFilter === 'All' || u.role.toLowerCase() === roleFilter.toLowerCase();
       return matchesSearch && matchesRole;
     });
   }, [adminUsers, searchTerm, roleFilter]);
+
+  const getInitials = (name: string) => {
+    if (!name || name === '-') return 'AU';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <>
@@ -318,402 +347,547 @@ export default function AdminUsersManagementPage() {
         <title>Admin System Management | Admin Portal</title>
       </Head>
 
-      <div className="p-6 md:p-8">
-        {/* HEADER BAR */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold mb-2">
-              <ShieldCheck size={13} /> Administrative Access & Configuration
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-white">
-              {activeTab === 'users' ? 'Admin Users Directory' : activeTab === 'groups' ? 'Real Group Configuration' : 'Demo Group Configuration'}
-            </h1>
-            <p className="text-slate-400 text-sm mt-1">Manage system administrators, permissions, MT5 groups and primary environment defaults.</p>
-          </div>
-          {activeTab === 'users' && !isViewerOnly(adminRole) && (
-            <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition-all shadow-md self-start md:self-auto"
-            >
-              <UserPlus size={16} /> Add Administrator
-            </button>
-          )}
-        </div>
+      <div className="w-full text-slate-100 font-sans antialiased">
+        {/* Ambient decorative glow rings */}
+        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* TAB TOGGLE BAR — SuperAdmin only */}
-        {isSuperAdminRole(adminRole) && (
-          <div className="flex flex-wrap items-center justify-start gap-2 p-2 rounded-2xl md:rounded-[2rem] w-full md:w-fit border mb-8 bg-slate-900/90 border-slate-800">
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`flex items-center justify-center gap-3 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                activeTab === 'users' 
-                  ? "bg-yellow-500 text-slate-950 shadow-xl shadow-yellow-500/20" 
-                  : "text-white/40 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <UserIcon size={14} />
-              <span>Admin List</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('groups')}
-              className={`flex items-center justify-center gap-3 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                activeTab === 'groups' 
-                  ? "bg-yellow-500 text-slate-950 shadow-xl shadow-yellow-500/20" 
-                  : "text-white/40 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <LayoutGrid size={14} />
-              <span>Groups</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('groups-demo')}
-              className={`flex items-center justify-center gap-3 px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                activeTab === 'groups-demo' 
-                  ? "bg-yellow-500 text-slate-950 shadow-xl shadow-yellow-500/20" 
-                  : "text-white/40 hover:text-white hover:bg-white/10"
-              }`}
-            >
-              <LayoutGrid size={14} />
-              <span>Demo Groups</span>
-            </button>
-          </div>
-        )}
-
-        {/* VIEW CONTAINER 1: USERS LIST */}
-        {activeTab === 'users' && (
-          <>
-            {error && (
-              <div className="flex items-center gap-4 rounded-3xl border border-red-500/20 bg-red-500/10 p-6 text-red-500 mb-6">
-                <AlertCircle className="shrink-0" />
-                <p className="text-sm font-bold">{error}</p>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 relative z-10 space-y-5">
+          
+          {/* HEADER BAR */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
+                <ShieldCheck className="w-6 h-6" />
               </div>
-            )}
-
-            {/* SUMMARY STAT CARDS */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-xs font-medium">Total Administrators</div>
-                  <div className="text-3xl font-black text-white mt-1">{adminUsers.length} Accounts</div>
+              <div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[10px] font-black uppercase tracking-wider mb-1">
+                  <Sparkles className="w-3 h-3 text-[#d4af37]" /> Governance & Credentials
                 </div>
-                <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                  <ShieldCheck size={24} />
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-xs font-medium">SuperAdmins</div>
-                  <div className="text-3xl font-black text-amber-400 mt-1">
-                    {adminUsers.filter(u => u.role.toLowerCase() === 'superadmin').length} Active
-                  </div>
-                </div>
-                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  <Shield size={24} />
-                </div>
-              </div>
-
-              <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-5 shadow-xl flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-xs font-medium">Admins / Viewers</div>
-                  <div className="text-3xl font-black text-emerald-400 mt-1">
-                    {adminUsers.filter(u => ['admin','viewer'].includes(u.role.toLowerCase())).length} Active
-                  </div>
-                </div>
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  <Lock size={24} />
-                </div>
+                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
+                  {activeTab === 'users' ? 'Admin Directory' : 'MT5 Trade Group Config'}
+                </h1>
+                <p className="text-xs text-slate-400">
+                  Manage administrative accounts, role permissions, and trading group configurations.
+                </p>
               </div>
             </div>
 
-            {/* LIST TABLE CONTAINER */}
-            <div className="bg-slate-900/70 border border-slate-800 rounded-3xl p-6 shadow-xl">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-3 bg-slate-800/60 px-4 py-2.5 rounded-2xl w-full sm:w-96 border border-slate-700/50">
-                  <Search size={16} className="text-slate-400 shrink-0" />
-                  <input 
-                    type="text" 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="Filter administrators..." 
-                    className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-500" 
-                  />
-                </div>
-
-                <select
-                  value={roleFilter}
-                  onChange={(e) => setRoleFilter(e.target.value)}
-                  className="rounded-2xl border border-slate-700 bg-slate-800 py-2.5 px-4 text-xs font-semibold text-slate-300 outline-none transition focus:border-blue-500"
+            <div className="flex items-center gap-3">
+              {activeTab === 'users' && canCreateAdmin && (
+                <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-gold-glow active:scale-95 shrink-0"
                 >
-                  <option value="All">All Roles</option>
-                  <option value="SuperAdmin">SuperAdmin</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Viewer">Viewer</option>
-                </select>
+                  <UserPlus size={15} /> Add Administrator
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* TAB TOGGLE BAR — SuperAdmin & Admin */}
+          {isSuperAdminRole(adminRole) && (
+            <div className="flex items-center gap-1.5 p-1 rounded-xl border bg-slate-900/90 border-white/10 w-fit backdrop-blur-md">
+              <button
+                onClick={() => setActiveTab('users')}
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                  activeTab === 'users' 
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold" 
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                }`}
+              >
+                <UserIcon size={14} className={activeTab === 'users' ? "text-[#d4af37]" : ""} />
+                <span>Admin Users</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('groups')}
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                  activeTab === 'groups' 
+                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold" 
+                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                }`}
+              >
+                <LayoutGrid size={14} className={activeTab === 'groups' ? "text-[#d4af37]" : ""} />
+                <span>Group Configuration</span>
+              </button>
+            </div>
+          )}
+
+          {/* VIEW CONTAINER 1: USERS LIST */}
+          {activeTab === 'users' && (
+            <>
+              {error && (
+                <div className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-400 backdrop-blur-md">
+                  <AlertCircle className="shrink-0 w-5 h-5" />
+                  <p className="text-xs font-semibold">{error}</p>
+                </div>
+              )}
+
+              {/* SUMMARY STAT CARDS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Total Administrators</div>
+                    <div className="text-2xl font-black text-white mt-0.5">{adminUsers.length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Accounts</span></div>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                    <ShieldCheck size={20} />
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">SuperAdmins</div>
+                    <div className="text-2xl font-black text-[#d4af37] mt-0.5">
+                      {adminUsers.filter(u => u.role.toLowerCase() === 'superadmin').length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Users</span>
+                    </div>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
+                    <Shield size={20} />
+                  </div>
+                </div>
+
+                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                  <div>
+                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Admins / Viewers</div>
+                    <div className="text-2xl font-black text-emerald-400 mt-0.5">
+                      {adminUsers.filter(u => ['admin','viewer'].includes(u.role.toLowerCase())).length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Active</span>
+                    </div>
+                  </div>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                    <Lock size={20} />
+                  </div>
+                </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="text-slate-400 border-b border-slate-800">
-                      <th className="pb-3 font-semibold">User ID</th>
-                      <th className="pb-3 font-semibold">Name & Email</th>
-                      <th className="pb-3 font-semibold">Role</th>
-                      <th className="pb-3 font-semibold">Elevated Date</th>
-                      {isAdminOrAbove(adminRole) && <th className="pb-3 text-right font-semibold">Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {loading ? (
-                      <tr>
-                        <td colSpan={5} className="p-20 text-center">
-                          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-slate-700 border-t-blue-500" />
-                          <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Loading directory...</p>
-                        </td>
-                      </tr>
-                    ) : filteredAdmins.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="p-20 text-center text-slate-400">
-                          <Shield className="mx-auto mb-4 text-slate-600 h-12 w-12" />
-                          <p className="mb-1 text-base font-bold text-white">No administrators found</p>
-                          <p className="text-xs text-slate-500">Refine search criteria or register a new user.</p>
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredAdmins.map((user) => {
-                        const { date, time } = formatDateTime(user.elevated);
-                        return (
-                          <tr key={user.id} className="hover:bg-slate-800/40 transition-colors">
-                            <td className="py-4 font-mono text-blue-400 font-bold">{user.userId}</td>
-                            <td className="py-4">
-                              <div className="font-bold text-slate-100">{user.name}</div>
-                              <div className="text-[11px] text-slate-400">{user.email}</div>
-                            </td>
-                            <td className="py-4">
-                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest ${
-                                user.role.toLowerCase() === 'superadmin'
-                                  ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20'
-                                  : user.role.toLowerCase() === 'admin'
-                                  ? 'text-blue-400 bg-blue-500/10 border border-blue-500/20'
-                                  : 'text-slate-400 bg-slate-500/10 border border-slate-500/20'
-                              }`}>
-                                {user.role}
-                              </span>
-                            </td>
-                            <td className="py-4">
-                              <div className="font-medium text-slate-200">{date}</div>
-                              {time && <div className="text-[10px] text-slate-500 font-mono mt-0.5">{time}</div>}
-                            </td>
-                            {isAdminOrAbove(adminRole) && (
-                              <td className="py-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button
-                                    onClick={() => handleOpenStatusModal(user)}
-                                    className="p-1.5 rounded-lg border text-xs bg-slate-850 text-yellow-500 border-yellow-500/20 hover:bg-yellow-500 hover:text-slate-950 transition-all"
-                                    title="Edit User Profile"
-                                  >
-                                    <Pencil size={14} />
-                                  </button>
+              {/* LIST TABLE CONTAINER */}
+              <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-xl">
+                {/* TOOLBAR */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-white/10">
+                  <div className="relative flex-1 max-w-md">
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input 
+                      type="text" 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Search name, email, role or ID..." 
+                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-10 pr-9 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
+                    />
+                    {searchTerm && (
+                      <button 
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
 
-                                  <button
-                                    onClick={() => handleDeleteClick(user)}
-                                    className="p-1.5 rounded-lg bg-slate-850 hover:bg-red-500/20 text-slate-450 hover:text-red-400 border border-slate-700/50 hover:border-red-500/30 transition-all"
-                                    title="Delete Administrator"
-                                  >
-                                    <Trash2 size={14} />
-                                  </button>
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-white/10 text-slate-400 text-xs font-medium">
+                      <Filter size={13} className="text-[#d4af37]" />
+                      <span>Role:</span>
+                      <select
+                        value={roleFilter}
+                        onChange={(e) => setRoleFilter(e.target.value)}
+                        className="bg-transparent text-xs font-bold text-slate-200 outline-none cursor-pointer"
+                      >
+                        <option value="All" className="bg-slate-900 text-slate-200">All Roles</option>
+                        <option value="SuperAdmin" className="bg-slate-900 text-slate-200">SuperAdmin</option>
+                        <option value="Admin" className="bg-slate-900 text-slate-200">Admin</option>
+                        <option value="Viewer" className="bg-slate-900 text-slate-200">Viewer</option>
+                      </select>
+                    </div>
+
+                    <div className="text-[11px] text-slate-500 font-mono px-2.5 py-1.5 rounded-xl bg-slate-950/40 border border-white/5">
+                      Showing {filteredAdmins.length} of {adminUsers.length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* TABLE */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-slate-400 font-black uppercase tracking-wider text-[10px] border-b border-white/10 pb-2">
+                        <th className="pb-2.5 px-2">ID</th>
+                        <th className="pb-2.5 px-2">Administrator Info</th>
+                        <th className="pb-2.5 px-2">Access Role</th>
+                        <th className="pb-2.5 px-2">Created / Elevated</th>
+                        {canCreateAdmin && <th className="pb-2.5 px-2 text-right">Actions</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {loading ? (
+                        <tr>
+                          <td colSpan={5} className="p-12 text-center">
+                            <div className="mx-auto mb-2.5 h-8 w-8 animate-spin rounded-full border-3 border-[#d4af37] border-t-transparent" />
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Loading directory...</p>
+                          </td>
+                        </tr>
+                      ) : filteredAdmins.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-12 text-center text-slate-400">
+                            <Shield className="mx-auto mb-2 text-slate-600 h-8 w-8" />
+                            <p className="mb-0.5 text-xs font-bold text-white">No administrators match your filter</p>
+                            <p className="text-[11px] text-slate-500">Try adjusting your search query or role filter.</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAdmins.map((user) => {
+                          const { date, time } = formatDateTime(user.elevated);
+                          const initials = getInitials(user.name);
+                          const roleLower = user.role.toLowerCase();
+
+                          return (
+                            <tr key={user.id} className="hover:bg-slate-800/40 transition-colors group">
+                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-[#d4af37]">
+                                {user.userId}
+                              </td>
+                              <td className="py-2.5 px-2">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[11px] shrink-0 shadow-inner group-hover:border-[#d4af37]/40 transition-colors">
+                                    {initials}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-slate-100">{user.name}</div>
+                                    <div className="text-[11px] text-slate-400 font-mono">{user.email}</div>
+                                  </div>
                                 </div>
                               </td>
-                            )}
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </>
-        )}
+                              <td className="py-2.5 px-2">
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest border ${
+                                  roleLower === 'superadmin'
+                                    ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+                                    : roleLower === 'admin'
+                                    ? 'text-blue-400 bg-blue-500/15 border-blue-500/30'
+                                    : 'text-slate-400 bg-slate-500/15 border-slate-500/30'
+                                }`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    roleLower === 'superadmin' ? 'bg-amber-400' : roleLower === 'admin' ? 'bg-blue-400' : 'bg-slate-400'
+                                  }`} />
+                                  {user.role}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-2">
+                                <div className="font-medium text-slate-200 flex items-center gap-1 text-[11px]">
+                                  <Clock className="w-3 h-3 text-slate-500" />
+                                  {date}
+                                </div>
+                                {time && <div className="text-[10px] text-slate-500 font-mono ml-4">{time}</div>}
+                              </td>
+                              {canCreateAdmin && (
+                                <td className="py-2.5 px-2 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button
+                                      onClick={() => handleOpenStatusModal(user)}
+                                      className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-white/5 hover:border-amber-500/30 transition-all"
+                                      title="Edit Access Role"
+                                    >
+                                      <Pencil size={13} />
+                                    </button>
 
-        {/* VIEW CONTAINER 2: REAL GROUP CONFIG */}
-        {activeTab === 'groups' && (
-          <GroupConfiguration />
-        )}
-
-        {/* VIEW CONTAINER 3: DEMO GROUP CONFIG */}
-        {activeTab === 'groups-demo' && (
-          <GroupConfigurationDemo />
-        )}
-      </div>
-
-      {/* CREATE MODAL */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-4">
-              <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <UserPlus size={20} className="text-blue-400" /> Add System Admin
-                </h2>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-500 mt-1">Register access credentials</p>
-              </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg">&times;</button>
-            </div>
-
-            <form onSubmit={handleCreateAdmin} className="space-y-4 text-xs">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">First Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. John"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-400 font-semibold mb-1">Last Name</label>
-                  <input 
-                    type="text" 
-                    required
-                    placeholder="e.g. Doe"
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                  />
+                                    <button
+                                      onClick={() => handleDeleteClick(user)}
+                                      className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all"
+                                      title="Delete Administrator"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            </>
+          )}
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Email Address</label>
-                <input 
-                  type="email" 
-                  required
-                  placeholder="name@moneykrishna.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                />
-              </div>
+          {/* VIEW CONTAINER 2: GROUP CONFIG */}
+          {activeTab === 'groups' && (
+            <GroupConfiguration />
+          )}
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Password</label>
-                <input 
-                  type="password" 
-                  required
-                  placeholder="Master Password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                />
-              </div>
+        </div>
 
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Phone Number</label>
-                <input 
-                  type="text" 
-                  placeholder="+1 (555) 000-0000"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">Physical Address</label>
-                <textarea 
-                  rows={2}
-                  placeholder="Street, City, ZIP"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500 resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1">System Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
-                >
-                  {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
-                  <option value="Admin">Admin</option>
-                  <option value="Viewer">Viewer</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-                <button type="submit" disabled={createLoading} className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold disabled:opacity-50">
-                  {createLoading ? 'Creating...' : 'Create Admin'}
+        {/* CREATE ADMIN MODAL */}
+        {isCreateModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
+                    <UserPlus size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-white uppercase tracking-tight">Add System Administrator</h2>
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-[#e6c687]">Register corporate credentials</p>
+                  </div>
+                </div>
+                <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                  <X size={16} />
                 </button>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {/* CONFIRM DELETE MODAL */}
-      {isConfirmDeleteOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-xs">
-            <h3 className="text-base font-bold text-white mb-2">Confirm Delete</h3>
-            <p className="text-slate-400 mb-6">Are you sure you want to delete {pendingDeleteItem?.name || pendingDeleteItem?.email || ''}? This action cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setIsConfirmDeleteOpen(false); setPendingDeleteItem(null); }} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-              <button onClick={performDeleteConfirmed} className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold">Delete</button>
+              <form onSubmit={handleCreateAdmin} className="space-y-3.5 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">First Name</label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="John"
+                        value={formData.firstName}
+                        onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Last Name</label>
+                    <div className="relative">
+                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="Doe"
+                        value={formData.lastName}
+                        onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Corporate Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                    <input 
+                      type="email" 
+                      required
+                      placeholder="name@company.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Master Password</label>
+                  <div className="relative">
+                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                    <input 
+                      type={showPasswordInModal ? "text" : "password"} 
+                      required
+                      placeholder="••••••••••••"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-9 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordInModal(prev => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                    >
+                      {showPasswordInModal ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Phone Number</label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <input 
+                        type="text" 
+                        placeholder="+1 (555) 000-0000"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 font-semibold mb-1">Access Role</label>
+                    <div className="relative">
+                      <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <select
+                        value={formData.role}
+                        onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all cursor-pointer text-xs"
+                      >
+                        {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
+                        <option value="Admin">Admin</option>
+                        <option value="Viewer">Viewer</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Physical Address</label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                    <textarea 
+                      rows={2}
+                      placeholder="Street, City, Country"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all resize-none text-xs"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                  <button 
+                    type="button" 
+                    onClick={() => setIsCreateModalOpen(false)} 
+                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={createLoading} 
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black flex items-center gap-2 shadow-lg disabled:opacity-50"
+                  >
+                    {createLoading ? (
+                      <>
+                        <RefreshCw size={13} className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      'Create Administrator'
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* MESSAGE MODAL */}
-      {isMessageOpen && (
-        <div className="fixed inset-0 z-[60] bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-xs">
-            <h3 className="text-base font-bold text-white mb-2">{messageTitle}</h3>
-            <p className="text-slate-300 whitespace-pre-line mb-6">{messageText}</p>
-            <div className="flex justify-end">
-              <button onClick={() => setIsMessageOpen(false)} className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">OK</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* EDIT ROLE MODAL */}
-      {isRoleModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl relative text-xs">
-            <h3 className="text-base font-bold text-white mb-2">Change User Role</h3>
-            <p className="text-slate-400 mb-4">Select the new administrative access role for {selectedUserRow?.name}.</p>
-            
-            <div className="space-y-3 mb-6">
-              <div>
-                <label className="block text-slate-400 font-semibold mb-1 font-mono uppercase tracking-widest text-[9px]">Role</label>
-                <select
-                  value={editRoleValue}
-                  onChange={(e) => setEditRoleValue(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white outline-none focus:border-blue-500"
+        {/* CONFIRM DELETE MODAL */}
+        {isConfirmDeleteOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-red-500/30 rounded-2xl p-5 max-w-sm w-full shadow-2xl relative text-xs animate-in zoom-in-95 duration-200">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-3 mx-auto">
+                <Trash2 size={20} />
+              </div>
+              <h3 className="text-sm font-bold text-white text-center mb-1">Confirm Account Removal</h3>
+              <p className="text-slate-400 text-center mb-5 leading-relaxed">
+                Are you sure you want to delete <span className="text-slate-100 font-bold">{pendingDeleteItem?.name || pendingDeleteItem?.email || ''}</span>? This administrative access revocation cannot be undone.
+              </p>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => { setIsConfirmDeleteOpen(false); setPendingDeleteItem(null); }} 
+                  className="w-full py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
                 >
-                  {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
-                  <option value="Admin">Admin</option>
-                  <option value="Viewer">Viewer</option>
-                </select>
+                  Cancel
+                </button>
+                <button 
+                  onClick={performDeleteConfirmed} 
+                  disabled={deleteLoading}
+                  className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  {deleteLoading ? <RefreshCw size={13} className="animate-spin" /> : 'Delete User'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT ROLE MODAL */}
+        {isRoleModalOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 max-w-sm w-full shadow-2xl relative text-xs animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/10">
+                <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
+                  <Pencil size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Modify User Role</h3>
+                  <p className="text-[10px] text-slate-400">{selectedUserRow?.name}</p>
+                </div>
+              </div>
+              
+              <div className="space-y-3 mb-5">
+                <div>
+                  <label className="block text-slate-300 font-semibold mb-1">Access Role Permission</label>
+                  <select
+                    value={editRoleValue}
+                    onChange={(e) => setEditRoleValue(e.target.value)}
+                    className="w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all cursor-pointer text-xs"
+                  >
+                    {isSuperAdminRole(adminRole) && <option value="SuperAdmin">SuperAdmin</option>}
+                    <option value="Admin">Admin</option>
+                    <option value="Viewer">Viewer</option>
+                  </select>
+                </div>
               </div>
 
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button onClick={() => { setIsRoleModalOpen(false); setSelectedUserRow(null); }} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300">Cancel</button>
-              <button onClick={handleUpdateRole} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold">Update Role</button>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => { setIsRoleModalOpen(false); setSelectedUserRow(null); }} 
+                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleUpdateRole} 
+                  disabled={updateRoleLoading}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black shadow-md hover:shadow-gold-glow transition-all flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {updateRoleLoading ? <RefreshCw size={13} className="animate-spin" /> : 'Update Role'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* TOAST CONTAINER */}
+        {toast && (
+          <div className="fixed top-20 right-8 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
+            <div className={`w-auto max-w-sm px-5 py-4 rounded-2xl flex items-start gap-3 border shadow-2xl backdrop-blur-xl ${
+              toast.variant === 'error' 
+                ? 'bg-red-950/90 border-red-500/60 text-red-100 shadow-red-500/20' 
+                : 'bg-emerald-950/90 border-emerald-500/60 text-emerald-100 shadow-emerald-500/20'
+            }`}>
+              {toast.variant === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                {toast.title && (
+                  <div className="text-xs font-black uppercase tracking-wider mb-0.5">
+                    {toast.title}
+                  </div>
+                )}
+                <div className="text-xs font-medium text-slate-200 whitespace-pre-line">{toast.message}</div>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setToast(null)} 
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+        )}
+
+      </div>
     </>
   );
 }
