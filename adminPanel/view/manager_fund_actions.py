@@ -78,10 +78,8 @@ async def manager_history_api(request, account_id: str):
             {"status": "error", "message": f"Trading account {account_id} not found"}, status=404
         )
 
-    # Build Q filter for account_number OR user_id if user is associated
+    # Filter strictly by account_number matching the requested account_id
     q_filter = Q(account_number=str(account_id))
-    if trading_acc.user:
-        q_filter = q_filter | Q(user_id=trading_acc.user.id)
 
     transactions = await ClientTransaction.filter(q_filter).order_by("-created_at").limit(50)
 
@@ -89,6 +87,7 @@ async def manager_history_api(request, account_id: str):
         {
             "id": f"TX-{tx.id}",
             "raw_id": tx.id,
+            "account_number": tx.account_number or str(account_id),
             "type": tx.transaction_type.capitalize(),
             "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",

@@ -87,6 +87,7 @@ async def investor_history_api(request, account_id: str):
         {
             "id": f"TX-{tx.id}",
             "raw_id": tx.id,
+            "account_number": tx.account_number or str(account_id),
             "type": tx.transaction_type.capitalize(),
             "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",
