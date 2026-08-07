@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientTransaction, ClientUser
+from adminPanel.view.admin_identity import normalize_approved_by
+from adminPanel.view.admin_identity import normalize_transaction_source
 from backendPanel.permissions import IsAdmin, permission_required
 
 
@@ -30,12 +32,31 @@ async def _resolve_client_user(user_id: str) -> ClientUser | None:
     return None
 
 
-def _serialize_transaction(transaction: ClientTransaction) -> dict:
+def _serialize_transaction(transaction: ClientTransaction, user: ClientUser | None = None) -> dict:
+    approval_date = transaction.approval_date or transaction.created_at
+    account_value = (
+        transaction.account_number
+        or transaction.account_id_from
+        or transaction.account_id_to
+        or "N/A"
+    )
+    source_value = normalize_transaction_source(transaction.source)
+    if not source_value:
+        role = str(transaction.role or "").strip()
+        action = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+        action = action.replace("-", " ").replace("_", " ").title() or "Transaction"
+        source_value = " ".join(part for part in [role, action] if part).strip() or "Transaction"
     return {
         "id": transaction.id,
         "type": transaction.transaction_type,
         "amount": transaction.amount,
-        "method": transaction.payment_method,
+        "method": transaction.payment_method or "Manual Adjustment",
+        "account": account_value,
+        "role": transaction.role or (user.role if user else None),
+        "approved_by": normalize_approved_by(transaction.approved_by),
+        "approval_date": approval_date.strftime("%Y-%m-%d") if approval_date else None,
+        "description": transaction.description or transaction.transaction_type.capitalize(),
+        "source": source_value,
         "status": transaction.status,
         "date": transaction.created_at.strftime("%Y-%m-%d") if transaction.created_at else None,
     }
@@ -115,7 +136,7 @@ async def list_client_transactions(request, user_id: str):
             "tab": tab or "all",
             "summary": summary,
             "transactions": [
-                _serialize_transaction(transaction) for transaction in filtered_transactions
+                _serialize_transaction(transaction, user) for transaction in filtered_transactions
             ],
         }
     )

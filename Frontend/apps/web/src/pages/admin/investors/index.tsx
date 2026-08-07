@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { 
   Landmark, 
@@ -16,9 +16,32 @@ import {
   TrendingUp,
   SlidersHorizontal,
   Sparkles,
-  UserCheck
+  UserCheck,
+  RefreshCw,
+  X
 } from 'lucide-react';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
+
+/* ─── Cookie & Role Helpers ────────────────────────────── */
+function getAdminRole(): string {
+  try {
+    const nameEQ = 'role=';
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
+        } catch {
+          return cookie.substring(nameEQ.length).trim();
+        }
+      }
+    }
+  } catch {}
+  return '';
+}
+
+const isViewerOnly = (role: string) => role.toLowerCase() === 'viewer';
 
 export interface InvestorData {
   id: string;
@@ -32,10 +55,18 @@ export interface InvestorData {
   status?: 'Active' | 'Pending' | 'Inactive';
 }
 
+function getInitials(name: string) {
+  if (!name || name === '-') return 'INV';
+  const parts = name.trim().split(' ');
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.substring(0, 2).toUpperCase();
+}
+
 export default function AdminInvestorsPage() {
+  const [adminRole, setAdminRole] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'All' | 'Active' | 'Assigned' | 'Unassigned'>('All');
-  const [expandedRowId, setExpandedRowId] = useState<string | null>('INV-301');
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Modal State
@@ -47,10 +78,16 @@ export default function AdminInvestorsPage() {
   const [investors, setInvestors] = useState<InvestorData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    setAdminRole(getAdminRole());
+  }, []);
+
+  const isViewer = useMemo(() => isViewerOnly(adminRole) || adminRole.toLowerCase() === 'viewer', [adminRole]);
+
   const fetchInvestors = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/admin/investors');
+      const res = await fetch('/api/admin/investors', { credentials: 'include' });
       const data = await res.json();
       if (data && data.investors && Array.isArray(data.investors)) {
         const mapped = data.investors.map((i: any) => ({
@@ -75,7 +112,7 @@ export default function AdminInvestorsPage() {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     fetchInvestors();
   }, []);
 
@@ -85,6 +122,7 @@ export default function AdminInvestorsPage() {
   };
 
   const toggleRow = (id: string) => {
+    if (isViewer) return; // Viewers do not use the expanded dropdown
     setExpandedRowId(prev => prev === id ? null : id);
   };
 
@@ -102,7 +140,7 @@ export default function AdminInvestorsPage() {
   };
 
   const handleConfirmAction = async (actionType: string, amount: string, note: string) => {
-    if (!targetUser) return;
+    if (!targetUser || isViewer) return;
     setIsLoading(true);
     setIsModalOpen(false);
 
@@ -119,6 +157,7 @@ export default function AdminInvestorsPage() {
       const response = await fetch(targetEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           accountId: targetUser.accountId,
           amount: parseFloat(amount),
@@ -171,320 +210,318 @@ export default function AdminInvestorsPage() {
         <title>Investors Directory | Admin Portal</title>
       </Head>
 
-      {/* 80% DARK BLUE CANVAS BACKGROUND */}
-      <div className="p-4 sm:p-6 lg:p-8 space-y-6 mx-auto min-h-screen text-slate-100">
+      <div className="w-full text-slate-100 font-sans antialiased">
+        {/* Ambient decorative glow rings */}
+        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* SUMMARY KPI CARDS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
           
-          {/* Card 1 */}
-          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-extrabold uppercase tracking-wider">Total Investors</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
-                <Users size={20} />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="text-3xl font-black text-white">{investors.length}</div>
-              <div className="text-[11px] text-[#f5c84b] mt-1 flex items-center gap-1 font-bold">
-                <span>100% Active accounts</span>
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-          </div>
-
-          {/* Card 2 */}
-          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Capital Invested</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
-                <DollarSign size={20} />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="text-2xl font-black text-white">
-                ${totalCapitalNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div className="text-[11px] text-blue-300 mt-1 flex items-center gap-1">
-                <TrendingUp size={12} className="text-emerald-400" />
-                <span>Pooled investor equity balance</span>
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-          </div>
-
-          {/* Card 3 */}
-          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Assigned to MAM</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
-                <UserCheck size={20} />
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="text-2xl font-black text-white">{assignedCount}</div>
-              <div className="text-[11px] text-slate-400 mt-1">
-                Allocated to active strategy managers
-              </div>
-            </div>
-            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-          </div>
-
-          {/* Card 4 */}
-          <div className="bg-[#0b183f]/80 text-white border border-blue-800/40 backdrop-blur-sm rounded-2xl p-5 shadow-2xl relative overflow-hidden group hover:border-blue-500/50 hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Allocation Status</span>
-              <div className="w-10 h-10 rounded-xl bg-blue-900/60 border border-blue-700/50 flex items-center justify-center text-[#f5c84b] shadow-inner group-hover:bg-[#C9A227] group-hover:text-slate-900 group-hover:border-[#C9A227] transition-all duration-300">
-                <Landmark size={20} />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center gap-2">
-              <span className="px-2.5 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold">
-                {assignedCount} Assigned
-              </span>
-              <span className="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                {unassignedCount} Standby
-              </span>
-            </div>
-            <div className="absolute bottom-0 left-0 h-1.5 w-full bg-gradient-to-r from-[#C9A227] via-yellow-400 to-[#f5c84b] opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-          </div>
-
-        </div>
-
-        {/* MODERN SUCCESS TOAST */}
-        {toastMessage && (
-          <div className="fixed top-6 right-6 z-50 animate-in slide-in-from-right-5 fade-in duration-300">
-            <div className="relative flex items-center gap-4 overflow-hidden rounded-2xl border border-emerald-500/30 bg-slate-900/95 px-5 py-4 shadow-[0_20px_50px_rgba(0,0,0,0.45)] backdrop-blur-xl min-w-[340px]">
-              <div className="absolute left-0 top-0 h-full w-1 bg-emerald-400" />
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-500/15">
-                <CheckCircle2 className="h-6 w-6 text-emerald-400" />
+          {/* HEADER BANNER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
+                <Landmark className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">Success</p>
-                <p className="mt-1 text-xs text-slate-300">{toastMessage}</p>
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
+                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> Investors Management Engine
+                </div>
+                <h1 className="text-lg font-black tracking-tight text-white uppercase">
+                  Investors Directory
+                </h1>
+                <p className="text-[11px] text-slate-400">
+                  Manage investor trading accounts, capital allocations, strategy assignments, and transaction logs.
+                </p>
               </div>
             </div>
-          </div>
-        )}
 
-        {/* MAIN DATA TABLE CONTAINER */}
-        <div className="bg-[#0b183f]/80 border border-blue-800/40 rounded-3xl p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-          
-          {/* SEARCH & FILTER TABS */}
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => fetchInvestors()}
+                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
+              >
+                <RefreshCw size={13} className={isLoading ? "animate-spin text-[#d4af37]" : ""} />
+                <span>Sync Directory</span>
+              </button>
+            </div>
+          </div>
+
+          {/* SUMMARY KPI CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             
-            {/* Search Bar with Crisp Accent Inputs */}
-            <div className="flex items-center gap-3 bg-blue-950/40 px-4 py-2.5 rounded-2xl w-full lg:w-96 border border-blue-800/60 focus-within:border-[#f5c84b] transition-all shadow-inner">
-              <Search size={16} className="text-[#f5c84b] shrink-0" />
-              <input 
-                type="text" 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by User ID, Name, Email, Manager, or Account..." 
-                className="bg-transparent border-none text-xs text-white outline-none w-full placeholder-slate-400 font-medium" 
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm('')} className="text-slate-400 hover:text-white text-xs">
-                  Clear
-                </button>
-              )}
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Investors</div>
+                <div className="text-xl font-black text-white mt-0.5">{investors.length} <span className="text-[9px] text-slate-500 font-semibold uppercase">Accounts</span></div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                <Users size={16} />
+              </div>
             </div>
 
-            {/* Filter Tabs */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0">
-              <span className="text-xs text-slate-300 font-bold flex items-center gap-1 mr-1 shrink-0">
-                <SlidersHorizontal size={13} className="text-[#f5c84b]" /> Filter:
-              </span>
-              {(['All', 'Assigned', 'Unassigned'] as const).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border shrink-0 ${
-                    statusFilter === st
-                      ? 'bg-[#C9A227] text-slate-950 border-[#C9A227] shadow-lg shadow-[#a3851d]/20'
-                      : 'bg-blue-900/40 text-slate-300 border-blue-800/40 hover:bg-[#C9A227]/20 hover:text-[#f5c84b] hover:border-[#C9A227]/40'
-                  }`}
-                >
-                  {st === 'All' ? 'All Investors' : st}
-                </button>
-              ))}
-              
-              <div className="h-4 w-[1px] bg-blue-900/80 mx-1 hidden sm:block" />
-              
-              <span className="text-xs text-slate-300 font-medium shrink-0">
-                Showing <strong className="text-white">{filteredInvestors.length}</strong> of <strong className="text-slate-300">{investors.length}</strong>
-              </span>
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Capital</div>
+                <div className="text-xl font-black text-[#d4af37] mt-0.5">
+                  ${totalCapitalNum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
+                <DollarSign size={16} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Assigned to MAM</div>
+                <div className="text-xl font-black text-emerald-400 mt-0.5">{assignedCount} <span className="text-[9px] text-slate-500 font-semibold uppercase">Allocated</span></div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <UserCheck size={16} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Unassigned Standby</div>
+                <div className="text-xl font-black text-amber-400 mt-0.5">{unassignedCount} <span className="text-[9px] text-slate-500 font-semibold uppercase">Standby</span></div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <Landmark size={16} />
+              </div>
             </div>
 
           </div>
 
-          {/* TABLE */}
-          <div className="overflow-x-auto rounded-2xl border border-blue-800/40">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-blue-900/40 font-semibold text-white">
-                <tr className="border-b border-blue-800/40 uppercase tracking-widest text-[10px]">
-                  <th className="py-3.5 px-4 font-bold text-white">Investor ID</th>
-                  <th className="py-3.5 px-4 font-bold text-white">Investor Details</th>
-                  <th className="py-3.5 px-4 font-bold text-white">Assigned Manager (ID)</th>
-                  <th className="py-3.5 px-4 font-bold text-white">Account ID</th>
-                  <th className="py-3.5 px-4 font-bold text-white">Invested (Balance)</th>
-                  <th className="py-3.5 px-4 font-bold text-white">Profit Gain</th>
-                  <th className="py-3.5 px-4 pr-6 text-right font-bold text-white">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-blue-800/40 bg-transparent">
-                {filteredInvestors.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400 font-medium">
-                      No investor profiles found matching your criteria.
-                    </td>
+          {/* TOAST NOTIFICATION */}
+          {toastMessage && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={15} className="text-emerald-400" /> {toastMessage}
+              </span>
+              <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white">&times;</button>
+            </div>
+          )}
+
+          {/* MAIN TABLE CONTAINER */}
+          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl">
+            
+            {/* TOOLBAR SEARCH & FILTERS */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
+              <div className="relative flex-1 max-w-md">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search user ID, name, email, manager, or account..." 
+                  className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
+                />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto">
+                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1 shrink-0">Filter:</span>
+                {(['All', 'Assigned', 'Unassigned'] as const).map((st) => (
+                  <button
+                    key={st}
+                    onClick={() => setStatusFilter(st)}
+                    className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                      statusFilter === st
+                        ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-md font-bold'
+                        : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                    }`}
+                  >
+                    {st === 'All' ? 'All Investors' : st}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* TABLE */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[9px] border-b border-white/10 pb-2">
+                    <th className="pb-2 px-2.5">Investor ID</th>
+                    <th className="pb-2 px-2.5">Investor Details</th>
+                    <th className="pb-2 px-2.5">Assigned Manager</th>
+                    <th className="pb-2 px-2.5">Account ID</th>
+                    <th className="pb-2 px-2.5">Invested Equity</th>
+                    <th className="pb-2 px-2.5">Profit Gain</th>
+                    <th className="pb-2 px-2.5 text-right">Actions</th>
                   </tr>
-                ) : (
-                  filteredInvestors.map((inv) => {
-                    const isExpanded = expandedRowId === inv.id;
-                    const initials = inv.name.split(' ').map(n => n[0]).join('').substring(0, 2);
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center">
+                        <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent" />
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading investors directory...</p>
+                      </td>
+                    </tr>
+                  ) : filteredInvestors.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-8 text-center text-slate-400 text-xs">
+                        No investor profiles match current criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredInvestors.map((inv) => {
+                      const isExpanded = expandedRowId === inv.id;
+                      const initials = getInitials(inv.name);
 
-                    return (
-                      <React.Fragment key={inv.id}>
-                        <tr 
-                          onClick={() => toggleRow(inv.id)}
-                          className={`cursor-pointer transition-colors group ${
-                            isExpanded 
-                              ? 'bg-blue-900/40' 
-                              : 'hover:bg-blue-900/20'
-                          }`}
-                        >
-                          {/* ID */}
-                          <td className="py-4 px-4 font-mono text-blue-300 font-bold">
-                            {inv.id}
-                          </td>
+                      return (
+                        <React.Fragment key={inv.id}>
+                          <tr 
+                            onClick={() => !isViewer && toggleRow(inv.id)}
+                            className={`transition-colors group ${
+                              !isViewer ? 'cursor-pointer' : ''
+                            } ${isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/40'}`}
+                          >
+                            <td className="py-2.5 px-2.5 font-mono text-xs font-bold text-[#d4af37]">
+                              {inv.id}
+                            </td>
 
-                          {/* NAME & EMAIL */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-[#C9A227] text-slate-950 font-black text-xs flex items-center justify-center shadow-md shrink-0">
-                                {initials}
-                              </div>
-                              <div>
-                                <div className="font-bold text-white text-xs sm:text-sm group-hover:text-[#f5c84b] transition-colors">{inv.name}</div>
-                                <div className="text-blue-200/60 text-[11px] font-medium">{inv.email}</div>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* MANAGER DETAILS */}
-                          <td className="py-4 px-4">
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-200 text-xs">{inv.managerName}</span>
-                              <span className="font-mono text-[11px] text-[#f5c84b] font-medium">{inv.managerUserId}</span>
-                            </div>
-                          </td>
-
-                          {/* ACCOUNT ID */}
-                          <td className="py-4 px-4 font-mono">
-                            <span className="px-3 py-1.5 rounded-lg bg-blue-900/40 text-sm font-black text-white border border-blue-800/40">
-                              {inv.accountId}
-                            </span>
-                          </td>
-
-                          {/* BALANCE */}
-                          <td className="py-4 px-4 font-black text-white text-sm">
-                            {inv.invested}
-                          </td>
-
-                          {/* PROFIT */}
-                          <td className="py-4 px-4 font-bold text-blue-300">
-                            <span className="inline-flex items-center gap-1">
-                              <TrendingUp size={13} className="text-blue-400" />
-                              {inv.profit}
-                            </span>
-                          </td>
-
-                          {/* ACTION EXPAND BUTTON */}
-                          <td className="py-4 px-4 pr-6 text-right">
-                            <button 
-                              onClick={(e) => { e.stopPropagation(); toggleRow(inv.id); }}
-                              className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-extrabold text-xs transition-all border ${
-                                isExpanded 
-                                  ? 'bg-[#C9A227] text-slate-950 border-[#C9A227] shadow-lg shadow-[#a3851d]/20' 
-                                  : 'bg-blue-900/40 hover:bg-[#C9A227]/20 hover:text-[#f5c84b] text-slate-300 border-blue-800/40'
-                              }`}
-                            >
-                              <span>{isExpanded ? 'Hide Menu' : 'Manage'}</span>
-                              {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            </button>
-                          </td>
-                        </tr>
-
-                        {/* EXPANDED ACTION PANEL */}
-                        {isExpanded && (
-                          <tr className="bg-blue-900/20 border-b border-blue-800/40">
-                            <td colSpan={7} className="p-4 sm:p-5">
-                              <div className="bg-[#0b183f]/90 rounded-2xl border border-blue-800/40 p-4 sm:p-5 shadow-2xl space-y-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-blue-800/40 pb-3">
-                                  <div className="text-xs font-extrabold uppercase tracking-wider text-white flex items-center gap-2">
-                                    <Sparkles size={14} className="text-[#f5c84b]" />
-                                    <span>Financial & Account Controls — <strong className="text-[#f5c84b]">{inv.name}</strong></span>
-                                  </div>
-                                  <span className="text-[11px] text-slate-300 font-mono">
-                                    Investor Ref: <strong className="text-white">{inv.id}</strong> | Acc: <strong className="text-blue-300">{inv.accountId}</strong>
-                                  </span>
+                            <td className="py-2.5 px-2.5">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[9px] shrink-0 group-hover:border-[#d4af37]/40 transition-colors">
+                                  {initials}
                                 </div>
-
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
-                                  <button 
-                                    onClick={() => openFinancialModal(inv, 'deposit')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
-                                  >
-                                    <ArrowDownCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
-                                    <span>Deposit</span>
-                                  </button>
-
-                                  <button 
-                                    onClick={() => openFinancialModal(inv, 'withdraw')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
-                                  >
-                                    <ArrowUpCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
-                                    <span>Withdraw</span>
-                                  </button>
-
-                                  <button 
-                                    onClick={() => openFinancialModal(inv, 'credit-in')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
-                                  >
-                                    <PlusCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
-                                    <span>Credit-In</span>
-                                  </button>
-
-                                  <button 
-                                    onClick={() => openFinancialModal(inv, 'credit-out')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
-                                  >
-                                    <MinusCircle size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
-                                    <span>Credit-Out</span>
-                                  </button>
-
-                                  <button 
-                                    onClick={() => openFinancialModal(inv, 'history')} 
-                                    className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-900/40 hover:bg-[#C9A227]/10 hover:text-[#f5c84b] hover:border-[#C9A227]/40 text-slate-300 border border-blue-800/40 text-xs font-bold transition-all group shadow-md"
-                                  >
-                                    <History size={18} className="text-[#f5c84b] opacity-80 mb-1 group-hover:scale-110 group-hover:opacity-100 transition-all" /> 
-                                    <span>History Logs</span>
-                                  </button>
+                                <div>
+                                  <div className="font-bold text-slate-100 text-xs">{inv.name}</div>
+                                  <div className="text-[10px] text-slate-400 font-mono">{inv.email}</div>
                                 </div>
                               </div>
                             </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
 
+                            <td className="py-2.5 px-2.5">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-slate-200 text-xs">{inv.managerName}</span>
+                                <span className="font-mono text-[10px] text-slate-400">{inv.managerUserId}</span>
+                              </div>
+                            </td>
+
+                            <td className="py-2.5 px-2.5 font-mono">
+                              <span className="px-2 py-0.5 rounded bg-slate-950/80 text-[#d4af37] border border-white/10 text-xs font-bold inline-block">
+                                {inv.accountId}
+                              </span>
+                            </td>
+
+                            <td className="py-2.5 px-2.5 font-black text-white text-xs">
+                              {inv.invested}
+                            </td>
+
+                            <td className="py-2.5 px-2.5 font-bold text-emerald-400 text-xs">
+                              <span className="inline-flex items-center gap-1">
+                                <TrendingUp size={12} className="text-emerald-400" />
+                                {inv.profit}
+                              </span>
+                            </td>
+
+                            {/* ACTIONS COLUMN:
+                                For Viewer: Show ONLY the direct History Log button (NOT inside dropdown)
+                                For Non-Viewer: Show Manage dropdown button */}
+                            <td className="py-2.5 px-2.5 text-right">
+                              {isViewer ? (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); openFinancialModal(inv, 'history'); }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 transition-all"
+                                >
+                                  <History size={13} className="text-[#d4af37]" />
+                                  <span>History Log</span>
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); toggleRow(inv.id); }}
+                                  className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-all border ${
+                                    isExpanded 
+                                      ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border-transparent font-black shadow-md' 
+                                      : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-white/10 hover:border-[#d4af37]/40'
+                                  }`}
+                                >
+                                  <span>{isExpanded ? 'Hide Menu' : 'Manage'}</span>
+                                  {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+
+                          {/* EXPANDED ACTION PANEL (NON-VIEWER ONLY) */}
+                          {isExpanded && !isViewer && (
+                            <tr className="bg-slate-950/60 border-b border-white/10">
+                              <td colSpan={7} className="p-3 sm:p-4">
+                                <div className="bg-slate-900 border border-white/10 rounded-xl p-3.5 shadow-2xl space-y-3">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
+                                    <div className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                                      <Sparkles size={14} className="text-[#d4af37]" />
+                                      <span>Financial Controls — <strong className="text-[#d4af37]">{inv.name}</strong></span>
+                                    </div>
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      Account Ref: <strong className="text-[#d4af37]">{inv.accountId}</strong>
+                                    </span>
+                                  </div>
+
+                                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                                    <button 
+                                      onClick={() => openFinancialModal(inv, 'deposit')} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                    >
+                                      <ArrowDownCircle size={16} className="text-emerald-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>Deposit</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => openFinancialModal(inv, 'withdraw')} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                    >
+                                      <ArrowUpCircle size={16} className="text-amber-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>Withdraw</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => openFinancialModal(inv, 'credit-in')} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                    >
+                                      <PlusCircle size={16} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>Credit-In</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => openFinancialModal(inv, 'credit-out')} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                    >
+                                      <MinusCircle size={16} className="text-red-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>Credit-Out</span>
+                                    </button>
+
+                                    <button 
+                                      onClick={() => openFinancialModal(inv, 'history')} 
+                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                    >
+                                      <History size={16} className="text-[#d4af37] mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <span>History Logs</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+          </div>
         </div>
       </div>
 
@@ -498,4 +535,3 @@ export default function AdminInvestorsPage() {
     </>
   );
 }
-

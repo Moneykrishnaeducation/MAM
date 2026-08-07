@@ -914,13 +914,14 @@ def create_client_login_token(user_id: int, email: str) -> str:
     )
 
 
-def create_admin_login_token(user_id: int, email: str, role: str) -> str:
+def create_admin_login_token(user_id: int, email: str, role: str, name: str | None = None) -> str:
     """Create a short-lived signed token for an admin session."""
     return _create_signed_login_token(
         key=ADMIN_LOGIN_KEY,
         payload={
             "user_id": user_id,
             "email": email,
+            "name": name,
             "role": role,
             "ts": int(time.time()),
         },

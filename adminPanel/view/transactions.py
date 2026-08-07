@@ -7,6 +7,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from adminPanel.models import ClientTransaction
+from adminPanel.view.admin_identity import normalize_approved_by
+from adminPanel.view.admin_identity import normalize_transaction_source
 from backendPanel.permissions import IsAdmin, permission_required
 
 
@@ -88,7 +90,25 @@ def _format_destination(transaction: ClientTransaction) -> str:
     return description or "Internal Transfer"
 
 
+def _format_source(transaction: ClientTransaction) -> str:
+    source_value = normalize_transaction_source(transaction.source)
+    if source_value:
+        return source_value
+
+    role = str(transaction.role or "").strip()
+    action = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+    action = action.replace("-", " ").replace("_", " ").title() or "Transaction"
+    return " ".join(part for part in [role, action] if part).strip() or "Transaction"
+
+
 def _serialize_transaction(transaction: ClientTransaction) -> dict:
+    approval_date = transaction.approval_date or transaction.created_at
+    account_value = (
+        transaction.account_number
+        or transaction.account_id_from
+        or transaction.account_id_to
+        or "N/A"
+    )
     return {
         "id": f"TXN-{transaction.id}",
         "raw_id": transaction.id,
@@ -97,7 +117,13 @@ def _serialize_transaction(transaction: ClientTransaction) -> dict:
         "email": transaction.email or (transaction.user.email if transaction.user else ""),
         "amount": _format_amount(transaction),
         "raw_amount": float(transaction.amount or 0.0),
-        "method": transaction.payment_method or "Admin Manual Adjustment",
+        "method": transaction.payment_method or "Manual Adjustment",
+        "account": account_value,
+        "role": transaction.role or (transaction.user.role if transaction.user else None),
+        "approved_by": normalize_approved_by(transaction.approved_by),
+        "approval_date": approval_date.strftime("%Y-%m-%d") if approval_date else None,
+        "description": transaction.description or transaction.transaction_type.capitalize(),
+        "source": _format_source(transaction),
         "status": transaction.status or "Pending",
         "date": transaction.created_at.strftime("%Y-%m-%d") if transaction.created_at else None,
         "timestamp": transaction.created_at.isoformat() if transaction.created_at else None,
@@ -106,7 +132,6 @@ def _serialize_transaction(transaction: ClientTransaction) -> dict:
         "account_number": transaction.account_number,
         "account_id_from": transaction.account_id_from,
         "account_id_to": transaction.account_id_to,
-        "description": transaction.description,
     }
 
 
@@ -136,7 +161,11 @@ def _transaction_matches_search(transaction: ClientTransaction, search: str) -> 
             str(transaction.account_number or ""),
             str(transaction.account_id_from or ""),
             str(transaction.account_id_to or ""),
+            str(transaction.role or ""),
+            str(transaction.approved_by or ""),
+            str(transaction.approval_date or ""),
             str(transaction.description or ""),
+            str(transaction.source or ""),
             str(transaction.email or ""),
             str(transaction.user.name if transaction.user else ""),
             str(transaction.user.email if transaction.user else ""),

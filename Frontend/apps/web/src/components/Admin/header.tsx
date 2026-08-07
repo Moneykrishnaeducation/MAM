@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, LogOut, Menu } from "lucide-react";
+import { Bell, LogOut, Menu, Shield, User } from "lucide-react";
 
 type AdminNotificationItem = {
   id: string | number;
@@ -11,6 +11,24 @@ type AdminNotificationItem = {
   time: string;
   read: boolean;
 };
+
+function getAdminRole(): string {
+  try {
+    const nameEQ = "role=";
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.indexOf(nameEQ) === 0) {
+        try {
+          return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
+        } catch {
+          return cookie.substring(nameEQ.length).trim();
+        }
+      }
+    }
+  } catch {}
+  return "";
+}
 
 const formatRelativeTime = (timestampStr: string) => {
   if (!timestampStr) return "Recently";
@@ -38,22 +56,25 @@ const formatRelativeTime = (timestampStr: string) => {
 };
 
 export default function AdminHeader() {
+  const [userRole, setUserRole] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window === "undefined") {
       return true;
     }
-
     return window.innerWidth >= 768;
   });
   const [notifications, setNotifications] = useState<AdminNotificationItem[]>([]);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    setUserRole(getAdminRole());
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) {
       return;
     }
-
     setIsSidebarOpen(false);
   }, []);
 
@@ -188,18 +209,27 @@ export default function AdminHeader() {
 
   const unreadCount = notifications.filter((notification) => !notification.read).length;
 
-  const headerBackground = "linear-gradient(90deg, #0b1f67 0%, #102a7d 48%, #18308d 100%)";
+  const roleLabel = userRole ? userRole.toUpperCase() : "ADMIN";
+  const isViewer = userRole.toLowerCase() === "viewer";
+  const isSuperAdmin = userRole.toLowerCase() === "superadmin";
+
+  const roleBadgeStyle = isViewer
+    ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
+    : isSuperAdmin
+    ? "bg-[#d4af37]/25 text-[#f5d77f] border-[#d4af37]/50 shadow-md"
+    : "bg-blue-500/20 text-blue-200 border-blue-400/40";
+
   const iconButtonClass =
-    "relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 shadow-sm transition-colors hover:bg-white/10 hover:text-white";
-  const dropdownBackground = "linear-gradient(180deg, #081530 0%, #0d2456 45%, #173d8d 100%)";
-  const softTextClass = "text-slate-300/70";
+    "relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-sm transition-all hover:bg-white/20 hover:border-[#d4af37]/50";
 
   return (
-    <header
-      className="sticky top-0 z-30 w-full border-b border-white/10 shadow-[0_10px_26px_rgba(5,12,36,0.2)]"
-      style={{ background: headerBackground }}
+    <header 
+      className="sticky top-0 z-30 w-full border-b border-white/15 shadow-[0_4px_20px_rgba(0,0,0,0.25)] backdrop-blur-xl"
+      style={{
+        background: "linear-gradient(90deg, #0d214d 0%, #122f6d 50%, #183c8a 100%)",
+      }}
     >
-      <div className="flex h-16 items-center justify-between px-4 md:px-6">
+      <div className="flex h-14 items-center justify-between px-4 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
           {!isSidebarOpen && (
             <button
@@ -208,12 +238,19 @@ export default function AdminHeader() {
               className={iconButtonClass}
               aria-label="Toggle Sidebar"
             >
-              <Menu size={20} />
+              <Menu size={18} />
             </button>
           )}
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Role Pill Badge */}
+          <div className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black tracking-widest ${roleBadgeStyle}`}>
+            <Shield size={12} className={isSuperAdmin ? "text-[#d4af37]" : isViewer ? "text-amber-400" : "text-blue-300"} />
+            <span>{roleLabel}</span>
+          </div>
+
+          {/* Notifications Dropdown */}
           <div className="relative" ref={notificationsRef}>
             <button
               type="button"
@@ -222,49 +259,51 @@ export default function AdminHeader() {
               aria-label="Notifications"
               title="Notifications"
             >
-              <Bell size={18} />
+              <Bell size={17} />
               {unreadCount > 0 && (
-                <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-blue-400 ring-2 ring-[#0b1f67]" />
+                <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-[#d4af37] ring-2 ring-[#0d214d] animate-pulse" />
               )}
             </button>
 
             {notificationsOpen && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setNotificationsOpen(false)} />
-                <div
-                  className="absolute right-0 z-50 mt-3 w-80 overflow-hidden rounded-2xl border border-white/10 shadow-[0_24px_60px_rgba(4,15,54,0.36)] animate-in fade-in zoom-in-95 duration-150"
-                  style={{ background: dropdownBackground }}
+                <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-xs" onClick={() => setNotificationsOpen(false)} />
+                <div 
+                  className="absolute right-0 z-50 mt-2.5 w-80 overflow-hidden rounded-2xl border border-white/15 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+                  style={{
+                    background: "linear-gradient(180deg, #0e2350 0%, #13306e 100%)",
+                  }}
                 >
-                  <div className="flex items-center justify-between border-b border-white/10 p-4">
-                    <h3 className="text-sm font-semibold text-white">Notifications</h3>
+                  <div className="flex items-center justify-between border-b border-white/10 p-3.5">
+                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">Notifications</h3>
                     <button
                       type="button"
                       onClick={markAllAsRead}
-                      className="cursor-pointer text-xs font-medium text-[#f5c84b] hover:underline"
+                      className="cursor-pointer text-[11px] font-bold text-[#d4af37] hover:underline"
                     >
                       Mark all read
                     </button>
                   </div>
-                  <div className="max-h-72 space-y-3 overflow-y-auto p-3">
+                  <div className="max-h-72 space-y-2 overflow-y-auto p-3">
                     {notifications.length === 0 ? (
-                      <div className={`py-6 text-center text-xs ${softTextClass}`}>No notifications</div>
+                      <div className="py-6 text-center text-xs text-blue-200/70 font-medium">No unread notifications</div>
                     ) : (
                       notifications.map((notification) => (
                         <button
                           key={notification.id}
                           type="button"
                           onClick={() => !notification.read && void markAsRead(notification.id)}
-                          className="w-full rounded-xl border border-[#C9A227]/20 bg-[#C9A227]/5 p-3 text-left transition-colors hover:bg-[#C9A227]/10"
+                          className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-left transition-colors hover:bg-white/10 hover:border-[#d4af37]/40"
                         >
-                          <div className="mb-1 flex items-center justify-between gap-2">
+                          <div className="mb-0.5 flex items-center justify-between gap-2">
                             <span className="text-xs font-bold leading-tight text-white">
                               {notification.title}
                             </span>
-                            <span className={`text-[10px] whitespace-nowrap ${softTextClass}`}>
+                            <span className="text-[9px] font-mono text-blue-200/70 whitespace-nowrap">
                               {notification.time}
                             </span>
                           </div>
-                          <p className="text-[11px] leading-relaxed text-slate-300">
+                          <p className="text-[11px] leading-relaxed text-blue-100/80">
                             {notification.message}
                           </p>
                         </button>
@@ -276,18 +315,17 @@ export default function AdminHeader() {
             )}
           </div>
 
+          {/* Admin Profile Link */}
           <Link
             href="/admin/profile"
-            className="flex h-9 w-9 overflow-hidden rounded-full border border-white/10 bg-white/5 shadow-sm"
+            className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-sm hover:border-[#d4af37]/60 hover:bg-white/20 transition-all"
             aria-label="Admin profile"
+            title="Profile Settings"
           >
-            <img
-              src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80"
-              alt="Admin Profile"
-              className="h-full w-full object-cover"
-            />
+            <User size={18} className="text-[#d4af37]" />
           </Link>
 
+          {/* Logout Button */}
           <button
             type="button"
             onClick={() => void handleLogout()}
@@ -295,7 +333,7 @@ export default function AdminHeader() {
             title="Logout"
             aria-label="Logout"
           >
-            <LogOut size={18} />
+            <LogOut size={17} />
           </button>
         </div>
       </div>

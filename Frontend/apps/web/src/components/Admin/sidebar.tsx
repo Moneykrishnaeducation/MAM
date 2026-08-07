@@ -32,6 +32,7 @@ export default function AdminSidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     const handleSidebarStateChange = (event: Event) => {
@@ -59,8 +60,6 @@ export default function AdminSidebar() {
       document.body.style.overflow = "";
     };
   }, [showLogoutConfirm]);
-
-  const [userRole, setUserRole] = useState("");
 
   useEffect(() => {
     if (typeof document !== "undefined") {
@@ -99,12 +98,7 @@ export default function AdminSidebar() {
     if (href === "/admin/dashboard") {
       return currentPath === "/admin" || currentPath === href || currentPath.startsWith(`${href}/`);
     }
-
     return currentPath === href || currentPath.startsWith(`${href}/`);
-  };
-
-  const requestLogout = () => {
-    setShowLogoutConfirm(true);
   };
 
   const closeLogoutConfirm = () => {
@@ -147,43 +141,43 @@ export default function AdminSidebar() {
       {isOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-black/45 backdrop-blur-[1px] animate-in fade-in duration-200 md:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200 md:hidden"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-white/10 shadow-[12px_0_40px_rgba(4,10,25,0.25)] transition-all duration-300 md:sticky
-          ${
-            isOpen
-              ? "w-[18rem] translate-x-0 opacity-100"
-              : "w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0 md:border-none"
-          }
-        `}
+        className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-white/15 shadow-2xl transition-all duration-300 md:sticky ${
+          isOpen
+            ? "w-[17.5rem] translate-x-0 opacity-100"
+            : "w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0 md:border-none"
+        }`}
         style={{
-          background:
-            "radial-gradient(circle at 18% 0%, rgba(255,255,255,0.08), transparent 34%), linear-gradient(180deg, #07122a 0%, #0c2457 45%, #173f8e 100%)",
+          background: "linear-gradient(180deg, #0b1e46 0%, #102a64 45%, #16377e 100%)",
         }}
       >
-        <div className="flex h-full min-h-0 flex-col px-3 py-4">
-          <div className="mb-8 mt-2 flex items-center justify-between gap-3 px-2">
-                    <img
-                      src="/Vt.png"
-                      alt="VTIndex Logo"
-                      className="w-32 transition-transform drop-shadow-[0_0_15px_rgba(201,162,39,0.4)] hover:scale-[1.05]"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setSidebarOpen(false)}
-                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 text-slate-200/70 transition-colors hover:bg-white/10 hover:text-white"
-                      title="Close menu"
-                      aria-label="Close menu"
-                    >
-                        <X size={18} />
-                      </button>
-                    </div>
+        <div className="flex h-full min-h-0 flex-col px-3.5 py-4">
+          
+          {/* LOGO & CLOSE BUTTON */}
+          <div className="mb-6 mt-1 flex items-center justify-between gap-3 px-2">
+            <img
+              src="/Vt.png"
+              alt="VTIndex Logo"
+              className="w-32 transition-transform drop-shadow-[0_0_15px_rgba(212,175,55,0.5)] hover:scale-105"
+            />
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(false)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 text-slate-200 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+              title="Close menu"
+              aria-label="Close menu"
+            >
+              <X size={16} />
+            </button>
+          </div>
 
+          {/* NAVIGATION LINKS */}
           <div className="flex-1 min-h-0 overflow-y-auto pr-1 [-ms-overflow-style:'none'] [scrollbar-width:'none'] [&::-webkit-scrollbar]:hidden">
-            <nav className="space-y-2">
+            <nav className="space-y-1.5">
               {navItems.map((item) => {
                 const isActive = isNavItemActive(item.href);
                 const Icon = item.icon;
@@ -194,99 +188,95 @@ export default function AdminSidebar() {
                     href={item.href as any}
                     prefetch={true}
                     onClick={handleNavClick}
-                    className={`group relative flex w-full items-center gap-3.5 overflow-hidden rounded-[22px] px-4 py-3.5 text-[0.8rem] font-extrabold uppercase  transition-all duration-300 ${
+                    className={`group relative flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-xs font-black uppercase tracking-wider transition-all duration-200 ${
                       isActive
-                        ? "border border-[#556cc3]/65 bg-[linear-gradient(180deg,#324b9d_0%,#253a7c_100%)] text-[#f5c84b] shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_32px_rgba(0,0,0,0.28)] translate-x-1"
-                        : "border border-transparent text-slate-100/86 hover:border-white/10 hover:bg-white/10 hover:text-white"
+                        ? "bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-lg translate-x-1 font-black"
+                        : "text-blue-100/90 hover:bg-white/10 hover:text-white hover:border-white/15 border border-transparent"
                     }`}
                   >
                     {isActive && (
-                      <span className="absolute left-0 top-3 bottom-3 w-1 rounded-full bg-white" />
+                      <span className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-slate-950" />
                     )}
 
                     <Icon
-                      size={20}
-                      strokeWidth={isActive ? 2.35 : 2}
-                      className={`shrink-0 transition-colors duration-300 ${
-                        isActive ? "text-[#f5c84b]" : "text-slate-300/75 group-hover:text-white"
+                      size={17}
+                      strokeWidth={isActive ? 2.5 : 2}
+                      className={`shrink-0 transition-colors ${
+                        isActive ? "text-slate-950" : "text-blue-200/80 group-hover:text-[#d4af37]"
                       }`}
                     />
 
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
 
                     <ChevronRight
-                      size={15}
+                      size={14}
                       strokeWidth={2.5}
-                      className={`shrink-0 transition-all duration-300 ${
+                      className={`shrink-0 transition-all ${
                         isActive
-                          ? "text-[#f5c84b]/75"
-                          : "translate-x-[-4px] text-white/0 opacity-0 group-hover:translate-x-0 group-hover:text-white/70 group-hover:opacity-100"
+                          ? "text-slate-950 opacity-100"
+                          : "-translate-x-1 opacity-0 group-hover:translate-x-0 group-hover:opacity-100 text-white"
                       }`}
                     />
                   </Link>
                 );
               })}
             </nav>
-
-            {/* <div className="mt-5 border-t border-white/10 pt-4">
-              <button
-                type="button"
-                onClick={requestLogout}
-                className="group flex w-full items-center gap-3 rounded-[20px] border border-white/10 bg-black/10 px-4 py-3.5 text-left text-[12px] font-extrabold uppercase tracking-[0.22em] text-slate-100/85 transition-all duration-300 hover:-translate-x-1 hover:bg-white/10 hover:text-white"
-              >
-                <LogOut size={19} className="shrink-0 text-slate-300/75 transition-colors group-hover:text-white" />
-                <span className="min-w-0 flex-1 truncate">Logout</span>
-                <ChevronRight
-                  size={15}
-                  strokeWidth={2.5}
-                  className="shrink-0 text-white/35 transition-colors group-hover:text-white/70"
-                />
-              </button>
-            </div> */}
           </div>
+
+          {/* SIDEBAR FOOTER LOGOUT BUTTON */}
+          <div className="mt-4 border-t border-white/15 pt-3 px-1">
+            <button
+              type="button"
+              onClick={() => setShowLogoutConfirm(true)}
+              className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs font-black uppercase tracking-wider text-blue-100 hover:border-red-500/50 hover:bg-red-500/20 hover:text-white transition-all shadow-sm"
+            >
+              <div className="flex items-center gap-2.5">
+                <LogOut size={16} className="text-blue-200/75 group-hover:text-white shrink-0" />
+                <span>Logout</span>
+              </div>
+              <ChevronRight size={14} className="text-blue-200/50" />
+            </button>
+          </div>
+
         </div>
       </aside>
 
+      {/* LOGOUT CONFIRMATION MODAL */}
       {showLogoutConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-md">
-          <div className="w-[min(92vw,28rem)] animate-in fade-in zoom-in-95 rounded-3xl border border-slate-200 bg-white shadow-[0_30px_80px_rgba(15,23,42,0.25)] duration-200">
-            <div className="p-5 sm:p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <div className="text-sm font-extrabold text-slate-900">Logout confirmation</div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    Are you sure you want to logout from the admin panel?
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={closeLogoutConfirm}
-                  disabled={logoutLoading}
-                  className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Close logout confirmation"
-                >
-                  <X size={16} />
-                </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 animate-in fade-in duration-200">
+          <div 
+            className="w-full max-w-sm rounded-2xl border border-white/15 p-5 shadow-2xl relative"
+            style={{
+              background: "linear-gradient(180deg, #0e2350 0%, #13306e 100%)",
+            }}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-300 shrink-0">
+                <LogOut size={20} />
               </div>
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-tight">Logout Confirmation</h3>
+                <p className="text-[11px] text-blue-200/80">Are you sure you want to exit the admin portal session?</p>
+              </div>
+            </div>
 
-              <div className="mt-5 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={closeLogoutConfirm}
-                  disabled={logoutLoading}
-                  className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleLogout()}
-                  disabled={logoutLoading}
-                  className="rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-sm font-extrabold text-white shadow-lg shadow-blue-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {logoutLoading ? "Logging out..." : "OK"}
-                </button>
-              </div>
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/10">
+              <button
+                type="button"
+                onClick={closeLogoutConfirm}
+                disabled={logoutLoading}
+                className="px-4 py-2 rounded-xl bg-white/10 text-white text-xs font-semibold hover:bg-white/20 transition-colors border border-white/10"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={logoutLoading}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-colors shadow-md"
+              >
+                {logoutLoading ? "Logging out..." : "Confirm Logout"}
+              </button>
             </div>
           </div>
         </div>

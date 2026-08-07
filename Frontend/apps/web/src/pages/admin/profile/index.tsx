@@ -25,6 +25,14 @@ const TABS: Array<{ key: TabKey; label: string; icon: React.ElementType }> = [
   { key: 'privileges', label: 'Privileges', icon: Cpu },
 ];
 
+function SkeletonBlock({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-2xl bg-slate-800/80 ${className}`} />;
+}
+
+function SkeletonText({ className = '' }: { className?: string }) {
+  return <div className={`animate-pulse rounded-full bg-slate-800/80 ${className}`} />;
+}
+
 export default function AdminProfilePage() {
   const [activeTab, setActiveTab] = useState<TabKey>('personal');
   const [showToast, setShowToast] = useState(false);
@@ -200,14 +208,14 @@ export default function AdminProfilePage() {
         <meta name="description" content="View and manage admin control credentials and platform privileges" />
       </Head>
 
-      <div className="relative min-h-full overflow-hidden bg-slate-950 text-white">
+      <div className="relative overflow-hidden bg-slate-950 text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.14),transparent_28%),radial-gradient(circle_at_top_right,rgba(14,165,233,0.12),transparent_24%),linear-gradient(to_bottom,rgba(2,6,23,0.94),rgba(2,6,23,1))]" />
         <div className="absolute -top-32 left-[-4rem] h-72 w-72 rounded-full bg-blue-500/10 blur-3xl" />
         <div className="absolute top-24 right-[-5rem] h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
 
-        <div className="relative mx-auto flex h-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto p-6 md:p-8">
+        <div className="relative mx-auto flex min-h-full max-w-7xl flex-1 flex-col gap-8 overflow-y-auto p-6 md:p-8">
           {showToast && (
-            <div className="fixed bottom-6 top-6 z-50 flex items-center gap-2 rounded-2xl border border-blue-400/40 bg-slate-950/95 px-5 py-3 font-bold text-white shadow-lg shadow-blue-500/20 backdrop-blur">
+            <div className="fixed right-6 top-6 z-50 flex items-center gap-2 rounded-2xl border border-amber-400/40 bg-slate-950/95 px-5 py-3 font-bold text-white shadow-lg shadow-amber-500/20 backdrop-blur">
               <Check size={18} />
               <span>{toastMessage}</span>
             </div>
@@ -215,27 +223,92 @@ export default function AdminProfilePage() {
 
           <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
                 <Sparkles size={13} className="animate-pulse" />
                 Core Controls
-              </div>
-              <div className="space-y-2">
-                <h1 className="text-4xl font-black tracking-tight text-white md:text-5xl">Admin Profile</h1>
-                <p className="max-w-2xl text-sm leading-6 text-slate-400">
-                  Manage administrative identity, credentials, system privileges, and audit activity from one control surface.
-                </p>
               </div>
             </div>
           </div>
 
           {loading && (
-            <div className="flex items-center gap-3 rounded-3xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-200">
-              <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-blue-400" />
-              Syncing profile data from the server...
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+              <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-6">
+                <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                  <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl" />
+                  <div className="relative flex flex-col items-center text-center">
+                    <SkeletonBlock className="mb-5 h-32 w-32 rounded-[1.5rem]" />
+                    <SkeletonBlock className="h-8 w-52 rounded-full" />
+                    <SkeletonBlock className="mt-3 h-6 w-32 rounded-full" />
+
+                    <div className="mt-6 w-full space-y-3">
+                      {Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70">
+                          <div className="grid grid-cols-[120px_1fr] gap-3 p-3">
+                            <SkeletonBlock className="h-4 w-24 rounded-full" />
+                            <SkeletonText className="h-4 w-36 rounded-full" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* <div className="mt-6 w-full rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left">
+                      <SkeletonBlock className="h-4 w-28 rounded-full" />
+                      <SkeletonText className="mt-3 h-3 w-full rounded-full" />
+                      <SkeletonText className="mt-2 h-3 w-5/6 rounded-full" />
+                    </div> */}
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-8">
+                <div className="rounded-[2rem] border border-slate-800 bg-slate-900/80 p-4 shadow-2xl shadow-black/30 backdrop-blur-xl">
+                  <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                      <SkeletonBlock key={index} className="h-10 w-36 rounded-2xl" />
+                    ))}
+                  </div>
+
+                  <div className="pt-5">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+                      <div className="space-y-5 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <SkeletonBlock className="h-4 w-36 rounded-full" />
+                        <SkeletonBlock className="h-7 w-52 rounded-full" />
+                        <SkeletonText className="h-3 w-72 rounded-full" />
+
+                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                          {Array.from({ length: 4 }).map((_, index) => (
+                            <div key={index} className="space-y-2">
+                              <SkeletonBlock className="h-3 w-28 rounded-full" />
+                              <SkeletonBlock className="h-12 w-full rounded-2xl" />
+                            </div>
+                          ))}
+                        </div>
+
+                        <SkeletonBlock className="h-11 w-44 rounded-2xl" />
+                      </div>
+
+                      <div className="space-y-4 rounded-3xl border border-slate-800 bg-slate-950/70 p-5">
+                        <SkeletonBlock className="h-4 w-32 rounded-full" />
+                        <SkeletonBlock className="h-7 w-48 rounded-full" />
+                        <SkeletonText className="h-3 w-72 rounded-full" />
+                        <div className="grid gap-3">
+                          {Array.from({ length: 3 }).map((_, index) => (
+                            <div key={index} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+                              <SkeletonBlock className="h-3 w-20 rounded-full" />
+                              <SkeletonBlock className="mt-2 h-4 w-32 rounded-full" />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+          {!loading && (
+            <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
             <div className="space-y-6 lg:col-span-4 lg:sticky lg:top-6">
               <div className="relative overflow-hidden rounded-[2rem] border border-slate-800 bg-slate-900/80 p-6 shadow-2xl shadow-black/30 backdrop-blur-xl">
                 <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-blue-500/10 blur-2xl" />
@@ -249,7 +322,7 @@ export default function AdminProfilePage() {
                     <button
                       type="button"
                       onClick={openAvatarPicker}
-                      className="absolute bottom-2 right-2 rounded-xl border border-slate-900 bg-blue-500 p-2 text-white shadow-lg shadow-blue-500/30 transition-colors hover:bg-blue-400"
+                      className="absolute bottom-2 right-2 rounded-xl border border-slate-900 bg-amber-500 p-2 text-white shadow-lg shadow-amber-500/30 transition-colors hover:bg-amber-400"
                       title="Change Avatar"
                     >
                       <Upload size={14} />
@@ -264,7 +337,7 @@ export default function AdminProfilePage() {
                   </div>
 
                   <h3 className="text-2xl font-bold text-white">{adminName || 'Admin Control'}</h3>
-                  <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-blue-500/20 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-300">
+                  <p className="mt-2 inline-flex items-center gap-1 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
                     <Shield size={11} />
                     {adminRole || 'Administrator'}
                   </p>
@@ -296,7 +369,7 @@ export default function AdminProfilePage() {
                           </td>
                           <td className="px-3 py-3">
                             <div className="flex items-center gap-2 text-slate-100">
-                              <Calendar size={15} className="text-blue-400" />
+                              <Calendar size={15} className="text-amber-400" />
                               {adminLastLogin || "Not available"}
                             </div>
                           </td>
@@ -336,7 +409,7 @@ export default function AdminProfilePage() {
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2 text-xs font-semibold transition-all ${active
-                          ? 'border-blue-500/30 bg-blue-500/15 text-blue-300 shadow-lg shadow-blue-500/10'
+                          ? 'border-amber-500/30 bg-amber-500/15 text-amber-300 shadow-lg shadow-amber-500/10'
                           : 'border-slate-800 bg-slate-950/60 text-slate-400 hover:border-slate-700 hover:text-slate-200'
                           }`}
                       >
@@ -359,7 +432,7 @@ export default function AdminProfilePage() {
                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                           <div>
                             <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400"> Name</label>
-                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-amber-500/50">
                               <User size={15} className="text-slate-400" />
                               <input
                                 type="text"
@@ -413,7 +486,7 @@ export default function AdminProfilePage() {
                         <button
                           type="submit"
                           disabled={saving}
-                          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {saving ? 'Saving...' : 'Update Personal Info'}
                         </button>
@@ -510,7 +583,7 @@ export default function AdminProfilePage() {
                         <div className="space-y-4">
                           <div>
                             <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Current Superuser Password</label>
-                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-amber-500/50">
                               <Lock size={15} className="text-slate-400" />
                               <input
                                 type={showPassword ? 'text' : 'password'}
@@ -522,7 +595,7 @@ export default function AdminProfilePage() {
                               <button
                                 type="button"
                                 onClick={() => setShowPassword((prev) => !prev)}
-                                className="text-slate-400 transition hover:text-blue-400"
+                                className="text-slate-400 transition hover:text-amber-400"
                                 aria-label={showPassword ? 'Hide password' : 'Show password'}
                               >
                                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -532,7 +605,7 @@ export default function AdminProfilePage() {
 
                           <div>
                             <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">New Root Password</label>
-                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-amber-500/50">
                               <Key size={15} className="text-slate-400" />
                               <input
                                 type={showPassword1 ? 'text' : 'password'}
@@ -544,7 +617,7 @@ export default function AdminProfilePage() {
                               <button
                                 type="button"
                                 onClick={() => setShowPassword1((prev) => !prev)}
-                                className="text-slate-400 transition hover:text-blue-400"
+                                className="text-slate-400 transition hover:text-amber-400"
                                 aria-label={showPassword1 ? 'Hide password' : 'Show password'}
                               >
                                 {showPassword1 ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -554,7 +627,7 @@ export default function AdminProfilePage() {
 
                           <div>
                             <label className="mb-2 block text-[11px] font-bold uppercase tracking-wider text-slate-400">Verify Root Password</label>
-                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-blue-500/50">
+                            <div className="flex items-center gap-2 rounded-2xl border border-slate-700/60 bg-slate-800/50 px-4 py-3 focus-within:border-amber-500/50">
                               <Key size={15} className="text-slate-400" />
                               <input
                                 type={showPassword2 ? 'text' : 'password'}
@@ -566,7 +639,7 @@ export default function AdminProfilePage() {
                               <button
                                 type="button"
                                 onClick={() => setShowPassword2((prev) => !prev)}
-                                className="text-slate-400 transition hover:text-blue-400"
+                                className="text-slate-400 transition hover:text-amber-400"
                                 aria-label={showPassword2 ? 'Hide password' : 'Show password'}
                               >
                                 {showPassword2 ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -578,7 +651,7 @@ export default function AdminProfilePage() {
                         <button
                           type="submit"
                           disabled={saving}
-                          className="inline-flex items-center justify-center rounded-2xl bg-blue-600 px-6 py-3 text-xs font-bold text-white shadow-lg shadow-blue-500/20 transition-colors hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                        className="inline-flex items-center justify-center rounded-2xl bg-amber-500 px-6 py-3 text-xs font-bold text-slate-950 shadow-lg shadow-amber-500/20 transition-colors hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {saving ? 'Saving...' : 'Apply Root Auth Upgrades'}
                         </button>
@@ -655,15 +728,14 @@ export default function AdminProfilePage() {
                         </div>
                       </div>
                     </div>
-                  )}
+                )}
 
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+          </div>)}
+      </div>
       </div>
     </>
   );
 }
-

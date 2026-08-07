@@ -16,6 +16,7 @@ from django.views.decorators.http import require_http_methods
 from tortoise.expressions import Q
 
 from adminPanel.models import ClientUser, PendingRequest
+from adminPanel.view.admin_identity import resolve_admin_display_name
 from adminPanel.view.mail import _frontend_base_url
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
@@ -93,13 +94,6 @@ def _mask_sensitive_value(value: str | None, keep_last: int = 4) -> str:
 def _pending_payload(request: PendingRequest) -> dict:
     payload = request.payload if isinstance(request.payload, dict) else {}
     return payload if isinstance(payload, dict) else {}
-
-
-def _admin_user_label(request) -> str:
-    user = getattr(request, "user", None)
-    if user is None or not getattr(user, "is_authenticated", False):
-        return "Admin"
-    return str(getattr(user, "name", None) or getattr(user, "email", None) or "Admin")
 
 
 def _build_approval_email_details(
@@ -689,7 +683,12 @@ async def decide_pending_request(request, request_id: str):
             if tx_id:
                 tx = await ClientTransaction.filter(id=tx_id).first()
                 if tx:
+                    approved_by = await resolve_admin_display_name(request)
                     tx.status = "Approved"
+                    tx.approved_by = approved_by
+                    tx.approval_date = pending_request.reviewed_at or timezone.now()
+                    request_label = str(request_type or "Transaction").replace("-", " ").replace("_", " ").title()
+                    tx.source = f"Request Approval ({request_label})"
                     await tx.save()
 
                     amount = float(tx.amount)
@@ -717,7 +716,7 @@ async def decide_pending_request(request, request_id: str):
                         try:
                             mt5 = MT5ManagerActions()
                             mt5_login = int(t_acc.account_id)
-                            comment = f"Admin Request Approval ({request_type})"
+                            comment = f"Request Approval ({request_type})"
                             if request_type in {"deposit", "deposits"}:
                                 mt5.deposit_funds(mt5_login, amount, comment)
                             else:
@@ -742,7 +741,7 @@ async def decide_pending_request(request, request_id: str):
             await pending_request.save()
 
         if resolved_user is not None:
-            approved_by = _admin_user_label(request)
+            approved_by = await resolve_admin_display_name(request)
             reviewed_at = (
                 pending_request.reviewed_at.strftime("%Y-%m-%d %H:%M:%S")
                 if pending_request.reviewed_at
@@ -791,7 +790,7 @@ async def decide_pending_request(request, request_id: str):
                     await tx.save()
 
         if resolved_user is not None:
-            reviewed_by = _admin_user_label(request)
+            reviewed_by = await resolve_admin_display_name(request)
             reviewed_at = (
                 pending_request.reviewed_at.strftime("%Y-%m-%d %H:%M:%S")
                 if pending_request.reviewed_at
