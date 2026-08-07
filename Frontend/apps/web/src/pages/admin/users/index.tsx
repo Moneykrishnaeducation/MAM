@@ -139,6 +139,110 @@ function InfoRow({ label, value, mono = false }: { label: string; value?: string
   );
 }
 
+type ProfileFieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon: React.ElementType;
+  disabled?: boolean;
+  type?: string;
+  className?: string;
+  placeholder?: string;
+  editing: boolean;
+};
+
+function ProfileField({
+  label,
+  value,
+  onChange,
+  icon: Icon,
+  disabled = false,
+  type = 'text',
+  className = '',
+  placeholder,
+  editing,
+}: ProfileFieldProps) {
+  return (
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-[#8fb8ff] font-semibold">
+        <Icon size={11} className={(disabled || !editing) ? 'text-[#4d7fe0]' : 'text-[#8fb8ff]'} />
+        {label}
+      </label>
+      <div className="relative">
+        <span className={`pointer-events-none absolute inset-y-0 left-3 flex items-center ${(disabled || !editing) ? 'text-[#4d7fe0]' : 'text-[#8fb8ff]'}`}>
+          <Icon size={12} />
+        </span>
+        <input
+          type={type}
+          value={value}
+          placeholder={placeholder}
+          disabled={disabled || !editing}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full rounded-2xl border bg-[#0b226a]/70 py-3 pl-9 pr-3 text-[12px] font-medium outline-none transition-all ${
+            (disabled || !editing)
+              ? 'border-[#1745b3]/70 text-[#8fb8ff] cursor-not-allowed'
+              : 'border-[#2456c9] text-white placeholder:text-[#5e82d8] focus:border-[#5f8bff] focus:ring-2 focus:ring-[#5f8bff]/15'
+          }`}
+        />
+      </div>
+      {disabled && editing && (
+        <p className="text-[10px] text-slate-500">Email cannot be changed (identity field)</p>
+      )}
+    </div>
+  );
+}
+
+type ProfileSelectFieldProps = {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  icon: React.ElementType;
+  options: string[];
+  helper?: string;
+  className?: string;
+  editing: boolean;
+};
+
+function ProfileSelectField({
+  label,
+  value,
+  onChange,
+  icon: Icon,
+  options,
+  helper,
+  className = '',
+  editing,
+}: ProfileSelectFieldProps) {
+  return (
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <label className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.22em] text-[#8fb8ff] font-semibold">
+        <Icon size={11} className={!editing ? 'text-[#4d7fe0]' : 'text-[#8fb8ff]'} />
+        {label}
+      </label>
+      <div className="relative">
+        <select
+          value={value}
+          disabled={!editing}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full appearance-none rounded-2xl border bg-[#0b226a]/70 py-3 pl-3 pr-9 text-[12px] font-medium outline-none transition-all ${
+            !editing
+              ? 'border-[#1745b3]/70 text-[#8fb8ff] cursor-not-allowed'
+              : 'border-[#2456c9] text-white focus:border-[#5f8bff] focus:ring-2 focus:ring-[#5f8bff]/15'
+          }`}
+        >
+          {options.map((option) => (
+            <option key={option} value={option} className="bg-[#0b226a]">
+              {option}
+            </option>
+          ))}
+        </select>
+        <ChevronDown size={14} className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${editing ? 'text-[#8fb8ff]' : 'text-[#4d7fe0]'}`} />
+      </div>
+      {helper && <p className="text-[10px] text-slate-500">{helper}</p>}
+    </div>
+  );
+}
+
 function normalizeKycDoc(doc?: AdminKycDocument | null) {
   return {
     file_name: doc?.file_name ?? null,
@@ -852,11 +956,9 @@ function TradingModal({ user }: { user: UserData }) {
 function ProfileModal({
   user,
   onSave,
-  onClose,
 }: {
   user: UserData;
   onSave: (userId: string, data: Partial<UserData>) => void;
-  onClose: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -962,42 +1064,8 @@ function ProfileModal({
     }
   };
 
-  const Field = ({
-    label, field, icon: Icon, disabled = false, type = 'text',
-  }: {
-    label: string;
-    field: keyof typeof form;
-    icon: React.ElementType;
-    disabled?: boolean;
-    type?: string;
-  }) => (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
-        <Icon size={11} className={(disabled || !isEditing) ? 'text-[#4d7fe0]' : 'text-[#8fb8ff]'} /> {label}
-      </label>
-      <input
-        type={type}
-        value={form[field] as string}
-        disabled={disabled || !isEditing}
-        onChange={(e) => set(field, e.target.value)}
-        className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none transition-all ${
-          (disabled || !isEditing)
-            ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3]/80 cursor-not-allowed'
-            : 'bg-[#0b226a] text-white border-[#1745b3] focus:border-blue-500'
-        }`}
-      />
-      {disabled && isEditing && (
-        <p className="text-[10px] text-slate-600">Email cannot be changed (identity field)</p>
-      )}
-    </div>
-  );
-
   return (
     <div className="space-y-5 text-xs">
-      <div className="flex items-center justify-between border-b border-[#1745b3] pb-3 mb-4">
-        <SectionTitle icon={User} label="Client Profile" color="text-purple-400" />
-      </div>
-
       {/* Avatar Editor */}
       {loadingProfile && (
         <div className="rounded-xl border border-[#1745b3] bg-[#081d5f]/70 px-3 py-2 text-[11px] text-slate-400">
@@ -1049,56 +1117,94 @@ function ProfileModal({
 
       {/* Form Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Full Name" field="name" icon={User} />
-        <Field label="Email Address" field="email" icon={Mail} disabled />
-        <Field label="Phone Number" field="phone" icon={Phone} />
-        <Field label="Country" field="country" icon={Globe} />
-        <Field label="Date of Birth" field="dateOfBirth" icon={Calendar} type="date" />
-        <Field label="City" field="city" icon={MapPin} />
-        <Field label="Address" field="address" icon={MapPin} />
-        <Field label="Postal Code" field="postalCode" icon={MapPin} />
+        <ProfileField
+          label="Full Name"
+          value={form.name}
+          onChange={(value) => set('name', value)}
+          icon={User}
+          placeholder="Enter full name"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Email Address"
+          value={form.email}
+          onChange={(value) => set('email', value)}
+          icon={Mail}
+          disabled
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Phone Number"
+          value={form.phone}
+          onChange={(value) => set('phone', value)}
+          icon={Phone}
+          placeholder="+1 555 123 4567"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Country"
+          value={form.country}
+          onChange={(value) => set('country', value)}
+          icon={Globe}
+          placeholder="Country"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Date of Birth"
+          value={form.dateOfBirth}
+          onChange={(value) => set('dateOfBirth', value)}
+          icon={Calendar}
+          type="date"
+          className="sm:col-span-2"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="City"
+          value={form.city}
+          onChange={(value) => set('city', value)}
+          icon={MapPin}
+          placeholder="City"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Address"
+          value={form.address}
+          onChange={(value) => set('address', value)}
+          icon={MapPin}
+          placeholder="Street address"
+          editing={isEditing}
+        />
+        <ProfileField
+          label="Postal Code"
+          value={form.postalCode}
+          onChange={(value) => set('postalCode', value)}
+          icon={MapPin}
+          placeholder="Postal code"
+          className="sm:col-span-2"
+          editing={isEditing}
+        />
       </div>
 
       {/* Tier & KYC Status */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
-            <Shield size={11} /> Account Tier
-          </label>
-          <select
-            value={form.tier}
-            disabled={!isEditing}
-            onChange={(e) => set('tier', e.target.value)}
-            className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none ${
-              !isEditing
-                ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3] cursor-not-allowed'
-                : 'bg-[#0b226a] text-white border-[#1745b3]'
-            }`}
-          >
-            {['Standard', 'Premium', 'VIP', 'VIP Premium', 'Elite'].map((t) => (
-              <option key={t} value={t} className="bg-[#0b226a]">{t}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
-            <ShieldCheck size={11} /> KYC Status
-          </label>
-          <select
-            value={form.kycStatus}
-            disabled={!isEditing}
-            onChange={(e) => set('kycStatus', e.target.value)}
-            className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none ${
-              !isEditing
-                ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3] cursor-not-allowed'
-                : 'bg-[#0b226a] text-white border-[#1745b3]'
-            }`}
-          >
-            {['Pending', 'Verified', 'Rejected', 'Under Review'].map((s) => (
-              <option key={s} value={s} className="bg-[#0b226a]">{s}</option>
-            ))}
-          </select>
-        </div>
+        <ProfileSelectField
+          label="Account Tier"
+          value={form.tier}
+          onChange={(value) => set('tier', value)}
+          icon={Shield}
+          options={['Standard', 'Premium', 'VIP', 'VIP Premium', 'Elite']}
+          helper="Controls the visible client tier and access level."
+          editing={isEditing}
+        />
+        <ProfileSelectField
+          label="KYC Status"
+          value={form.kycStatus}
+          onChange={(value) => set('kycStatus', value)}
+          icon={ShieldCheck}
+          options={['Pending', 'Verified', 'Rejected', 'Under Review']}
+          helper="Tracks the current identity verification state."
+          editing={isEditing}
+        />
       </div>
 
       <div className="flex flex-col gap-3 rounded-[1.6rem] border border-[#1745b3] bg-[#081d5f]/90 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -1112,10 +1218,10 @@ function ProfileModal({
               : 'Use Edit Details to unlock the fields below.'}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        <div className="flex flex-nowrap items-center gap-2 sm:justify-end">
           <button
             onClick={() => setIsEditing((prev) => !prev)}
-            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all ${
+            className={`shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all ${
               isEditing
                 ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3] hover:bg-[#102c7c]'
                 : 'bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600 hover:text-white'
@@ -1127,19 +1233,12 @@ function ProfileModal({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#7c3aed_0%,#f0b91f_100%)] px-5 py-2.5 text-xs font-black text-white shadow-[0_16px_34px_rgba(124,58,237,0.24)] transition-all hover:scale-[1.01] disabled:opacity-60"
+              className="shrink-0 whitespace-nowrap inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#7c3aed_0%,#f0b91f_100%)] px-5 py-2.5 text-xs font-black text-white shadow-[0_16px_34px_rgba(124,58,237,0.24)] transition-all hover:scale-[1.01] disabled:opacity-60"
             >
               {saving ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
               Save Profile
             </button>
           )}
-          <button
-            onClick={onClose}
-            className="inline-flex items-center gap-2 rounded-2xl border border-[#2a58c9] bg-[#11358f] px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-[#1845af]"
-          >
-            <X size={13} />
-            Close
-          </button>
         </div>
       </div>
     </div>
@@ -2760,7 +2859,7 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
-      {/* ── MODAL ── */}
+      {/* ── MODAL ── */} 
       {activeModalType && (
         <div className="fixed inset-0 z-50 bg-[#040f36]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           <div className={`border border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.50)] rounded-[2rem] ${modalWidthClass} overflow-hidden my-6`}>
@@ -2813,7 +2912,7 @@ export default function AdminUsersPage() {
                   )}
 
                   {activeModalType === 'profile' && (
-                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} onClose={closeModal} />
+                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} />
                   )}
 
                   {activeModalType === 'bank_crypto' && (
