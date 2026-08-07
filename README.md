@@ -128,6 +128,27 @@ MAM/
 
 ---
 
+## Terminal Superuser Commands
+
+To bootstrap or update SuperAdmin / Admin accounts in the `admin_users` table:
+
+```bash
+# Via Django Management Command:
+uv run python manage.py create_superuser
+
+# Or via Standalone CLI Script:
+uv run python scripts/create_superuser.py
+```
+
+### Supported Flags:
+- `--name`: Full name of the admin user (e.g. `"Super Admin"`)
+- `--email`: Email address (e.g. `"admin@mam.com"`)
+- `--password`: Account password
+- `--role`: Account role (`SuperAdmin`, `Admin`, or `Viewer`)
+- `--phone`: Phone number
+
+---
+
 ## Available Commands
 
 - **Run Development Server**:

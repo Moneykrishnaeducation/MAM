@@ -36,6 +36,8 @@ MAM/
 - `uv sync --extra dev` - Install dependencies
 - `uv run python -m backendPanel.main` - Run application (uvicorn ASGI server, auto-creates database schemas and syncs modified table columns on startup via `auto_sync_db_schema()`)
 - `uv run uvicorn backendPanel.asgi:application --reload` - Run with uvicorn directly
+- `uv run python manage.py create_superuser` - Create or update a SuperAdmin / Admin user in the database (interactive or with `--email`, `--password`, `--role` flags)
+- `uv run python scripts/create_superuser.py` - Standalone script to create or update superusers
 - `uv run pytest` - Run tests
 - `uv run ruff check .` - Run linter
 - `uv run ruff format .` - Format code
