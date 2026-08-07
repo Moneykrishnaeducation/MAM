@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowUpRight, Wallet, ShieldCheck, User, ChevronRight, 
   ExternalLink, Building2, Coins, CheckCircle, AlertCircle, 
-  Sparkles, ArrowRight, Info, DollarSign, Loader2, X 
+  Sparkles, ArrowRight, Info, DollarSign, Loader2, X, Check
 } from 'lucide-react';
 
 const GOLD = "#C9A227";
@@ -88,6 +88,14 @@ export default function WithdrawalModal({
   const [activeTab, setActiveTab] = useState("bank");
   const [amount, setAmount] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showWithdrawToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const [bankDetails, setBankDetails] = useState<any>(null);
   const [cryptoDetails, setCryptoDetails] = useState<any>(null);
@@ -187,8 +195,11 @@ export default function WithdrawalModal({
       }
 
       toast.success(data?.message || "Withdrawal request submitted successfully!");
+      showWithdrawToast(data?.message || "Withdrawal request submitted successfully!");
       setAmount("");
-      onClose();
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error: any) {
       toast.error(error?.message || "Failed to submit withdrawal request");
     } finally {
@@ -210,6 +221,16 @@ export default function WithdrawalModal({
       panelClassName="md:!w-[500px] md:!max-w-[95vw]"
       bodyClassName="[&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']"
     >
+      {showToast && (
+        <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[100005] animate-in fade-in slide-in-from-top-4 duration-300 ${
+          isDarkMode
+            ? 'bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20'
+            : 'bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20'
+        }`}>
+          <Check size={18} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 <div className="space-y-2">
         
         {/* Balance Card - Royal Gold Glass */}

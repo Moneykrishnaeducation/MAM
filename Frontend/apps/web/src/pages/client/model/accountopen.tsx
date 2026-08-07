@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { Variants } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 const PALETTE = {
@@ -76,6 +76,14 @@ export default function AccountOpenModal({
   const [showInvestorPwd, setShowInvestorPwd] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showOpenToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { id, value } = e.target;
@@ -115,8 +123,11 @@ export default function AccountOpenModal({
       }
 
       toast.success(data?.message || 'Master account created successfully');
+      showOpenToast(data?.message || 'Master account created successfully');
       setForm(initialForm);
-      setShowModal(false);
+      setTimeout(() => {
+        setShowModal(false);
+      }, 1500);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create master account';
       setSubmitError(message);
@@ -137,6 +148,16 @@ export default function AccountOpenModal({
         animate="visible"
         exit="exit"
       >
+        {showToast && (
+          <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[999999] animate-in fade-in slide-in-from-top-4 duration-300 ${
+            isDarkMode
+              ? 'bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20'
+              : 'bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20'
+          }`}>
+            <Check size={18} />
+            <span>{toastMessage}</span>
+          </div>
+        )}
         <motion.div
           className={`absolute inset-0 ${isDarkMode ? 'bg-black/60' : 'bg-slate-950/50'} backdrop-blur-xl`}
           onClick={() => setShowModal(false)}

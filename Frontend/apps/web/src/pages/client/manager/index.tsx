@@ -700,7 +700,10 @@ export default function ClientManagerPage() {
               <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
                 <div className="flex justify-between items-center mb-6">
                   <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white">Profit Share Wallet</h4>
-                  <button className={`px-4 py-2 rounded-lg font-black text-[11px] transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass} flex items-center gap-2`}>
+                  <button 
+                    onClick={() => showManagerToast('Settlement triggered successfully!')}
+                    className={`px-4 py-2 rounded-lg font-black text-[11px] transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass} flex items-center gap-2`}
+                  >
                     <DollarSign size={14} /> Trigger Settlement
                   </button>
                 </div>

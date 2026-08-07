@@ -19,6 +19,7 @@ import {
   ChevronLeft,
   Eye,
   EyeOff,
+  Check,
 } from 'lucide-react';
 import { fetchAdminManagers, fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
 import {
@@ -61,6 +62,14 @@ export default function ClientAvailablePage() {
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showAvailableToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
   const [isInvestModalOpen, setIsInvestModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedManager, setSelectedManager] = useState<ManagerViewRow | null>(null);
@@ -277,6 +286,7 @@ export default function ClientAvailablePage() {
       }
 
       toast.success(data?.message || 'Investor account created successfully');
+      showAvailableToast(data?.message || 'Investor account created successfully');
       closeInvestModal();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create investor account';
@@ -366,6 +376,17 @@ export default function ClientAvailablePage() {
       <Head>
         <title>Available MAM Managers | Client Portal</title>
       </Head>
+
+      {showToast && (
+        <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[99999] animate-in fade-in slide-in-from-top-4 duration-300 ${
+          isDarkMode
+            ? 'bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20'
+            : 'bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20'
+        }`}>
+          <Check size={18} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
       {/* ── Invest in Manager Modal ── */}
       {isInvestModalOpen && selectedManager && (

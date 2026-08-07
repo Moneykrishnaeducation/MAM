@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Head from "next/head";
-import { Search, Filter, X, Plus, ChevronDown, FileText } from "lucide-react";
+import { Search, Filter, X, Plus, ChevronDown, FileText, Check } from "lucide-react";
 import { useTheme } from 'next-themes';
 import { TicketsSkeleton } from '@/components/client-page-skeletons';
 
@@ -300,6 +300,7 @@ const Tickets = () => {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [selectedStatus, setSelectedStatus] = useState<TicketStatusFilter>("all");
   const [loading, setLoading] = useState<boolean>(false);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
   const [showFilters, setShowFilters] = useState<boolean>(false);
   const [filters, setFilters] = useState<{ status: string; dateRange: string }>({
@@ -319,6 +320,15 @@ const Tickets = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const requestIdRef = useRef(0);
+
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const showTicketToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const panelClass = isDarkMode
     ? "border-slate-800 bg-slate-900"
@@ -377,6 +387,7 @@ const Tickets = () => {
     } finally {
       if (requestId === requestIdRef.current) {
         setLoading(false);
+        setIsInitialLoading(false);
       }
     }
   };
@@ -446,7 +457,7 @@ const Tickets = () => {
     setFilteredTickets(result);
   }, [tickets, searchTerm, filters]);
 
-  if (loading && activePage === "view") {
+  if (isInitialLoading && activePage === "view") {
     return (
       <>
         <Head>
@@ -505,6 +516,7 @@ const Tickets = () => {
       setActivePage("view");
       setSelectedStatus("open");
       setFilters((prev) => ({ ...prev, status: "open" }));
+      showTicketToast("Ticket submitted successfully!");
     } catch {
       setSubmitTicketError("Failed to submit ticket. Please try again.");
     } finally {
@@ -544,7 +556,7 @@ const Tickets = () => {
       return { ...prev, _normalizedMessages: updatedMessages, messages: updatedMessages };
     });
 
-    alert("Message sent successfully!");
+    showTicketToast("Message sent successfully!");
   };
 
   const openTicketDetail = async (ticketId: string) => {
@@ -623,6 +635,16 @@ const Tickets = () => {
 
   return (
     <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
+      {showToast && (
+        <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[150] animate-in fade-in slide-in-from-top-4 duration-300 ${
+          isDarkMode
+            ? "bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20"
+            : "bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20"
+        }`}>
+          <Check size={18} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
       <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
         <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
@@ -725,14 +747,28 @@ const Tickets = () => {
               </thead>
               <tbody className={isDarkMode ? "divide-y divide-white/5" : "divide-y divide-[#153d9f]"}>
                 {loading ? (
-                  <tr>
-                    <td colSpan={6} className="p-20 text-center">
-                      <div className="flex flex-col items-center justify-center">
-                        <div className="w-10 h-10 border-4 border-[#2450b7] border-t-[#f0b91f] rounded-full animate-spin mb-4"></div>
-                        <p className={`font-bold ${softTextClass}`}>Fetching tickets...</p>
-                      </div>
-                    </td>
-                  </tr>
+                  Array.from({ length: 5 }).map((_, idx) => (
+                    <tr key={`skeleton-${idx}`} className="animate-pulse">
+                      <td className="px-6 py-5">
+                        <div className={`h-4 w-20 rounded ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className={`h-6 w-16 rounded-lg ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className={`h-4 w-32 rounded ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className={`h-6 w-16 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className={`h-4 w-48 rounded ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                      <td className="px-6 py-5">
+                        <div className={`h-8 w-20 rounded-xl ${isDarkMode ? 'bg-slate-800' : 'bg-blue-900/30'}`} />
+                      </td>
+                    </tr>
+                  ))
                 ) : filteredTickets.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-20 text-center">

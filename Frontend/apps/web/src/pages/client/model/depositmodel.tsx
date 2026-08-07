@@ -9,7 +9,8 @@ import {
   Clock, 
   Send, 
   ShieldCheck,
-  Globe
+  Globe,
+  Check
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -114,6 +115,14 @@ export default function DepositModal({
   const { isDarkMode } = useTheme();
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showDepositToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   const handleManualDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,9 +156,12 @@ export default function DepositModal({
       }
 
       sharedUtils.showToast(data?.message || "Manual deposit submitted successfully!", "success");
-      setShowDepositModal(false);
+      showDepositToast(data?.message || "Manual deposit submitted successfully!");
       setCheeseAmount("");
       setProofFile(null);
+      setTimeout(() => {
+        setShowDepositModal(false);
+      }, 1500);
     } catch (error: any) {
       sharedUtils.showToast(error?.message || "Failed to submit deposit request", "error");
     } finally {
@@ -161,6 +173,16 @@ export default function DepositModal({
     <AnimatePresence>
       {showDepositModal && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden">
+          {showToast && (
+            <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[999999] animate-in fade-in slide-in-from-top-4 duration-300 ${
+              isDarkMode
+                ? 'bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20'
+                : 'bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20'
+            }`}>
+              <Check size={18} />
+              <span>{toastMessage}</span>
+            </div>
+          )}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

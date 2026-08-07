@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { ArrowLeft, CheckCircle2, Eye, EyeOff, Lock, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Eye, EyeOff, Lock, RefreshCw, ShieldCheck, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ClientResetPasswordPage() {
@@ -13,6 +13,14 @@ export default function ClientResetPasswordPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showResetToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   useEffect(() => {
     if (!router.isReady) {
@@ -67,6 +75,7 @@ export default function ClientResetPasswordPage() {
       toast.success("Password reset successfully", {
         description: data?.message || "You can now sign in with your new password.",
       });
+      showResetToast(data?.message || "Password reset successfully!");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to reset password.";
       toast.error("Password reset failed", {
@@ -84,6 +93,12 @@ export default function ClientResetPasswordPage() {
       </Head>
 
       <div className="min-h-screen bg-[#030712] text-slate-100 flex items-center justify-center px-4 py-10">
+        {showToast && (
+          <div className="fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[999999] bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20 animate-in fade-in slide-in-from-top-4 duration-300">
+            <Check size={18} />
+            <span>{toastMessage}</span>
+          </div>
+        )}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-[-12%] right-[-8%] w-[520px] h-[520px] rounded-full bg-blue-600/20 blur-[140px]" />
           <div className="absolute bottom-[-15%] left-[-10%] w-[520px] h-[520px] rounded-full bg-[#d4af37]/15 blur-[140px]" />

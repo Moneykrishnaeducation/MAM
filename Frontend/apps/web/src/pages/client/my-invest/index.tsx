@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
-import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle, Search, ChevronDown } from 'lucide-react';
+import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle, Search, ChevronDown, Check } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import { InvestmentsSkeleton } from '@/components/client-page-skeletons';
@@ -141,6 +141,14 @@ export default function ClientMyInvestPage() {
 
   const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
   const [selectedInvModal, setSelectedInvModal] = useState<ClientInvestment | null>(null);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showMyInvestToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
   const [showDepositModal, setShowDepositModal] = useState<boolean>(false);
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
   const [showCoefficientModal, setShowCoefficientModal] = useState<boolean>(false);
@@ -335,6 +343,7 @@ export default function ClientMyInvestPage() {
       );
 
       toast.success(data?.message || (shouldPause ? 'Copying paused successfully' : 'Copying started successfully'));
+      showMyInvestToast(data?.message || (shouldPause ? 'Copying paused successfully' : 'Copying started successfully'));
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to update copying state';
       toast.error(message);
@@ -432,6 +441,7 @@ export default function ClientMyInvestPage() {
 
       if (response && response.status === 'ok') {
         toast.success(response.message || 'Investor password updated successfully!');
+        showMyInvestToast(response.message || 'Investor password updated successfully!');
         setShowPasswordModal(false);
         setNewInvestorPassword('');
         setConfirmInvestorPassword('');
@@ -463,6 +473,7 @@ export default function ClientMyInvestPage() {
 
       if (response && response.status === 'ok') {
         toast.success(response.message || 'Coefficient configuration deployed successfully!');
+        showMyInvestToast(response.message || 'Coefficient configuration deployed successfully!');
         setShowCoefficientModal(false);
         // Refresh investments
         const updated = await fetchClientInvestments();
@@ -613,6 +624,16 @@ export default function ClientMyInvestPage() {
       <Head>
         <title>My Investments | Client Portal</title>
       </Head>
+      {showToast && (
+        <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[100005] animate-in fade-in slide-in-from-top-4 duration-300 ${
+          isDarkMode
+            ? 'bg-slate-900 border-slate-800 text-[#e0b01d] shadow-slate-950/20'
+            : 'bg-[#0b226a] border-[#2450b7] text-[#f0b91f] shadow-black/20'
+        }`}>
+          <Check size={18} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
       <div className="relative p-6 md:p-10 space-y-12 overflow-hidden">
         <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
           <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px]" />
