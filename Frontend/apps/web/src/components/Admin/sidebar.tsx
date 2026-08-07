@@ -167,7 +167,7 @@ export default function AdminSidebar() {
             <button
               type="button"
               onClick={() => setSidebarOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 text-slate-200 transition-colors hover:bg-white/10 hover:text-white md:hidden"
+              className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/15 text-slate-200 transition-colors hover:bg-white/10 hover:text-white"
               title="Close menu"
               aria-label="Close menu"
             >
@@ -223,20 +223,7 @@ export default function AdminSidebar() {
             </nav>
           </div>
 
-          {/* SIDEBAR FOOTER LOGOUT BUTTON */}
-          <div className="mt-4 border-t border-white/15 pt-3 px-1">
-            <button
-              type="button"
-              onClick={() => setShowLogoutConfirm(true)}
-              className="flex w-full items-center justify-between rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-xs font-black uppercase tracking-wider text-blue-100 hover:border-red-500/50 hover:bg-red-500/20 hover:text-white transition-all shadow-sm"
-            >
-              <div className="flex items-center gap-2.5">
-                <LogOut size={16} className="text-blue-200/75 group-hover:text-white shrink-0" />
-                <span>Logout</span>
-              </div>
-              <ChevronRight size={14} className="text-blue-200/50" />
-            </button>
-          </div>
+          
 
         </div>
       </aside>
