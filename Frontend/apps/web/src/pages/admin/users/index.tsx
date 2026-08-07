@@ -1713,8 +1713,8 @@ function AddAccountModal({
 
   /* Automatically pre-generate secure passwords on mount */
   useEffect(() => {
-    const master = generatePassword(16);
-    const investor = generatePassword(16);
+    const master = generatePassword(8);
+    const investor = generatePassword(8);
     setMgr((p) => ({
       ...p,
       masterPassword: master,

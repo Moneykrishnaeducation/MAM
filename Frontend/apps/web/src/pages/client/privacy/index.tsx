@@ -7,6 +7,7 @@ import { benefits, policies } from '@/components/Client/privacy/privacyData';
 
 export default function PrivacyPage() {
   const [activeTab, setActiveTab] = useState<'benefits' | 'privacy'>('benefits');
+  const panelClass = 'rounded-[28px] border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
 
   return (
     <>
@@ -24,35 +25,35 @@ export default function PrivacyPage() {
         <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 relative z-10">
           <section >
             <div className="mb-5 flex justify-center">
-              <div className="inline-flex rounded-2xl border border-blue-800/40 bg-[#12244f]/80 p-1">
+              <div className="inline-flex items-center gap-1 rounded-[1.35rem] border border-[#223892] bg-[linear-gradient(180deg,#132056_0%,#0d1a45_100%)] p-1.5 shadow-[0_10px_32px_rgba(4,15,54,0.22)]">
                 <button
                   type="button"
                   onClick={() => setActiveTab('benefits')}
-                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                  className={`inline-flex min-w-[140px] items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[11px] font-black uppercase tracking-[0.16em] transition-all duration-300 lg:min-w-[150px] lg:px-7 lg:py-4.5 lg:text-xs lg:tracking-[0.2em] ${
                     activeTab === 'benefits'
-                      ? 'bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-400/20'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)]'
+                      : 'border border-[#273a86] bg-[linear-gradient(180deg,#162560_0%,#101d4d_100%)] text-[#a8b8ea] hover:border-[#3850a8] hover:text-white'
                   }`}
                 >
-                  <Star size={15} />
+                  <Star size={14} />
                   Benefits
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('privacy')}
-                  className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
+                  className={`inline-flex min-w-[140px] items-center justify-center gap-2 rounded-2xl px-6 py-4 text-[11px] font-black uppercase tracking-[0.16em] transition-all duration-300 lg:min-w-[150px] lg:px-7 lg:py-4.5 lg:text-xs lg:tracking-[0.2em] ${
                     activeTab === 'privacy'
-                      ? 'bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/20'
-                      : 'text-slate-400 hover:text-white'
+                      ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)]'
+                      : 'border border-[#273a86] bg-[linear-gradient(180deg,#162560_0%,#101d4d_100%)] text-[#a8b8ea] hover:border-[#3850a8] hover:text-white'
                   }`}
                 >
-                  <FileText size={15} />
+                  <FileText size={14} />
                   Privacy
                 </button>
               </div>
             </div>
 
-            <div className="rounded-[28px] border border-blue-900/35 bg-[#0b1533]/75 p-4 md:p-5">
+            <div className={`${panelClass} p-4 md:p-5`}>
               {activeTab === 'benefits' ? (
                 <BenefitsList items={benefits} />
               ) : (
