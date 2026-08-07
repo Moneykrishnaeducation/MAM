@@ -73,11 +73,11 @@ function StatusBadge({ status }: { status: string }) {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     uploaded: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
     rejected: 'bg-red-500/10 text-red-400 border-red-500/20',
-    missing: 'bg-slate-600/20 text-slate-400 border-slate-600/20',
+    missing: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
     suspended: 'bg-red-500/10 text-red-400 border-red-500/20',
     inactive: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
-  const cls = map[normalized] ?? 'bg-slate-700/20 text-slate-400 border-slate-700/20';
+  const cls = map[normalized] ?? 'bg-blue-500/10 text-blue-300 border-blue-500/20';
   const Icon = {
     approved: CheckCircle2,
     verified: CheckCircle2,
@@ -121,7 +121,7 @@ function getAdminUserApiId(user?: Pick<UserData, 'id' | 'user_id'> | null) {
 
 function SectionTitle({ icon: Icon, label, color = 'text-blue-400' }: { icon: React.ElementType; label: string; color?: string }) {
   return (
-    <div className="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+    <div className="flex items-center gap-2 border-b border-[#1745b3] pb-3 mb-4">
       <Icon size={17} className={color} />
       <h4 className="font-bold text-white text-sm">{label}</h4>
     </div>
@@ -131,7 +131,7 @@ function SectionTitle({ icon: Icon, label, color = 'text-blue-400' }: { icon: Re
 function InfoRow({ label, value, mono = false }: { label: string; value?: string | null; mono?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">{label}</span>
+      <span className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold">{label}</span>
       <span className={`text-sm font-semibold text-white ${mono ? 'font-mono' : ''}`}>
         {value || <span className="text-slate-600 italic text-xs">Not set</span>}
       </span>
@@ -340,7 +340,7 @@ function KycDocumentCard({
   const previewKind = getDocumentPreviewKind(fileName, filePath);
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/80 p-4 space-y-3">
+    <div className="rounded-2xl border border-[#1745b3] bg-[#081d5f]/80 p-4 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <FileText size={14} className="text-slate-400" />
@@ -349,24 +349,24 @@ function KycDocumentCard({
         <StatusBadge status={status} />
       </div>
       {filePath && previewKind !== 'other' && (
-        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/60">
-          <div className="border-b border-slate-800 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
+        <div className="overflow-hidden rounded-xl border border-[#1745b3] bg-[#0b226a]/60">
+          <div className="border-b border-[#1745b3] px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">
             Preview
           </div>
-          <div className="flex items-center justify-center bg-black/20 p-3">
+          <div className="flex items-center justify-center bg-[#071a57]/40 p-3">
             {previewKind === 'image' ? (
               <img src={filePath} alt={fileName} className="max-h-48 w-full rounded-lg object-contain" />
             ) : (
               <iframe
                 src={filePath}
                 title={fileName}
-                className="h-56 w-full rounded-lg bg-slate-950"
+                className="h-56 w-full rounded-lg bg-[#081d5f]"
               />
             )}
           </div>
         </div>
       )}
-      <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300">
+      <div className="flex items-center gap-2 rounded-xl border border-[#1745b3] bg-[#0b226a]/60 px-3 py-2 text-[11px] text-slate-300">
         <FileText size={13} className="text-blue-400 shrink-0" />
         {filePath ? (
           <a href={filePath} target="_blank" rel="noreferrer" className="truncate text-blue-300 hover:text-blue-200">
@@ -525,7 +525,7 @@ function VerifyModal({
     <div className="space-y-5 text-xs">
       <SectionTitle icon={ShieldCheck} label="Identity Verification & KYC Documents" color="text-blue-400" />
       {kycLoading && (
-        <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/80 px-3 py-2 text-slate-400 text-[11px]">
+        <div className="flex items-center gap-2 rounded-xl border border-[#1745b3] bg-[#081d5f]/80 px-3 py-2 text-slate-400 text-[11px]">
           <RefreshCw size={13} className="animate-spin text-blue-400" />
           Loading verified KYC data from the database...
         </div>
@@ -537,7 +537,7 @@ function VerifyModal({
       )}
 
       {/* Overall KYC Status */}
-      <div className="flex items-center justify-between bg-slate-950 border border-slate-800 rounded-2xl p-4">
+      <div className="flex items-center justify-between bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4">
         <div>
           <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Overall KYC Status</p>
           <StatusBadge status={String(kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus ?? (user.verified ? 'Verified' : 'Pending'))} />
@@ -560,7 +560,7 @@ function VerifyModal({
           const isUploaded = doc.status === 'uploaded' || doc.status === 'approved' || doc.status === 'rejected';
           const previewKind = getDocumentPreviewKind(doc.fileName, doc.fileUrl);
           return (
-            <div key={doc.type} className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-3">
+            <div key={doc.type} className="bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4 space-y-3">
               {/* Header */}
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -574,8 +574,8 @@ function VerifyModal({
 
               {/* Preview / file info */}
               {isUploaded && doc.fileUrl ? (
-                <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900/70">
-                  <div className="border-b border-slate-800 px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center justify-between">
+                <div className="overflow-hidden rounded-xl border border-[#1745b3] bg-[#0b226a]/70">
+                  <div className="border-b border-[#1745b3] px-3 py-1.5 text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center justify-between">
                     <span>Preview</span>
                     <a
                       href={doc.fileUrl}
@@ -586,7 +586,7 @@ function VerifyModal({
                       Open
                     </a>
                   </div>
-                  <div className="p-3 bg-black/20">
+                  <div className="p-3 bg-[#071a57]/40">
                     {previewKind === 'image' ? (
                       <img
                         src={doc.fileUrl}
@@ -597,7 +597,7 @@ function VerifyModal({
                       <iframe
                         src={doc.fileUrl}
                         title={doc.fileName || doc.type}
-                        className="h-56 w-full rounded-lg bg-slate-950"
+                        className="h-56 w-full rounded-lg bg-[#081d5f]"
                       />
                     ) : (
                       <div className="flex items-center gap-2 text-slate-400">
@@ -612,7 +612,7 @@ function VerifyModal({
               )}
 
               {isUploaded && doc.fileUrl && (
-                <div className="flex items-center gap-2 rounded-xl border border-slate-800 bg-slate-900/60 px-3 py-2 text-[11px] text-slate-300">
+                <div className="flex items-center gap-2 rounded-xl border border-[#1745b3] bg-[#0b226a]/60 px-3 py-2 text-[11px] text-slate-300">
                   <FileText size={13} className="text-blue-400 shrink-0" />
                   <a
                     href={doc.fileUrl}
@@ -629,7 +629,7 @@ function VerifyModal({
               <div className="flex gap-2">
                 <button
                   onClick={() => fileRefs.current[doc.type]?.click()}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-all"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-slate-300 text-[11px] font-semibold border border-[#1745b3] transition-all"
                 >
                   {isUploaded ? <RotateCcw size={12} /> : <Upload size={12} />}
                   {isUploaded ? 'Re-upload' : 'Upload'}
@@ -685,7 +685,7 @@ function VerifyModal({
         })}
       </div>
 
-      <div className="flex justify-end gap-3 pt-2 border-t border-slate-800">
+      <div className="flex justify-end gap-3 pt-2 border-t border-[#1745b3]">
         {allApproved && !user.verified && (
           <button
             onClick={() => onVerify(user.id, true)}
@@ -714,7 +714,6 @@ type TradingFilter = 'all' | 'manager' | 'investor';
 
 function TradingModal({ user }: { user: UserData }) {
   const [filter, setFilter] = useState<TradingFilter>('all');
-  const [loading, setLoading] = useState(false);
 
   /* Build unified list from both sources */
   const allAccounts: TradingAccount[] = user.tradingAccounts?.length
@@ -731,110 +730,116 @@ function TradingModal({ user }: { user: UserData }) {
     { key: 'manager', label: 'Manager', count: managerCount, color: 'text-purple-400' },
     { key: 'investor', label: 'Investor', count: investorCount, color: 'text-emerald-400' },
   ];
+  const selectedFilterLabel = FILTERS.find((f) => f.key === filter)?.label ?? 'All Accounts';
 
   return (
     <div className="space-y-4 text-xs">
-      <SectionTitle icon={TrendingUp} label="Trading Accounts" color="text-emerald-400" />
-
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
-        {FILTERS.map((f) => (
-          <button
-            key={f.key}
-            onClick={() => setFilter(f.key)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-[11px] font-bold transition-all ${
-              filter === f.key
-                ? 'bg-slate-800 text-white shadow'
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
+      {/* Filter Select */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-[#1745b3] bg-[#081d5f] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold">Filter accounts</p>
+          <p className="text-[11px] text-slate-500">Switch between all trading accounts, managers, and investors</p>
+        </div>
+        <div className="relative w-full sm:w-64">
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value as TradingFilter)}
+            className="w-full appearance-none rounded-xl border border-[#1745b3] bg-[#0b226a] px-3.5 py-2.5 pr-10 text-[11px] font-bold text-white outline-none transition-colors focus:border-[#2f64e0]"
+            aria-label="Trading account filter"
           >
-            {f.label}
-            <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${filter === f.key ? `bg-slate-700 ${f.color}` : 'bg-slate-800 text-slate-500'}`}>
-              {f.count}
-            </span>
-          </button>
-        ))}
+            {FILTERS.map((f) => (
+              <option key={f.key} value={f.key}>
+                {f.label} ({f.count})
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#8fb8ff]" />
+        </div>
       </div>
 
       {/* Account table */}
       {filtered.length === 0 ? (
         <div className="text-center py-10 text-slate-500">
           <Layers size={36} className="mx-auto mb-3 opacity-30" />
-          <p>No {filter} accounts found</p>
+          <p>{filter === 'all' ? 'No trading accounts found' : `No ${selectedFilterLabel} accounts found`}</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map((acc, idx) => (
-            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden">
-              {/* Account Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800/60 bg-slate-900/50">
-                <div className="flex items-center gap-2">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${acc.accountRole === 'manager' ? 'bg-purple-500/10' : 'bg-emerald-500/10'}`}>
-                    {acc.accountRole === 'manager'
-                      ? <Layers size={14} className="text-purple-400" />
-                      : <TrendingUp size={14} className="text-emerald-400" />}
-                  </div>
-                  <span className="font-mono font-bold text-blue-400">{acc.accNumber}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                    acc.accountRole === 'manager'
-                      ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
-                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                  }`}>
-                    {acc.accountRole === 'manager' ? 'Manager' : 'Investor'}
-                  </span>
-                  <StatusBadge status={acc.status ?? 'Active'} />
-                </div>
-              </div>
+        <div className="rounded-2xl border border-[#1745b3] bg-[#081d5f] overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1120px] border-collapse text-left text-xs">
+              <thead className="sticky top-0 z-10">
+                <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Account</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Role</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Type</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Balance</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Equity</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Leverage</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Server</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Currency</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Free Margin</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap">Active Trades</th>
+                  <th className="px-4 py-3 font-semibold whitespace-nowrap text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#153d9f]/60 bg-[#071a57]">
+                {filtered.map((acc, idx) => {
+                  const roleLabel = acc.accountRole === 'manager' ? 'Manager' : 'Investor';
 
-              {/* Account Details Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4">
-                <div>
-                  <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Type</p>
-                  <p className="text-slate-300 font-semibold text-[11px]">{acc.type}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Balance</p>
-                  <p className="text-emerald-400 font-bold">{acc.balance}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Equity</p>
-                  <p className="text-blue-400 font-bold">{acc.equity}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Leverage</p>
-                  <p className="text-purple-400 font-bold">{acc.leverage}</p>
-                </div>
-                {acc.server && (
-                  <div>
-                    <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Server</p>
-                    <p className="text-slate-300 font-semibold text-[11px] flex items-center gap-1">
-                      <Server size={11} /> {acc.server}
-                    </p>
-                  </div>
-                )}
-                {acc.currency && (
-                  <div>
-                    <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Currency</p>
-                    <p className="text-slate-300 font-semibold text-[11px]">{acc.currency}</p>
-                  </div>
-                )}
-                {acc.marginFree && (
-                  <div>
-                    <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Free Margin</p>
-                    <p className="text-amber-400 font-bold">{acc.marginFree}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="text-slate-500 text-[9px] uppercase tracking-wider mb-1">Active Trades</p>
-                  <p className={`font-bold ${acc.activeTrades > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
-                    {acc.activeTrades}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))}
+                  return (
+                    <tr key={`${acc.accNumber}-${idx}`} className="hover:bg-[#0a2267] transition-colors">
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${acc.accountRole === 'manager' ? 'bg-purple-500/10' : 'bg-emerald-500/10'}`}>
+                            {acc.accountRole === 'manager'
+                              ? <Layers size={14} className="text-purple-400" />
+                              : <TrendingUp size={14} className="text-emerald-400" />}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-mono font-bold text-blue-400 truncate">{acc.accNumber}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">MT5 account</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full border text-[10px] font-bold ${
+                          acc.accountRole === 'manager'
+                            ? 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        }`}>
+                          {roleLabel}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-slate-200 font-semibold">{acc.type || '-'}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-bold text-emerald-400">{acc.balance || '-'}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-bold text-blue-400">{acc.equity || '-'}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-bold text-purple-400">{acc.leverage || '-'}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-slate-200">
+                        {acc.server ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Server size={11} className="text-[#8fb8ff]" />
+                            {acc.server}
+                          </span>
+                        ) : (
+                          '-'
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-slate-200">{acc.currency || '-'}</td>
+                      <td className="px-4 py-3.5 whitespace-nowrap font-bold text-amber-400">{acc.marginFree || '-'}</td>
+                      <td className={`px-4 py-3.5 whitespace-nowrap font-bold ${acc.activeTrades > 0 ? 'text-amber-400' : 'text-slate-500'}`}>
+                        {acc.activeTrades ?? 0}
+                      </td>
+                      <td className="px-4 py-3.5 whitespace-nowrap text-right">
+                        <div className="flex justify-end">
+                          <StatusBadge status={acc.status ?? 'Active'} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
@@ -847,9 +852,11 @@ function TradingModal({ user }: { user: UserData }) {
 function ProfileModal({
   user,
   onSave,
+  onClose,
 }: {
   user: UserData;
   onSave: (userId: string, data: Partial<UserData>) => void;
+  onClose: () => void;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -965,8 +972,8 @@ function ProfileModal({
     type?: string;
   }) => (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-        <Icon size={11} className={(disabled || !isEditing) ? 'text-slate-600' : 'text-slate-400'} /> {label}
+      <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
+        <Icon size={11} className={(disabled || !isEditing) ? 'text-[#4d7fe0]' : 'text-[#8fb8ff]'} /> {label}
       </label>
       <input
         type={type}
@@ -975,8 +982,8 @@ function ProfileModal({
         onChange={(e) => set(field, e.target.value)}
         className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none transition-all ${
           (disabled || !isEditing)
-            ? 'bg-slate-900/50 text-slate-400 border-slate-800/80 cursor-not-allowed'
-            : 'bg-slate-950 text-white border-slate-800 focus:border-blue-500'
+            ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3]/80 cursor-not-allowed'
+            : 'bg-[#0b226a] text-white border-[#1745b3] focus:border-blue-500'
         }`}
       />
       {disabled && isEditing && (
@@ -987,38 +994,28 @@ function ProfileModal({
 
   return (
     <div className="space-y-5 text-xs">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-[#1745b3] pb-3 mb-4">
         <SectionTitle icon={User} label="Client Profile" color="text-purple-400" />
-        <button
-          onClick={() => setIsEditing(!isEditing)}
-          className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-            isEditing
-              ? 'bg-slate-800 text-slate-300 border-slate-700'
-              : 'bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600 hover:text-white'
-          }`}
-        >
-          {isEditing ? 'Cancel Edit' : 'Edit Details'}
-        </button>
       </div>
 
       {/* Avatar Editor */}
       {loadingProfile && (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400">
+        <div className="rounded-xl border border-[#1745b3] bg-[#081d5f]/70 px-3 py-2 text-[11px] text-slate-400">
           Loading profile data...
         </div>
       )}
-      <div className="flex items-center gap-5 bg-slate-950 border border-slate-800 rounded-2xl p-4">
+      <div className="flex items-center gap-5 bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4">
         <div className="relative group">
           <img
             src={form.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=1e3a5f&color=7dd3fc&size=96`}
             alt={form.name}
-            className="w-20 h-20 rounded-2xl object-cover ring-2 ring-slate-700"
+            className="w-20 h-20 rounded-2xl object-cover ring-2 ring-[#214fbf]"
           />
           {isEditing && (
             <>
               <button
                 onClick={() => avatarRef.current?.click()}
-                className="absolute inset-0 rounded-2xl bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute inset-0 rounded-2xl bg-[#081d5f]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Camera size={20} className="text-white" />
               </button>
@@ -1065,7 +1062,7 @@ function ProfileModal({
       {/* Tier & KYC Status */}
       <div className="grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
+          <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
             <Shield size={11} /> Account Tier
           </label>
           <select
@@ -1074,17 +1071,17 @@ function ProfileModal({
             onChange={(e) => set('tier', e.target.value)}
             className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none ${
               !isEditing
-                ? 'bg-slate-900/50 text-slate-400 border-slate-800 cursor-not-allowed'
-                : 'bg-slate-950 text-white border-slate-800'
+                ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3] cursor-not-allowed'
+                : 'bg-[#0b226a] text-white border-[#1745b3]'
             }`}
           >
             {['Standard', 'Premium', 'VIP', 'VIP Premium', 'Elite'].map((t) => (
-              <option key={t} value={t} className="bg-slate-900">{t}</option>
+              <option key={t} value={t} className="bg-[#0b226a]">{t}</option>
             ))}
           </select>
         </div>
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
+          <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
             <ShieldCheck size={11} /> KYC Status
           </label>
           <select
@@ -1093,29 +1090,58 @@ function ProfileModal({
             onChange={(e) => set('kycStatus', e.target.value)}
             className={`px-3 py-2.5 rounded-xl text-xs font-medium border outline-none ${
               !isEditing
-                ? 'bg-slate-900/50 text-slate-400 border-slate-800 cursor-not-allowed'
-                : 'bg-slate-950 text-white border-slate-800'
+                ? 'bg-[#0b226a]/50 text-[#8fb8ff] border-[#1745b3] cursor-not-allowed'
+                : 'bg-[#0b226a] text-white border-[#1745b3]'
             }`}
           >
             {['Pending', 'Verified', 'Rejected', 'Under Review'].map((s) => (
-              <option key={s} value={s} className="bg-slate-900">{s}</option>
+              <option key={s} value={s} className="bg-[#0b226a]">{s}</option>
             ))}
           </select>
         </div>
       </div>
 
-      {isEditing && (
-        <div className="flex justify-end pt-2 border-t border-slate-800">
+      <div className="flex flex-col gap-3 rounded-[1.6rem] border border-[#1745b3] bg-[#081d5f]/90 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-bold text-white">
+            {isEditing ? 'Finish your changes before closing.' : 'Open edit mode to update this profile.'}
+          </p>
+          <p className="mt-1 text-[11px] text-slate-400">
+            {isEditing
+              ? 'Save the profile when you are ready, or cancel to keep the current data.'
+              : 'Use Edit Details to unlock the fields below.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <button
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs disabled:opacity-60 transition-all"
+            onClick={() => setIsEditing((prev) => !prev)}
+            className={`inline-flex items-center gap-2 rounded-2xl border px-4 py-2.5 text-xs font-bold transition-all ${
+              isEditing
+                ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3] hover:bg-[#102c7c]'
+                : 'bg-purple-600/10 text-purple-400 border-purple-500/30 hover:bg-purple-600 hover:text-white'
+            }`}
           >
-            {saving ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-            Save Profile
+            {isEditing ? 'Cancel Edit' : 'Edit Details'}
+          </button>
+          {isEditing && (
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#7c3aed_0%,#f0b91f_100%)] px-5 py-2.5 text-xs font-black text-white shadow-[0_16px_34px_rgba(124,58,237,0.24)] transition-all hover:scale-[1.01] disabled:opacity-60"
+            >
+              {saving ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
+              Save Profile
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="inline-flex items-center gap-2 rounded-2xl border border-[#2a58c9] bg-[#11358f] px-4 py-2.5 text-xs font-bold text-white transition-all hover:bg-[#1845af]"
+          >
+            <X size={13} />
+            Close
           </button>
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -1260,13 +1286,13 @@ function BankCryptoModal({ user }: { user: UserData }) {
 
   return (
     <div className="space-y-5 text-xs">
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
+      <div className="flex items-center justify-between border-b border-[#1745b3] pb-3 mb-4">
         <SectionTitle icon={CreditCard} label="Bank & Crypto Payment Details" color="text-amber-400" />
         <button
           onClick={() => setIsEditing(!isEditing)}
           className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all border ${
             isEditing
-              ? 'bg-slate-800 text-slate-300 border-slate-700'
+              ? 'bg-[#0b226a] text-[#dbe8ff] border-[#1745b3]'
               : 'bg-amber-600/10 text-amber-400 border-amber-500/30 hover:bg-amber-600 hover:text-white'
           }`}
         >
@@ -1275,17 +1301,17 @@ function BankCryptoModal({ user }: { user: UserData }) {
       </div>
 
       {loadingPayment && (
-        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400">
+        <div className="rounded-xl border border-[#1745b3] bg-[#081d5f]/70 px-3 py-2 text-[11px] text-slate-400">
           Loading payment details...
         </div>
       )}
 
       {/* Type Toggle */}
-      <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+      <div className="flex items-center gap-2 p-1 bg-[#081d5f] rounded-2xl border border-[#1745b3]">
         <button
           onClick={() => setPayType('bank')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
-            payType === 'bank' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+            payType === 'bank' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
           } disabled:opacity-50`}
         >
           <Building2 size={14} className={payType === 'bank' ? 'text-amber-400' : 'text-slate-500'} />
@@ -1294,7 +1320,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
         <button
           onClick={() => setPayType('crypto')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
-            payType === 'crypto' ? 'bg-slate-800 text-white shadow' : 'text-slate-500 hover:text-slate-300'
+            payType === 'crypto' ? 'bg-[#0b226a] text-white shadow' : 'text-slate-500 hover:text-slate-300'
           } disabled:opacity-50`}
         >
           <Bitcoin size={14} className={payType === 'crypto' ? 'text-orange-400' : 'text-slate-500'} />
@@ -1305,7 +1331,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
       {/* ── Bank Fields ── */}
       {payType === 'bank' && (
         <div className="space-y-4">
-          <div className="bg-slate-950 border border-amber-500/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-[#081d5f] border border-[#1745b3]/30 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-2 mb-2">
               <Building2 size={16} className="text-amber-400" />
               <span className="font-bold text-white">Bank Account Details</span>
@@ -1326,10 +1352,10 @@ function BankCryptoModal({ user }: { user: UserData }) {
                     disabled={!isEditing}
                     onChange={(e) => setBank((p) => ({ ...p, [key]: e.target.value }))}
                     placeholder={placeholder}
-                    className={`px-3 py-2.5 rounded-xl bg-slate-900 text-white border outline-none text-xs transition-all ${
+                    className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs transition-all ${
                       !isEditing
-                        ? 'border-slate-800/80 text-slate-400 bg-slate-900/50 cursor-not-allowed'
-                        : 'border-slate-800 focus:border-amber-500'
+                        ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
+                        : 'border-[#1745b3] focus:border-amber-500'
                     } ${mono ? 'font-mono uppercase' : ''}`}
                   />
                 </div>
@@ -1341,7 +1367,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
 
       {/* ── Crypto Fields — networks from backend ── */}
       {payType === 'crypto' && (
-        <div className="bg-slate-950 border border-orange-500/10 rounded-2xl p-5 space-y-5">
+        <div className="bg-[#081d5f] border border-[#1745b3]/30 rounded-2xl p-5 space-y-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bitcoin size={16} className="text-orange-400" />
@@ -1361,10 +1387,10 @@ function BankCryptoModal({ user }: { user: UserData }) {
               disabled={!isEditing}
               onChange={(e) => setCrypto((p) => ({ ...p, network: e.target.value }))}
               placeholder="e.g. USDT-TRC20, BTC, ERC20"
-              className={`px-3 py-2.5 rounded-xl bg-slate-900 text-white border outline-none text-xs font-mono transition-all ${
+              className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs font-mono transition-all ${
                 !isEditing
-                  ? 'border-slate-800/80 text-slate-400 bg-slate-900/50 cursor-not-allowed'
-                  : 'border-slate-800 focus:border-orange-500'
+                  ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
+                  : 'border-[#1745b3] focus:border-orange-500'
               }`}
             />
           </div>
@@ -1379,10 +1405,10 @@ function BankCryptoModal({ user }: { user: UserData }) {
               disabled={!isEditing}
               onChange={(e) => setCrypto((p) => ({ ...p, cryptoAddress: e.target.value }))}
               placeholder="e.g. 0x71C7656EC7ab88b098defB751B7401B5f6d8976F"
-              className={`px-3 py-2.5 rounded-xl bg-slate-900 text-white border outline-none text-xs font-mono transition-all ${
+              className={`px-3 py-2.5 rounded-xl bg-[#0b226a] text-white border outline-none text-xs font-mono transition-all ${
                 !isEditing
-                  ? 'border-slate-800/80 text-slate-400 bg-slate-900/50 cursor-not-allowed'
-                  : 'border-slate-800 focus:border-orange-500'
+                  ? 'border-[#1745b3]/80 text-slate-400 bg-[#0b226a]/50 cursor-not-allowed'
+                  : 'border-[#1745b3] focus:border-orange-500'
               }`}
             />
           </div>
@@ -1391,7 +1417,7 @@ function BankCryptoModal({ user }: { user: UserData }) {
       )}
 
       {isEditing && (
-        <div className="flex justify-end pt-2 border-t border-slate-800">
+        <div className="flex justify-end pt-2 border-t border-[#1745b3]">
           <button
             onClick={handleSave}
             disabled={saving}
@@ -1465,8 +1491,8 @@ function PasswordInput({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-          <Icon size={11} className="text-slate-400" /> {label}
+        <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
+          <Icon size={11} className="text-[#8fb8ff]" /> {label}
         </label>
         <button
           type="button"
@@ -1475,7 +1501,7 @@ function PasswordInput({
           className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-lg border transition-all ${
             copied
               ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-              : 'bg-slate-800 text-slate-400 hover:text-blue-400 hover:border-blue-500/40 border-slate-700'
+              : 'bg-[#0b226a] text-[#8fb8ff] hover:text-blue-300 hover:border-blue-500/40 border-[#1745b3]'
           }`}
         >
           {copied ? <CheckCircle2 size={10} /> : <RefreshCw size={10} />}
@@ -1488,8 +1514,8 @@ function PasswordInput({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className={`w-full pl-3 pr-10 py-2.5 rounded-xl text-xs font-mono bg-slate-950 text-white border outline-none transition-all ${
-            value ? 'border-blue-500/40' : 'border-slate-800'
+          className={`w-full pl-3 pr-10 py-2.5 rounded-xl text-xs font-mono bg-[#0b226a] text-white border outline-none transition-all ${
+            value ? 'border-blue-500/40' : 'border-[#1745b3]'
           } focus:border-blue-500`}
         />
         <button
@@ -1509,7 +1535,7 @@ function PasswordInput({
               className={`h-0.5 flex-1 rounded-full transition-all ${
                 value.length >= threshold
                   ? i === 0 ? 'bg-red-500' : i === 1 ? 'bg-amber-400' : 'bg-emerald-400'
-                  : 'bg-slate-800'
+                  : 'bg-[#1745b3]'
               }`}
             />
           ))}
@@ -1537,16 +1563,16 @@ function SelectField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold flex items-center gap-1">
-        <Icon size={11} className="text-slate-400" /> {label}
+      <label className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-semibold flex items-center gap-1">
+        <Icon size={11} className="text-[#8fb8ff]" /> {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="px-3 py-2.5 rounded-xl text-xs font-medium bg-slate-950 text-white border border-slate-800 focus:border-blue-500 outline-none appearance-none"
+        className="px-3 py-2.5 rounded-xl text-xs font-medium bg-[#0b226a] text-white border border-[#1745b3] focus:border-blue-500 outline-none appearance-none"
       >
         {options.map((o) => (
-          <option key={o} value={o} className="bg-slate-900">{o}</option>
+          <option key={o} value={o} className="bg-[#0b226a]">{o}</option>
         ))}
       </select>
     </div>
@@ -1657,12 +1683,12 @@ function AddAccountModal({
       <SectionTitle icon={PlusCircle} label="Create MT5 Account" color="text-emerald-400" />
 
       {/* ── Account Type Toggle ── */}
-      <div className="flex items-center gap-2 p-1 bg-slate-950 rounded-2xl border border-slate-800">
+      <div className="flex items-center gap-2 p-1 bg-[#081d5f] rounded-2xl border border-[#1745b3]">
         <button
           onClick={() => setActiveTab('manager')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             activeTab === 'manager'
-              ? 'bg-slate-800 text-white shadow'
+              ? 'bg-[#0b226a] text-white shadow'
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
@@ -1673,7 +1699,7 @@ function AddAccountModal({
           onClick={() => setActiveTab('investor')}
           className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl font-bold text-xs transition-all ${
             activeTab === 'investor'
-              ? 'bg-slate-800 text-white shadow'
+              ? 'bg-[#0b226a] text-white shadow'
               : 'text-slate-500 hover:text-slate-300'
           }`}
         >
@@ -1687,7 +1713,7 @@ function AddAccountModal({
       ═══════════════════════════════════════════ */}
       {activeTab === 'manager' && (
         <div className="space-y-4">
-          <div className="bg-slate-950 border border-purple-500/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-[#081d5f] border border-purple-500/20 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-2 mb-1">
               <Layers size={15} className="text-purple-400" />
               <span className="font-bold text-white">Manager Account Setup</span>
@@ -1704,7 +1730,7 @@ function AddAccountModal({
                 value={mgr.accountName}
                 onChange={(e) => setMgr((p) => ({ ...p, accountName: e.target.value }))}
                 placeholder="e.g. Global Alpha MAM"
-                className="px-3 py-2.5 rounded-xl text-xs bg-slate-900 text-white border border-slate-800 focus:border-purple-500 outline-none"
+                className="px-3 py-2.5 rounded-xl text-xs bg-[#0b226a] text-white border border-[#1745b3] focus:border-purple-500 outline-none"
               />
             </div>
 
@@ -1720,7 +1746,7 @@ function AddAccountModal({
                   max={100}
                   value={mgr.profitShare}
                   onChange={(e) => setMgr((p) => ({ ...p, profitShare: e.target.value }))}
-                  className="w-full pl-3 pr-10 py-2.5 rounded-xl text-xs bg-slate-900 text-white border border-slate-800 focus:border-purple-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full pl-3 pr-10 py-2.5 rounded-xl text-xs bg-[#0b226a] text-white border border-[#1745b3] focus:border-purple-500 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs font-bold">%</span>
               </div>
@@ -1754,7 +1780,7 @@ function AddAccountModal({
             />
 
             {/* Passwords */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#1745b3]">
               <PasswordInput
                 label="Master Password"
                 value={mgr.masterPassword}
@@ -1780,7 +1806,7 @@ function AddAccountModal({
                 { label: 'Leverage', val: mgr.leverage, color: 'text-purple-400' },
                 { label: 'Payout', val: mgr.payoutFrequency, color: 'text-blue-400' },
               ].map((item) => (
-                <div key={item.label} className="flex flex-col items-center gap-0.5 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
+                <div key={item.label} className="flex flex-col items-center gap-0.5 bg-[#081d5f] border border-[#1745b3] rounded-xl px-3 py-2">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500">{item.label}</span>
                   <span className={`font-bold text-xs ${item.color}`}>{item.val}</span>
                 </div>
@@ -1795,7 +1821,7 @@ function AddAccountModal({
       ═══════════════════════════════════════════ */}
       {activeTab === 'investor' && (
         <div className="space-y-4">
-          <div className="bg-slate-950 border border-emerald-500/10 rounded-2xl p-5 space-y-4">
+          <div className="bg-[#081d5f] border border-emerald-500/20 rounded-2xl p-5 space-y-4">
             <div className="flex items-center gap-2 mb-1">
               <UserCheck size={15} className="text-emerald-400" />
               <span className="font-bold text-white">Investor Account Setup</span>
@@ -1835,7 +1861,7 @@ function AddAccountModal({
               {/* Search input */}
               {!selectedManager && (
                 <div className="relative">
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-800 focus-within:border-emerald-500 transition-colors">
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-[#0b226a] border border-[#1745b3] focus-within:border-emerald-500 transition-colors">
                     <Search size={13} className="text-slate-500 shrink-0" />
                     <input
                       type="text"
@@ -1850,7 +1876,7 @@ function AddAccountModal({
 
                   {/* Dropdown */}
                   {showManagerDrop && (
-                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-2xl max-h-52 overflow-y-auto">
+                    <div className="absolute top-[calc(100%+6px)] left-0 right-0 z-50 bg-[#0b226a] border border-[#1745b3] rounded-2xl overflow-hidden shadow-2xl max-h-52 overflow-y-auto">
                       {filteredManagers.length === 0 ? (
                         <div className="px-4 py-6 text-center text-slate-500 text-xs">
                           No managers found
@@ -1864,7 +1890,7 @@ function AddAccountModal({
                               setManagerSearch('');
                               setShowManagerDrop(false);
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800 transition-colors text-left border-b border-slate-800 last:border-0"
+                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[#102c7c] transition-colors text-left border-b border-[#1745b3] last:border-0"
                           >
                             <img
                               src={m.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=1e3a5f&color=7dd3fc&size=40`}
@@ -1893,17 +1919,17 @@ function AddAccountModal({
             {/* Profit Share display (auto from selected manager) */}
             {selectedManager && (
               <div className="grid grid-cols-3 gap-3">
-                <div className="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+                <div className="flex flex-col gap-1 bg-[#0b226a] border border-[#1745b3] rounded-xl px-3 py-2.5">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500">Account</span>
                   <span className="font-mono font-bold text-blue-400 text-xs">{selectedManager.tradingAccount?.accNumber}</span>
                 </div>
-                <div className="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+                <div className="flex flex-col gap-1 bg-[#0b226a] border border-[#1745b3] rounded-xl px-3 py-2.5">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500">Profit Share</span>
                   <span className="font-bold text-emerald-400 text-xs">
                     {selectedManager.tradingAccount?.type?.includes('20') ? '20%' : '—'}
                   </span>
                 </div>
-                <div className="flex flex-col gap-1 bg-slate-900 border border-slate-800 rounded-xl px-3 py-2.5">
+                <div className="flex flex-col gap-1 bg-[#0b226a] border border-[#1745b3] rounded-xl px-3 py-2.5">
                   <span className="text-[9px] uppercase tracking-wider text-slate-500">Leverage</span>
                   <span className="font-bold text-purple-400 text-xs">{selectedManager.tradingAccount?.leverage}</span>
                 </div>
@@ -1911,7 +1937,7 @@ function AddAccountModal({
             )}
 
             {/* Passwords */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#1745b3]">
               <PasswordInput
                 label="Investment Password"
                 value={inv.investmentPassword}
@@ -1944,7 +1970,7 @@ function AddAccountModal({
       )}
 
       {/* Submit */}
-      <div className="flex items-center justify-between pt-2 border-t border-slate-800">
+      <div className="flex items-center justify-between pt-2 border-t border-[#1745b3]">
         <p className="text-[10px] text-slate-500">
           {activeTab === 'manager'
             ? 'Creates a new MAM master account with specified settings'
@@ -2471,6 +2497,7 @@ export default function AdminUsersPage() {
     account_active: 'Account Status',
     delete_user: 'Delete User',
   };
+  const modalWidthClass = activeModalType === 'trading' ? 'w-[95vw] max-w-7xl' : 'w-full max-w-2xl';
 
   return (
     <>
@@ -2478,7 +2505,7 @@ export default function AdminUsersPage() {
         <title>Users Directory | Admin Portal</title>
       </Head>
 
-      <div className="relative p-6 md:p-10 space-y-10 overflow-hidden">
+      <div className="min-h-screen bg-[#040f36] relative p-6 md:p-10 space-y-10 overflow-hidden">
         {/* ── Background Ambient Glow (Ticket Page Style) ── */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
           <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
@@ -2492,12 +2519,7 @@ export default function AdminUsersPage() {
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#8db5ff] text-xs font-black uppercase tracking-widest mb-3 backdrop-blur-md">
               <Users size={14} className="text-[#f0b91f]" /> User Management
             </div>
-            <h1 className="text-4xl font-black tracking-tighter text-white">
-              Users <span className="text-[#f0b91f]">Directory</span>
-            </h1>
-            <p className="text-slate-400 text-sm font-medium mt-1">
-              Expand user records to inspect and manage KYC, live trading accounts, profile information, bank/crypto vault details and transactions.
-            </p>
+            
           </div>
           <button
             onClick={() => openSubRowModal(null, 'create_user')}
@@ -2531,8 +2553,8 @@ export default function AdminUsersPage() {
             <div className="flex items-center gap-3">
               <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
               <div>
-                <h2 className="text-xl font-black text-white">Client Accounts &amp; Users</h2>
-                <p className="text-xs text-[#8db5ff] font-medium">Filtered &amp; Active Directory List</p>
+                <h2 className="text-xl font-black text-white">Users Directory </h2>
+                
               </div>
             </div>
 
@@ -2558,11 +2580,14 @@ export default function AdminUsersPage() {
               <thead>
                 <tr className="bg-[#0b226a] border-b border-[#153d9f]">
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">User ID</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Name &amp; Email</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Name</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Email</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Phone</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Role</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Verification</th>
                   <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Joined</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Registered</th>
+                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Country</th>
                   <th className="px-6 py-4 text-right font-black uppercase tracking-widest text-[#9ec0ff]">Actions</th>
                 </tr>
               </thead>
@@ -2572,37 +2597,40 @@ export default function AdminUsersPage() {
                   Array.from({ length: 5 }).map((_, idx) => (
                     <tr key={idx} className="animate-pulse">
                       <td className="py-4 pl-2">
-                        <div className="h-4 w-14 bg-slate-800 rounded-lg" />
+                        <div className="h-4 w-14 bg-[#102c7c] rounded-lg" />
                       </td>
                       <td className="py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-slate-800 rounded-xl" />
-                          <div className="space-y-1.5">
-                            <div className="h-3.5 w-24 bg-slate-800 rounded-lg" />
-                            <div className="h-3 w-32 bg-slate-800 rounded-lg" />
-                          </div>
+                          <div className="w-9 h-9 bg-[#102c7c] rounded-xl" />
+                          <div className="h-3.5 w-24 bg-[#102c7c] rounded-lg" />
                         </div>
                       </td>
                       <td className="py-4">
-                        <div className="h-4 w-20 bg-slate-800 rounded-lg" />
+                        <div className="h-3 w-32 bg-[#102c7c] rounded-lg" />
                       </td>
                       <td className="py-4">
-                        <div className="h-5 w-16 bg-slate-800/60 rounded-full" />
+                        <div className="h-4 w-20 bg-[#102c7c] rounded-lg" />
                       </td>
                       <td className="py-4">
-                        <div className="h-5 w-16 bg-slate-800/60 rounded-full" />
+                        <div className="h-5 w-16 bg-[#102c7c]/60 rounded-full" />
                       </td>
                       <td className="py-4">
-                        <div className="h-4 w-16 bg-slate-800 rounded-lg" />
+                        <div className="h-5 w-16 bg-[#102c7c]/60 rounded-full" />
+                      </td>
+                      <td className="py-4">
+                        <div className="h-4 w-16 bg-[#102c7c] rounded-lg" />
+                      </td>
+                      <td className="py-4">
+                        <div className="h-4 w-20 bg-[#102c7c] rounded-lg" />
                       </td>
                       <td className="py-4 pr-2 text-right">
-                        <div className="inline-block h-7 w-20 bg-slate-800 rounded-xl" />
+                        <div className="inline-block h-7 w-20 bg-[#102c7c] rounded-xl" />
                       </td>
                     </tr>
                   ))
                 ) : filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-10 text-center text-slate-500">
+                    <td colSpan={9} className="py-10 text-center text-slate-500">
                       No users match the search filter.
                     </td>
                   </tr>
@@ -2631,11 +2659,14 @@ export default function AdminUsersPage() {
                                 alt={u.name}
                                 className="w-10 h-10 rounded-2xl object-cover ring-2 ring-[#214fbf]"
                               />
-                              <div>
-                                <div className="font-bold text-white text-sm">{u.name}</div>
-                                <div className="text-xs text-[#9ec0ff] font-medium">{u.email}</div>
-                              </div>
+                              <span className="font-bold text-white text-sm">{u.name}</span>
                             </div>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-xs text-[#9ec0ff] font-medium">{u.email}</span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <span className="text-xs text-[#9ec0ff] font-medium">{u.phone}</span>
                           </td>
                           <td className="px-6 py-5 text-white font-bold">{u.role}</td>
                           <td className="px-6 py-5">
@@ -2645,6 +2676,7 @@ export default function AdminUsersPage() {
                             <StatusBadge status={u.status} />
                           </td>
                           <td className="px-6 py-5 font-medium text-[#9ec0ff]">{u.joined}</td>
+                          <td className="px-6 py-5 font-bold text-white">{u.country || 'United States'}</td>
                           <td className="px-6 py-5 text-right">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleDropdownRow(u.id); }}
@@ -2659,7 +2691,7 @@ export default function AdminUsersPage() {
                       {/* ── Expanded Sub-Row Drawer (Ticket Style) ── */}
                       {isExpanded && (
                         <tr className="bg-[#051442] border-b border-[#153d9f]">
-                          <td colSpan={7} className="p-4 sm:p-6">
+                          <td colSpan={9} className="p-4 sm:p-6">
                             <div className="bg-[#081d5f] rounded-2xl border border-[#214fbf] p-5 shadow-inner">
                               <div className="text-xs font-black uppercase tracking-widest text-[#9ec0ff] mb-4 flex items-center gap-2">
                                 <span>Actions for <strong className="text-[#f0b91f] font-extrabold">{u.name}</strong></span>
@@ -2717,36 +2749,36 @@ export default function AdminUsersPage() {
 
       {/* ── MODAL ── */}
       {activeModalType && (
-        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-start justify-center p-4 sm:p-6 overflow-y-auto">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden my-6">
+        <div className="fixed inset-0 z-50 bg-[#040f36]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className={`border border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.50)] rounded-[2rem] ${modalWidthClass} overflow-hidden my-6`}>
             {/* Modal Header */}
-            <div className="p-5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
+            <div className="p-5 bg-[#0b226a] border-b border-[#1745b3] flex items-center justify-between">
               {activeModalUser ? (
                 <div className="flex items-center gap-3">
                   <img
                     src={activeModalUser.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(activeModalUser.name)}&background=1e3a5f&color=7dd3fc&size=88`}
                     alt={activeModalUser.name}
-                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-blue-500/40"
+                    className="w-11 h-11 rounded-xl object-cover ring-2 ring-[#214fbf]"
                   />
                   <div>
                     <h3 className="font-bold text-white text-sm">
                       {MODAL_TITLES[activeModalType as string] ?? activeModalType}
                     </h3>
-                    <p className="text-xs text-slate-400">{activeModalUser.id} • {activeModalUser.email}</p>
+                    <p className="text-xs text-[#8fb8ff]">{activeModalUser.id} • {activeModalUser.email}</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="w-11 h-11 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                  <div className="w-11 h-11 rounded-xl bg-[#0b226a] border border-[#214fbf] flex items-center justify-center text-[#f0b91f]">
                     <PlusCircle size={22} />
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-sm">Add New User</h3>
-                    <p className="text-xs text-slate-400">Create a new client profile & trading account</p>
+                    <p className="text-xs text-[#8fb8ff]">Create a new client profile & trading account</p>
                   </div>
                 </div>
               )}
-              <button onClick={closeModal} className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+              <button onClick={closeModal} className="p-2 rounded-xl border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af] transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -2768,7 +2800,7 @@ export default function AdminUsersPage() {
                   )}
 
                   {activeModalType === 'profile' && (
-                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} />
+                    <ProfileModal user={activeModalUser} onSave={handleProfileSave} onClose={closeModal} />
                   )}
 
                   {activeModalType === 'bank_crypto' && (
@@ -2779,8 +2811,8 @@ export default function AdminUsersPage() {
                     <div className="space-y-4">
                       <SectionTitle icon={ArrowUpRight} label="Transaction History" color="text-teal-400" />
                       {transactionDetailsByUserId[activeModalUser.id]?.loading && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400 flex items-center gap-2">
-                          <RefreshCw size={13} className="animate-spin text-teal-400" />
+                        <div className="rounded-xl border border-[#1745b3] bg-[#081d5f] px-3 py-2 text-[11px] text-[#8fb8ff] flex items-center gap-2">
+                          <RefreshCw size={13} className="animate-spin text-[#f0b91f]" />
                           Loading transaction history from the database...
                         </div>
                       )}
@@ -2791,15 +2823,15 @@ export default function AdminUsersPage() {
                       )}
                       {!transactionDetailsByUserId[activeModalUser.id]?.loading && (transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length === 0 ? (
                         <div className="text-center py-10">
-                          <ArrowDownUp size={32} className="mx-auto mb-3 text-slate-700" />
-                          <p className="text-slate-500 text-xs">No transactions found.</p>
+                          <ArrowDownUp size={32} className="mx-auto mb-3 text-[#1745b3]" />
+                          <p className="text-[#6f92e7] text-xs">No transactions found.</p>
                         </div>
                       ) : (
-                        <div className="rounded-2xl border border-slate-800 overflow-hidden">
+                        <div className="rounded-2xl border border-[#1745b3] overflow-hidden">
                           <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
                             <table className="w-full text-left text-xs border-collapse">
                               <thead className="sticky top-0 z-10">
-                                <tr className="bg-slate-900 border-b border-slate-800 text-slate-400">
+                                <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Tx ID</th>
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Type</th>
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Amount</th>
@@ -2807,9 +2839,9 @@ export default function AdminUsersPage() {
                                   <th className="px-4 py-3 font-semibold whitespace-nowrap text-right">Status</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-slate-800/60 bg-slate-950">
+                              <tbody className="divide-y divide-[#153d9f]/60 bg-[#071a57]">
                                 {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).map((tx) => (
-                                  <tr key={tx.id} className="hover:bg-slate-900/60 transition-colors">
+                                  <tr key={tx.id} className="hover:bg-[#0a205f]/60 transition-colors">
                                     <td className="px-4 py-3 font-mono text-blue-400 font-bold whitespace-nowrap">{tx.id}</td>
                                     <td className="px-4 py-3">
                                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
@@ -2833,8 +2865,8 @@ export default function AdminUsersPage() {
                               </tbody>
                             </table>
                           </div>
-                          <div className="px-4 py-2.5 bg-slate-900 border-t border-slate-800 flex items-center justify-between">
-                            <span className="text-[10px] text-slate-500">
+                          <div className="px-4 py-2.5 bg-[#0b226a] border-t border-[#1745b3] flex items-center justify-between">
+                            <span className="text-[10px] text-[#6f92e7]">
                               {(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length} transaction{(transactionDetailsByUserId[activeModalUser.id]?.transactions ?? []).length !== 1 ? 's' : ''}
                             </span>
                             <span className={`text-[10px] font-bold ${
@@ -2854,8 +2886,8 @@ export default function AdminUsersPage() {
                     <div className="space-y-4">
                       <SectionTitle icon={Ticket} label="Support Tickets" color="text-indigo-400" />
                       {ticketDetailsByUserId[activeModalUser.id]?.loading && (
-                        <div className="rounded-xl border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] text-slate-400 flex items-center gap-2">
-                          <RefreshCw size={13} className="animate-spin text-indigo-400" />
+                        <div className="rounded-xl border border-[#1745b3] bg-[#081d5f] px-3 py-2 text-[11px] text-[#8fb8ff] flex items-center gap-2">
+                          <RefreshCw size={13} className="animate-spin text-[#f0b91f]" />
                           Loading ticket history from the database...
                         </div>
                       )}
@@ -2865,15 +2897,15 @@ export default function AdminUsersPage() {
                         </div>
                       )}
                       {!ticketDetailsByUserId[activeModalUser.id]?.loading && (ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).length === 0 ? (
-                        <p className="text-slate-500 text-xs">No tickets found.</p>
+                        <p className="text-[#6f92e7] text-xs">No tickets found.</p>
                       ) : (
                         <div className="space-y-2">
                           {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).map((t) => (
-                            <div key={t.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                            <div key={t.id} className="p-3.5 rounded-xl bg-[#081d5f] border border-[#1745b3] flex items-center justify-between">
                               <div>
                                 <p className="font-mono text-blue-400 font-bold text-xs">{t.id}</p>
-                                <p className="text-slate-300 text-[11px] mt-0.5">{t.subject}</p>
-                                <p className="text-slate-500 text-[10px]">{t.date}</p>
+                                <p className="text-[#dbe8ff] text-[11px] mt-0.5">{t.subject}</p>
+                                <p className="text-[#6f92e7] text-[10px]">{t.date}</p>
                               </div>
                               <StatusBadge status={t.status} />
                             </div>
@@ -2893,10 +2925,10 @@ export default function AdminUsersPage() {
 
                   {activeModalType === 'account_active' && (
                     <div className="space-y-4">
-                      <SectionTitle icon={Power} label="Account Status" color="text-slate-400" />
-                      <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex items-center justify-between">
+                      <SectionTitle icon={Power} label="Account Status" color="text-[#9ec0ff]" />
+                      <div className="bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4 flex items-center justify-between">
                         <div>
-                          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Current Status</p>
+                          <p className="text-[#8fb8ff] text-[10px] uppercase tracking-wider mb-1">Current Status</p>
                           <StatusBadge status={activeModalUser.status} />
                         </div>
                         <button
@@ -2924,7 +2956,7 @@ export default function AdminUsersPage() {
                       <SectionTitle icon={Trash2} label="Delete User" color="text-red-400" />
                       <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
                         <p className="text-red-400 font-bold text-sm">⚠ This action is irreversible</p>
-                        <p className="text-slate-400 text-xs mt-1">
+                        <p className="text-[#8fb8ff] text-xs mt-1">
                           Permanently delete <strong className="text-white">{activeModalUser.name}</strong> ({activeModalUser.email}) and all associated data?
                         </p>
                       </div>
@@ -2941,9 +2973,9 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Modal Footer */}
-            {activeModalType !== 'create_user' && (
-              <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
-                <button onClick={closeModal} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all">
+            {activeModalType !== 'create_user' && activeModalType !== 'profile' && (
+              <div className="p-4 bg-[#0b226a] border-t border-[#1745b3] flex justify-end">
+                <button onClick={closeModal} className="px-4 py-2 rounded-xl border border-[#2a58c9] bg-[#11358f] hover:bg-[#1845af] text-white font-bold text-xs transition-all">
                   Close
                 </button>
               </div>

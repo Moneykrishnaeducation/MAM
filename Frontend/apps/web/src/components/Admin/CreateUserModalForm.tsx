@@ -33,7 +33,7 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             value={name} 
             onChange={e => setName(e.target.value)} 
             placeholder="John Doe" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+            className="w-full bg-[#0b226a] border border-[#1745b3] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
         <div className="space-y-1">
@@ -44,7 +44,7 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             value={email} 
             onChange={e => setEmail(e.target.value)} 
             placeholder="john@example.com" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+            className="w-full bg-[#0b226a] border border-[#1745b3] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
         <div className="space-y-1">
@@ -55,7 +55,7 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             value={password} 
             onChange={e => setPassword(e.target.value)} 
             placeholder="••••••••" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+            className="w-full bg-[#0b226a] border border-[#1745b3] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
         <div className="space-y-1">
@@ -65,7 +65,7 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             value={phone} 
             onChange={e => setPhone(e.target.value)} 
             placeholder="+1 555-0199" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+            className="w-full bg-[#0b226a] border border-[#1745b3] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
         <div className="space-y-1">
@@ -75,17 +75,17 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
             value={country} 
             onChange={e => setCountry(e.target.value)} 
             placeholder="United States" 
-            className="w-full bg-slate-950 border border-slate-800 focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
+            className="w-full bg-[#0b226a] border border-[#1745b3] focus:border-blue-500 rounded-xl px-3.5 py-2.5 text-slate-200 text-xs outline-none" 
           />
         </div>
 
       </div>
 
-      <div className="pt-4 border-t border-slate-800 flex justify-end gap-2.5">
+      <div className="pt-4 border-t border-[#1745b3] flex justify-end gap-2.5">
         <button 
           type="button" 
           onClick={onCancel} 
-          className="px-4 py-2 rounded-xl bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold text-xs transition-colors"
+          className="px-4 py-2 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-slate-300 font-bold text-xs transition-colors"
         >
           Cancel
         </button>
