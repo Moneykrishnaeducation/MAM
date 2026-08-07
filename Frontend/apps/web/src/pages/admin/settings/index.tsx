@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import { useRouter } from "next/router";
-import { 
-  Server, 
-  ShieldCheck, 
-  Lock, 
-  Globe, 
-  Key, 
+import {
+  Server,
+  ShieldCheck,
+  Lock,
+  Globe,
+  Key,
   Eye,
   EyeOff,
-  RefreshCw, 
-  AlertCircle, 
+  RefreshCw,
+  AlertCircle,
   CheckCircle,
   ShieldAlert,
   Copy,
@@ -39,7 +39,7 @@ function getAdminRole(): string {
         return decodeURIComponent(cookie.substring(nameEQ.length)).trim();
       }
     }
-  } catch {}
+  } catch { }
   return '';
 }
 
@@ -67,23 +67,23 @@ const FormSkeleton = () => (
   </div>
 );
 
-const InputField = ({ 
-  label, 
-  icon: Icon, 
-  name, 
-  value, 
-  onChange, 
-  disabled, 
-  type = "text", 
-  isEditing, 
-  error, 
-  placeholder, 
+const InputField = ({
+  label,
+  icon: Icon,
+  name,
+  value,
+  onChange,
+  disabled,
+  type = "text",
+  isEditing,
+  error,
+  placeholder,
   showToast,
   hint
 }: any) => {
   const [revealed, setRevealed] = useState(false);
   const [copied, setCopied] = useState(false);
-  const idRef = useRef(`input-${name}-${Math.random().toString(36).slice(2,8)}`);
+  const idRef = useRef(`input-${name}-${Math.random().toString(36).slice(2, 8)}`);
   const inputType = type === 'password' ? (revealed ? 'text' : 'password') : type;
 
   const handleCopy = async () => {
@@ -125,11 +125,10 @@ const InputField = ({
           onChange={onChange}
           disabled={disabled}
           autoComplete={autoComplete}
-          className={`w-full px-5 pr-28 py-4 text-sm font-mono font-semibold rounded-2xl border transition-all duration-200 outline-none ${
-            isEditing 
-              ? 'bg-slate-950/80 border-[#d4af37]/40 text-slate-100 placeholder-slate-600 focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/20 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]' 
+          className={`w-full px-5 pr-28 py-4 text-sm font-mono font-semibold rounded-2xl border transition-all duration-200 outline-none ${isEditing
+              ? 'bg-slate-950/80 border-[#d4af37]/40 text-slate-100 placeholder-slate-600 focus:border-[#d4af37] focus:ring-2 focus:ring-[#d4af37]/20 shadow-[inset_0_2px_8px_rgba(0,0,0,0.5)]'
               : 'bg-slate-900/40 border-white/5 text-slate-300 cursor-not-allowed opacity-80'
-          } ${error ? 'border-red-500/60 focus:border-red-500 ring-red-500/20' : ''}`}
+            } ${error ? 'border-red-500/60 focus:border-red-500 ring-red-500/20' : ''}`}
         />
 
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
@@ -392,60 +391,60 @@ const ServerCard = ({ serverType = true, Icon, title, showToast }: any) => {
         <FormSkeleton />
       ) : (
         <form onSubmit={handleSubmitLocal} className="space-y-6">
-          <InputField 
-            label="Server IP / Address" 
-            icon={Globe} 
-            name="serverIP" 
-            value={data.serverIP} 
-            onChange={handleChangeLocal} 
-            disabled={!isEditingLocal || savingLocal} 
-            isEditing={isEditingLocal} 
-            error={errorsLocal.serverIP} 
-            placeholder="e.g. 185.28.255.35:443" 
+          <InputField
+            label="Server IP / Address"
+            icon={Globe}
+            name="serverIP"
+            value={data.serverIP}
+            onChange={handleChangeLocal}
+            disabled={!isEditingLocal || savingLocal}
+            isEditing={isEditingLocal}
+            error={errorsLocal.serverIP}
+            placeholder="e.g. 185.28.255.35:443"
             showToast={showToast}
-            hint="Format: hostname:port" 
+            hint="Format: hostname:port"
           />
 
-          <InputField 
-            label="Manager Login ID" 
-            icon={User} 
-            name="loginID" 
-            value={data.loginID} 
-            onChange={handleChangeLocal} 
-            disabled={!isEditingLocal || savingLocal} 
-            isEditing={isEditingLocal} 
-            error={errorsLocal.loginID} 
-            placeholder="e.g. 1054" 
-            showToast={showToast} 
+          <InputField
+            label="Manager Login ID"
+            icon={User}
+            name="loginID"
+            value={data.loginID}
+            onChange={handleChangeLocal}
+            disabled={!isEditingLocal || savingLocal}
+            isEditing={isEditingLocal}
+            error={errorsLocal.loginID}
+            placeholder="e.g. 1054"
+            showToast={showToast}
             hint="MT5 Manager Account"
           />
 
-          <InputField 
-            label="Master Password" 
-            icon={Key} 
-            name="password" 
-            value={data.password} 
-            onChange={handleChangeLocal} 
-            disabled={!isEditingLocal || savingLocal} 
-            isEditing={isEditingLocal} 
-            type="password" 
-            error={errorsLocal.password} 
-            placeholder="••••••••••••" 
+          <InputField
+            label="Master Password"
+            icon={Key}
+            name="password"
+            value={data.password}
+            onChange={handleChangeLocal}
+            disabled={!isEditingLocal || savingLocal}
+            isEditing={isEditingLocal}
+            type="password"
+            error={errorsLocal.password}
+            placeholder="••••••••••••"
             showToast={showToast}
             hint={isEditingLocal ? "Leave blank to keep existing password" : "Encrypted at rest"}
           />
 
-          <InputField 
-            label="Display Gateway Name" 
-            icon={Server} 
-            name="serverName" 
-            value={data.serverName} 
-            onChange={handleChangeLocal} 
-            disabled={!isEditingLocal || savingLocal} 
-            isEditing={isEditingLocal} 
-            error={errorsLocal.serverName} 
-            placeholder="e.g. MT5 Live Primary" 
-            showToast={showToast} 
+          <InputField
+            label="Display Gateway Name"
+            icon={Server}
+            name="serverName"
+            value={data.serverName}
+            onChange={handleChangeLocal}
+            disabled={!isEditingLocal || savingLocal}
+            isEditing={isEditingLocal}
+            error={errorsLocal.serverName}
+            placeholder="e.g. MT5 Live Primary"
+            showToast={showToast}
             hint="Friendly label"
           />
 
@@ -480,9 +479,9 @@ const ServerCard = ({ serverType = true, Icon, title, showToast }: any) => {
                 </div>
               </div>
             ) : (
-              <button 
-                type="button" 
-                onClick={handleEditToggleLocal} 
+              <button
+                type="button"
+                onClick={handleEditToggleLocal}
                 className="w-full flex items-center justify-center gap-2 py-4 rounded-xl font-black text-xs uppercase tracking-widest border transition-all bg-slate-800/60 border-[#d4af37]/30 text-[#e6c687] hover:bg-slate-800 hover:border-[#d4af37] hover:text-white shadow-md"
               >
                 <Edit3 className="w-4 h-4 text-[#d4af37]" /> Unlock & Edit Gateway Credentials
@@ -519,12 +518,12 @@ export default function AdminSettingsPage() {
           <div className="w-24 h-24 mx-auto mb-8 rounded-3xl flex items-center justify-center animate-pulse bg-red-500/10 border border-red-500/30">
             <ShieldAlert className="w-12 h-12 text-red-500" />
           </div>
-          
+
           <h1 className="text-3xl font-black tracking-tighter mb-4 text-white">Access Restricted</h1>
           <p className="text-sm font-medium leading-relaxed mb-10 text-slate-400">
             Administrative settings are restricted to SuperAdmin accounts only. Please request permission from your system administrator.
           </p>
-          
+
           <button
             onClick={() => router.push("/admin/dashboard")}
             className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 to-red-500 text-white font-black text-sm uppercase tracking-widest hover:shadow-lg hover:shadow-red-500/20 transition-all active:scale-95"
@@ -548,7 +547,7 @@ export default function AdminSettingsPage() {
         <div className="fixed bottom-20 left-1/3 w-[30rem] h-[30rem] bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-6xl mx-auto p-4 sm:p-6 lg:p-8 relative z-10 space-y-8">
-          
+
           {/* Header Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 sm:p-8 rounded-3xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-2xl">
             <div className="flex items-center gap-5">
@@ -594,42 +593,40 @@ export default function AdminSettingsPage() {
                   <p className="text-xs text-slate-400">Compliance standards for MT5 Manager API gateway</p>
                 </div>
               </div>
-                        {/* Quick System Status Metrics Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gateway Status</div>
-                <div className="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
-                  OPERATIONAL <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              {/* Quick System Status Metrics Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gateway Status</div>
+                    <div className="text-sm font-bold text-emerald-400 flex items-center gap-1.5">
+                      OPERATIONAL <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37]">
-                <Lock className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Credential Storage</div>
-                <div className="text-sm font-bold text-slate-200">AES-256 ENCRYPTED</div>
-              </div>
-            </div>
+                <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37]">
+                    <Lock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Credential Storage</div>
+                    <div className="text-sm font-bold text-slate-200">AES-256 ENCRYPTED</div>
+                  </div>
+                </div>
 
-            <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">MT5 API Engine</div>
-                <div className="text-sm font-bold text-slate-200">NATIVE C++ WRAPPER</div>
-              </div>
-            </div>
-          </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="p-4 rounded-2xl bg-slate-900/60 border border-white/5 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <Cpu className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">MT5 API Engine</div>
+                    <div className="text-sm font-bold text-slate-200">NATIVE C++ WRAPPER</div>
+                  </div>
+                </div>
+                
                 <div className="p-4 rounded-2xl bg-slate-950/60 border border-white/5 space-y-1">
                   <div className="text-xs font-bold text-[#d4af37] flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4" /> Manager Privileges
@@ -663,22 +660,21 @@ export default function AdminSettingsPage() {
 
           {/* Main Form Container */}
           <div className="max-w-3xl mx-auto w-full">
-            <ServerCard 
-              serverType={true} 
-              Icon={ShieldCheck} 
-              title="Live MT5 Manager Gateway" 
-              showToast={showToast} 
+            <ServerCard
+              serverType={true}
+              Icon={ShieldCheck}
+              title="Live MT5 Manager Gateway"
+              showToast={showToast}
             />
           </div>
 
           {/* Toast Notification Container */}
           {toast && (
             <div className="fixed top-20 right-8 z-50 animate-in slide-in-from-top-4 fade-in duration-300">
-              <div className={`w-auto max-w-sm px-5 py-4 rounded-2xl flex items-start gap-3 border shadow-2xl backdrop-blur-xl ${
-                toast.variant === 'error' 
-                  ? 'bg-red-950/90 border-red-500/60 text-red-100 shadow-red-500/20' 
+              <div className={`w-auto max-w-sm px-5 py-4 rounded-2xl flex items-start gap-3 border shadow-2xl backdrop-blur-xl ${toast.variant === 'error'
+                  ? 'bg-red-950/90 border-red-500/60 text-red-100 shadow-red-500/20'
                   : 'bg-emerald-950/90 border-emerald-500/60 text-emerald-100 shadow-emerald-500/20'
-              }`}>
+                }`}>
                 {toast.variant === 'error' ? (
                   <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 ) : (
@@ -690,9 +686,9 @@ export default function AdminSettingsPage() {
                   </div>
                   <div className="text-xs font-medium text-slate-200">{toast.message}</div>
                 </div>
-                <button 
-                  type="button" 
-                  onClick={() => setToast(null)} 
+                <button
+                  type="button"
+                  onClick={() => setToast(null)}
                   className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
