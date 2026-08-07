@@ -46,6 +46,7 @@ import {
   CalendarClock,
   UserCheck,
   ArrowDownUp,
+  Sparkles,
 } from 'lucide-react';
 import { getAdminUsers } from '@/lib/mockDataLoader';
 import CreateUserModalForm from '@/components/Admin/CreateUserModalForm';
@@ -2732,93 +2733,157 @@ export default function AdminUsersPage() {
         <title>Users Directory | Admin Portal</title>
       </Head>
 
-      <div className="min-h-screen bg-[#040f36] relative p-6 md:p-10 space-y-10 overflow-hidden">
-        {/* ── Background Ambient Glow (Ticket Page Style) ── */}
-        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
-          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
-          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
-          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
-        </div>
+      <div className="w-full text-slate-100 font-sans antialiased">
+        {/* Ambient decorative glow rings */}
+        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* ── Page Header ── */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-[#8db5ff] text-xs font-black uppercase tracking-widest mb-3 backdrop-blur-md">
-              <Users size={14} className="text-[#f0b91f]" /> User Management
-            </div>
-            
-          </div>
-          <button
-            onClick={() => openSubRowModal(null, 'create_user')}
-            className="px-6 py-3.5 rounded-[1.2rem] font-black text-sm hover:scale-105 transition-all flex items-center gap-2 bg.gradient-to-r bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)] self-start md:self-auto shrink-0"
-          >
-            <Plus size={18} /> Add New User
-          </button>
-        </div>
-
-        {/* ── Floating Animated Toast Notification ── */}
-        {toastMessage && (
-          <div className="fixed top-6 right-6 z-[9999] max-w-sm w-full bg-[#081d5f] border border-[#214fbf] text-[#dbe8ff] p-4 rounded-2xl shadow-2xl flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
-            <span className="flex items-center gap-2.5 text-xs font-bold">
-              <CheckCircle2 size={16} className="text-[#f0b91f] shrink-0" />
-              {toastMessage}
-            </span>
-            <button
-              onClick={() => setToastMessage(null)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* ── Main Directory Card Container (Ticket Page Aesthetic) ── */}
-        <div className="border border-[#1745b3] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)] rounded-[2.5rem] overflow-hidden relative z-10">
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
           
-          {/* Header Bar */}
-          <div className="p-6 md:p-8 border-b border-[#1745b3] flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* HEADER BANNER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
             <div className="flex items-center gap-3">
-              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
+                <Users className="w-5 h-5" />
+              </div>
               <div>
-                <h2 className="text-xl font-black text-white">Users Directory </h2>
-                
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
+                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> User Management Engine
+                </div>
+                <h1 className="text-lg font-black tracking-tight text-white uppercase">
+                  Users Directory
+                </h1>
+                <p className="text-[11px] text-slate-400">
+                  Manage user profiles, identity verification (KYC), payment details, and trading account statuses.
+                </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="relative flex-1 min-w-0 md:w-80">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8db5ff]" size={18} />
-                <input
-                  type="text"
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => refreshUsers()}
+                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
+              >
+                <RefreshCw size={13} className={loading ? "animate-spin text-[#d4af37]" : ""} />
+                <span>Sync Directory</span>
+              </button>
+
+              {!isViewerAdmin && (
+                <button
+                  onClick={() => openSubRowModal(null, 'create_user')}
+                  className="px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 hover:brightness-110 transition-all flex items-center gap-1.5 shadow-md"
+                >
+                  <Plus size={14} /> Add New User
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* SUMMARY KPI CARDS */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Registered</div>
+                <div className="text-xl font-black text-white mt-0.5">{users.length} <span className="text-[9px] text-slate-500 font-semibold uppercase">Users</span></div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                <Users size={16} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Verified Clients</div>
+                <div className="text-xl font-black text-emerald-400 mt-0.5">
+                  {users.filter(u => u.verified || u.kycStatus === 'Verified' || u.kycStatus === 'Approved').length}
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <ShieldCheck size={16} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Active Accounts</div>
+                <div className="text-xl font-black text-[#d4af37] mt-0.5">
+                  {users.filter(u => isAccountActive(u.status)).length}
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
+                <UserCheck size={16} />
+              </div>
+            </div>
+
+            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+              <div>
+                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Pending Verification</div>
+                <div className="text-xl font-black text-amber-400 mt-0.5">
+                  {users.filter(u => !u.verified && u.kycStatus !== 'Verified' && u.kycStatus !== 'Approved').length}
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <Clock size={16} />
+              </div>
+            </div>
+
+          </div>
+
+          {/* TOAST NOTIFICATION */}
+          {toastMessage && (
+            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
+              <span className="flex items-center gap-2">
+                <CheckCircle2 size={15} className="text-emerald-400" /> {toastMessage}
+              </span>
+              <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white">&times;</button>
+            </div>
+          )}
+
+          {/* MAIN TABLE CONTAINER */}
+          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl">
+            
+            {/* TOOLBAR SEARCH */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
+              <div className="relative flex-1 max-w-md">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search by name, email, or user ID..."
-                  className="w-full pl-11 pr-4 py-3 rounded-[1.1rem] border border-[#214fbf] bg-[#081d5f] text-[#dbe8ff] placeholder:text-[#6f92e7] outline-none font-medium focus:border-[#3aa0ff] transition-all text-xs"
+                  placeholder="Search user ID, name, email, or country..." 
+                  className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
                 />
+                {searchTerm && (
+                  <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
+                    <X size={12} />
+                  </button>
+                )}
               </div>
-              <div className="px-4 py-2.5 rounded-[1.1rem] border border-[#214fbf] bg-[#081d5f] text-xs font-bold text-[#8db5ff]">
-                Total Users: <strong className="text-[#f0b91f] font-mono text-sm ml-1">{loading ? '...' : filteredUsers.length}</strong>
+
+              <div className="text-xs text-slate-400 font-bold">
+                Showing <span className="text-white font-mono">{filteredUsers.length}</span> of <span className="text-slate-300 font-mono">{users.length}</span> users
               </div>
             </div>
-          </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-[#0b226a] border-b border-[#153d9f]">
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">ID</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Name</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Email</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Phone</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Role</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Verification</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Status</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Registered</th>
-                  <th className="px-6 py-4 font-black uppercase tracking-widest text-[#9ec0ff]">Country</th>
-                  <th className="px-6 py-4 text-right font-black uppercase tracking-widest text-[#9ec0ff]">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#153d9f] text-[#dbe8ff]">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs whitespace-nowrap">
+                <thead>
+                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[9px] border-b border-white/10 pb-2">
+                    <th className="pb-2 px-2.5">User ID</th>
+                    <th className="pb-2 px-2.5">Name</th>
+                    <th className="pb-2 px-2.5">Email</th>
+                    <th className="pb-2 px-2.5">Phone</th>
+                    <th className="pb-2 px-2.5">Role</th>
+                    <th className="pb-2 px-2.5">Verification</th>
+                    <th className="pb-2 px-2.5">Status</th>
+                    <th className="pb-2 px-2.5">Registered</th>
+                    <th className="pb-2 px-2.5">Country</th>
+                    <th className="pb-2 px-2.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
                 {loading ? (
                   /* ── Pulsating Skeleton Rows ── */
                   Array.from({ length: 5 }).map((_, idx) => (
@@ -2871,36 +2936,34 @@ export default function AdminUsersPage() {
                       <React.Fragment key={u.id}>
                         <tr
                           onClick={() => toggleDropdownRow(u.id)}
-                          className={`cursor-pointer transition-colors ${
-                            isExpanded ? 'bg-[#0a205f]' : 'hover:bg-[#0a205f]/60'
+                          className={`cursor-pointer transition-colors group ${
+                            isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/40'
                           }`}
                         >
-                          <td className="px-6 py-5">
-                            <span className="font-mono font-bold px-3 py-1 rounded-lg border border-[#2450b7] bg-[#0b226a] text-[#f0b91f]">
-                              {u.user_id}
-                            </span>
+                          <td className="py-2.5 px-2.5 font-mono text-xs font-bold text-[#d4af37]">
+                            {u.user_id}
                           </td>
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-3">
+                          <td className="py-2.5 px-2.5">
+                            <div className="flex items-center gap-2.5">
                               <img
-                                src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=1e3a5f&color=7dd3fc&size=80`}
+                                src={u.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(u.name)}&background=0f224a&color=d4af37&size=80`}
                                 alt={u.name}
-                                className="w-10 h-10 rounded-2xl object-cover ring-2 ring-[#214fbf]"
+                                className="w-7 h-7 rounded-md object-cover border border-white/10 group-hover:border-[#d4af37]/40 transition-colors"
                               />
-                              <span className="font-bold text-white text-sm">{u.name}</span>
+                              <span className="font-bold text-slate-100 text-xs">{u.name}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-5">
-                            <span className="text-xs text-[#9ec0ff] font-medium">{u.email}</span>
+                          <td className="py-2.5 px-2.5 text-xs text-slate-300 font-mono">
+                            {u.email}
                           </td>
-                          <td className="px-6 py-5">
-                            <span className="text-xs text-[#9ec0ff] font-medium">{u.phone}</span>
+                          <td className="py-2.5 px-2.5 text-xs text-slate-300 font-mono">
+                            {u.phone}
                           </td>
-                          <td className="px-6 py-5 text-white font-bold">{u.role}</td>
-                          <td className="px-6 py-5">
+                          <td className="py-2.5 px-2.5 font-bold text-white text-xs">{u.role}</td>
+                          <td className="py-2.5 px-2.5">
                             <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
                           </td>
-                          <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2.5 px-2.5" onClick={(e) => e.stopPropagation()}>
                             {isViewer ? (
                               <StatusBadge status={u.status} />
                             ) : (
@@ -2920,65 +2983,73 @@ export default function AdminUsersPage() {
                               </button>
                             )}
                           </td>
-                          <td className="px-6 py-5 font-medium text-[#9ec0ff]">{u.joined}</td>
-                          <td className="px-6 py-5 font-bold text-white">{u.country || 'United States'}</td>
-                          <td className="px-6 py-5 text-right">
+                          <td className="py-2.5 px-2.5 font-medium text-slate-400 text-xs">{u.joined}</td>
+                          <td className="py-2.5 px-2.5 font-bold text-slate-200 text-xs">{u.country || 'United States'}</td>
+                          <td className="py-2.5 px-2.5 text-right">
                             <button
                               onClick={(e) => { e.stopPropagation(); toggleDropdownRow(u.id); }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-[#2858cd] bg-[#0b226a] text-[#d7e5ff] hover:bg-[#102c7c] font-bold text-xs transition-all shadow-sm"
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-all border ${
+                                isExpanded 
+                                  ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border-transparent font-black shadow-md' 
+                                  : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-white/10 hover:border-[#d4af37]/40'
+                              }`}
                             >
-                              <span>Actions</span>
-                              {isExpanded ? <ChevronUp size={14} className="text-[#f0b91f]" /> : <ChevronDown size={14} />}
+                              <span>{isExpanded ? 'Hide Menu' : 'Actions'}</span>
+                              {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                             </button>
                           </td>
                         </tr>
 
-                      {/* ── Expanded Sub-Row Drawer (Ticket Style) ── */}
+                      {/* ── EXPANDED SUB-ROW DRAWER ── */}
                       {isExpanded && (
-                        <tr className="bg-[#051442] border-b border-[#153d9f]">
-                          <td colSpan={9} className="p-4 sm:p-6">
-                            <div className="bg-[#081d5f] rounded-2xl border border-[#214fbf] p-5 shadow-inner">
-                              <div className="text-xs font-black uppercase tracking-widest text-[#9ec0ff] mb-4 flex items-center gap-2">
-                                <span>Actions for <strong className="text-[#f0b91f] font-extrabold">{u.name}</strong></span>
-                                <span className="text-[#214fbf]">•</span>
-                                <span className="text-white">Management Console</span>
+                        <tr className="bg-slate-950/60 border-b border-white/10">
+                          <td colSpan={10} className="p-3 sm:p-4">
+                            <div className="bg-slate-900 border border-white/10 rounded-xl p-3.5 shadow-2xl space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
+                                <div className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
+                                  <Sparkles size={14} className="text-[#d4af37]" />
+                                  <span>User Management Console — <strong className="text-[#d4af37]">{u.name}</strong></span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  User Ref: <strong className="text-[#d4af37]">{u.id}</strong>
+                                </span>
                               </div>
-                              <div className="flex flex-wrap items-center gap-3">
-                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <ShieldCheck size={16} className="text-[#f0b91f]" /> KYC Verify
+                              <div className="flex flex-wrap items-center gap-2">
+                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <ShieldCheck size={14} className="text-[#d4af37]" /> KYC Verify
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <TrendingUp size={16} className="text-emerald-400" /> Trading
+                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <TrendingUp size={14} className="text-emerald-400" /> Trading
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <User size={16} className="text-purple-300" /> Profile
+                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <User size={14} className="text-purple-300" /> Profile
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <CreditCard size={16} className="text-amber-300" /> Bank/Crypto
+                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <CreditCard size={14} className="text-amber-300" /> Bank/Crypto
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <ArrowUpRight size={16} className="text-teal-300" /> Transactions
+                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <ArrowUpRight size={14} className="text-teal-300" /> Transactions
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#0b226a] hover:bg-[#102c7c] text-white border border-[#2858cd] text-xs font-bold transition-all shadow-sm">
-                                  <Ticket size={16} className="text-indigo-300" /> Tickets ({u.tickets?.length || 0})
+                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                  <Ticket size={14} className="text-indigo-300" /> Tickets ({u.tickets?.length || 0})
                                 </button>
                                 {!isViewer && (
                                   <>
-                                    <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white text-xs font-black uppercase tracking-wider transition-all shadow-md">
-                                      <PlusCircle size={16} /> Add Account
+                                    <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border border-transparent text-xs font-black uppercase tracking-wider transition-all shadow-md">
+                                      <PlusCircle size={14} /> Add Account
                                     </button>
                                     <button
                                       onClick={() => openSubRowModal(u, 'account_active')}
-                                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold border transition-all ${
                                         isAccountActive(u.status)
-                                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                                          : 'bg-red-500/10 text-red-400 border-red-500/30'
+                                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                          : 'bg-red-500/15 text-red-300 border-red-500/30'
                                       }`}
                                     >
-                                      <Power size={16} /> {getAccountStatusLabel(u.status)}
+                                      <Power size={14} /> {getAccountStatusLabel(u.status)}
                                     </button>
-                                    <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600/15 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
-                                      <Trash2 size={16} /> Delete
+                                    <button onClick={() => openSubRowModal(u, 'delete_user')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-red-500/15 hover:bg-red-500 text-red-300 hover:text-white border border-red-500/30 text-xs font-bold transition-all">
+                                      <Trash2 size={14} /> Delete
                                     </button>
                                   </>
                                 )}
@@ -2989,12 +3060,14 @@ export default function AdminUsersPage() {
                       )}
                     </React.Fragment>
                   );
-                }))}
+                })
+              )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+    </div>
 
       {/* ── MODAL ── */} 
       {activeModalType && (
