@@ -13,6 +13,7 @@ This file provides context about the project for AI assistants.
 - ORM: tortoise-orm
 - Validation: pydantic & pydantic-settings
 - API Framework: django-ninja & strawberry-graphql
+- Auth: PyJWT (HS256) for access tokens issued on login
 - Code Quality: ruff
 
 ## Project Structure

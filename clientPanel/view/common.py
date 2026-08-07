@@ -2,10 +2,10 @@
 
 import base64
 import hashlib
-import hmac
-import json
 import os
 import time
+
+import jwt
 
 from django.http import JsonResponse
 from django.utils import timezone
@@ -21,18 +21,43 @@ from adminPanel.models import (
 )
 from backendPanel.database import ensure_db_initialized
 
-CLIENT_LOGIN_KEY = "client-panel-login-key"
+# Cookie / header name constants (unchanged — keep frontend compatibility)
 CLIENT_LOGIN_COOKIE_NAME = "client_auth_token"
 AUTH_ACCESS_COOKIE_NAME = "access_token"
 AUTH_JWT_COOKIE_NAME = "jwt_token"
 AUTH_REFRESH_COOKIE_NAME = "refresh_token"
 AUTH_ROLE_COOKIE_NAME = "role"
 AUTH_USER_ID_COOKIE_NAME = "user_id"
-CLIENT_LOGIN_MAX_AGE = 60 * 60 * 24 * 7
-CLIENT_PASSWORD_HASH_ITERATIONS = 120000
-ADMIN_LOGIN_KEY = "admin-panel-login-key"
+CLIENT_LOGIN_MAX_AGE = 60 * 60 * 24 * 7  # 7 days (seconds)
+CLIENT_PASSWORD_HASH_ITERATIONS = 120_000
 ADMIN_LOGIN_COOKIE_NAME = "admin_auth_token"
-ADMIN_LOGIN_MAX_AGE = 60 * 60 * 24 * 7
+ADMIN_LOGIN_MAX_AGE = 60 * 60 * 24 * 7  # 7 days (seconds)
+
+# JWT issuer claim values — used to distinguish token audiences on decode
+_JWT_ISSUER_CLIENT = "mam-client"
+_JWT_ISSUER_ADMIN = "mam-admin"
+
+
+def _jwt_settings() -> tuple[str, str, int]:
+    """Return (secret_key, algorithm, expire_seconds) from Django settings.
+
+    Falls back to safe defaults when Django is not yet configured (e.g.
+    during test collection before settings.configure() has been called).
+    """
+    try:
+        from django.conf import settings as django_settings
+
+        secret = getattr(django_settings, "JWT_SECRET_KEY", None)
+        algorithm = getattr(django_settings, "JWT_ALGORITHM", "HS256")
+        expire_secs = getattr(
+            django_settings, "JWT_ACCESS_TOKEN_EXPIRE_SECONDS", CLIENT_LOGIN_MAX_AGE
+        )
+        if not secret:
+            # Fall back to Django's own SECRET_KEY when JWT_SECRET_KEY is not set
+            secret = getattr(django_settings, "SECRET_KEY", "change-me-in-production")
+        return str(secret), str(algorithm), int(expire_secs)
+    except Exception:
+        return "change-me-in-production", "HS256", CLIENT_LOGIN_MAX_AGE
 
 
 def _error(message: str, status: int = 400, **extra):
@@ -902,41 +927,65 @@ async def _get_client_profile_for_request(request):
     return user, None
 
 
+# ---------------------------------------------------------------------------
+# Standard JWT token creation & verification (PyJWT / RFC 7519)
+# ---------------------------------------------------------------------------
+
+
 def create_client_login_token(user_id: int, email: str) -> str:
-    """Create a short-lived signed token for a client session."""
-    return _create_signed_login_token(
-        key=CLIENT_LOGIN_KEY,
-        payload={
-            "user_id": user_id,
-            "email": email,
-            "ts": int(time.time()),
-        },
-    )
+    """Issue a signed JWT for a client session.
+
+    Standard claims included:
+      - ``iss`` (issuer)   : "mam-client"
+      - ``sub`` (subject)  : str(user_id)
+      - ``iat`` (issued at): current UTC timestamp
+      - ``exp`` (expires)  : iat + JWT_ACCESS_TOKEN_EXPIRE_SECONDS
+
+    Application claims:
+      - ``user_id``, ``email``
+    """
+    secret, algorithm, expire_secs = _jwt_settings()
+    now = int(time.time())
+    payload: dict = {
+        # Standard JWT claims
+        "iss": _JWT_ISSUER_CLIENT,
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + expire_secs,
+        # Application claims
+        "user_id": user_id,
+        "email": email,
+    }
+    return jwt.encode(payload, secret, algorithm=algorithm)
 
 
 def create_admin_login_token(user_id: int, email: str, role: str, name: str | None = None) -> str:
-    """Create a short-lived signed token for an admin session."""
-    return _create_signed_login_token(
-        key=ADMIN_LOGIN_KEY,
-        payload={
-            "user_id": user_id,
-            "email": email,
-            "name": name,
-            "role": role,
-            "ts": int(time.time()),
-        },
-    )
+    """Issue a signed JWT for an admin session.
 
+    Standard claims included:
+      - ``iss`` (issuer)   : "mam-admin"
+      - ``sub`` (subject)  : str(user_id)
+      - ``iat`` (issued at): current UTC timestamp
+      - ``exp`` (expires)  : iat + JWT_ACCESS_TOKEN_EXPIRE_SECONDS
 
-def _create_signed_login_token(*, key: str, payload: dict) -> str:
-    payload_json = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
-    payload_b64 = base64.urlsafe_b64encode(payload_json).rstrip(b"=").decode("ascii")
-    signature = hmac.new(
-        key.encode("utf-8"),
-        payload_b64.encode("ascii"),
-        hashlib.sha256,
-    ).hexdigest()
-    return f"{payload_b64}.{signature}"
+    Application claims:
+      - ``user_id``, ``email``, ``role``, ``name``
+    """
+    secret, algorithm, expire_secs = _jwt_settings()
+    now = int(time.time())
+    payload: dict = {
+        # Standard JWT claims
+        "iss": _JWT_ISSUER_ADMIN,
+        "sub": str(user_id),
+        "iat": now,
+        "exp": now + expire_secs,
+        # Application claims
+        "user_id": user_id,
+        "email": email,
+        "role": role,
+        "name": name,
+    }
+    return jwt.encode(payload, secret, algorithm=algorithm)
 
 
 def hash_client_password(password: str) -> str:
@@ -973,57 +1022,61 @@ def verify_client_password(password: str, encoded: str | None) -> bool:
     except (ValueError, TypeError, UnicodeDecodeError):
         return False
 
+    import hmac as _hmac
+
     computed_hash = hashlib.pbkdf2_hmac(
         "sha256",
         password.encode("utf-8"),
         salt,
         iterations,
     )
-    return hmac.compare_digest(stored_hash, computed_hash)
+    return _hmac.compare_digest(stored_hash, computed_hash)
 
 
 def load_client_login_token(token: str) -> dict | None:
-    """Validate a client login token and return its payload if valid."""
-    return _load_signed_login_token(token=token, key=CLIENT_LOGIN_KEY)
+    """Validate a client JWT and return its decoded payload, or None on failure.
+
+    Verification steps performed by PyJWT:
+      - Signature integrity (HMAC-SHA256)
+      - ``exp`` claim  → rejects expired tokens
+      - ``iat`` claim  → rejects tokens with a future issue time
+      - ``iss`` claim  → must equal "mam-client"
+    """
+    return _decode_jwt(token, issuer=_JWT_ISSUER_CLIENT)
 
 
 def load_admin_login_token(token: str) -> dict | None:
-    """Validate an admin login token and return its payload if valid."""
-    return _load_signed_login_token(token=token, key=ADMIN_LOGIN_KEY)
+    """Validate an admin JWT and return its decoded payload, or None on failure.
+
+    Verification steps performed by PyJWT:
+      - Signature integrity (HMAC-SHA256)
+      - ``exp`` claim  → rejects expired tokens
+      - ``iat`` claim  → rejects tokens with a future issue time
+      - ``iss`` claim  → must equal "mam-admin"
+    """
+    return _decode_jwt(token, issuer=_JWT_ISSUER_ADMIN)
 
 
-def _load_signed_login_token(token: str, key: str) -> dict | None:
+def _decode_jwt(token: str, *, issuer: str) -> dict | None:
+    """Decode and verify a JWT, returning the payload dict or None."""
+    secret, algorithm, _ = _jwt_settings()
     try:
-        payload_b64, signature = token.split(".", 1)
-    except ValueError:
+        payload = jwt.decode(
+            token,
+            secret,
+            algorithms=[algorithm],
+            issuer=issuer,
+            options={"require": ["exp", "iat", "iss", "sub"]},
+        )
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
         return None
 
-    expected_signature = hmac.new(
-        key.encode("utf-8"),
-        payload_b64.encode("ascii"),
-        hashlib.sha256,
-    ).hexdigest()
-    if not hmac.compare_digest(signature, expected_signature):
-        return None
-
-    padding = "=" * (-len(payload_b64) % 4)
+    # Normalise user_id to int (defensive — jwt.decode already returns the int)
+    user_id = payload.get("user_id") or payload.get("sub")
     try:
-        payload_json = base64.urlsafe_b64decode(f"{payload_b64}{padding}".encode("ascii"))
-        payload = json.loads(payload_json.decode("utf-8"))
-    except (ValueError, json.JSONDecodeError, UnicodeDecodeError):
-        return None
-
-    issued_at = payload.get("ts")
-    if not isinstance(issued_at, int):
-        return None
-    if int(time.time()) - issued_at > CLIENT_LOGIN_MAX_AGE:
-        return None
-
-    user_id = payload.get("user_id")
-    if user_id is None:
-        return None
-    try:
-        payload["user_id"] = int(user_id)
+        payload["user_id"] = int(user_id)  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return None
     return payload

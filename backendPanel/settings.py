@@ -31,6 +31,17 @@ class Settings(BaseSettings):
     mt5_default_agent: int = Field(default=426, alias="MT5_DEFAULT_AGENT")
     frontend_base_url: str = Field(default="http://localhost:3000", alias="FRONTEND_BASE_URL")
 
+    # JWT settings
+    jwt_secret_key: str = Field(
+        default="change-me-in-production",
+        alias="JWT_SECRET_KEY",
+    )
+    jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    jwt_access_token_expire_seconds: int = Field(
+        default=60 * 60 * 24 * 7,  # 7 days
+        alias="JWT_ACCESS_TOKEN_EXPIRE_SECONDS",
+    )
+
     @field_validator("debug", mode="before")
     def parse_debug(cls, value: Any) -> bool:
         if isinstance(value, bool):

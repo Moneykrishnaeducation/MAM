@@ -33,6 +33,7 @@ dependencies = [
     "upstash-redis>=1.7.0",
     "meilisearch>=0.41.0",
     "python-dotenv>=1.2.2",
+    "PyJWT>=2.9.0",
     "waitress>=3.0.2",
     "uvicorn[standard]>=0.34.0",
     "MT5Manager",
