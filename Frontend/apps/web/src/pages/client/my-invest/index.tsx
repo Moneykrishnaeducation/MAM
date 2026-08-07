@@ -566,7 +566,7 @@ export default function ClientMyInvestPage() {
       {
         title: 'Active Investments',
         value: String(activeInvestments),
-        suffix: `${investments.length} total`,
+        suffix: ` total`,
         icon: ShieldCheck,
         badge: 'Open',
         cardClassName: isDarkMode
