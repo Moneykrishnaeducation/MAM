@@ -79,11 +79,19 @@ const riskBadge = (risk: string, isDarkMode: boolean) => {
 
 export default function ClientManagerPage() {
   const { theme } = useTheme();
-  const isDarkMode = true;
+  const isDarkMode = theme === 'dark';
 
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const showManagerToast = (message: string) => {
+    setToastMessage(message);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
   const [showAccountSettingsModal, setShowAccountSettingsModal] = useState(false);
   const [showInvestorListModal, setShowInvestorListModal] = useState(false);
   const [showPerformanceModal, setShowPerformanceModal] = useState(false);
