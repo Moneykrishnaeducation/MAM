@@ -22,6 +22,7 @@ async def get_client_investments(request):
 
     raw_page = request.GET.get("page")
     raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+    raw_search = (request.GET.get("search") or request.GET.get("query") or "").strip().lower()
 
     paginate = raw_page is not None or raw_per_page is not None
 
@@ -77,6 +78,25 @@ async def get_client_investments(request):
                 else None,
             }
         )
+
+    if raw_search:
+        def _matches(record):
+            searchable = " ".join(
+                str(record.get(field) or "")
+                for field in (
+                    "strategy",
+                    "manager",
+                    "account_id",
+                    "status",
+                    "allocated",
+                    "current_value",
+                    "return_pct",
+                    "manager_account_id",
+                )
+            ).lower()
+            return raw_search in searchable
+
+        results = [record for record in results if _matches(record)]
 
     total = len(results)
 

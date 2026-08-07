@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
 import {
@@ -75,6 +75,7 @@ export default function ClientAvailablePage() {
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
   const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
+  const hasLoadedInitialDataRef = useRef(false);
   const [pagination, setPagination] = useState({
     page: 1,
     perPage: 10,
@@ -95,8 +96,12 @@ export default function ClientAvailablePage() {
   // Load only available MAM managers on mount & page/query changes
   useEffect(() => {
     let active = true;
+    let finishedFirstLoad = false;
     const loadAllData = async () => {
-      setIsPageLoading(true);
+      const shouldShowInitialSkeleton = !hasLoadedInitialDataRef.current;
+      if (shouldShowInitialSkeleton) {
+        setIsPageLoading(true);
+      }
       try {
         const res = await fetchAdminManagers(currentPage, perPage, query);
 
@@ -130,10 +135,13 @@ export default function ClientAvailablePage() {
             return toViewRow(updated);
           });
         }
+        finishedFirstLoad = true;
       } catch {
         // Fallback
+        finishedFirstLoad = true;
       } finally {
-        if (active) {
+        if (active && finishedFirstLoad) {
+          hasLoadedInitialDataRef.current = true;
           setIsPageLoading(false);
         }
       }

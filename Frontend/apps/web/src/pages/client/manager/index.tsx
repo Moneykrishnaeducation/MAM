@@ -125,6 +125,7 @@ export default function ClientManagerPage() {
   const [isPopupInvestorsLoading, setIsPopupInvestorsLoading] = useState<boolean>(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
   const managerCardRef = useRef<HTMLDivElement | null>(null);
+  const hasLoadedInitialDataRef = useRef(false);
 
   const fetchManagerInvestorsList = async (accountId: string) => {
     setIsPopupInvestorsLoading(true);
@@ -211,8 +212,12 @@ export default function ClientManagerPage() {
   // Fetch only my-mam-managers for the My Manager page
   useEffect(() => {
     let active = true;
+    let finishedFirstLoad = false;
     const loadAllData = async () => {
-      setIsPageLoading(true);
+      const shouldShowInitialSkeleton = !hasLoadedInitialDataRef.current;
+      if (shouldShowInitialSkeleton) {
+        setIsPageLoading(true);
+      }
       try {
         const managersRes = await fetchAdminManagers(currentPage, perPage, query);
 
@@ -233,10 +238,13 @@ export default function ClientManagerPage() {
             hasPrevious: Boolean(managersRes.pagination?.has_previous),
           });
         }
+        finishedFirstLoad = true;
       } catch {
         // Fallback error handling
+        finishedFirstLoad = true;
       } finally {
-        if (active) {
+        if (active && finishedFirstLoad) {
+          hasLoadedInitialDataRef.current = true;
           setIsPageLoading(false);
         }
       }

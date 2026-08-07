@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
-import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { Wallet, TrendingUp, ShieldCheck, X, Eye, EyeOff, ArrowRight, BarChart3, Users, ArrowDownCircle, ArrowUpCircle, Search, ChevronDown } from 'lucide-react';
 import DepositModal from '../model/depositmodel';
 import WithdrawalModal from '../model/withdrawal';
 import { InvestmentsSkeleton } from '@/components/client-page-skeletons';
@@ -92,10 +92,11 @@ async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {
   }
 }
 
-export async function fetchClientInvestments(page?: number, perPage?: number) {
+export async function fetchClientInvestments(page?: number, perPage?: number, search?: string) {
   const searchParams = new URLSearchParams();
   if (page !== undefined) searchParams.set('page', String(page));
   if (perPage !== undefined) searchParams.set('per_page', String(perPage));
+  if (search && search.trim()) searchParams.set('search', search.trim());
 
   const queryString = searchParams.toString();
   const url = queryString ? `/api/client/my-investments?${queryString}` : '/api/client/my-investments';
@@ -165,8 +166,10 @@ export default function ClientMyInvestPage() {
   const [showPasswordText, setShowPasswordText] = useState<boolean>(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [investments, setInvestments] = useState<ClientInvestment[]>([]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const [investmentsLoading, setInvestmentsLoading] = useState<boolean>(true);
   const [investmentsError, setInvestmentsError] = useState<string | null>(null);
+  const hasLoadedInitialDataRef = useRef(false);
   
   const [currentPage, setCurrentPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -198,7 +201,7 @@ export default function ClientMyInvestPage() {
       setInvestmentsLoading(true);
 
       try {
-        const response = await fetchClientInvestments(currentPage, perPage);
+        const response = await fetchClientInvestments(currentPage, perPage, searchQuery);
         const list = response && Array.isArray((response as any).investments) ? (response as any).investments : [];
         const normalized = list.map((investment: any): ClientInvestment => ({
           id: investment.id,
@@ -231,10 +234,12 @@ export default function ClientMyInvestPage() {
           hasPrevious: Boolean(resAny?.pagination?.has_previous),
         });
         setInvestmentsError(normalized.length > 0 ? null : 'No live investments are available.');
+        hasLoadedInitialDataRef.current = true;
       } catch {
         if (active) {
           setInvestments([]);
           setInvestmentsError('Unable to load live investments right now.');
+          hasLoadedInitialDataRef.current = true;
         }
       } finally {
         if (active) {
@@ -248,7 +253,7 @@ export default function ClientMyInvestPage() {
     return () => {
       active = false;
     };
-  }, [currentPage, perPage]);
+  }, [currentPage, perPage, searchQuery]);
 
   const openDetailsModal = (inv: ClientInvestment) => {
     setSelectedInvModal(inv);
@@ -514,6 +519,8 @@ export default function ClientMyInvestPage() {
     [investments],
   );
 
+  const visibleInvestments = useMemo(() => investments, [investments]);
+
   const summaryCards = useMemo(
     () => [
       {
@@ -580,18 +587,17 @@ export default function ClientMyInvestPage() {
     [activeInvestments, investments.length, totalInvested, totalProfit, totalProfitPct, isDarkMode],
   );
 
-  const visibleInvestments = investments;
   const selectedInvestmentId = selectedInvModal ? String(selectedInvModal.accountId) : '';
   const selectedInvestmentProfit = selectedInvModal ? selectedInvModal.currentValue - selectedInvModal.allocated : 0;
   const visibleCount = pagination.total;
   const showingStart = visibleCount > 0 ? (pagination.page - 1) * perPage + 1 : 0;
   const showingEnd = visibleCount
-    ? Math.min(showingStart + investments.length - 1, visibleCount)
+    ? Math.min(showingStart + visibleInvestments.length - 1, visibleCount)
     : 0;
   const totalPages = pagination.totalPages;
   const safePage = pagination.page;
 
-  if (investmentsLoading) {
+  if (investmentsLoading && !hasLoadedInitialDataRef.current) {
     return (
       <>
         <Head>
@@ -643,9 +649,34 @@ export default function ClientMyInvestPage() {
         {/* Main Table Container */}
         <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden mt-8`}>
           {/* Header */}
-          <div className={`p-8 border-b ${borderMutedClass} flex items-center gap-3`}>
-            <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
-            <h2 className={`text-xl font-bold ${headingTextClass} tracking-wide`}>My Investments</h2>
+          <div className={`p-8 border-b ${borderMutedClass} flex flex-col gap-4 md:flex-row md:items-center md:justify-between`}>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
+              <h2 className={`text-xl font-bold ${headingTextClass} tracking-wide`}>My Investments</h2>
+            </div>
+            <div className="relative w-full md:w-[320px]">
+              <div className="pointer-events-none absolute inset-y-0 left-4 flex items-center">
+                <Search size={18} className="text-blue-200/50" />
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search investments..."
+                className={`w-full rounded-2xl border px-4 py-3 pl-11 text-sm font-medium outline-none transition-all ${inputClass}`}
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute inset-y-0 right-3 flex items-center text-blue-100/60 hover:text-white transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              ) : (
+                <ChevronDown className="pointer-events-none absolute inset-y-0 right-4 my-auto text-blue-100/30" size={16} />
+              )}
+            </div>
           </div>
           
           {/* Table */}
@@ -784,7 +815,11 @@ export default function ClientMyInvestPage() {
                       <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 ${isDarkMode ? 'bg-gray-800' : 'bg-[#0b226a]'}`}>
                         <ShieldCheck className={isDarkMode ? 'text-gray-400' : 'text-[#8db5ff]'} size={32} />
                       </div>
-                      <p className={`text-lg font-bold ${softTextClass}`}>{investmentsError || 'No live investments are available.'}</p>
+                      <p className={`text-lg font-bold ${softTextClass}`}>
+                        {searchQuery.trim()
+                          ? `No investments found for "${searchQuery}".`
+                          : investmentsError || 'No live investments are available.'}
+                      </p>
                     </td>
                   </tr>
                 )}
