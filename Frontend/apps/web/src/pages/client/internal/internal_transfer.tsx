@@ -197,8 +197,8 @@ export default function ClientInternalTransfer() {
 
   const [message, setMessage] = useState({ type: "", text: "" });
   const [toast, setToast] = useState<{ id: number; type: string; text: string } | null>(null);
-  const [showGuidelines, setShowGuidelines] = useState(true);
-  const [guidelinesMounted, setGuidelinesMounted] = useState(true);
+  const [showGuidelines, setShowGuidelines] = useState(false);
+  const [guidelinesMounted, setGuidelinesMounted] = useState(false);
 
   const fromDropdownRef = useRef<HTMLDivElement>(null);
   const toDropdownRef = useRef<HTMLDivElement>(null);
