@@ -160,11 +160,13 @@ function SelectedAccountCard({ acc, onClear, label }: any) {
   );
 }
 
-function GlassCard({ children, className = "" }: any) {
+function GlassCard({ children, className = "", overflowHidden = true }: any) {
   const { isDarkMode } = useTheme();
   return (
     <div
-      className={`rounded-[2.5rem] border transition-all duration-300 relative overflow-hidden backdrop-blur-md ${
+      className={`rounded-[2.5rem] border transition-all duration-300 relative ${
+        overflowHidden ? "overflow-hidden backdrop-blur-md" : ""
+      } ${
         isDarkMode 
           ? "bg-slate-900/40 border-white/5 shadow-2xl" 
           : "bg-white/5 border-white/10 shadow-[0_23px_40px_rgba(8,29,82,0.15)]"
@@ -316,7 +318,7 @@ export default function ClientInternalTransfer() {
   return (
     <div className="min-h-screen bg-[#0e2250] text-slate-100 p-4 md:p-8 relative overflow-hidden">
       <Head>
-        <title>Internal Transfer | MoneyKrishnaEducation MAM</title>
+        <title>Internal Transfer | MAM</title>
         <meta name="description" content="Move funds instantly between your verified accounts" />
       </Head>
 
@@ -451,7 +453,7 @@ export default function ClientInternalTransfer() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
               
               {/* FROM ACCOUNT SELECTOR */}
-              <GlassCard className="p-8">
+              <GlassCard className="p-8" overflowHidden={false}>
                 {selectedFromAccount ? (
                   <SelectedAccountCard 
                     acc={selectedFromAccount} 
@@ -478,7 +480,7 @@ export default function ClientInternalTransfer() {
                       </div>
 
                       {showFromDropdown && (
-                        <div className="absolute z-20 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto">
+                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
                           <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-white/5 rounded-xl border border-white/5">
                             <Search className="w-4 h-4 text-white/40" />
                             <input 
@@ -490,18 +492,25 @@ export default function ClientInternalTransfer() {
                             />
                           </div>
                           
-                          <div className="flex flex-col gap-2 mt-2">
+                          <div className="flex flex-col mt-2">
                             {fromFilteredAccounts.length > 0 ? (
                               fromFilteredAccounts.map((acc: any) => (
-                                <AccountCard
+                                <div
                                   key={acc.account_id}
-                                  acc={acc}
-                                  selected={fromAccount === acc.account_id}
                                   onClick={() => {
                                     setFromAccount(acc.account_id);
                                     setShowFromDropdown(false);
                                   }}
-                                />
+                                  className="px-4 py-3 cursor-pointer transition-colors border-b last:border-0 border-white/5 hover:bg-white/5 flex items-center justify-between text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-yellow-500 tracking-widest">{acc.account_id}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/10 text-white/70">
+                                      {acc.account_type}
+                                    </span>
+                                  </div>
+                                  <span className="font-bold text-white">{formatCurrency(acc.balance)}</span>
+                                </div>
                               ))
                             ) : (
                               <div className="text-center py-6 text-xs text-white/40">
@@ -517,7 +526,7 @@ export default function ClientInternalTransfer() {
               </GlassCard>
 
               {/* TO ACCOUNT SELECTOR */}
-              <GlassCard className="p-8">
+              <GlassCard className="p-8" overflowHidden={false}>
                 {selectedToAccount ? (
                   <SelectedAccountCard 
                     acc={selectedToAccount} 
@@ -544,7 +553,7 @@ export default function ClientInternalTransfer() {
                       </div>
 
                       {showToDropdown && (
-                        <div className="absolute z-20 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto">
+                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
                           <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-white/5 rounded-xl border border-white/5">
                             <Search className="w-4 h-4 text-white/40" />
                             <input 
@@ -556,18 +565,25 @@ export default function ClientInternalTransfer() {
                             />
                           </div>
 
-                          <div className="flex flex-col gap-2 mt-2">
+                          <div className="flex flex-col mt-2">
                             {toFilteredAccounts.length > 0 ? (
                               toFilteredAccounts.map((acc: any) => (
-                                <AccountCard
+                                <div
                                   key={acc.account_id}
-                                  acc={acc}
-                                  selected={toAccount === acc.account_id}
                                   onClick={() => {
                                     setToAccount(acc.account_id);
                                     setShowToDropdown(false);
                                   }}
-                                />
+                                  className="px-4 py-3 cursor-pointer transition-colors border-b last:border-0 border-white/5 hover:bg-white/5 flex items-center justify-between text-xs"
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black text-yellow-500 tracking-widest">{acc.account_id}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded bg-white/10 text-white/70">
+                                      {acc.account_type}
+                                    </span>
+                                  </div>
+                                  <span className="font-bold text-white">{formatCurrency(acc.balance)}</span>
+                                </div>
                               ))
                             ) : (
                               <div className="text-center py-6 text-xs text-white/40">

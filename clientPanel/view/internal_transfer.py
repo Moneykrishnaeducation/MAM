@@ -12,7 +12,7 @@ from adminPanel.audit import create_audit_log
 from adminPanel.models import ClientTransaction, TradeGroup, TradingAccount
 from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.permissions import IsClient, permission_required
-from clientPanel.view.common import _error, _get_client_profile_for_request
+from clientPanel.view.common import _get_client_profile_for_request
 
 logger = logging.getLogger(__name__)
 
@@ -131,10 +131,12 @@ async def client_internal_transfer_api(request):
         # Enforce that both accounts MUST belong to the current authenticated user/profile
         from_account = (
             await TradingAccount.filter(account_id=str(from_account_id), user_id=profile.id)
+            .prefetch_related("user")
             .first()
         )
         to_account = (
             await TradingAccount.filter(account_id=str(to_account_id), user_id=profile.id)
+            .prefetch_related("user")
             .first()
         )
 

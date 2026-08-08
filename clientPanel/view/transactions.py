@@ -21,6 +21,8 @@ def _normalize_transaction_tab(raw_tab: str | None) -> str | None:
         return "withdrawal"
     if value in {"pending", "processing"}:
         return "pending"
+    if value in {"internal_transfer", "internal-transfer", "transfer", "internal_transfers"}:
+        return "internal_transfer"
     return None
 
 
@@ -36,6 +38,9 @@ def _transaction_matches_tab(transaction: ClientTransaction, tab: str | None) ->
 
     if tab == "deposit":
         return transaction_type in {"deposit", "deposits"}
+
+    if tab == "internal_transfer":
+        return transaction_type in {"internal_transfer", "internal-transfer", "transfer"}
 
     return transaction_type in {"withdrawal", "withdrawals", "withdraw"}
 
@@ -119,6 +124,8 @@ def _serialize_transaction(transaction: ClientTransaction, account_map: dict) ->
         "method": transaction.payment_method,
         "status": transaction.status,
         "date": transaction.created_at.strftime("%Y-%m-%d") if transaction.created_at else None,
+        "account_id_from": transaction.account_id_from,
+        "account_id_to": transaction.account_id_to,
     }
 
 
@@ -128,10 +135,13 @@ def _build_transaction_counts(transactions: list[ClientTransaction]) -> dict:
             1 for tx in transactions if str(tx.status).strip().lower() in {"pending", "processing"}
         ),
         "DEPOSIT": sum(
-            1 for tx in transactions if str(tx.transaction_type).strip().lower() == "deposit"
+            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"deposit", "deposits"}
         ),
         "WITHDRAWAL": sum(
-            1 for tx in transactions if str(tx.transaction_type).strip().lower() == "withdrawal"
+            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"withdrawal", "withdrawals", "withdraw"}
+        ),
+        "INTERNAL_TRANSFER": sum(
+            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"internal_transfer", "internal-transfer", "transfer"}
         ),
     }
 

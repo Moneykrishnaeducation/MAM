@@ -12,6 +12,7 @@ import {
   FileText,
   Flag,
   Loader2,
+  ArrowRightLeft,
   RotateCw,
   Search,
   X,
@@ -26,6 +27,8 @@ type ClientTransaction = {
   status: string;
   date: string | null;
   account_id?: string;
+  account_id_from?: string;
+  account_id_to?: string;
 };
 
 const tabs = [
@@ -33,6 +36,7 @@ const tabs = [
   { id: 'PENDING', label: 'PENDING', icon: Clock },
   { id: 'DEPOSIT', label: 'DEPOSIT', icon: ArrowDownCircle },
   { id: 'WITHDRAWAL', label: 'WITHDRAWAL', icon: ArrowUpCircle },
+  { id: 'INTERNAL_TRANSFER', label: 'INTERNAL TRANSFER', icon: ArrowRightLeft },
 ] as const;
 
 const PAGE_SIZE_OPTIONS = [10, 30, 50, 100, 500, 1000] as const;
@@ -123,6 +127,8 @@ const normalizeTransaction = (transaction: any): ClientTransaction => ({
   status: String(transaction.status || 'Completed'),
   date: transaction.date ? String(transaction.date) : null,
   account_id: transaction.account_number || transaction.account_id || 'N/A',
+  account_id_from: transaction.account_id_from || undefined,
+  account_id_to: transaction.account_id_to || undefined,
 });
 
 const isDeposit = (type: string) => {
@@ -139,42 +145,28 @@ const getStatusStyles = (status: string, isDarkMode: boolean) => {
   switch (status.toLowerCase()) {
     case 'pending':
     case 'processing':
-      return isDarkMode
-        ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-        : 'bg-amber-500/10 text-amber-600 border-amber-500/20';
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
     case 'completed':
     case 'approved':
     case 'success':
-      return isDarkMode
-        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-        : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
     case 'failed':
     case 'rejected':
     case 'cancelled':
-      return isDarkMode
-        ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-        : 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+      return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
     default:
-      return isDarkMode
-        ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-        : 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+      return 'bg-blue-500/10 text-blue-300 border-blue-500/20';
   }
 };
 
 const getTypeStyles = (type: string, isDarkMode: boolean) => {
   if (isDeposit(type)) {
-    return isDarkMode
-      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-      : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20';
+    return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
   }
   if (isWithdrawal(type)) {
-    return isDarkMode
-      ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-      : 'bg-rose-500/10 text-rose-600 border-rose-500/20';
+    return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
   }
-  return isDarkMode
-    ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-    : 'bg-blue-500/10 text-blue-600 border-blue-500/20';
+  return 'bg-blue-500/10 text-blue-300 border-blue-500/20';
 };
 
 const getTypeIcon = (type: string) => {
@@ -184,6 +176,9 @@ const getTypeIcon = (type: string) => {
   if (isWithdrawal(type)) {
     return ArrowUpCircle;
   }
+  if (type.toLowerCase().includes('internal_transfer') || type.toLowerCase().includes('internal-transfer') || type.toLowerCase().includes('transfer')) {
+    return ArrowRightLeft;
+  }
   return FileText;
 };
 
@@ -192,6 +187,7 @@ const createEmptyTransactionCounts = (): TransactionCounts => ({
   PENDING: 0,
   DEPOSIT: 0,
   WITHDRAWAL: 0,
+  INTERNAL_TRANSFER: 0,
 });
 
 const createEmptyTransactionSummary = (): TransactionSummary => ({
@@ -355,6 +351,7 @@ export default function TransactionHistory() {
         PENDING: response.counts?.PENDING ?? 0,
         DEPOSIT: response.counts?.DEPOSIT ?? 0,
         WITHDRAWAL: response.counts?.WITHDRAWAL ?? 0,
+        INTERNAL_TRANSFER: response.counts?.INTERNAL_TRANSFER ?? 0,
       });
       setSummary({
         totalTransactions: response.summary?.total_transactions ?? 0,
@@ -509,9 +506,10 @@ export default function TransactionHistory() {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-8">
           {/* Left: Tabs */}
           <div className={`grid grid-cols-2 gap-2 p-2 rounded-[2rem] border ${isDarkMode ? 'border-slate-800 bg-slate-900' : 'border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)]'} shadow-[0_10px_32px_rgba(4,15,54,0.22)] w-full lg:flex lg:w-auto`}>
-            {tabs.map((tab) => {
+            {tabs.map((tab, idx) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
+              const isLast = idx === tabs.length - 1;
 
               return (
                 <button
@@ -524,6 +522,8 @@ export default function TransactionHistory() {
                   title={tab.label}
                   aria-label={tab.label}
                   className={`flex min-w-0 items-center justify-center gap-2 rounded-3xl px-3 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 lg:flex-1 lg:px-6 lg:py-4 lg:text-xs lg:tracking-widest ${
+                    isLast ? 'col-span-2 lg:col-span-1' : ''
+                  } ${
                     isActive
                       ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]'
                       : isDarkMode
@@ -676,7 +676,15 @@ export default function TransactionHistory() {
                       Date
                     </div>
                   </th>
-                  <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Account</th>
+                  {activeTab === 'INTERNAL_TRANSFER' ? (
+                    <>
+                      <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Account No</th>
+                      <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>From Account</th>
+                      <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>To Account</th>
+                    </>
+                  ) : (
+                    <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Account</th>
+                  )}
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Type</th>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>Method</th>
                   <th className={`px-6 py-4 text-left text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
@@ -700,12 +708,19 @@ export default function TransactionHistory() {
                   Array.from({ length: 5 }).map((_, index) => (
                     <tr key={index} className="animate-pulse">
                       <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-24" /></td>
-                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                      {activeTab === 'INTERNAL_TRANSFER' ? (
+                        <>
+                          <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                          <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                          <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                        </>
+                      ) : (
+                        <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
+                      )}
                       <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-16" /></td>
                       <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-28" /></td>
                       <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-20" /></td>
                       <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-32" /></td>
-                      <td className="px-6 py-5"><div className="h-4 bg-white/10 rounded-full w-16" /></td>
                     </tr>
                   ))
                 ) : transactions.length > 0 ? (
@@ -715,7 +730,7 @@ export default function TransactionHistory() {
                       ? 'text-rose-500 font-extrabold'
                       : isDeposit(transaction.type)
                         ? 'text-emerald-400 font-extrabold'
-                        : isDarkMode ? 'text-white' : 'text-slate-900';
+                        : 'text-white font-extrabold';
 
                     return (
                       <tr
@@ -727,17 +742,55 @@ export default function TransactionHistory() {
                             {formatDate(transaction.date)}
                           </span>
                         </td>
-                        <td className="px-6 py-5 whitespace-nowrap">
-                          <span
-                            className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
-                              isDarkMode
-                                ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
-                                : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
-                            }`}
-                          >
-                            {transaction.account_id}
-                          </span>
-                        </td>
+                        {activeTab === 'INTERNAL_TRANSFER' ? (
+                          <>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                                  isDarkMode
+                                    ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                    : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                                }`}
+                              >
+                                {transaction.account_id}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                                  isDarkMode
+                                    ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                    : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                                }`}
+                              >
+                                {transaction.account_id_from || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-5 whitespace-nowrap">
+                              <span
+                                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                                  isDarkMode
+                                    ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                    : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                                }`}
+                              >
+                                {transaction.account_id_to || 'N/A'}
+                              </span>
+                            </td>
+                          </>
+                        ) : (
+                          <td className="px-6 py-5 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                                isDarkMode
+                                  ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                  : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                              }`}
+                            >
+                              {transaction.account_id}
+                            </span>
+                          </td>
+                        )}
                         <td className="px-6 py-5 whitespace-nowrap">
                           <span
                             className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold ${getTypeStyles(transaction.type, isDarkMode)}`}
