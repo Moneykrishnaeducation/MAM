@@ -252,6 +252,7 @@ async def deploy_coefficient_config_api(request):
         coefficient_method = body.get("coefficient_method", "balance")  # 'balance' or 'fixed'
         multiplier = body.get("multiplier", 1.0)
         multi_execution = body.get("multi_execution", False)
+        multi_trade_count = body.get("multi_trade_count", 2)
     except Exception:
         return _error("Invalid JSON body")
 
@@ -290,9 +291,13 @@ async def deploy_coefficient_config_api(request):
             account.copy_factor = 1.0
 
         if multi_execution:
-            account.multi_trade_count = max(2, account.multi_trade_count)
+            try:
+                count = int(multi_trade_count)
+                account.multi_trade_count = max(1, min(5, count))
+            except:
+                account.multi_trade_count = max(1, account.multi_trade_count)
         else:
-            account.multi_trade_count = 1
+            account.multi_trade_count = 2
 
         await account.save()
         return JsonResponse(

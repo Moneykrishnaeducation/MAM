@@ -17,12 +17,14 @@ import {
   Eye, 
   RefreshCw, 
   ChevronRight,
-  ShieldAlert
+  ShieldAlert,
+  Plus,
+  X
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 
 type TicketStatus = 'Open' | 'Pending' | 'Closed';
-type TicketTabFilter = 'all' | 'open' | 'pending' | 'closed';
+type TicketTabFilter = 'open' | 'pending';
 
 interface TicketAttachment {
   id: string;
@@ -40,6 +42,7 @@ interface AdminTicket {
   description: string | null;
   date: string | null;
   attachments: TicketAttachment[];
+  messages?: any[];
   user_id: string;
   user_name: string;
   user_email: string;
@@ -62,9 +65,88 @@ function isViewerOnly(role: string): boolean {
   return role.toLowerCase() === 'viewer';
 }
 
+const ReplySection = ({ onSendMessage, isSubmitting }: { onSendMessage: (message: string, file: File | null) => void, isSubmitting: boolean }) => {
+  const [localMessage, setLocalMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  return (
+    <div>
+      <div className={`p-2 rounded-2xl border transition-all focus-within:border-amber-500/50 border-white/10 bg-slate-950/40 mb-4 flex flex-col`}>
+        <textarea
+          value={localMessage}
+          onChange={(e) => setLocalMessage(e.target.value)}
+          placeholder="Compose a response..."
+          rows={3}
+          className="w-full p-2 bg-transparent text-sm text-slate-200 outline-none font-medium resize-none placeholder:text-slate-500"
+        />
+        
+        {selectedFile && (
+          <div className="relative group rounded-xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 max-w-[120px] mb-2 mx-2">
+            {selectedFile.type.startsWith('image/') ? (
+              <img 
+                src={URL.createObjectURL(selectedFile)} 
+                alt={selectedFile.name} 
+                className="w-full h-20 object-cover rounded-lg mb-2" 
+                onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+              />
+            ) : (
+              <div className="w-full h-20 bg-blue-900/30 rounded-lg mb-2 flex flex-col items-center justify-center text-blue-300">
+                <FileText size={24} />
+                <span className="text-[9px] uppercase tracking-wider mt-2 font-bold px-2 truncate w-full text-center">{selectedFile.name.split('.').pop()}</span>
+              </div>
+            )}
+            <p className="text-[10px] text-slate-300 truncate w-full px-1 mb-1">{selectedFile.name}</p>
+            <button
+              type="button"
+              onClick={() => setSelectedFile(null)}
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+        
+        <div className="flex justify-between items-center px-2 pt-2 border-t border-white/5">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            hidden 
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                setSelectedFile(e.target.files[0]);
+              }
+            }}
+          />
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className={`p-2 rounded-xl transition-colors hover:bg-white/10 text-slate-400 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-wider`}
+          >
+            <Plus size={16} /> Attachment
+          </button>
+          <button
+            onClick={() => {
+              if (localMessage.trim() || selectedFile) {
+                onSendMessage(localMessage, selectedFile);
+                setLocalMessage("");
+                setSelectedFile(null);
+              }
+            }}
+            disabled={(!localMessage.trim() && !selectedFile) || isSubmitting}
+            className={`px-6 py-2 rounded-xl text-xs font-black hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 bg-amber-500 text-amber-950`}
+          >
+            {isSubmitting ? 'Sending...' : 'Send Secure Message'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AdminTicketsPage() {
   const [adminRole, setAdminRole] = useState('');
-  const [activeTab, setActiveTab] = useState<TicketTabFilter>('all');
+  const [activeTab, setActiveTab] = useState<TicketTabFilter>('open');
   const [searchTerm, setSearchTerm] = useState('');
   const [tickets, setTickets] = useState<AdminTicket[]>([]);
   const [summary, setSummary] = useState<TicketsSummary>({
@@ -91,7 +173,7 @@ export default function AdminTicketsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (activeTab !== 'all') params.append('status', activeTab);
+      if (activeTab !== 'open') params.append('status', activeTab);
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       params.append('page', String(page));
       params.append('per_page', String(perPage));
@@ -165,6 +247,58 @@ export default function AdminTicketsPage() {
       sonnerToast.error(err.message || 'Error updating status');
     } finally {
       setStatusUpdatingId(null);
+    }
+  };
+
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  const handleSendMessage = async (content: string, file: File | null) => {
+    if (!selectedTicket) return;
+    if (isViewer) {
+      sonnerToast.error('Viewer accounts do not have permission to send messages.');
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const formData = new FormData();
+      formData.append("content", content);
+      if (file) {
+        formData.append("documents", file);
+      }
+      
+      const res = await fetch(`/api/admin/tickets/${selectedTicket.id}/message`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to send message");
+      }
+
+      const newMessage = data.new_message;
+      
+      setSelectedTicket((prev) => {
+        if (!prev) return prev;
+        const updatedMessages = [...(prev.messages || []), newMessage];
+        return { ...prev, messages: updatedMessages };
+      });
+
+      setTickets((prev) => prev.map(t => {
+        if (t.id === selectedTicket.id) {
+          const updatedMessages = [...(t.messages || []), newMessage];
+          return { ...t, messages: updatedMessages };
+        }
+        return t;
+      }));
+
+      sonnerToast.success("Message sent successfully!");
+    } catch (err: any) {
+      sonnerToast.error(err.message || "Error sending message");
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -260,7 +394,7 @@ export default function AdminTicketsPage() {
         {/* FILTERS & SEARCH */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-            {(['all', 'open', 'pending', 'closed'] as TicketTabFilter[]).map((tab) => (
+            {(['open', 'pending'] as TicketTabFilter[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -271,7 +405,7 @@ export default function AdminTicketsPage() {
                     : 'bg-slate-900/60 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                {tab === 'all' ? 'All Tickets' : tab}
+                {tab}
               </button>
             ))}
           </div>
@@ -510,6 +644,47 @@ export default function AdminTicketsPage() {
                       </a>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* MESSAGES */}
+              {selectedTicket.messages && selectedTicket.messages.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Communication History</h4>
+                  <div className="space-y-3">
+                    {selectedTicket.messages.map((msg: any) => {
+                      const isAdmin = msg.sender === 'admin';
+                      return (
+                        <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+                          <div className={`text-[10px] mb-1 font-bold ${isAdmin ? 'text-amber-400/80' : 'text-blue-400/80'}`}>
+                            {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
+                          </div>
+                          <div className={`p-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${
+                            isAdmin 
+                              ? 'bg-amber-500/10 border border-amber-500/20 text-slate-200 rounded-tr-sm' 
+                              : 'bg-slate-800 border border-white/10 text-slate-200 rounded-tl-sm'
+                          }`}>
+                            {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                            {msg.file && (
+                              <div className="mt-2">
+                                <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${isAdmin ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-blue-300'}`}>
+                                  <Paperclip size={12} />
+                                  Attachment
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* REPLY SECTION */}
+              {!isViewer && (
+                <div className="pt-2">
+                  <ReplySection onSendMessage={handleSendMessage} isSubmitting={isSendingMessage} />
                 </div>
               )}
 

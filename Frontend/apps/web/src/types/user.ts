@@ -16,6 +16,11 @@ export interface UserTicket {
   subject: string;
   status: 'Open' | 'Closed' | 'In Progress';
   date: string;
+  category?: string;
+  priority?: string;
+  description?: string | null;
+  attachments?: any[];
+  messages?: any[];
 }
 
 export interface TradingAccount {

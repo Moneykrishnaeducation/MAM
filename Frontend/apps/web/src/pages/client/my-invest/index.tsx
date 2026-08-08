@@ -165,6 +165,7 @@ export default function ClientMyInvestPage() {
   const [coefficientMethod, setCoefficientMethod] = useState<'balance' | 'fixed'>('balance');
   const [fixedRatioValue, setFixedRatioValue] = useState<string>('1.00');
   const [multiExecutionEnabled, setMultiExecutionEnabled] = useState<boolean>(false);
+  const [multiTradeCount, setMultiTradeCount] = useState<number>(2);
   const [activeDepositTab, setActiveDepositTab] = useState<string>('cheesepay');
   const [cheeseAmount, setCheeseAmount] = useState<string>('');
   const [currency, setCurrency] = useState<string>('USD');
@@ -357,6 +358,7 @@ export default function ClientMyInvestPage() {
       setCoefficientMethod(selectedInvModal.copyMode === 'fixed_multiple' ? 'fixed' : 'balance');
       setFixedRatioValue(String(selectedInvModal.copyFactor ?? '1.00'));
       setMultiExecutionEnabled((selectedInvModal.multiTradeCount ?? 1) > 1);
+      setMultiTradeCount(Math.min(5, Math.max(1, selectedInvModal.multiTradeCount ?? 1)));
     }
     setShowCoefficientModal(true);
   };
@@ -467,6 +469,7 @@ export default function ClientMyInvestPage() {
             coefficient_method: coefficientMethod,
             multiplier: parseFloat(fixedRatioValue),
             multi_execution: multiExecutionEnabled,
+            multi_trade_count: multiExecutionEnabled ? multiTradeCount : 1,
           }),
         }
       );
@@ -1186,7 +1189,31 @@ export default function ClientMyInvestPage() {
                     <span className={`inline-block h-7 w-7 rounded-full bg-white shadow transition-transform ${multiExecutionEnabled ? 'translate-x-7' : 'translate-x-1'}`} />
                   </button>
                 </div>
-                <div className={`text-xs uppercase tracking-[0.24em] ${softTextClass}`}>Scaling methodology selected: {coefficientMethod === 'balance' ? 'Balance Ratio' : 'Fixed Ratio'}</div>
+                {multiExecutionEnabled && (
+                  <div className="mt-4 pt-4 border-t border-white/10 mb-2">
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="text-xs font-semibold text-white">Clone Count (1 to 5)</label>
+                      <span className="text-xs text-blue-400 font-bold">{multiTradeCount} positions</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="5"
+                      step="1"
+                      value={multiTradeCount}
+                      onChange={(e) => setMultiTradeCount(parseInt(e.target.value))}
+                      className="w-full accent-blue-500 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-2 px-1">
+                      <span>1</span>
+                      <span>2</span>
+                      <span>3</span>
+                      <span>4</span>
+                      <span>5</span>
+                    </div>
+                  </div>
+                )}
+                <div className={`text-xs uppercase tracking-[0.24em] mt-2 ${softTextClass}`}>Scaling methodology selected: {coefficientMethod === 'balance' ? 'Balance Ratio' : 'Fixed Ratio'}</div>
               </div>
 
               <button

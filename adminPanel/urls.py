@@ -13,6 +13,7 @@ from adminPanel.view.client_tickets import (
     list_all_tickets,
     list_client_tickets,
     update_ticket_status,
+    add_admin_ticket_message,
 )
 from adminPanel.view.client_transactions import (
     get_client_transactions_details,
@@ -144,11 +145,8 @@ urlpatterns = [
     path("users/<str:user_id>/delete", admin_write_only(delete_user), name="delete-user"),
     path("users/<str:user_id>/tickets", admin_only(list_client_tickets), name="client-tickets"),
     path("tickets", admin_only(list_all_tickets), name="admin-tickets"),
-    path(
-        "tickets/<int:ticket_id>/status",
-        admin_write_only(update_ticket_status),
-        name="admin-update-ticket-status",
-    ),
+    path("tickets/<int:ticket_id>/status", admin_write_only(update_ticket_status), name="admin-update-ticket-status"),
+    path("tickets/<int:ticket_id>/message", admin_write_only(add_admin_ticket_message), name="admin-add-ticket-message"),
     path(
         "users/<str:user_id>/transactions",
         admin_only(list_client_transactions),

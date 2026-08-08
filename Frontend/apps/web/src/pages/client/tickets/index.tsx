@@ -34,6 +34,7 @@ type ClientTicketApi = {
   created_at?: string | null;
   description?: string | null;
   attachments?: TicketAttachment[] | null;
+  messages?: TicketMessage[] | null;
 };
 
 type TicketStatusFilter = "all" | "open" | "pending" | "closed";
@@ -176,7 +177,7 @@ const normalizeTicket = (ticket: ClientTicketApi, index: number, createdBy: stri
     created_at: toIsoDateTime(ticket.date || ticket.created_at),
     created_by: createdBy,
     description: String(ticket.description || `${priority} priority ticket loaded from the live endpoint.`),
-    messages: [],
+    messages: normalizeMessages(ticket.messages || []),
     attachments,
   };
 };

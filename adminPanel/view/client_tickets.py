@@ -89,6 +89,7 @@ def _serialize_ticket(ticket: ClientTicket) -> dict:
         "description": ticket.description,
         "date": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
         "attachments": ticket.attachments or [],
+        "messages": ticket.messages or [],
     }
 
 
@@ -162,10 +163,9 @@ def _serialize_ticket_with_user(ticket: ClientTicket) -> dict:
         "status": _canonical_ticket_status(ticket.status),
         "description": ticket.description,
         "date": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
-        "attachments": ticket.attachments or [],
-        "user_id": user_code,
-        "user_name": user_name,
-        "user_email": user_email,
+        "attachments": getattr(ticket, "attachments", []) or [],
+        "messages": getattr(ticket, "messages", []) or [],
+        "user_id": str(user.user_code) if user and hasattr(user, "user_code") else str(user.id) if user else "",
     }
 
 
@@ -280,6 +280,62 @@ async def update_ticket_status(request, ticket_id: int):
             "status": "ok",
             "message": f"Ticket #{ticket.id} status updated to {canonical}.",
             "ticket": _serialize_ticket_with_user(ticket),
+        }
+    )
+
+
+@permission_required(IsAdmin)
+@require_http_methods(["POST"])
+async def add_admin_ticket_message(request, ticket_id: int):
+    """Add a message to a client support ticket from the admin side."""
+    import time
+    from clientPanel.view.tickets import _extract_ticket_payload, _save_ticket_attachment
+    from datetime import datetime
+
+    ticket = await ClientTicket.filter(id=ticket_id).prefetch_related("user").first()
+    if not ticket:
+        return JsonResponse({"status": "error", "message": "Ticket not found"}, status=404)
+
+    try:
+        body, uploaded_files = _extract_ticket_payload(request)
+    except ValueError:
+        return JsonResponse({"status": "error", "message": "Invalid request body"}, status=400)
+
+    content = str(body.get("content") or "").strip()
+    if not content and not uploaded_files:
+        return JsonResponse({"status": "error", "message": "Message content or document is required"}, status=400)
+
+    file_attachment = None
+    if uploaded_files:
+        saved = _save_ticket_attachment(uploaded_files[0], ticket.id)
+        if saved and "file" in saved:
+            file_attachment = saved["file"]
+
+    admin_name = getattr(request, "admin_user_name", "Admin")
+
+    new_message = {
+        "id": f"msg-{int(time.time() * 1000)}",
+        "content": content,
+        "sender_name": admin_name,
+        "sender": "admin",
+        "created_at": datetime.utcnow().isoformat() + "Z",
+    }
+    
+    if file_attachment:
+        new_message["file"] = file_attachment
+
+    messages = list(getattr(ticket, "messages", []) or [])
+    messages.append(new_message)
+    ticket.messages = messages
+    
+    await ticket.save(update_fields=["messages"])
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Message sent successfully",
+            "ticket": _serialize_ticket_with_user(ticket),
+            "new_message": new_message,
         }
     )
 

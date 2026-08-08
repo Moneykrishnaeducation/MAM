@@ -106,6 +106,7 @@ def _serialize_ticket(ticket: ClientTicket, request=None) -> dict:
         if ticket.created_at
         else None,
         "attachments": _serialize_attachments(getattr(ticket, "attachments", None)),
+        "messages": getattr(ticket, "messages", []) or [],
     }
 
 

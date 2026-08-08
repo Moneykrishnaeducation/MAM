@@ -48,6 +48,7 @@ import {
   UserCheck,
   ArrowDownUp,
   Sparkles,
+  Paperclip,
 } from 'lucide-react';
 import { getAdminUsers } from '@/lib/mockDataLoader';
 import CreateUserModalForm from '@/components/Admin/CreateUserModalForm';
@@ -439,6 +440,7 @@ type AdminTicketApiItem = {
   date?: string | null;
   created_at?: string | null;
   attachments?: unknown[];
+  messages?: any[];
 };
 
 type AdminTicketApiSummary = {
@@ -530,6 +532,11 @@ function normalizeTicketRecord(ticket: AdminTicketApiItem): UserTicket {
     subject: ticket.subject ?? 'No subject',
     status: normalizeTicketStatus(ticket.status),
     date: String(ticket.date ?? ticket.created_at ?? ''),
+    category: ticket.category ?? undefined,
+    priority: ticket.priority ?? undefined,
+    description: ticket.description,
+    attachments: ticket.attachments,
+    messages: ticket.messages,
   };
 }
 
@@ -2207,6 +2214,88 @@ function AddAccountModal({
 }
 
 /* ─────────────────────────────────────────────────────────────
+   ReplySection
+───────────────────────────────────────────────────────────── */
+const ReplySection = ({ onSendMessage, isSubmitting }: { onSendMessage: (message: string, file: File | null) => void, isSubmitting: boolean }) => {
+  const [localMessage, setLocalMessage] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  return (
+    <div className="mt-4">
+      <div className="p-2 rounded-xl border transition-all focus-within:border-indigo-500/50 border-[#1745b3] bg-[#0b226a]/50 flex flex-col">
+        <textarea
+          value={localMessage}
+          onChange={(e) => setLocalMessage(e.target.value)}
+          placeholder="Compose a response..."
+          rows={3}
+          className="w-full p-2 bg-transparent text-[11px] text-[#dbe8ff] outline-none font-medium resize-none placeholder:text-[#6f92e7]"
+        />
+        
+        {selectedFile && (
+          <div className="relative group rounded-lg overflow-hidden border border-[#1745b3] shadow-lg bg-[#081d5f] p-2 max-w-[120px] mb-2 mx-2">
+            {selectedFile.type.startsWith('image/') ? (
+              <img 
+                src={URL.createObjectURL(selectedFile)} 
+                alt={selectedFile.name} 
+                className="w-full h-16 object-cover rounded-md mb-2" 
+                onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+              />
+            ) : (
+              <div className="w-full h-16 bg-[#1745b3]/30 rounded-md mb-2 flex flex-col items-center justify-center text-[#8fb8ff]">
+                <FileText size={20} />
+                <span className="text-[8px] uppercase tracking-wider mt-1 font-bold px-1 truncate w-full text-center">{selectedFile.name.split('.').pop()}</span>
+              </div>
+            )}
+            <p className="text-[9px] text-[#8fb8ff] truncate w-full px-1 mb-1">{selectedFile.name}</p>
+            <button
+              type="button"
+              onClick={() => setSelectedFile(null)}
+              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
+        
+        <div className="flex justify-between items-center px-2 pt-2 border-t border-[#1745b3]">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            hidden 
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                setSelectedFile(e.target.files[0]);
+              }
+            }}
+          />
+          <button 
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="p-1.5 rounded-lg transition-colors hover:bg-[#1745b3] text-[#8fb8ff] hover:text-[#dbe8ff] flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider"
+          >
+            <Plus size={14} /> Attachment
+          </button>
+          <button
+            onClick={() => {
+              if (localMessage.trim() || selectedFile) {
+                onSendMessage(localMessage, selectedFile);
+                setLocalMessage("");
+                setSelectedFile(null);
+              }
+            }}
+            disabled={(!localMessage.trim() && !selectedFile) || isSubmitting}
+            className="px-4 py-1.5 rounded-lg text-[10px] font-black hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 bg-indigo-500 text-white"
+          >
+            {isSubmitting ? 'Sending...' : 'Send Secure Message'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────────────────────
    MAIN PAGE
 ───────────────────────────────────────────────────────────── */
 export default function AdminUsersPage() {
@@ -2239,6 +2328,9 @@ export default function AdminUsersPage() {
   const [ticketDetailsByUserId, setTicketDetailsByUserId] = useState<
     Record<string, AdminTicketModalState>
   >({});
+  const [activeTicketTab, setActiveTicketTab] = useState<'Open' | 'Pending' | 'Close'>('Open');
+  const [expandedTicketId, setExpandedTicketId] = useState<string | null>(null);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [statusSavingByUserId, setStatusSavingByUserId] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -2499,6 +2591,63 @@ export default function AdminUsersPage() {
 
     return () => controller.abort();
   }, [activeModalType, activeModalUser?.id]);
+
+  const handleTicketSendMessage = async (ticketId: string, content: string, file: File | null) => {
+    if (!activeModalUser) return;
+    if (isViewerAdmin) {
+      toast.error('Viewer accounts do not have permission to send messages.');
+      return;
+    }
+
+    setIsSendingMessage(true);
+    try {
+      const formData = new FormData();
+      formData.append("content", content);
+      if (file) {
+        formData.append("documents", file);
+      }
+      
+      const res = await fetch(`/api/admin/tickets/${ticketId}/message`, {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+      
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(data?.message || "Failed to send message");
+      }
+
+      const newMessage = data.new_message;
+      
+      setTicketDetailsByUserId((prev) => {
+        const userTickets = prev[activeModalUser.id]?.tickets || [];
+        const updatedTickets = userTickets.map((t) => {
+          if (t.id === ticketId) {
+            return {
+              ...t,
+              messages: [...(t.messages || []), newMessage],
+            };
+          }
+          return t;
+        });
+
+        return {
+          ...prev,
+          [activeModalUser.id]: {
+            ...prev[activeModalUser.id],
+            tickets: updatedTickets,
+          }
+        };
+      });
+
+      toast.success("Message sent successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Error sending message");
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
 
   useEffect(() => {
     if (activeModalType !== 'account_active' || !activeModalUser) return;
@@ -3344,17 +3493,135 @@ export default function AdminUsersPage() {
                       {!ticketDetailsByUserId[activeModalUser.id]?.loading && (ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).length === 0 ? (
                         <p className="text-[#6f92e7] text-xs">No tickets found.</p>
                       ) : (
-                        <div className="space-y-2">
-                          {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? []).map((t) => (
-                            <div key={t.id} className="p-3.5 rounded-xl bg-[#081d5f] border border-[#1745b3] flex items-center justify-between">
-                              <div>
-                                <p className="font-mono text-blue-400 font-bold text-xs">{t.id}</p>
-                                <p className="text-[#dbe8ff] text-[11px] mt-0.5">{t.subject}</p>
-                                <p className="text-[#6f92e7] text-[10px]">{t.date}</p>
+                        <div className="space-y-4">
+                          <div className="flex bg-[#081d5f] p-1 rounded-xl w-full border border-[#1745b3]">
+                            {['Open', 'Pending', 'Close'].map((tab) => (
+                              <button
+                                key={tab}
+                                onClick={() => setActiveTicketTab(tab as any)}
+                                className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
+                                  activeTicketTab === tab
+                                    ? 'bg-[#1745b3] text-white shadow-sm'
+                                    : 'text-[#8fb8ff] hover:text-[#dbe8ff] hover:bg-[#1745b3]/50'
+                                }`}
+                              >
+                                {tab}
+                              </button>
+                            ))}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
+                              .filter((t) => {
+                                if (activeTicketTab === 'Open') return t.status === 'Open';
+                                if (activeTicketTab === 'Pending') return t.status === 'In Progress' ;
+                                if (activeTicketTab === 'Close') return t.status === 'Closed';
+                                return true;
+                              })
+                              .map((t) => (
+                              <div key={t.id} className="rounded-xl bg-[#081d5f] border border-[#1745b3] overflow-hidden transition-all duration-200">
+                                <div 
+                                  className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#1745b3]/20"
+                                  onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
+                                >
+                                  <div>
+                                    <p className="font-mono text-blue-400 font-bold text-xs">{t.id} | {t.subject}</p>
+                                    <div className="flex items-center gap-3 mt-1.5">
+                                      <StatusBadge status={t.status} />
+                                      <span className="text-[#6f92e7] text-[10px] flex items-center gap-1">
+                                        <Clock size={10} /> {t.date}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="text-[#8fb8ff]">
+                                    {expandedTicketId === t.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </div>
+                                </div>
+                                
+                                {expandedTicketId === t.id && (
+                                  <div className="p-4 border-t border-[#1745b3] bg-[#040f33]">
+                                    {t.description && (
+                                      <div className="mb-4">
+                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1">Description</h4>
+                                        <div className="text-[11px] text-[#dbe8ff] bg-[#0b226a]/50 p-3 rounded-xl border border-[#1745b3] whitespace-pre-wrap">
+                                          {t.description}
+                                        </div>
+                                      </div>
+                                    )}
+                                    
+                                    {t.attachments && t.attachments.length > 0 && (
+                                      <div className="mb-4">
+                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1.5">Attachments</h4>
+                                        <div className="flex flex-wrap gap-2">
+                                          {t.attachments.map((att: any, idx: number) => (
+                                            <a
+                                              key={att.id || idx}
+                                              href={att.file_url || att.file || '#'}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1745b3]/30 border border-[#1745b3] hover:bg-[#1745b3] text-[10px] text-[#dbe8ff] transition-colors"
+                                            >
+                                              <FileText size={12} className="text-blue-400" />
+                                              <span>{att.name || `Attachment #${idx + 1}`}</span>
+                                            </a>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {t.messages && t.messages.length > 0 && (
+                                      <div className="mb-4">
+                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-2">Communication History</h4>
+                                        <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                          {t.messages.map((msg: any) => {
+                                            const isAdmin = msg.sender === 'admin';
+                                            return (
+                                              <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                                <div className={`text-[9px] mb-0.5 font-bold ${isAdmin ? 'text-indigo-400' : 'text-blue-400'}`}>
+                                                  {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
+                                                </div>
+                                                <div className={`p-2.5 rounded-xl max-w-[90%] text-[11px] ${
+                                                  isAdmin 
+                                                    ? 'bg-indigo-500/20 border border-indigo-500/30 text-[#dbe8ff] rounded-tr-sm' 
+                                                    : 'bg-[#1745b3]/30 border border-[#1745b3] text-[#dbe8ff] rounded-tl-sm'
+                                                }`}>
+                                                  {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                                                  {msg.file && (
+                                                    <div className="mt-1.5">
+                                                      <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-bold ${isAdmin ? 'bg-indigo-500/30 text-indigo-300' : 'bg-[#1745b3] text-blue-300'}`}>
+                                                        <Paperclip size={10} />
+                                                        Attachment
+                                                      </a>
+                                                    </div>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {!isViewerAdmin && (
+                                      <ReplySection 
+                                        onSendMessage={(msg, file) => handleTicketSendMessage(t.id, msg, file)} 
+                                        isSubmitting={isSendingMessage} 
+                                      />
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <StatusBadge status={t.status} />
-                            </div>
-                          ))}
+                            ))}
+                            {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
+                              .filter((t) => {
+                                if (activeTicketTab === 'Open') return t.status === 'Open';
+                                if (activeTicketTab === 'Pending') return t.status === 'In Progress';
+                                if (activeTicketTab === 'Close') return t.status === 'Closed';
+                                return true;
+                              }).length === 0 && !ticketDetailsByUserId[activeModalUser.id]?.loading && (
+                                <p className="text-[#6f92e7] text-xs text-center py-4">No {activeTicketTab.toLowerCase()} tickets found.</p>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>

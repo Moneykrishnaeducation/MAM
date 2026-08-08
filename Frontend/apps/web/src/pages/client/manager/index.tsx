@@ -23,7 +23,6 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { fetchClientDashboard, fetchClientInvestments } from '@/lib/apiClient';
 import {
   buildManagerRows,
   DEFAULT_MANAGER_ROW,
@@ -79,7 +78,7 @@ const riskBadge = (risk: string, isDarkMode: boolean) => {
 
 export default function ClientManagerPage() {
   const { theme } = useTheme();
-  const isDarkMode = theme === 'dark';
+  const isDarkMode = true;
 
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(10);
