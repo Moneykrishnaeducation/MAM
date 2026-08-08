@@ -3,35 +3,23 @@
 from django.urls import path
 
 from adminPanel.view import mt5_crud
-from adminPanel.view.client_profile import get_client_profile_details, update_client_profile
+from adminPanel.view.balance_sync import sync_trading_balances_api
 from adminPanel.view.client_payment import (
     get_client_payment_details_api,
     update_client_payment_details,
 )
-from adminPanel.view.client_tickets import list_client_tickets
-from adminPanel.view.client_transactions import (
-    get_client_transactions_details,
-    list_client_transactions,
-)
-
+from adminPanel.view.client_profile import get_client_profile_details, update_client_profile
 from adminPanel.view.client_tickets import (
     list_all_tickets,
     list_client_tickets,
     update_ticket_status,
 )
-
-from adminPanel.view.dashboard import get_admin_dashboard
-from adminPanel.view.balance_sync import sync_trading_balances_api
-from adminPanel.view.mam_accounts import create_account_api
-from adminPanel.view.manager_fund_actions import (
-    manager_credit_in_api,
-    manager_credit_out_api,
-    manager_deposit_api,
-    manager_history_api,
-    manager_investors_list_api,
-    manager_withdraw_api,
-    account_financial_action_api,
+from adminPanel.view.client_transactions import (
+    get_client_transactions_details,
+    list_client_transactions,
 )
+from adminPanel.view.dashboard import get_admin_dashboard
+from adminPanel.view.internal_transfer import internal_transfer_api
 from adminPanel.view.investor_fund_actions import (
     investor_credit_in_api,
     investor_credit_out_api,
@@ -40,7 +28,19 @@ from adminPanel.view.investor_fund_actions import (
     investor_history_api,
     investor_withdraw_api,
 )
-
+from adminPanel.view.logout import logout_admin
+from adminPanel.view.mail import admin_mails
+from adminPanel.view.mam_accounts import create_account_api
+from adminPanel.view.manager_fund_actions import (
+    account_financial_action_api,
+    manager_credit_in_api,
+    manager_credit_out_api,
+    manager_deposit_api,
+    manager_history_api,
+    manager_investors_list_api,
+    manager_withdraw_api,
+)
+from adminPanel.view.non_demo_accounts import non_demo_accounts_api
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
 from adminPanel.view.pending_requests import (
     decide_pending_request,
@@ -53,29 +53,27 @@ from adminPanel.view.pending_requests import (
     list_pending_requests_summary,
     list_pending_withdrawals,
 )
-from adminPanel.view.transactions import list_admin_transactions
-from adminPanel.view.logout import logout_admin
-from adminPanel.view.mail import admin_mails
 from adminPanel.view.profit_share import list_admin_profit_share
-from backendPanel.permissions import IsAdmin, IsAdminOrSuperAdmin, IsSuperAdmin, permission_required
+from adminPanel.view.transactions import list_admin_transactions
 from adminPanel.views import (
     admin_profile,
     create_admin_user,
     create_client_user,
-    list_admin_activity_logs,
-    list_client_activity_logs,
-    list_error_activity_logs,
-    list_activity_logs,
-    list_admin_system_users,
-    list_client_users,
+    delete_user,
     get_client_user_kyc,
+    list_activity_logs,
+    list_admin_activity_logs,
+    list_admin_system_users,
+    list_client_activity_logs,
+    list_client_users,
+    list_error_activity_logs,
     list_investors,
     list_managers,
     update_admin_user,
     update_client_user_documents,
-    delete_user,
     update_client_user_status,
 )
+from backendPanel.permissions import IsAdmin, IsAdminOrSuperAdmin, IsSuperAdmin, permission_required
 
 app_name = "adminPanel"
 
@@ -93,7 +91,11 @@ urlpatterns = [
     path("requests/profiles", admin_only(list_pending_profiles), name="requests-profiles"),
     path("requests/banks", admin_only(list_pending_banks), name="requests-banks"),
     path("requests/cryptos", admin_only(list_pending_cryptos), name="requests-cryptos"),
-    path("requests/decision", admin_write_only(decide_pending_request), name="request-decision-legacy"),
+    path(
+        "requests/decision",
+        admin_write_only(decide_pending_request),
+        name="request-decision-legacy",
+    ),
     path(
         "requests/<str:request_id>/decision",
         admin_write_only(decide_pending_request),
@@ -101,7 +103,9 @@ urlpatterns = [
     ),
     path("admin-users", admin_only(list_admin_system_users), name="admin-users"),
     path(
-        "admin-users/<str:user_id>/update", admin_write_only(update_admin_user), name="update-admin-user"
+        "admin-users/<str:user_id>/update",
+        admin_write_only(update_admin_user),
+        name="update-admin-user",
     ),
     path("logout", admin_only(logout_admin), name="logout"),
     path("profile", admin_only(admin_profile), name="profile"),
@@ -140,7 +144,11 @@ urlpatterns = [
     path("users/<str:user_id>/delete", admin_write_only(delete_user), name="delete-user"),
     path("users/<str:user_id>/tickets", admin_only(list_client_tickets), name="client-tickets"),
     path("tickets", admin_only(list_all_tickets), name="admin-tickets"),
-    path("tickets/<int:ticket_id>/status", admin_write_only(update_ticket_status), name="admin-update-ticket-status"),
+    path(
+        "tickets/<int:ticket_id>/status",
+        admin_write_only(update_ticket_status),
+        name="admin-update-ticket-status",
+    ),
     path(
         "users/<str:user_id>/transactions",
         admin_only(list_client_transactions),
@@ -179,18 +187,29 @@ urlpatterns = [
     path("admin-users/create", admin_write_only(create_admin_user), name="create-admin-user"),
     path("users/create", admin_write_only(create_client_user), name="create-client-user"),
     path("accounts/create", admin_write_only(create_account_api), name="create-account"),
-    path("accounts/sync-balances", admin_write_only(sync_trading_balances_api), name="sync-balances"),
+    path(
+        "accounts/sync-balances", admin_write_only(sync_trading_balances_api), name="sync-balances"
+    ),
     path(
         "accounts/financial-action",
         admin_write_only(account_financial_action_api),
         name="financial-action",
     ),
-
+    path("internal-transfer", admin_write_only(internal_transfer_api), name="internal-transfer"),
+    path(
+        "internal-transfer/",
+        admin_write_only(internal_transfer_api),
+        name="internal-transfer-slash",
+    ),
+    path("non-demo-accounts", admin_only(non_demo_accounts_api), name="non-demo-accounts"),
+    path("non-demo-accounts/", admin_only(non_demo_accounts_api), name="non-demo-accounts-slash"),
     # Manager Fund Actions — write ops, Viewer blocked
     path("managers/deposit", admin_write_only(manager_deposit_api), name="manager-deposit"),
     path("managers/withdraw", admin_write_only(manager_withdraw_api), name="manager-withdraw"),
     path("managers/credit-in", admin_write_only(manager_credit_in_api), name="manager-credit-in"),
-    path("managers/credit-out", admin_write_only(manager_credit_out_api), name="manager-credit-out"),
+    path(
+        "managers/credit-out", admin_write_only(manager_credit_out_api), name="manager-credit-out"
+    ),
     path(
         "managers/<str:account_id>/history", admin_only(manager_history_api), name="manager-history"
     ),
@@ -199,14 +218,25 @@ urlpatterns = [
         admin_only(manager_investors_list_api),
         name="manager-investors-list",
     ),
-
     # Investor Fund Actions — write ops, Viewer blocked
     path("investors/deposit", admin_write_only(investor_deposit_api), name="investor-deposit"),
     path("investors/withdraw", admin_write_only(investor_withdraw_api), name="investor-withdraw"),
-    path("investors/credit-in", admin_write_only(investor_credit_in_api), name="investor-credit-in"),
-    path("investors/credit-out", admin_write_only(investor_credit_out_api), name="investor-credit-out"),
-    path("investors/<str:account_id>/equity", admin_only(investor_equity_api), name="investor-equity"),
-    path("investors/<str:account_id>/history", admin_only(investor_history_api), name="investor-history"),
+    path(
+        "investors/credit-in", admin_write_only(investor_credit_in_api), name="investor-credit-in"
+    ),
+    path(
+        "investors/credit-out",
+        admin_write_only(investor_credit_out_api),
+        name="investor-credit-out",
+    ),
+    path(
+        "investors/<str:account_id>/equity", admin_only(investor_equity_api), name="investor-equity"
+    ),
+    path(
+        "investors/<str:account_id>/history",
+        admin_only(investor_history_api),
+        name="investor-history",
+    ),
     # MT5 CRUD Routes
     path(
         "server-settings",

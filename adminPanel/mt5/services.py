@@ -651,6 +651,26 @@ class MT5ManagerActions:
         )
 
     @ensure_connected
+    def internal_transfer(self, to_login_id, from_login_id, amount, comment=""):
+        try:
+            to_login_id = int(to_login_id)
+            from_login_id = int(from_login_id)
+            amount = float(amount)
+        except (ValueError, TypeError) as e:
+            logger.error(f"Type conversion error in internal_transfer: {e}")
+            return False
+
+        if amount <= 0:
+            return False
+
+        if not self.withdraw_funds(from_login_id, amount, comment or f"Internal transfer to {to_login_id}"):
+            return False
+        if not self.deposit_funds(to_login_id, amount, comment or f"Internal transfer from {from_login_id}"):
+            self.deposit_funds(from_login_id, amount, comment or f"Rollback transfer to {to_login_id}")
+            return False
+        return True
+
+    @ensure_connected
     def credit_in_funds(self, login_id, amount, comment):
         if amount <= 0:
             return False
@@ -1356,6 +1376,12 @@ class MT5ManagerActions:
         except Exception as exc:
             logger.error(f"get_account_info error for {login_id}: {exc}")
             return None
+
+    @ensure_connected
+    def get_group_of(self, login_id) -> str:
+        """Return group name for the account login_id or empty string."""
+        info = self.get_account_info(login_id)
+        return info.get("group", "") if info else ""
 
     @ensure_connected
     def get_account_details(self, login_id):

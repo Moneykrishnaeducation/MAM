@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import {
   type LucideIcon,
+  ArrowLeftRight,
   Activity,
   ChevronRight,
   Clock,
@@ -89,6 +90,7 @@ export default function AdminSidebar() {
     { href: "/admin/tickets", label: "Support Tickets", icon: LifeBuoy },
     { href: "/admin/activity", label: "Activity Logs", icon: Activity },
     { href: "/admin/transactions", label: "Transactions", icon: Repeat },
+    { href: "/admin/internal", label: "Internal Transfer", icon: ArrowLeftRight },
     { href: "/admin/admin-users", label: "Admins", icon: ShieldCheck },
   ];
 
