@@ -72,6 +72,7 @@ export default function ClientSidebar() {
     { href: '/client/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/client/manager', label: 'Manager', icon: UserCheck },
     { href: '/client/my-invest', label: 'My Invest', icon: Wallet },
+    { href: '/client/internal/internal_transfer', label: 'Internal Transfer', icon: ArrowRightLeft },
     { href: '/client/available', label: 'Available', icon: Compass },
     { href: '/client/platform', label: 'Platform', icon: Activity },
     { href: '/client/technical-analysis', label: 'Technical Analysis', icon: TrendingUp },

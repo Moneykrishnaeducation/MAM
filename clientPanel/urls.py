@@ -40,6 +40,7 @@ from clientPanel.view.tickets import (
 from clientPanel.view.transactions import get_client_transactions
 from clientPanel.view.withdrawal import create_client_withdrawal
 from clientPanel.view.profit_share import list_client_profit_share
+from clientPanel.view.internal_transfer import client_internal_transfer_api
 
 app_name = "clientPanel"
 
@@ -109,6 +110,8 @@ urlpatterns = [
         name="open-positions-no-slash",
     ),
     path("transactions", client_only(get_client_transactions), name="transactions"),
+    path("internal-transfer", client_only(client_internal_transfer_api), name="internal-transfer"),
+    path("internal-transfer/", client_only(client_internal_transfer_api), name="internal-transfer-slash"),
     path("tickets", client_only(get_client_tickets), name="tickets"),
     path("tickets/create", client_only(create_client_ticket), name="ticket-create"),
     path("tickets/<int:ticket_id>", client_only(get_client_ticket_detail), name="ticket-detail"),
