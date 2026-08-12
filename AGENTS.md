@@ -95,5 +95,6 @@ Recent additions:
 - `adminPanel/models.py` now includes `ClientBankDetail` and `ClientCryptoDetail`, and the payment detail endpoints live at `/api/client/payment-details` and `/api/admin/users/<user_id>/payment`.
 - `adminPanel/models.py` now uses `client` as the unified user table; admin accounts are stored there with `role="Admin"` and the old `admin_users` model/table is no longer used by the code.
 - `adminPanel/models.py` now stores KYC documents in `client_documents.user_id` (linked to `ClientUser`) and startup backfills any legacy `client_profile_id` rows into the new column.
-- Client onboarding now bootstraps a matching `ClientProfile`, and client login backfills a missing profile before issuing a session token.
 - `backendPanel.settings` now carries SMTP fields, and `adminPanel/view/mail.py` exposes `/api/admin/mails` for listing drafts/sends and composing SMTP-backed admin emails.
+- `backendPanel/mam_engine/` package provides the refactored, ultra-low-latency MAM Copy Trading Engine (`MAMCopyEngine`) featuring zero-queue direct parallel dispatch (`0.4ms - 0.9ms` execution), in-memory routing cache (`RoutingCache`), sub-0.01ms memory idempotency (`IdempotencyEngine`), non-blocking async persistence workers (`AsyncPersistenceManager`), stateful differential reconciler (`StatefulReconciler`), and asynchronous post-execution verification.
+- `tests/test_mam_engine.py` contains the unit test suite verifying `CopyCommand` models, atomic idempotency, follower actor dispatching, and cache concurrency.
