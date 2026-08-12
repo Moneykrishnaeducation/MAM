@@ -889,14 +889,20 @@ export default function ClientManagerPage() {
                     <div className="mt-5 flex items-center gap-3">
                       <button
                         type="button"
-                        onClick={() => setShowDepositModal(true)}
+                        onClick={() => {
+                          setSelectedManager(null);
+                          setShowDepositModal(true);
+                        }}
                         className={`px-5 py-2.5 rounded-lg font-black text-sm transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
                       >
                         + Quick Fund
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowWithdrawalModal(true)}
+                        onClick={() => {
+                          setSelectedManager(null);
+                          setShowWithdrawalModal(true);
+                        }}
                         className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm flex items-center gap-2 ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}
                       >
                         <Wallet size={16} /> Withdraw
