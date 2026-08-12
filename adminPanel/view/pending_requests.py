@@ -444,6 +444,8 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         payload.get("account_number") or payload.get("accountNumber") or f"**** {request.id:04d}"
     )
     swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
+    branch_name = payload.get("branch_name") or payload.get("branchName") or payload.get("branch")
+    ifsc_code = payload.get("ifsc_code") or payload.get("ifscCode") or payload.get("ifsc") or payload.get("ifsc_swift") or payload.get("ifscSwift")
     network = payload.get("network") or "USDT-TRC20"
     wallet_address = (
         payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
@@ -482,10 +484,20 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         )
     elif request_type in {"document", "documents"}:
         requested_value = file_name or request.client_name
+        
+    user = getattr(request, "user", None)
+    real_email = (
+        (user.email if user else None)
+        or payload.get("email")
+        or payload.get("client_email")
+        or _requester_email(request.client_name)
+    )
+        
     return {
         "id": f"{tab[:3].upper()}-{request.id}",
+        "userId": request.user_id or payload.get("user_id") or payload.get("profile_id") or "",
         "requesterName": request.client_name,
-        "requesterEmail": _requester_email(request.client_name),
+        "requesterEmail": real_email,
         "avatar": _avatar_url(request.client_name),
         "date": _format_timestamp(request.created_at),
         "status": request.status,
@@ -514,8 +526,10 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "reason": f"{title} request submitted through the admin portal.",
         "bankName": bank_name,
         "accountHolder": account_holder,
-        "accountNumber": _mask_sensitive_value(account_number) or account_number,
+        "accountNumber": account_number,
         "swiftCode": swift_code,
+        "branchName": branch_name,
+        "ifscCode": ifsc_code,
         "network": network,
         "walletAddress": wallet_address,
         "label": payload.get("currency") or payload.get("cryptoCurrency") or f"{title} Wallet",
@@ -527,7 +541,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
 async def _fetch_pending_requests_for_tab(tab: str) -> list[dict]:
     aliases = TAB_ALIASES[tab]
     condition = _match_condition(aliases)
-    queryset = PendingRequest.filter(status__iexact="pending").order_by("-created_at")
+    queryset = PendingRequest.filter(status__iexact="pending").order_by("-created_at").prefetch_related("user")
     if condition is not None:
         queryset = queryset.filter(condition)
 
