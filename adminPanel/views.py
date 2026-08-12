@@ -1007,15 +1007,17 @@ def _format_activity_details(log: ActivityLog) -> str:
     if log.action_type:
         parts.append(log.action_type)
     return " · ".join(part for part in parts if part)
-
+from adminPanel.audit import format_action_name
 
 def _serialize_activity_log(log: ActivityLog) -> dict:
     """Serialize a single activity log row for activity APIs."""
+    formatted_action = format_action_name(log.action_type)
     return {
         "id": log.id,
         "user_name": log.user_name,
         "user_role": log.user_role,
-        "action_type": log.action_type,
+        "action_type": formatted_action,
+        "action": formatted_action,
         "module_name": log.module_name,
         "record_id": log.record_id,
         "old_values": log.old_values,

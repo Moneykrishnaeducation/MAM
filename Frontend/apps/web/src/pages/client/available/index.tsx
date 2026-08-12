@@ -511,7 +511,7 @@ export default function ClientAvailablePage() {
                     className={`inline-flex items-center gap-2 px-5 py-3 rounded-2xl text-xs font-black transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 ${goldButtonClass}`}
                   >
                     <Users size={15} />
-                    {isSubmittingInvest ? 'Creating...' : 'Create Investor Account'}
+                    {isSubmittingInvest ? 'Creating...' : 'Investor Now'}
                   </button>
                 </div>
               </div>

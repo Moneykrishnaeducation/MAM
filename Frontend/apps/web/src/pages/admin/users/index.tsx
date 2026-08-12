@@ -144,6 +144,13 @@ function getAdminUserApiId(user?: Pick<UserData, 'id' | 'user_id'> | null) {
   return String(user.id ?? '');
 }
 
+function getDisplayKycStatus(verified: boolean, kycStatus?: string | null) {
+  if (verified) return 'Verified';
+  const status = String(kycStatus ?? 'Pending');
+  if (status.toLowerCase() === 'verified' || status.toLowerCase() === 'approved') return 'Pending';
+  return status;
+}
+
 function SectionTitle({ icon: Icon, label, color = 'text-blue-400' }: { icon: React.ElementType; label: string; color?: string }) {
   return (
     <div className="flex items-center gap-2 border-b border-[#1745b3] pb-3 mb-4">
@@ -757,15 +764,15 @@ function VerifyModal({
       <div className="flex items-center justify-between bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4">
         <div>
           <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Overall KYC Status</p>
-          <StatusBadge status={String(kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus ?? (user.verified ? 'Verified' : 'Pending'))} />
+          <StatusBadge status={getDisplayKycStatus(user.verified, kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus)} />
         </div>
         {canEdit && (
           <button
             onClick={() => onVerify(user.id, !user.verified)}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
               user.verified
-                ? 'bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30'
-                : 'bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30'
+                ? 'bg-[#0b226a]/80 text-red-400 border border-[#1745b3] hover:border-red-500/40 hover:bg-red-950/40 hover:shadow-[0_4px_14px_rgba(239,68,68,0.1)]'
+                : 'bg-[linear-gradient(135deg,#10b981_0%,#059669_100%)] text-slate-950 border border-transparent shadow-[0_4px_14px_rgba(16,185,129,0.25)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 hover:brightness-110'
             }`}
           >
             {user.verified ? <><Ban size={14} /> Revoke Verification</> : <><CheckCheck size={14} /> Approve KYC</>}
@@ -2930,15 +2937,18 @@ export default function AdminUsersPage() {
         <title>Users Directory | Admin Portal</title>
       </Head>
 
-      <div className="w-full text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#040f36] text-slate-100 font-sans antialiased">
         {/* Ambient decorative glow rings */}
-        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+          <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
+          <div className="absolute top-1/2 -right-40 w-[400px] h-[400px] rounded-full bg-blue-500/8 blur-[100px] float-anim-2" />
+          <div className="absolute bottom-0 left-1/3 w-[350px] h-[350px] rounded-full bg-indigo-600/8 blur-[90px] float-anim-3" />
+        </div>
 
         <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
           
           {/* HEADER BANNER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] shadow-[0_24px_60px_rgba(4,15,54,0.36)]">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
                 <Users className="w-5 h-5" />
@@ -2960,18 +2970,18 @@ export default function AdminUsersPage() {
               <button
                 type="button"
                 onClick={() => refreshUsers()}
-                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
+                className="px-4 py-2.5 rounded-xl bg-[#0b226a]/60 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] text-xs font-bold flex items-center gap-2 transition-all hover:border-[#4d7fe0] shadow-sm hover:shadow-md"
               >
-                <RefreshCw size={13} className={loading ? "animate-spin text-[#d4af37]" : ""} />
+                <RefreshCw size={14} className={loading ? "animate-spin text-[#3aa0ff]" : "text-[#4d7fe0]"} />
                 <span>Sync Directory</span>
               </button>
 
               {!isViewerAdmin && (
                 <button
                   onClick={() => openSubRowModal(null, 'create_user')}
-                  className="px-3.5 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 hover:brightness-110 transition-all flex items-center gap-1.5 shadow-md"
+                  className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-slate-950 flex items-center gap-2 transition-all shadow-[0_4px_14px_rgba(201,149,8,0.25)] hover:shadow-[0_6px_20px_rgba(201,149,8,0.4)] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
                 >
-                  <Plus size={14} /> Add New User
+                  <Plus size={16} className="opacity-80" /> Add New User
                 </button>
               )}
             </div>
@@ -2980,7 +2990,7 @@ export default function AdminUsersPage() {
           {/* SUMMARY KPI CARDS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+            <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] rounded-xl p-3 shadow-[0_12px_30px_rgba(4,15,54,0.36)] flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Registered</div>
                 <div className="text-xl font-black text-white mt-0.5">{users.length} <span className="text-[9px] text-slate-500 font-semibold uppercase">Users</span></div>
@@ -2990,11 +3000,11 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+            <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] rounded-xl p-3 shadow-[0_12px_30px_rgba(4,15,54,0.36)] flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Verified Clients</div>
                 <div className="text-xl font-black text-emerald-400 mt-0.5">
-                  {users.filter(u => u.verified || u.kycStatus === 'Verified' || u.kycStatus === 'Approved').length}
+                  {users.filter(u => u.verified).length}
                 </div>
               </div>
               <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -3002,7 +3012,7 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+            <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] rounded-xl p-3 shadow-[0_12px_30px_rgba(4,15,54,0.36)] flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Active Accounts</div>
                 <div className="text-xl font-black text-[#d4af37] mt-0.5">
@@ -3014,11 +3024,11 @@ export default function AdminUsersPage() {
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
+            <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] rounded-xl p-3 shadow-[0_12px_30px_rgba(4,15,54,0.36)] flex items-center justify-between">
               <div>
                 <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Pending Verification</div>
                 <div className="text-xl font-black text-amber-400 mt-0.5">
-                  {users.filter(u => !u.verified && u.kycStatus !== 'Verified' && u.kycStatus !== 'Approved').length}
+                  {users.filter(u => !u.verified).length}
                 </div>
               </div>
               <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
@@ -3039,12 +3049,12 @@ export default function AdminUsersPage() {
           )}
 
           {/* MAIN TABLE CONTAINER */}
-          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl">
+          <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] shadow-[0_24px_60px_rgba(4,15,54,0.36)] rounded-xl p-3 sm:p-4">
             
             {/* TOOLBAR SEARCH */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-[#153d9f]">
               <div className="relative flex-1 max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8db5ff]" />
                 <input 
                   type="text" 
                   value={searchTerm}
@@ -3053,37 +3063,37 @@ export default function AdminUsersPage() {
                     setPage(1);
                   }}
                   placeholder="Search user ID, name, email, or country..." 
-                  className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
+                  className="w-full bg-[#081d5f] border border-[#214fbf] rounded-[1.1rem] pl-9 pr-8 py-2.5 text-xs text-[#dbe8ff] placeholder:text-[#6f92e7] focus:outline-none focus:border-[#3aa0ff] transition-all font-medium" 
                 />
                 {searchTerm && (
-                  <button onClick={() => { setSearchTerm(''); setPage(1); }} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
-                    <X size={12} />
+                  <button onClick={() => { setSearchTerm(''); setPage(1); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8db5ff] hover:text-white">
+                    <X size={14} />
                   </button>
                 )}
               </div>
 
-              <div className="text-xs text-slate-400 font-bold">
-                Total clients: <span className="text-[#d4af37] font-mono">{total ?? users.length}</span>
+              <div className="text-xs text-[#9ec0ff] font-bold">
+                Total clients: <span className="text-[#f0b91f] font-mono">{total ?? users.length}</span>
               </div>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[9px] border-b border-white/10 pb-2">
-                    <th className="pb-2 px-2.5">User ID</th>
-                    <th className="pb-2 px-2.5">Name</th>
-                    <th className="pb-2 px-2.5">Email</th>
-                    <th className="pb-2 px-2.5">Phone</th>
-                    <th className="pb-2 px-2.5">Role</th>
-                    <th className="pb-2 px-2.5">Verification</th>
-                    <th className="pb-2 px-2.5">Status</th>
-                    <th className="pb-2 px-2.5">Registered</th>
-                    <th className="pb-2 px-2.5">Country</th>
-                    <th className="pb-2 px-2.5 text-right">Actions</th>
+                  <tr className="bg-[#0b226a] text-[#9ec0ff] font-black uppercase tracking-widest text-[9px]">
+                    <th className="py-3 px-3 rounded-tl-lg">User ID</th>
+                    <th className="py-3 px-2.5">Name</th>
+                    <th className="py-3 px-2.5">Email</th>
+                    <th className="py-3 px-2.5">Phone</th>
+                    <th className="py-3 px-2.5">Role</th>
+                    <th className="py-3 px-2.5">Verification</th>
+                    <th className="py-3 px-2.5">Status</th>
+                    <th className="py-3 px-2.5">Registered</th>
+                    <th className="py-3 px-2.5">Country</th>
+                    <th className="py-3 px-3 text-right rounded-tr-lg">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5">
+                <tbody className="divide-y divide-[#153d9f]">
                 {loading ? (
                   /* ── Pulsating Skeleton Rows ── */
                   Array.from({ length: 5 }).map((_, idx) => (
@@ -3137,7 +3147,7 @@ export default function AdminUsersPage() {
                         <tr
                           onClick={() => toggleDropdownRow(u.id)}
                           className={`cursor-pointer transition-colors group ${
-                            isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/40'
+                            isExpanded ? 'bg-[#102c7c]/60' : 'hover:bg-[#102c7c]/40'
                           }`}
                         >
                           <td className="py-2.5 px-2.5 font-mono text-xs font-bold text-[#d4af37]">
@@ -3161,7 +3171,7 @@ export default function AdminUsersPage() {
                           </td>
                           <td className="py-2.5 px-2.5 font-bold text-white text-xs">{u.role}</td>
                           <td className="py-2.5 px-2.5">
-                            <StatusBadge status={String(rowKyc?.status ?? u.kycStatus ?? (u.verified ? 'Verified' : 'Pending'))} />
+                            <StatusBadge status={getDisplayKycStatus(u.verified, rowKyc?.status ?? u.kycStatus)} />
                           </td>
                           <td className="py-2.5 px-2.5" onClick={(e) => e.stopPropagation()}>
                             {isViewer ? (
@@ -3202,40 +3212,40 @@ export default function AdminUsersPage() {
 
                       {/* ── EXPANDED SUB-ROW DRAWER ── */}
                       {isExpanded && (
-                        <tr className="bg-slate-950/60 border-b border-white/10">
+                        <tr className="bg-[#0b226a]/40 border-b border-[#153d9f]">
                           <td colSpan={10} className="p-3 sm:p-4">
-                            <div className="bg-slate-900 border border-white/10 rounded-xl p-3.5 shadow-2xl space-y-3">
-                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
+                            <div className="bg-[#081d5f] border border-[#1745b3] rounded-xl p-3.5 shadow-2xl space-y-3">
+                              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#1745b3] pb-2">
                                 <div className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                                  <Sparkles size={14} className="text-[#d4af37]" />
-                                  <span>User Management Console — <strong className="text-[#d4af37]">{u.name}</strong></span>
+                                  <Sparkles size={14} className="text-[#f0b91f]" />
+                                  <span>User Management Console — <strong className="text-[#f0b91f]">{u.name}</strong></span>
                                 </div>
-                                <span className="text-[10px] text-slate-400 font-mono">
-                                  User Ref: <strong className="text-[#d4af37]">{u.id}</strong>
+                                <span className="text-[10px] text-[#8db5ff] font-mono">
+                                  User Ref: <strong className="text-[#f0b91f]">{u.id}</strong>
                                 </span>
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
-                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
-                                  <ShieldCheck size={14} className="text-[#d4af37]" /> KYC Verify
+                                <button onClick={() => openSubRowModal(u, 'verifi')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
+                                  <ShieldCheck size={14} className="text-[#f0b91f]" /> KYC Verify
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                <button onClick={() => openSubRowModal(u, 'trading')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
                                   <TrendingUp size={14} className="text-emerald-400" /> Trading
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                <button onClick={() => openSubRowModal(u, 'profile')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
                                   <User size={14} className="text-purple-300" /> Profile
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                <button onClick={() => openSubRowModal(u, 'bank_crypto')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
                                   <CreditCard size={14} className="text-amber-300" /> Bank/Crypto
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                <button onClick={() => openSubRowModal(u, 'transactions')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
                                   <ArrowUpRight size={14} className="text-teal-300" /> Transactions
                                 </button>
-                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all shadow-sm">
+                                <button onClick={() => openSubRowModal(u, 'tickets')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#0b226a]/80 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] hover:border-[#4d7fe0] text-xs font-bold transition-all shadow-sm">
                                   <Ticket size={14} className="text-indigo-300" /> Tickets ({u.tickets?.length || 0})
                                 </button>
                                 {!isViewer && (
                                   <>
-                                    <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border border-transparent text-xs font-black uppercase tracking-wider transition-all shadow-md">
+                                    <button onClick={() => openSubRowModal(u, 'add_account')} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-slate-950 border border-transparent text-xs font-black uppercase tracking-wider transition-all shadow-[0_4px_14px_rgba(201,149,8,0.3)] hover:-translate-y-0.5">
                                       <PlusCircle size={14} /> Add Account
                                     </button>
                                     <button
@@ -3329,7 +3339,7 @@ export default function AdminUsersPage() {
         <div className="fixed inset-0 z-50 bg-[#040f36]/90 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           <div className={`border border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.50)] rounded-[2rem] ${modalWidthClass} overflow-hidden my-6`}>
             {/* Modal Header */}
-            <div className="p-5 bg-[#0b226a] border-b border-[#1745b3] flex items-center justify-between">
+            <div className="p-5 bg-transparent border-b border-[#1745b3] flex items-center justify-between">
               {activeModalUser ? (
                 <div className="flex items-center gap-3">
                   <img
@@ -3355,8 +3365,8 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
               )}
-              <button onClick={closeModal} className="p-2 rounded-xl border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af] transition-colors">
-                <X size={20} />
+              <button onClick={closeModal} className="p-2.5 rounded-xl border border-[#214fbf] bg-[#0b226a]/60 text-[#8fb8ff] hover:bg-[#102c7c] hover:border-[#4d7fe0] hover:text-white transition-all shadow-sm">
+                <X size={18} />
               </button>
             </div>
 
@@ -3686,8 +3696,8 @@ export default function AdminUsersPage() {
 
             {/* Modal Footer */}
             {activeModalType !== 'create_user' && activeModalType !== 'profile' && (
-              <div className="p-4 bg-[#0b226a] border-t border-[#1745b3] flex justify-end">
-                <button onClick={closeModal} className="px-4 py-2 rounded-xl border border-[#2a58c9] bg-[#11358f] hover:bg-[#1845af] text-white font-bold text-xs transition-all">
+              <div className="p-5 bg-transparent border-t border-[#1745b3] flex justify-end">
+                <button onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-[#1745b3] bg-[#0b226a]/40 hover:bg-[#102c7c] hover:border-[#2450b7] text-slate-300 font-bold text-xs transition-all">
                   Close
                 </button>
               </div>

@@ -36,6 +36,7 @@ from clientPanel.view.tickets import (
     create_client_ticket,
     get_client_ticket_detail,
     get_client_tickets,
+    add_client_ticket_message,
 )
 from clientPanel.view.transactions import get_client_transactions
 from clientPanel.view.withdrawal import create_client_withdrawal
@@ -115,4 +116,5 @@ urlpatterns = [
     path("tickets", client_only(get_client_tickets), name="tickets"),
     path("tickets/create", client_only(create_client_ticket), name="ticket-create"),
     path("tickets/<int:ticket_id>", client_only(get_client_ticket_detail), name="ticket-detail"),
+    path("tickets/<int:ticket_id>/message", client_only(add_client_ticket_message), name="ticket-message"),
 ]

@@ -543,7 +543,7 @@ const Tickets = () => {
     if (!content || !content.trim()) return;
     if (!selectedTicket) return;
 
-    const newMessage = {
+    const optimisticMessage = {
       id: `msg-${Date.now()}`,
       content,
       sender_name: 'You',
@@ -553,11 +553,27 @@ const Tickets = () => {
 
     setSelectedTicket((prev) => {
       if (!prev) return prev;
-      const updatedMessages = [...(prev._normalizedMessages || prev.messages || []), newMessage];
+      const updatedMessages = [...(prev._normalizedMessages || prev.messages || []), optimisticMessage];
       return { ...prev, _normalizedMessages: updatedMessages, messages: updatedMessages };
     });
 
-    showTicketToast("Message sent successfully!");
+    try {
+      const response = await fetch(`/api/client/tickets/${selectedTicket.id}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      
+      const data = await response.json();
+      if (response.ok && data.status === 'ok') {
+        showTicketToast("Message sent successfully!");
+      } else {
+        showTicketToast("Failed to send message to server: " + (data.message || 'Unknown error'));
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      showTicketToast('Failed to send message due to network error.');
+    }
   };
 
   const openTicketDetail = async (ticketId: string) => {
@@ -863,7 +879,7 @@ const Tickets = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${softTextClass}`}>
-                    Account ID
+                    Ticket ID
                   </label>
                   <div className={`p-4 rounded-2xl border font-bold ${isDarkMode ? "bg-white/5 border-white/10 text-white" : "border-[#214fbf] bg-[#081d5f] text-[#dbe8ff]"}`}>
                     {userId || "Auto Fetch"}

@@ -521,18 +521,18 @@ export default function TransactionHistory() {
                   }}
                   title={tab.label}
                   aria-label={tab.label}
-                  className={`flex min-w-0 items-center justify-center gap-2 rounded-3xl px-3 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 lg:flex-1 lg:px-6 lg:py-4 lg:text-xs lg:tracking-widest ${
+                  className={`flex lg:flex-1 min-w-0 items-center justify-center gap-2 rounded-3xl px-3 py-3 text-[9px] font-black uppercase tracking-[0.1em] transition-all duration-300 lg:px-6 lg:py-4 lg:text-xs lg:tracking-widest ${
                     isLast ? 'col-span-2 lg:col-span-1' : ''
                   } ${
                     isActive
-                      ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]'
+                      ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-slate-950 shadow-[0_12px_28px_rgba(201,149,8,0.28)] scale-[1.02]'
                       : isDarkMode
                         ? 'border border-transparent bg-white/5 text-gray-400 hover:text-white'
                         : 'border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white'
                   }`}
                 >
                   <Icon size={14} className="shrink-0" />
-                  <span className="whitespace-nowrap">
+                  <span className="truncate text-center leading-tight">
                     {tab.label}
                   </span>
                 </button>
@@ -780,15 +780,27 @@ export default function TransactionHistory() {
                           </>
                         ) : (
                           <td className="px-6 py-5 whitespace-nowrap">
-                            <span
-                              className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
-                                isDarkMode
-                                  ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
-                                  : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
-                              }`}
-                            >
-                              {transaction.account_id}
-                            </span>
+                            {transaction.type.toLowerCase().includes('transfer') && (transaction.account_id_from || transaction.account_id_to) ? (
+                              <div className="flex items-center gap-1.5">
+                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${isDarkMode ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400' : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'}`}>
+                                  {transaction.account_id_from || 'N/A'}
+                                </span>
+                                <span className="text-slate-500 font-black text-[10px]">→</span>
+                                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-bold ${isDarkMode ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400' : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'}`}>
+                                  {transaction.account_id_to || 'N/A'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span
+                                className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-bold ${
+                                  isDarkMode
+                                    ? 'border-[#d3a11a]/30 bg-[#e0b01d]/5 text-amber-400'
+                                    : 'border-[#d3a11a]/45 bg-[#e0b01d]/10 text-[#f5c22b]'
+                                }`}
+                              >
+                                {transaction.account_id}
+                              </span>
+                            )}
                           </td>
                         )}
                         <td className="px-6 py-5 whitespace-nowrap">

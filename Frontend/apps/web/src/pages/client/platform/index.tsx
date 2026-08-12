@@ -180,16 +180,16 @@ export default function ClientPlatformPage() {
               <span className="text-white">Trading </span>
               <span className="shimmer-text">Platforms</span>
             </h1>
-            <p className="text-blue-200/60 text-base leading-relaxed max-w-xl">
+            {/* <p className="text-blue-200/60 text-base leading-relaxed max-w-xl">
               Access global liquidity through our institutional-grade MT5 infrastructure across all your devices.
-            </p>
+            </p> */}
 
             {/* Decorative beam lines */}
-            <div className="mt-8 flex items-center gap-3">
+            {/* <div className="mt-8 flex items-center gap-3">
               <div className="h-px w-24 bg-gradient-to-r from-blue-500/80 to-transparent beam-line rounded-full" />
               <div className="h-px w-12 bg-gradient-to-r from-blue-400/50 to-transparent beam-line rounded-full" style={{ animationDelay: '0.5s' }} />
               <div className="h-px w-6 bg-gradient-to-r from-blue-300/30 to-transparent rounded-full" />
-            </div>
+            </div> */}
           </div>
 
           {/* ── Platform Cards ── */}

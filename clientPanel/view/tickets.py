@@ -259,3 +259,65 @@ async def get_client_ticket_detail(request, ticket_id: int):
             "ticket": _serialize_ticket(ticket, request),
         }
     )
+
+
+@csrf_exempt
+@permission_required(IsClient)
+@require_http_methods(["POST"])
+async def add_client_ticket_message(request, ticket_id: int):
+    """Add a message to a client support ticket from the client side."""
+    import time
+    from datetime import datetime
+
+    await ensure_db_initialized()
+    profile, error = await _get_client_profile_for_request(request)
+    if error:
+        return error
+
+    ticket = await ClientTicket.filter(id=ticket_id, user_id=profile.id).first()
+    if not ticket:
+        return _error("Ticket not found", status=404)
+
+    try:
+        body, uploaded_files = _extract_ticket_payload(request)
+    except ValueError:
+        return _error("Invalid request body", status=400)
+
+    content = str(body.get("content") or "").strip()
+    if not content and not uploaded_files:
+        return _error("Message content or document is required", status=400)
+
+    file_attachment = None
+    if uploaded_files:
+        saved = _save_ticket_attachment(uploaded_files[0], ticket.id)
+        if saved and "file" in saved:
+            file_attachment = saved["file"]
+
+    client_name = profile.name or "Client"
+
+    new_message = {
+        "id": f"msg-{int(time.time() * 1000)}",
+        "content": content,
+        "sender_name": client_name,
+        "sender": str(profile.id),
+        "created_at": datetime.utcnow().isoformat() + "Z",
+    }
+    
+    if file_attachment:
+        new_message["file"] = file_attachment
+
+    messages = list(getattr(ticket, "messages", []) or [])
+    messages.append(new_message)
+    ticket.messages = messages
+    
+    await ticket.save(update_fields=["messages"])
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": "Message sent successfully",
+            "ticket": _serialize_ticket(ticket, request),
+            "new_message": new_message,
+        }
+    )
+

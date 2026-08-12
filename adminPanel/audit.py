@@ -12,6 +12,42 @@ from backendPanel.database import ensure_db_initialized
 logger = logging.getLogger(__name__)
 
 
+def format_action_name(action: str) -> str:
+    """Format a raw HTTP action like 'POST /api/admin/managers/deposit' to a readable message."""
+    if not action:
+        return "Unknown Action"
+    
+    # If it's already a readable message (no slash), just return it
+    if "/" not in action:
+        return action
+
+    # Strip method
+    path = action.split(" ", 1)[-1] if " " in action else action
+    
+    # Specific overrides
+    if path.endswith("/managers/deposit"):
+        return "Account Deposit"
+    if path.endswith("/managers/withdrawal"):
+        return "Account Withdrawal"
+    if path.endswith("/users/create"):
+        return "User Creation"
+    if "/tickets/" in path and path.endswith("/message"):
+        return "Ticket Message Reply"
+    if path.endswith("/login"):
+        return "User Login"
+    if path.endswith("/logout"):
+        return "User Logout"
+    if path.endswith("/profile/update"):
+        return "Profile Update"
+        
+    # Generic fallback
+    parts = [p for p in path.strip("/").split("/") if p not in ("api", "client", "admin", "v1")]
+    if parts:
+        return " ".join(p.capitalize() for p in parts)
+        
+    return action
+
+
 def _get_request_ip(request) -> str | None:
     meta = getattr(request, "META", {})
     forwarded_for = meta.get("HTTP_X_FORWARDED_FOR")
