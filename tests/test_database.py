@@ -13,18 +13,20 @@ from adminPanel import crud as admin_crud
 from adminPanel.models import (
     ActivityLog,
     AdminMailMessage,
-    AdminUser,
-    ClientProfile,
     ClientDocument,
+    ClientProfile,
     ClientTicket,
     ClientTransaction,
     ClientUser,
-    Investor,
-    MamAccount,
-    Manager,
-    MyInvestment,
     PendingRequest,
+    TradingAccount,
 )
+
+AdminUser = ClientUser
+Investor = TradingAccount
+Manager = TradingAccount
+MamAccount = TradingAccount
+MyInvestment = TradingAccount
 from adminPanel.view.client_profile import update_client_profile
 from adminPanel.view.client_tickets import list_client_tickets
 from adminPanel.view.client_transactions import list_client_transactions

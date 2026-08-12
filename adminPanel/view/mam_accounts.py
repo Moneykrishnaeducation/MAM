@@ -272,3 +272,7 @@ async def create_account_api(request):
         return JsonResponse(
             {"status": "error", "message": "Invalid account type specifier"}, status=400
         )
+
+
+create_mam_account = create_account_api
+
