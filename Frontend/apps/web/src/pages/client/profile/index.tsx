@@ -288,7 +288,11 @@ export default function ClientProfilePage() {
     email: '',
     phone: '',
     country: '',
-    timezone: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    dateOfBirth: '',
+    timezone: 'UTC+0',
   });
   const [documents, setDocuments] = useState<Record<DocumentSlotId, DocumentCard>>(INITIAL_DOCUMENTS);
   const [uploadNotice, setUploadNotice] = useState<string | null>(null);
@@ -406,6 +410,11 @@ export default function ClientProfilePage() {
           email: String(profile.email || prev.email),
           phone: String(profile.phone || prev.phone),
           country: String(profile.country || prev.country),
+          address: String(profile.address || ''),
+          city: String(profile.city || ''),
+          postalCode: String(profile.postalCode || ''),
+          dateOfBirth: String(profile.dateOfBirth || ''),
+          timezone: String(prev.timezone || 'UTC+0'),
         }));
 
         setProfileUserId(profile.user_id != null ? String(profile.user_id) : null);
@@ -576,6 +585,10 @@ export default function ClientProfilePage() {
           email: personalForm.email,
           phone: personalForm.phone,
           country: personalForm.country,
+          address: personalForm.address,
+          city: personalForm.city,
+          postalCode: personalForm.postalCode,
+          dateOfBirth: personalForm.dateOfBirth,
         }),
       });
 
@@ -598,11 +611,18 @@ export default function ClientProfilePage() {
           email: String(profile.email || prev.email),
           phone: String(profile.phone || prev.phone),
           country: String(profile.country || prev.country),
+          address: String(profile.address || prev.address || ''),
+          city: String(profile.city || prev.city || ''),
+          postalCode: String(profile.postalCode || prev.postalCode || ''),
+          dateOfBirth: String(profile.dateOfBirth || prev.dateOfBirth || ''),
         }));
+        if (profile.address) {
+          setProfileAddress(profile.address);
+        }
       }
 
       setIsPersonalEditing(false);
-      showProfileToast(data?.message || 'Profile details submitted for approval.');
+      showProfileToast(data?.message || 'Profile details submitted for successful update.');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to submit profile changes.';
       showProfileToast(message);
@@ -1116,56 +1136,45 @@ export default function ClientProfilePage() {
                       <div>
                         <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Address</label>
                         <div
-                          className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all cursor-not-allowed ${inputClass} ${borderMutedClass}`}
-                        >
-                          <House size={15} className="text-slate-400" />
-                          <input
-                            type="text"
-                            value={profileAddress || 'Not set'}
-                            readOnly
-                            tabIndex={-1}
-                            className="w-full cursor-not-allowed border-none bg-transparent text-xs text-slate-300 outline-none"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Local Timezone</label>
-                        <div
                           className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
                               ? 'border-[#3aa0ff]'
                               : borderMutedClass
                           }`}
                         >
-                          <Calendar size={15} className="text-slate-400" />
+                          <House size={15} className="text-slate-400" />
                           <input
                             type="text"
-                            value={personalForm.timezone}
+                            value={personalForm.address}
                             readOnly={!isPersonalEditing}
                             onChange={(event) =>
-                              setPersonalForm((prev) => ({ ...prev, timezone: event.target.value }))
+                              setPersonalForm((prev) => ({ ...prev, address: event.target.value }))
                             }
                             className={`w-full border-none bg-transparent text-xs outline-none text-white ${
                               isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
                             }`}
+                            placeholder="Enter street address"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className={`flex items-center justify-between gap-4 rounded-[22px] border ${borderMutedClass} bg-white/[0.02] px-5 py-4`}>
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/30 bg-amber-400/10 text-amber-300">
-                          <Info size={16} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-semibold text-slate-100">Keep your information up to date</p>
-                          <p className={`mt-1 max-w-xl text-xs ${softTextClass}`}>
-                            Ensure your personal information is accurate to avoid any interruptions in your trading activities.
-                          </p>
-                        </div>
+                    <div className={`flex items-center gap-3 rounded-xl border ${borderMutedClass} bg-white/[0.02] px-4 py-3`}>
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-400/10 text-amber-300">
+                        <Info size={14} />
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-medium text-slate-100">
+                          Keep your details updated
+                        </p>
+                        <p className={`mt-0.5 text-xs ${softTextClass}`}>
+                          Update your information to avoid trading interruptions.
+                        </p>
                       </div>
                     </div>
+
+
                     <div className="flex flex-wrap justify-end gap-3">
                       <button
                         type="button"
