@@ -164,7 +164,7 @@ export default function AdminSidebar() {
           {/* LOGO & CLOSE BUTTON */}
           <div className="mb-6 mt-1 flex items-center justify-between gap-3 px-2">
             <img
-              src="/Vt.png"
+              src="/VT1.png"
               alt="VTIndex Logo"
               className="w-32 transition-transform drop-shadow-[0_0_15px_rgba(212,175,55,0.5)] hover:scale-105"
             />

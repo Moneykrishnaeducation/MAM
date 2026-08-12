@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useTheme } from 'next-themes';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserCheck,
   Mail,
@@ -78,7 +79,8 @@ const riskBadge = (risk: string, isDarkMode: boolean) => {
 
 export default function ClientManagerPage() {
   const { theme } = useTheme();
-  const isDarkMode = true;
+  // Force premium blue theme to match investor page
+  const isDarkMode = false;
 
   const [query, setQuery] = useState('');
   const [perPage, setPerPage] = useState(10);
@@ -312,14 +314,8 @@ export default function ClientManagerPage() {
     setCurrentPage(1);
   };
 
-  // Only show a highlighted card when user is actively searching
-  const highlightedManager =
-    hasQuery && allManagers.length > 0 ? allManagers[0] : null;
-
-  // Active manager may be from an explicit selection (selectedManager)
-  // or from the current search highlight (highlightedManager)
-  const activeManager =
-    selectedManager ?? (hasQuery && highlightedManager ? highlightedManager : null);
+  // Active manager is ONLY from an explicit selection (selectedManager)
+  const activeManager = selectedManager;
   const showActiveManager = Boolean(activeManager);
   const activeManagerView: any = activeManager ? { ...activeManager, ...(selectedManagerDetail || {}) } : null;
 
@@ -444,315 +440,17 @@ export default function ClientManagerPage() {
           </div>
         </div>
 
-        {/* ── Manager Profile Card / Details ── */}
-        {showActiveManager && activeManager ? (
-          <div ref={managerCardRef} className={`relative overflow-hidden border rounded-[2rem] shadow-2xl ${panelClass}`}>
-            {/* Subtle glow accent */}
-            <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-            <button
-              type="button"
-              onClick={closeActiveManagerCard}
-              aria-label="Close manager card"
-              className={`absolute top-4 right-4 z-20 rounded-full p-2 transition-colors ${
-                isDarkMode
-                  ? 'text-gray-400 hover:bg-white/5 hover:text-white'
-                  : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
-              }`}
-            >
-              <X size={18} />
-            </button>
 
-            <div className="relative flex flex-col md:flex-row gap-6 p-6 md:p-8">
-              {/* Avatar + status */}
-              <div className="flex flex-col items-center gap-3 shrink-0">
-                <div className="relative">
-                  <img
-                    src={
-                      isAssigned
-                        ? managerInfo.avatar
-                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(activeManager.name)}&background=1e293b&color=34d399&size=128&bold=true`
-                    }
-                    alt={activeManager.name}
-                    className="w-24 h-24 md:w-28 md:h-28 rounded-2xl object-cover ring-2 ring-emerald-500/40 shadow-xl"
-                  />
-                  <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full border-2 border-slate-900 shadow" />
-                </div>
-                {isAssigned && (
-                  <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 tracking-wide uppercase">
-                    Your Manager
-                  </span>
-                )}
-              </div>
-
-              {/* Details */}
-              <div className="flex-1 space-y-4">
-                <div>
-                  <h2 className="text-2xl font-extrabold text-white leading-tight">
-                    {activeManager.name}
-                  </h2>
-                  <p className="text-sm text-emerald-400 font-semibold mt-0.5">
-                    {isAssigned
-                      ? managerInfo.role
-                      : 'MAM Portfolio Manager'}
-                  </p>
-                {isAssigned && (
-                  <p className={`text-xs mt-1 ${softTextClass}`}>
-                      {activeManagerView?.experience || managerInfo.experience}
-                  </p>
-                )}
-                </div>
-
-                {/* Contact chips */}
-                <div className="flex flex-wrap gap-3">
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
-                    <Mail size={14} className="text-emerald-400 shrink-0" />
-                    <span className="text-slate-300 font-medium">
-                      {activeManager.email}
-                    </span>
-                  </div>
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
-                    <Hash size={14} className="text-blue-400 shrink-0" />
-                    <span className="text-slate-300 font-medium">
-                      {activeManager.id}
-                    </span>
-                  </div>
-                  {isAssigned && (
-                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
-                      <Phone
-                        size={14}
-                        className="text-purple-400 shrink-0"
-                      />
-                      <span className="text-slate-300 font-medium">
-                        {managerInfo.phone}
-                      </span>
-                    </div>
-                  )}
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
-                    <Shield size={14} className="text-amber-400 shrink-0" />
-                    <span
-                      className={`font-semibold ${activeManager.risk === 'Low' ? 'text-emerald-400' : activeManager.risk === 'Medium' ? 'text-amber-400' : 'text-red-400'}`}
-                    >
-                      {activeManager.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Mini stats row */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {[
-                    {
-                      label: 'AUM',
-                      value: activeManager.balance,
-                      icon: <DollarSign size={14} />,
-                      color: 'text-emerald-400',
-                      bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20',
-                    },
-                    {
-                      label: 'Strategy',
-                      value: activeManager.profit,
-                      icon: <TrendingUp size={14} />,
-                      color: 'text-blue-400',
-                      bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-blue-500/10 border-blue-500/20',
-                    },
-                    {
-                      label: 'Performance Fee',
-                      value: activeManager.share,
-                      icon: <Percent size={14} />,
-                      color: 'text-purple-400',
-                      bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-purple-500/10 border-purple-500/20',
-                    },
-                    {
-                      label: 'Linked',
-                      value: activeManager.investorsCount,
-                      icon: <Users size={14} />,
-                      color: 'text-amber-400',
-                      bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-amber-500/10 border-amber-500/20',
-                    },
-                  ].map((stat) => (
-                    <div
-                      key={stat.label}
-                      className={`flex flex-col gap-1.5 p-3 rounded-2xl border ${stat.bg} ${isDarkMode ? borderMutedClass : ''}`}
-                    >
-                      <div className={`${stat.color}`}>{stat.icon}</div>
-                      <div className={`text-base font-extrabold ${stat.color}`}>
-                        {stat.value}
-                      </div>
-                      <div className={`text-[10px] font-medium uppercase tracking-wider ${softTextClass}`}>
-                        {stat.label}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-            
-            {/* ── Detailed Dashboard Content ── */}
-            <div className="p-6 md:p-8 pt-0 space-y-6">
-              
-              {/* NET BALANCE Banner */}
-              <div className={`rounded-[2rem] border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-white/[0.02] ${borderMutedClass}`}>
-                <div className="flex-1">
-                    <div className={`text-[10px] font-black uppercase tracking-widest ${softTextClass}`}>Net Balance</div>
-                  <div className="text-4xl font-black text-white mt-1 leading-none tracking-tight">
-                    {formatCurrency(totalInvested)} <span className={`text-sm font-black ml-1 ${softTextClass}`}>{clientAccount?.currency || 'USD'}</span>
-                  </div>
-                  <div className="mt-5 flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowDepositModal(true)}
-                      className={`px-5 py-2.5 rounded-lg font-black text-sm transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
-                    >
-                      + Quick Fund
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowWithdrawalModal(true)}
-                      className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm flex items-center gap-2 ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}
-                    >
-                      <Wallet size={16} /> Withdraw
-                    </button>
-                  </div>
-                </div>
-                <div className="flex-none w-full md:w-auto">
-                  <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
-                    <div className={softTextClass}>Total Profit</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{formatCurrency(totalProfit)}</div>
-                    <div className={softTextClass}>Performance Fee</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.performanceFee ? `${managerPerformance.performanceFee}%` : activeManager?.share || '0%'}</div>
-                    <div className={softTextClass}>Status</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.status || activeManager?.status || 'Active'}</div>
-                    <div className={softTextClass}>Leverage</div>
-                    <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.leverage || clientAccount?.leverage || '1:500'}</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Three Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* MAM CONFIGURATION */}
-                <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
-                  <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">MAM Configuration</h4>
-                  <div className="space-y-4 text-sm">
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Account Name</span><span className="font-extrabold text-white">{managerConfiguration?.accountName || activeManager?.name || 'N/A'}</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Payout Cycle</span><span className="font-extrabold text-white">{managerConfiguration?.payoutCycle || 'weekly'}</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Algo Trading</span><span className="font-extrabold text-white">{managerConfiguration?.algoTrading || 'Manual'}</span></div>
-                    <div className="flex justify-between items-center"><span className={softTextClass}>Status</span><span className="font-extrabold text-white">{managerConfiguration?.status || activeManager?.status || 'Active'}</span></div>
-                  </div>
-                </div>
-
-                {/* Master Security */}
-                <div className={`p-6 rounded-[20px] border flex flex-col items-center justify-center text-center ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
-                  <div className="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center mb-4 border border-blue-500/20">
-                    <Settings size={24} />
-                  </div>
-                  <h4 className="text-[16px] font-extrabold tracking-wide text-white mb-5">Master Security</h4>
-                  <div className="w-full space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowAccountSettingsModal(true)}
-                      className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
-                    >
-                      <Settings size={16} /> Account Settings
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleOpenInvestorListModal}
-                      className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
-                    >
-                      <Users size={16} /> Investor List
-                    </button>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
-                  <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Quick Actions</h4>
-                  <div className="w-full space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPerformanceModal(true)}
-                      className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
-                    >
-                      <TrendingUp size={16} /> Performance
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleToggleStatus}
-                      disabled={isTogglingStatus}
-                      className={`w-full py-3 rounded-xl text-white font-extrabold transition-colors text-sm flex items-center justify-center gap-2 ${
-                        String(activeManager?.status).toLowerCase() === 'active'
-                          ? 'bg-[#ef4444] hover:bg-[#dc2626]'
-                          : 'bg-emerald-600 hover:bg-emerald-700'
-                      }`}
-                    >
-                      <RefreshCw size={16} className={isTogglingStatus ? 'animate-spin' : ''} />
-                      {isTogglingStatus
-                        ? 'Updating...'
-                        : String(activeManager?.status).toLowerCase() === 'active'
-                        ? 'Deactivate'
-                        : 'Activate'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowProfitShareModal(true)}
-                      className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white border border-purple-500/20 flex items-center justify-center gap-2`}
-                    >
-                      <TrendingUp size={16} /> Profit Shares
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* PROFIT SHARE WALLET */}
-              <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
-                <div className="flex justify-between items-center mb-6">
-                  <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white">Profit Share Wallet</h4>
-                  <button 
-                    onClick={() => showManagerToast('Settlement triggered successfully!')}
-                    className={`px-4 py-2 rounded-lg font-black text-[11px] transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass} flex items-center gap-2`}
-                  >
-                    <DollarSign size={14} /> Trigger Settlement
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Pending Wallet</div>
-                    <div className="text-2xl font-black text-[#d9aa2b]">{formatCurrency(managerWallet?.pending ?? totalInvested)}</div>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Total Settled</div>
-                    <div className="text-2xl font-black text-white">{formatCurrency(managerWallet?.settled ?? totalProfit)}</div>
-                  </div>
-                  <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                    <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Live Managers</div>
-                    <div className="text-2xl font-black text-white">{linkedManagerCount}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : hasQuery && allManagers.length === 0 ? (
-          /* ── No Results — only shown when searching ── */
-          <div className={`flex flex-col items-center justify-center py-16 border rounded-[2rem] ${panelClass}`}>
-            <Search size={40} className="text-slate-700 mb-3" />
-            <p className={`font-semibold text-sm ${headingTextClass}`}>
-              No manager found for &quot;{query}&quot;
-            </p>
-            <p className={`text-xs mt-1 ${softTextClass}`}>
-              Try a different name or email address.
-            </p>
-          </div>
-        ) : null}
 
         {/* ── Manager Details Table ── */}
         <div className={`${panelClass} rounded-[2.5rem] border overflow-hidden mt-8`}>
           {/* Table header */}
           <div className={`p-8 border-b ${borderMutedClass} flex items-center justify-between`}>
-            <div>
+            <div className="flex items-center gap-3">
+              <div className="w-2 h-8 rounded-full bg-[linear-gradient(180deg,#f0b91f_0%,#c99508_100%)]"></div>
               <h3 className={`text-xl font-bold ${headingTextClass}`}>
                 All Manager Details
               </h3>
-              
             </div>
            
           </div>
@@ -929,7 +627,11 @@ export default function ClientManagerPage() {
                 id="pagination-prev"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={safePage === 1 || !pagination.hasPrevious}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-35 disabled:cursor-not-allowed transition-all ${
+                  isDarkMode
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'bg-[#0b226a]/60 border-[#1745b3] text-[#9ec0ff] hover:bg-[#102c7c] hover:text-white'
+                }`}
               >
                 <ChevronLeft size={13} /> Prev
               </button>
@@ -958,8 +660,12 @@ export default function ClientManagerPage() {
                     onClick={() => setCurrentPage(page)}
                     className={`min-w-[32px] h-8 rounded-lg text-xs font-bold transition-all border ${
                       page === safePage
-                        ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
+                        ? isDarkMode
+                          ? 'bg-emerald-500 border-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
+                          : 'bg-[#f0b91f] border-[#c99508] text-[#040f36] shadow-md shadow-[#f0b91f]/20'
+                        : isDarkMode
+                          ? 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 hover:text-white'
+                          : 'bg-[#0b226a]/60 border-[#1745b3] text-[#9ec0ff] hover:bg-[#102c7c] hover:text-white'
                     }`}
                   >
                     {page}
@@ -972,7 +678,11 @@ export default function ClientManagerPage() {
                 id="pagination-next"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={safePage === totalPages || !pagination.hasNext}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 border border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white disabled:opacity-35 disabled:cursor-not-allowed transition-all"
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border disabled:opacity-35 disabled:cursor-not-allowed transition-all ${
+                  isDarkMode
+                    ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700 hover:text-white'
+                    : 'bg-[#0b226a]/60 border-[#1745b3] text-[#9ec0ff] hover:bg-[#102c7c] hover:text-white'
+                }`}
               >
                 Next <ChevronRight size={13} />
               </button>
@@ -1011,6 +721,309 @@ export default function ClientManagerPage() {
           )}
         </div>
       </div>
+
+      {/* ── Manager Profile Card Modal ── */}
+      <AnimatePresence>
+        {showActiveManager && activeManager && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto border rounded-[2rem] shadow-2xl ${panelClass}`}
+            >
+              {/* Subtle glow accent */}
+              <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+              <button
+                type="button"
+                onClick={closeActiveManagerCard}
+                aria-label="Close manager card"
+                className={`absolute top-4 right-4 z-20 rounded-full p-2 transition-colors ${
+                  isDarkMode
+                    ? 'text-gray-400 hover:bg-white/5 hover:text-white'
+                    : 'border border-[#2a58c9] bg-[#11358f] text-white hover:bg-[#1845af]'
+                }`}
+              >
+                <X size={18} />
+              </button>
+
+              <div className="relative flex flex-col md:flex-row gap-6 p-6 md:p-8">
+                {/* Avatar + status */}
+                <div className="flex flex-col items-center gap-3 shrink-0">
+                  <div className="relative">
+                    <img
+                      src={
+                        isAssigned
+                          ? managerInfo.avatar
+                          : `https://ui-avatars.com/api/?name=${encodeURIComponent(activeManager.name)}&background=1e293b&color=34d399&size=128&bold=true`
+                      }
+                      alt={activeManager.name}
+                      className="w-24 h-24 md:w-28 md:h-28 rounded-2xl object-cover ring-2 ring-emerald-500/40 shadow-xl"
+                    />
+                    <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full border-2 border-slate-900 shadow" />
+                  </div>
+                  {isAssigned && (
+                    <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 tracking-wide uppercase">
+                      Your Manager
+                    </span>
+                  )}
+                </div>
+
+                {/* Details */}
+                <div className="flex-1 space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-extrabold text-white leading-tight">
+                      {activeManager.name}
+                    </h2>
+                    <p className="text-sm text-emerald-400 font-semibold mt-0.5">
+                      {isAssigned
+                        ? managerInfo.role
+                        : 'MAM Portfolio Manager'}
+                    </p>
+                  {isAssigned && (
+                    <p className={`text-xs mt-1 ${softTextClass}`}>
+                        {activeManagerView?.experience || managerInfo.experience}
+                    </p>
+                  )}
+                  </div>
+
+                  {/* Contact chips */}
+                  <div className="flex flex-wrap gap-3">
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
+                      <Mail size={14} className="text-emerald-400 shrink-0" />
+                      <span className="text-slate-300 font-medium">
+                        {activeManager.email}
+                      </span>
+                    </div>
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
+                      <Hash size={14} className="text-blue-400 shrink-0" />
+                      <span className="text-slate-300 font-medium">
+                        {activeManager.id}
+                      </span>
+                    </div>
+                    {isAssigned && (
+                      <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
+                        <Phone
+                          size={14}
+                          className="text-purple-400 shrink-0"
+                        />
+                        <span className="text-slate-300 font-medium">
+                          {managerInfo.phone}
+                        </span>
+                      </div>
+                    )}
+                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border text-xs bg-white/5 ${borderMutedClass}`}>
+                      <Shield size={14} className="text-amber-400 shrink-0" />
+                      <span
+                        className={`font-semibold ${activeManager.risk === 'Low' ? 'text-emerald-400' : activeManager.risk === 'Medium' ? 'text-amber-400' : 'text-red-400'}`}
+                      >
+                        {activeManager.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mini stats row */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      {
+                        label: 'AUM',
+                        value: activeManager.balance,
+                        icon: <DollarSign size={14} />,
+                        color: 'text-emerald-400',
+                        bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-emerald-500/10 border-emerald-500/20',
+                      },
+                      {
+                        label: 'Strategy',
+                        value: activeManager.profit,
+                        icon: <TrendingUp size={14} />,
+                        color: 'text-blue-400',
+                        bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-blue-500/10 border-blue-500/20',
+                      },
+                      {
+                        label: 'Performance Fee',
+                        value: activeManager.share,
+                        icon: <Percent size={14} />,
+                        color: 'text-purple-400',
+                        bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-purple-500/10 border-purple-500/20',
+                      },
+                      {
+                        label: 'Linked',
+                        value: activeManager.investorsCount,
+                        icon: <Users size={14} />,
+                        color: 'text-amber-400',
+                        bg: isDarkMode ? 'border-slate-800 bg-slate-900' : 'bg-amber-500/10 border-amber-500/20',
+                      },
+                    ].map((stat) => (
+                      <div
+                        key={stat.label}
+                        className={`flex flex-col gap-1.5 p-3 rounded-2xl border ${stat.bg} ${isDarkMode ? borderMutedClass : ''}`}
+                      >
+                        <div className={`${stat.color}`}>{stat.icon}</div>
+                        <div className={`text-base font-extrabold ${stat.color}`}>
+                          {stat.value}
+                        </div>
+                        <div className={`text-[10px] font-medium uppercase tracking-wider ${softTextClass}`}>
+                          {stat.label}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              
+              {/* ── Detailed Dashboard Content ── */}
+              <div className="p-6 md:p-8 pt-0 space-y-6">
+                
+                {/* NET BALANCE Banner */}
+                <div className={`rounded-[2rem] border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 bg-white/[0.02] ${borderMutedClass}`}>
+                  <div className="flex-1">
+                      <div className={`text-[10px] font-black uppercase tracking-widest ${softTextClass}`}>Net Balance</div>
+                    <div className="text-4xl font-black text-white mt-1 leading-none tracking-tight">
+                      {formatCurrency(totalInvested)} <span className={`text-sm font-black ml-1 ${softTextClass}`}>{clientAccount?.currency || 'USD'}</span>
+                    </div>
+                    <div className="mt-5 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowDepositModal(true)}
+                        className={`px-5 py-2.5 rounded-lg font-black text-sm transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
+                      >
+                        + Quick Fund
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowWithdrawalModal(true)}
+                        className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm flex items-center gap-2 ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}
+                      >
+                        <Wallet size={16} /> Withdraw
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-none w-full md:w-auto">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-4 text-sm">
+                      <div className={softTextClass}>Total Profit</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{formatCurrency(totalProfit)}</div>
+                      <div className={softTextClass}>Performance Fee</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.performanceFee ? `${managerPerformance.performanceFee}%` : activeManager?.share || '0%'}</div>
+                      <div className={softTextClass}>Status</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.status || activeManager?.status || 'Active'}</div>
+                      <div className={softTextClass}>Leverage</div>
+                      <div className="text-[15px] font-extrabold text-white text-right">{managerPerformance?.leverage || clientAccount?.leverage || '1:500'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Three Cards Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* MAM CONFIGURATION */}
+                  <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">MAM Configuration</h4>
+                    <div className="space-y-4 text-sm">
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Account Name</span><span className="font-extrabold text-white">{managerConfiguration?.accountName || activeManager?.name || 'N/A'}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Payout Cycle</span><span className="font-extrabold text-white">{managerConfiguration?.payoutCycle || 'weekly'}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Algo Trading</span><span className="font-extrabold text-white">{managerConfiguration?.algoTrading || 'Manual'}</span></div>
+                      <div className="flex justify-between items-center"><span className={softTextClass}>Status</span><span className="font-extrabold text-white">{managerConfiguration?.status || activeManager?.status || 'Active'}</span></div>
+                    </div>
+                  </div>
+
+                  {/* Master Security */}
+                  <div className={`p-6 rounded-[20px] border flex flex-col items-center justify-center text-center ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
+                    <div className="w-12 h-12 rounded-2xl bg-blue-600/20 text-blue-400 flex items-center justify-center mb-4 border border-blue-500/20">
+                      <Settings size={24} />
+                    </div>
+                    <h4 className="text-[16px] font-extrabold tracking-wide text-white mb-5">Master Security</h4>
+                    <div className="w-full space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountSettingsModal(true)}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
+                      >
+                        <Settings size={16} /> Account Settings
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleOpenInvestorListModal}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
+                      >
+                        <Users size={16} /> Investor List
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quick Actions */}
+                  <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white mb-5">Quick Actions</h4>
+                    <div className="w-full space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowPerformanceModal(true)}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
+                      >
+                        <TrendingUp size={16} /> Performance
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleToggleStatus}
+                        disabled={isTogglingStatus}
+                        className={`w-full py-3 rounded-xl text-white font-extrabold transition-colors text-sm flex items-center justify-center gap-2 ${
+                          String(activeManager?.status).toLowerCase() === 'active'
+                            ? 'bg-[#ef4444] hover:bg-[#dc2626]'
+                            : 'bg-emerald-600 hover:bg-emerald-700'
+                        }`}
+                      >
+                        <RefreshCw size={16} className={isTogglingStatus ? 'animate-spin' : ''} />
+                        {isTogglingStatus
+                          ? 'Updating...'
+                          : String(activeManager?.status).toLowerCase() === 'active'
+                          ? 'Deactivate'
+                          : 'Activate'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowProfitShareModal(true)}
+                        className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 bg-purple-500/10 text-purple-400 hover:bg-purple-500 hover:text-white border border-purple-500/20 flex items-center justify-center gap-2`}
+                      >
+                        <TrendingUp size={16} /> Profit Shares
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* PROFIT SHARE WALLET */}
+                <div className={`p-6 rounded-[20px] border ${isDarkMode ? 'border-slate-800 bg-slate-900/50' : 'bg-[#0a1435] border-blue-900/40'}`}>
+                  <div className="flex justify-between items-center mb-6">
+                    <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white">Profit Share Wallet</h4>
+                    <button 
+                      onClick={() => showManagerToast('Settlement triggered successfully!')}
+                      className={`px-4 py-2 rounded-lg font-black text-[11px] transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass} flex items-center gap-2`}
+                    >
+                      <DollarSign size={14} /> Trigger Settlement
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Pending Wallet</div>
+                      <div className="text-2xl font-black text-[#d9aa2b]">{formatCurrency(managerWallet?.pending ?? totalInvested)}</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Total Settled</div>
+                      <div className="text-2xl font-black text-white">{formatCurrency(managerWallet?.settled ?? totalProfit)}</div>
+                    </div>
+                    <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                      <div className={`text-[10px] font-extrabold uppercase tracking-widest mb-1 ${softTextClass}`}>Live Managers</div>
+                      <div className="text-2xl font-black text-white">{linkedManagerCount}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Profit Share History Modal ── */}
       {showProfitShareModal && activeManager && (

@@ -845,7 +845,7 @@ export default function TradingHero() {
         <header className="border-b border-[#d4af37]/25 bg-slate-950/60 backdrop-blur-md px-6 lg:px-16 py-3 lg:py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center">
             <img
-              src="/Vt.png"
+              src="/VT1.png"
               alt="VTIndex Logo"
               className="h-8 sm:h-10 w-auto object-contain drop-shadow-[0_0_18px_rgba(212,175,55,0.5)] transition-transform hover:scale-[1.02]"
             />

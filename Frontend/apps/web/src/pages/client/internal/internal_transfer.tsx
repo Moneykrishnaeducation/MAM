@@ -20,7 +20,7 @@ import {
 
 const useTheme = () => {
   const { theme } = useNextTheme();
-  return { isDarkMode: theme === 'dark' };
+  return { isDarkMode: false };
 };
 
 const formatCurrency = (amount: any) => {
@@ -168,8 +168,8 @@ function GlassCard({ children, className = "", overflowHidden = true }: any) {
         overflowHidden ? "overflow-hidden backdrop-blur-md" : ""
       } ${
         isDarkMode 
-          ? "bg-slate-900/40 border-white/5 shadow-2xl" 
-          : "bg-white/5 border-white/10 shadow-[0_23px_40px_rgba(8,29,82,0.15)]"
+          ? "bg-slate-900/40 border-slate-800 shadow-2xl" 
+          : "bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border-[#1d53ca] shadow-[0_24px_60px_rgba(4,15,54,0.36)]"
       } ${className}`}
     >
       {children}
@@ -316,7 +316,7 @@ export default function ClientInternalTransfer() {
   const toFilteredAccounts = filterAccounts(toSearch, accounts).filter((acc: any) => acc.account_id !== fromAccount);
 
   return (
-    <div className="min-h-screen bg-[#0e2250] text-slate-100 p-4 md:p-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#040f36] text-slate-100 p-4 md:p-8 relative overflow-hidden">
       <Head>
         <title>Internal Transfer | MAM</title>
         <meta name="description" content="Move funds instantly between your verified accounts" />
@@ -378,8 +378,7 @@ export default function ClientInternalTransfer() {
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => setShowGuidelines(prev => !prev)}
-            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl bg-slate-800 text-yellow-500 border border-white/5`}
-          >
+            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl bg-[#0b226a]/60 text-yellow-500 border border-[#1745b3]`}>
             <Info className="w-4 h-4" />
             {showGuidelines ? "Minimize Specs" : "Specs"}
           </motion.button>
@@ -392,8 +391,7 @@ export default function ClientInternalTransfer() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className={`mb-12 overflow-hidden rounded-[2.5rem] border-2 bg-slate-900/60 border-white/5`}
-            >
+              className={`mb-12 overflow-hidden rounded-[2.5rem] border-2 bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border-[#1d53ca]`}>
               <div className="p-8 md:p-10">
                 <div className="flex items-center gap-4 mb-8">
                   <div className="p-3 rounded-2xl bg-yellow-500/10">
@@ -471,7 +469,7 @@ export default function ClientInternalTransfer() {
                     <div className="relative mb-6" ref={fromDropdownRef}>
                       <div 
                         onClick={() => setShowFromDropdown(true)}
-                        className="w-full flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-2xl px-5 py-4 cursor-pointer hover:border-white/20 transition-all"
+                        className="w-full flex items-center justify-between bg-[#0b226a]/60 border border-[#1745b3] rounded-2xl px-5 py-4 cursor-pointer hover:border-yellow-500/40 transition-all"
                       >
                         <span className="text-sm font-bold text-white/50">
                           {fromSearch ? fromSearch : "Select an account..."}
@@ -480,8 +478,8 @@ export default function ClientInternalTransfer() {
                       </div>
 
                       {showFromDropdown && (
-                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
-                          <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-white/5 rounded-xl border border-white/5">
+                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-[#040f36] border border-[#1745b3] rounded-2xl shadow-[0_24px_60px_rgba(4,15,54,0.7)] p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
+                          <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-[#0b226a] rounded-xl border border-[#1d53ca]">
                             <Search className="w-4 h-4 text-white/40" />
                             <input 
                               type="text"
@@ -544,7 +542,7 @@ export default function ClientInternalTransfer() {
                     <div className="relative mb-6" ref={toDropdownRef}>
                       <div 
                         onClick={() => setShowToDropdown(true)}
-                        className="w-full flex items-center justify-between bg-slate-900/60 border border-white/5 rounded-2xl px-5 py-4 cursor-pointer hover:border-white/20 transition-all"
+                        className="w-full flex items-center justify-between bg-[#0b226a]/60 border border-[#1745b3] rounded-2xl px-5 py-4 cursor-pointer hover:border-yellow-500/40 transition-all"
                       >
                         <span className="text-sm font-bold text-white/50">
                           {toSearch ? toSearch : "Select an account..."}
@@ -553,8 +551,8 @@ export default function ClientInternalTransfer() {
                       </div>
 
                       {showToDropdown && (
-                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-slate-950 border border-white/10 rounded-2xl shadow-2xl p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
-                          <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-white/5 rounded-xl border border-white/5">
+                        <div className="absolute z-50 top-full left-0 w-full mt-2 bg-[#040f36] border border-[#1745b3] rounded-2xl shadow-[0_24px_60px_rgba(4,15,54,0.7)] p-4 max-h-[300px] overflow-y-auto backdrop-blur-xl">
+                          <div className="flex items-center gap-3 px-3 py-2 mb-3 bg-[#0b226a] rounded-xl border border-[#1d53ca]">
                             <Search className="w-4 h-4 text-white/40" />
                             <input 
                               type="text"
@@ -617,7 +615,7 @@ export default function ClientInternalTransfer() {
                       onChange={(e) => setAmount(e.target.value)}
                       placeholder="0.00"
                       disabled={submitting}
-                      className="w-full bg-slate-900/60 border border-white/5 focus:border-yellow-500/40 rounded-2xl px-5 py-4 text-white text-lg font-bold outline-none transition-all placeholder-white/20"
+                      className="w-full bg-[#0b226a]/60 border border-[#1745b3] focus:border-yellow-500/40 rounded-2xl px-5 py-4 text-white text-lg font-bold outline-none transition-all placeholder-white/20"
                     />
                   </div>
                 </div>
@@ -634,7 +632,7 @@ export default function ClientInternalTransfer() {
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Reference notes..."
                     disabled={submitting}
-                    className="w-full bg-slate-900/60 border border-white/5 focus:border-yellow-500/40 rounded-2xl px-5 py-4 text-white text-sm outline-none transition-all placeholder-white/20"
+                    className="w-full bg-[#0b226a]/60 border border-[#1745b3] focus:border-yellow-500/40 rounded-2xl px-5 py-4 text-white text-sm outline-none transition-all placeholder-white/20"
                   />
                 </div>
               </div>

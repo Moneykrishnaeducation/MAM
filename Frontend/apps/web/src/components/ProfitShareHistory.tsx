@@ -34,15 +34,19 @@ export default function ProfitShareHistory({
     fetchHistory();
   }, [isAdmin]);
 
-  // const panelClass = isDarkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-blue-900/40";
-  const headingTextClass = isDarkMode ? "text-white" : "text-[#0b226a]";
-  const softTextClass = isDarkMode ? "text-slate-400" : "text-[#476bbf]";
+  // Use premium blue theme colors for light mode (which is actually the dark blue theme)
+  const headingTextClass = isDarkMode ? "text-white" : "text-white";
+  const softTextClass = isDarkMode ? "text-slate-400" : "text-[#8fb8ff]";
+  const borderClass = isDarkMode ? "border-slate-800" : "border-[#1745b3]";
+  const tableHeaderBg = isDarkMode ? "bg-slate-950/80 backdrop-blur-md" : "bg-[#0b226a]";
+  const rowHover = isDarkMode ? "hover:bg-white/5" : "hover:bg-[#0b226a]/40";
+  const rowText = isDarkMode ? "text-slate-300" : "text-slate-200";
 
   return (
     <div>
-      <div className={`p-6 border-b ${isDarkMode ? 'border-slate-800' : 'border-blue-900/20'} flex items-center justify-between`}>
+      <div className={`p-6 border-b ${borderClass} flex items-center justify-between`}>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400 flex items-center justify-center">
             <History size={20} />
           </div>
           <div>
@@ -54,32 +58,30 @@ export default function ProfitShareHistory({
       <div className="overflow-x-auto max-h-[500px]">
         <table className="w-full">
           <thead className="sticky top-0 z-10">
-            <tr className={isDarkMode ? 'bg-slate-950/80 backdrop-blur-md' : 'bg-[#0b226a]'}>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Date</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Manager</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Investor</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Profit</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Share %</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Commission</th>
-              <th className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-[#9ec0ff]`}>Status</th>
+            <tr className={tableHeaderBg}>
+              {['Date', 'Manager', 'Investor', 'Profit', 'Share %', 'Commission', 'Status'].map((h) => (
+                <th key={h} className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
+                  {h}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody className={`divide-y ${isDarkMode ? 'divide-white/5' : 'divide-[#153d9f]'}`}>
             {loading ? (
-              <tr><td colSpan={7} className="text-center py-8 text-sm text-slate-400">Loading...</td></tr>
+              <tr><td colSpan={7} className={`text-center py-8 text-sm ${softTextClass}`}>Loading...</td></tr>
             ) : data.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-12 text-sm text-slate-400">No profit shares recorded yet.</td></tr>
+              <tr><td colSpan={7} className={`text-center py-12 text-sm ${softTextClass}`}>No profit shares recorded yet.</td></tr>
             ) : (
               data.map((row: any) => (
-                <tr key={row.id} className={`transition-colors hover:bg-white/5 ${isDarkMode ? '' : 'text-slate-800'}`}>
+                <tr key={row.id} className={`transition-colors ${rowHover} ${rowText}`}>
                   <td className="px-4 py-3 text-xs whitespace-nowrap">
                     {new Date(row.created_at).toLocaleString()}
                   </td>
                   <td className="px-4 py-3 text-sm font-bold">
-                    {row.master_login} <span className="text-[10px] text-slate-500 font-mono ml-1">#{row.master_position}</span>
+                    {row.master_login} <span className="text-[10px] text-[#8fb8ff] font-mono ml-1">#{row.master_position}</span>
                   </td>
                   <td className="px-4 py-3 text-sm font-bold">
-                    {row.investor_login} <span className="text-[10px] text-slate-500 font-mono ml-1">#{row.investor_position}</span>
+                    {row.investor_login} <span className="text-[10px] text-[#8fb8ff] font-mono ml-1">#{row.investor_position}</span>
                   </td>
                   <td className="px-4 py-3 text-sm font-bold text-emerald-400">
                     ${row.profit?.toFixed(2)}

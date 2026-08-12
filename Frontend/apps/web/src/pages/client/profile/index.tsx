@@ -29,7 +29,9 @@ import {
   PencilLine,
   Info,
   X,
-  Edit
+  Edit,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { ProfileSkeleton } from '@/components/client-page-skeletons';
 
@@ -315,6 +317,9 @@ export default function ClientProfilePage() {
     newPassword: '',
     confirmPassword: '',
   });
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isSecuritySaving, setIsSecuritySaving] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
@@ -1210,12 +1215,19 @@ export default function ClientProfilePage() {
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Lock size={15} className="text-slate-400" />
                           <input
-                            type="password"
+                            type={showCurrentPassword ? "text" : "password"}
                             placeholder="••••••••"
                             value={securityForm.currentPassword}
                             onChange={(event) => setSecurityForm((prev) => ({ ...prev, currentPassword: event.target.value }))}
                             className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="text-slate-400 hover:text-white focus:outline-none transition-colors"
+                          >
+                            {showCurrentPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
                         </div>
                       </div>
                       <div>
@@ -1223,12 +1235,19 @@ export default function ClientProfilePage() {
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
                           <input
-                            type="password"
+                            type={showNewPassword ? "text" : "password"}
                             placeholder="Min. 8 characters"
                             value={securityForm.newPassword}
                             onChange={(event) => setSecurityForm((prev) => ({ ...prev, newPassword: event.target.value }))}
                             className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="text-slate-400 hover:text-white focus:outline-none transition-colors"
+                          >
+                            {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
                         </div>
                       </div>
                       <div>
@@ -1236,12 +1255,19 @@ export default function ClientProfilePage() {
                         <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${borderMutedClass} focus-within:border-[#3aa0ff]`}>
                           <Key size={15} className="text-slate-400" />
                           <input
-                            type="password"
+                            type={showConfirmPassword ? "text" : "password"}
                             placeholder="Must match new password"
                             value={securityForm.confirmPassword}
                             onChange={(event) => setSecurityForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
                             className="bg-transparent border-none text-slate-100 outline-none w-full text-xs"
                           />
+                          <button
+                            type="button"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            className="text-slate-400 hover:text-white focus:outline-none transition-colors"
+                          >
+                            {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                          </button>
                         </div>
                       </div>
                     </div>
