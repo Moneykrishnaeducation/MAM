@@ -52,6 +52,7 @@ class MAMCopyEngine:
     def start(self):
         """Start async persistence and engine services."""
         self._active = True
+        self.idempotency.preload_from_db()
         self.persistence.start()
         logger.info("[MAM_ENGINE] Pure parallel engine ready (Queue-free).")
 
@@ -120,12 +121,21 @@ class MAMCopyEngine:
                 else calc_vol,
             )
 
+            follower_positions = self.manager_api.PositionGet(fid) or []
+            existing_comments = {str(getattr(p, "Comment", "")) for p in follower_positions}
+
             for trade_idx in range(1, multi_count + 1):
                 comment = (
                     f"{master_id}_{master_ticket}_trade{trade_idx}"
                     if multi_count > 1
                     else f"{master_id}_{master_ticket}"
                 )
+                if comment in existing_comments or any(c.startswith(comment) for c in existing_comments):
+                    logger.info(
+                        f"[ENGINE_SKIP] Follower {fid} already has open position for {comment}. Skipping duplicate OPEN."
+                    )
+                    continue
+
                 cmd = CopyCommand(
                     command_id=f"pos_open_{master_ticket}_{fid}_{trade_idx}",
                     master_id=master_id,

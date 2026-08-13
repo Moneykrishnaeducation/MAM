@@ -24,6 +24,24 @@ class IdempotencyEngine:
         self._recent_copies: Dict[str, float] = {}
         self._recent_positions: Dict[int, float] = {}
 
+    def preload_from_db(self):
+        """Preload recently executed dedupe keys from PostgreSQL to survive server restarts."""
+        try:
+            from django.db import connection, close_old_connections
+
+            close_old_connections()
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    "SELECT key, extract(epoch from created_at) FROM mt5_send_dedup WHERE created_at > NOW() - INTERVAL '6 hours';"
+                )
+                rows = cursor.fetchall()
+                with self._lock:
+                    for key, created_epoch in rows:
+                        self._recent_copies[str(key)] = float(created_epoch)
+            logger.info(f"[IDEMPOTENCY] Preloaded {len(rows)} dedupe keys from database on startup.")
+        except Exception as e:
+            logger.warning(f"[IDEMPOTENCY] Could not preload dedupe keys from DB: {e}")
+
     def try_claim_in_flight(self, key: str) -> bool:
         """Atomically attempt to claim an in-flight trade key. Returns True if claimed."""
         with self._lock:

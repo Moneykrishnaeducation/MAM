@@ -39,6 +39,34 @@ def test_command_dedupe_key_generation():
     )
     assert cmd_multi.dedupe_key == "OPEN_1001_50001_2001_trade2"
 
+    cmd_mod_sl = CopyCommand(
+        command_id="cmd_mod1",
+        master_id=1001,
+        master_ticket=50001,
+        follower_id=2001,
+        action=ActionType.MODIFY,
+        symbol="EURUSD",
+        volume=0.1,
+        order_type=0,
+        price_sl=1.0850,
+        price_tp=0.0,
+    )
+    cmd_mod_tp = CopyCommand(
+        command_id="cmd_mod2",
+        master_id=1001,
+        master_ticket=50001,
+        follower_id=2001,
+        action=ActionType.MODIFY,
+        symbol="EURUSD",
+        volume=0.1,
+        order_type=0,
+        price_sl=1.0850,
+        price_tp=1.0950,
+    )
+    assert cmd_mod_sl.dedupe_key != cmd_mod_tp.dedupe_key
+    assert "sl1.08500_tp0.00000" in cmd_mod_sl.dedupe_key
+    assert "sl1.08500_tp1.09500" in cmd_mod_tp.dedupe_key
+
 
 def test_idempotency_engine_atomic_claims():
     engine = IdempotencyEngine(ttl_seconds=5.0)
