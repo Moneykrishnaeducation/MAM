@@ -68,8 +68,8 @@ const GlassCard = ({ children, className = "", noPadding = false, onClick }: any
       onClick={onClick}
       className={`relative overflow-hidden rounded-[2.5rem] border backdrop-blur-md transition-all duration-300 ${
         isDarkMode 
-          ? 'bg-slate-900/40 border-slate-800/50 shadow-2xl shadow-black/40' 
-          : 'bg-[linear-gradient(180deg,#071a57_0%,#08246f_100%)] border-[#1d53ca] shadow-[0_24px_60px_rgba(4,15,54,0.36)]'
+          ? 'bg-[#081d5f] border-[#2450b7] shadow-[0_30px_80px_rgba(4,15,54,0.3)]' 
+          : 'bg-[#081d5f] border-[#2450b7] shadow-[0_30px_80px_rgba(4,15,54,0.3)]'
       } ${noPadding ? '' : 'p-6 md:p-8'} ${className}`}
     >
       {children}
@@ -109,21 +109,19 @@ function AccountCard({ acc, selected, onClick }: any) {
       onClick={onClick}
       className={`w-full text-left cursor-pointer rounded-2xl p-4 border transition-all duration-300 flex flex-col gap-2 ${
         selected
-          ? (isDarkMode ? "border-yellow-500 bg-yellow-900/20 shadow-lg shadow-yellow-500/10" : "border-[#f0b91f] bg-white/10 shadow-lg")
-          : (isDarkMode ? "border-white/5 bg-[#1e293b]/40 hover:border-yellow-500/40" : "border-white/10 bg-white/5 hover:border-white/30")
+          ? "border-[#d4af37] bg-[#d4af37]/10 shadow-lg shadow-[#d4af37]/10"
+          : "border-[#2450b7] bg-[#0c1c59] hover:border-[#1745b3] hover:bg-[#123283]"
       }`}
     >
       <div className="flex items-center justify-between w-full">
         <div className="flex items-center gap-2">
-          <div className={`p-1.5 rounded-lg ${isDarkMode ? 'bg-white/10' : 'bg-[#0b226a]'}`}>
-             {isMAM ? <Shield className="w-3.5 h-3.5 text-yellow-500" /> : <User className="w-3.5 h-3.5 text-blue-500" />}
+          <div className="p-1.5 rounded-lg bg-[#081d5f]">
+             {isMAM ? <Shield className="w-3.5 h-3.5 text-[#d4af37]" /> : <User className="w-3.5 h-3.5 text-[#8fb8ff]" />}
           </div>
           <span className="text-sm font-black text-white">{acc.account_id}</span>
         </div>
         <span
-          className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-            isDarkMode ? "bg-white/5 text-gray-400" : "bg-[#0b226a] text-[#8fb8ff]"
-          }`}
+          className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-[#081d5f] text-[#8fb8ff] border border-[#2450b7]"
         >
           {acc.group_alias || (isMAM ? 'MAM' : 'Live')}
         </span>
@@ -155,11 +153,7 @@ function SelectedAccountCard({ acc, onClear, label }: any) {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`relative w-full rounded-[2.5rem] p-6 border-2 transition-all ${
-        isDarkMode 
-          ? "bg-slate-900/60 border-yellow-500/30" 
-          : "bg-[linear-gradient(135deg,#0a2a80_0%,#092467_100%)] border-[#2154ca] shadow-[0_14px_30px_rgba(4,15,54,0.22)]"
-      }`}
+      className="relative w-full rounded-[2.5rem] p-6 border-2 transition-all bg-[#081d5f] border-[#d4af37]/30 shadow-[0_14px_30px_rgba(4,15,54,0.3)]"
     >
       <div className="absolute top-5 right-5">
         <motion.button
@@ -167,24 +161,22 @@ function SelectedAccountCard({ acc, onClear, label }: any) {
           onClick={onClear}
           type="button"
           aria-label="Clear selected account"
-          className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${
-            isDarkMode ? "bg-white/5 text-gray-400 hover:text-white" : "bg-[#11358f] text-white border border-[#2a58c9] hover:bg-[#1845af]"
-          }`}
+          className="flex items-center justify-center w-10 h-10 rounded-xl transition-all bg-[#0c1c59] text-[#8fb8ff] border border-[#2450b7] hover:bg-[#123283] hover:text-white"
         >
           <ArrowLeftToLine className="w-5 h-5" />
         </motion.button>
       </div>
 
-      <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-[#f0b91f]">
+      <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-4 text-[#d4af37]">
         {label}
       </p>
 
       <div className="flex items-center gap-5">
-        <div className={`p-4 rounded-2xl ${isDarkMode ? "bg-yellow-500/10" : "bg-[#143992]"} shadow-inner`}>
+        <div className="p-4 rounded-2xl bg-[#040f33] shadow-inner border border-[#2450b7]">
           {isMAM ? (
-            <Shield className="w-8 h-8 text-yellow-500" />
+            <Shield className="w-8 h-8 text-[#d4af37]" />
           ) : (
-            <Wallet className="w-8 h-8 text-yellow-500" />
+            <Wallet className="w-8 h-8 text-[#d4af37]" />
           )}
         </div>
 
@@ -193,7 +185,7 @@ function SelectedAccountCard({ acc, onClear, label }: any) {
             <h3 className="text-3xl font-black tracking-tighter text-white">
               {acc.account_id}
             </h3>
-            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#f0b91f] text-white uppercase tracking-widest">
+            <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#d4af37]/20 border border-[#d4af37]/30 text-[#d4af37] uppercase tracking-widest">
               {acc.group_alias || (isMAM ? 'MAM MASTER' : 'LIVE ACCOUNT')}
             </span>
           </div>
@@ -203,7 +195,7 @@ function SelectedAccountCard({ acc, onClear, label }: any) {
         </div>
       </div>
 
-      <div className={`mt-8 pt-5 border-t flex justify-between items-center ${isDarkMode ? "border-white/5" : "border-white/10"}`}>
+      <div className="mt-8 pt-5 border-t border-[#2450b7] flex justify-between items-center">
         <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#8fb8ff]">
           Available Funds
         </span>
@@ -430,10 +422,10 @@ export default function InternalTransfer() {
   const isSuccess = message.type === 'success';
 
   return (
-    <div className={`min-h-[90vh] overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 transition-colors duration-300 relative`}>
+    <div className="min-h-[90vh] overflow-y-auto overflow-x-hidden custom-scrollbar p-4 md:p-8 transition-colors duration-300 relative bg-[#0c1c59] text-white">
       {/* Decorative Background Elements */}
-      <div className="absolute top-0 left-1/4 h-[520px] w-[520px] rounded-full bg-yellow-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 h-[340px] w-[340px] rounded-full bg-blue-500/5 blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 left-1/4 h-[520px] w-[520px] rounded-full bg-[#d4af37]/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 right-1/4 h-[340px] w-[340px] rounded-full bg-[#2450b7]/10 blur-[100px] pointer-events-none" />
 
       {/* Toast notifications (top-right) */}
       <div className="fixed top-35 right-6 z-50 pointer-events-none">
@@ -466,14 +458,14 @@ export default function InternalTransfer() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
           <div className="flex items-center gap-6">
-            <div className={`p-4 rounded-[1.5rem] shadow-2xl ${isDarkMode ? "bg-yellow-500/10" : "bg-[linear-gradient(135deg,#eab308_0%,#ca8a04_100%)] text-white"}`}>
+            <div className="p-4 rounded-[1.5rem] shadow-2xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white">
               <ArrowLeftRight className="w-8 h-8" />
             </div>
             <div>
               <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white">
                 Internal Transfer
               </h1>
-              <p className="text-[10px] font-black uppercase tracking-[0.25em] mt-2 text-white/60">
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] mt-2 text-[#8fb8ff]">
                 Move funds instantly between verified trading accounts
               </p>
             </div>
@@ -484,11 +476,7 @@ export default function InternalTransfer() {
             whileTap={{ scale: 0.95 }}
             type="button"
             onClick={() => setShowGuidelines(prev => !prev)}
-            className={`flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl ${
-              isDarkMode 
-                ? "bg-slate-800 text-yellow-500 border border-white/5" 
-                : "bg-[#0b226a] text-white border border-[#1d53ca]"
-            }`}
+            className="flex items-center gap-3 px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl bg-[#081d5f] text-[#8fb8ff] border border-[#2450b7] hover:border-[#1745b3] hover:text-white"
           >
             <Info className="w-4 h-4" />
             {showGuidelines ? "Minimize Specs" : "Network Specs"}
@@ -502,14 +490,12 @@ export default function InternalTransfer() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className={`mb-12 overflow-hidden rounded-[2.5rem] border-2 ${
-                isDarkMode ? "bg-slate-900/60 border-white/5" : "bg-[linear-gradient(180deg,#071a57_0%,#08246f_100%)] border-[#1d53ca] shadow-2xl"
-              }`}
+              className="mb-12 overflow-hidden rounded-[2.5rem] bg-[#081d5f] border border-[#2450b7] shadow-[0_30px_80px_rgba(4,15,54,0.3)]"
             >
               <div className="p-8 md:p-10">
                 <div className="flex items-center gap-4 mb-8">
-                  <div className="p-3 rounded-2xl bg-yellow-500/10">
-                    <Info className="w-6 h-6 text-yellow-500" />
+                  <div className="p-3 rounded-2xl bg-[#040f33] border border-[#2450b7]">
+                    <Info className="w-6 h-6 text-[#d4af37]" />
                   </div>
                   <h3 className="text-2xl font-black uppercase tracking-tighter text-white">
                     Transfer Guidelines
@@ -523,9 +509,9 @@ export default function InternalTransfer() {
                     { label: 'Audit Trail', text: 'All internal movements are logged for compliance and security monitoring.' },
                   ].map((item, i) => (
                     <div key={i} className="flex gap-5 items-start">
-                      <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-yellow-500" />
+                      <div className="w-2 h-2 rounded-full mt-2 flex-shrink-0 bg-[#d4af37]" />
                       <div>
-                        <p className="font-black text-[10px] uppercase tracking-[0.2em] mb-1 text-yellow-500">
+                        <p className="font-black text-[10px] uppercase tracking-[0.2em] mb-1 text-[#d4af37]">
                           {item.label}
                         </p>
                         <p className="text-sm font-bold text-[#8fb8ff]">
@@ -575,13 +561,13 @@ export default function InternalTransfer() {
             <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
               {/* Central Connector - Desktop */}
               <div className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
-                <div className={`p-5 rounded-full border-8 ${isDarkMode ? "bg-[#050505] border-[#050505]" : "bg-[#f4f7fd] border-[#f4f7fd]"}`}>
+                <div className="p-5 rounded-full border-[8px] border-[#0c1c59] bg-[#0c1c59]">
                   <motion.div 
                     animate={{ rotate: 360 }}
                     transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                    className={`p-4 rounded-full shadow-[0_0_30px_rgba(234,179,8,0.3)] ${isDarkMode ? "bg-slate-800" : "bg-white"}`}
+                    className="p-4 rounded-full shadow-[0_0_30px_rgba(212,175,55,0.3)] bg-[#081d5f] border border-[#2450b7]"
                   >
-                    <ArrowLeftRight className="w-8 h-8 text-yellow-500" />
+                    <ArrowLeftRight className="w-8 h-8 text-[#d4af37]" />
                   </motion.div>
                 </div>
               </div>
@@ -621,26 +607,18 @@ export default function InternalTransfer() {
                         onFocus={() => setShowFromDropdown(true)}
                         onBlur={() => setTimeout(() => setShowFromDropdown(false), 200)}
                         placeholder="ACCOUNT ID, NAME OR EMAIL..."
-                        className={`w-full pl-14 pr-6 py-4 text-[11px] font-black uppercase tracking-widest rounded-2xl border-2 transition-all outline-none ${
-                          isDarkMode 
-                            ? "bg-slate-950 border-slate-800 text-white focus:border-yellow-500/50" 
-                            : "bg-[#081d5f] border-[#214fbf] text-white placeholder:text-[#6f92e7] focus:border-[#f0b91f]"
-                        }`}
+                        className="w-full pl-14 pr-6 py-4 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all outline-none bg-[#0c1c59] border border-[#2450b7] text-white placeholder:text-[#8fb8ff]/50 focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner"
                       />
                       {showFromDropdown && fromFilteredAccounts.length > 0 && (
-                        <div className={`absolute z-30 w-full mt-3 max-h-60 overflow-y-auto rounded-2xl border-2 shadow-2xl backdrop-blur-xl ${
-                          isDarkMode ? "bg-slate-900/95 border-slate-800" : "bg-[#071a57]/95 border-[#1f53c9]"
-                        }`}>
+                        <div className="absolute z-30 w-full mt-3 max-h-60 overflow-y-auto rounded-2xl border shadow-2xl backdrop-blur-xl bg-[#081d5f]/95 border-[#2450b7]">
                           {fromFilteredAccounts.map((acc: any) => (
                             <div
                               key={acc.account_id}
                               onClick={() => handleFromAccountSelect(acc.account_id)}
-                              className={`px-6 py-4 cursor-pointer text-xs transition-colors border-b last:border-0 ${
-                                isDarkMode ? "hover:bg-white/5 border-white/5 text-gray-300" : "hover:bg-white/5 border-white/10 text-white"
-                              }`}
+                              className="px-6 py-4 cursor-pointer text-xs transition-colors border-b last:border-0 hover:bg-[#123283] border-[#2450b7] text-white"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-black text-yellow-500 tracking-widest">{acc.account_id}</span>
+                                <span className="font-black text-[#d4af37] tracking-widest">{acc.account_id}</span>
                                 <span className="text-[10px] font-bold opacity-60">
                                   {acc.user_name}
                                 </span>
@@ -663,7 +641,7 @@ export default function InternalTransfer() {
                         ))
                       ) : (
                         <div className="py-12 text-center opacity-40">
-                          <Search className="w-10 h-10 mx-auto mb-3 text-yellow-500" />
+                          <Search className="w-10 h-10 mx-auto mb-3 text-[#d4af37]" />
                           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
                             Zero Matches Found
                           </p>
@@ -679,7 +657,7 @@ export default function InternalTransfer() {
                 <motion.div 
                   animate={{ y: [0, 10, 0] }}
                   transition={{ duration: 2, repeat: Infinity }}
-                  className={`p-4 rounded-full ${isDarkMode ? "bg-slate-800" : "bg-[#0b226a] text-white shadow-xl"}`}
+                  className="p-4 rounded-full bg-[#081d5f] border border-[#2450b7] text-[#d4af37] shadow-xl"
                 >
                   <ArrowDown className="w-6 h-6" />
                 </motion.div>
@@ -692,7 +670,7 @@ export default function InternalTransfer() {
                     Target Terminal
                   </h2>
                   {toAccount && (
-                    <span className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-blue-500/10 text-yellow-500 border border-blue-500/20 shadow-lg">
+                    <span className="flex items-center gap-2 text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-blue-500/10 text-[#d4af37] border border-blue-500/20 shadow-lg">
                       <RefreshCw className="w-3 h-3" /> Targeted
                     </span>
                   )}
@@ -720,26 +698,18 @@ export default function InternalTransfer() {
                         onFocus={() => setShowToDropdown(true)}
                         onBlur={() => setTimeout(() => setShowToDropdown(false), 200)}
                         placeholder="ACCOUNT ID, NAME OR EMAIL..."
-                        className={`w-full pl-14 pr-6 py-4 text-[11px] font-black uppercase tracking-widest rounded-2xl border-2 transition-all outline-none ${
-                          isDarkMode 
-                            ? "bg-slate-950 border-slate-800 text-white focus:border-yellow-500/50" 
-                            : "bg-[#081d5f] border-[#214fbf] text-white placeholder:text-[#6f92e7] focus:border-[#f0b91f]"
-                        }`}
+                        className="w-full pl-14 pr-6 py-4 text-[11px] font-black uppercase tracking-widest rounded-2xl transition-all outline-none bg-[#0c1c59] border border-[#2450b7] text-white placeholder:text-[#8fb8ff]/50 focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner"
                       />
                       {showToDropdown && toFilteredAccounts.length > 0 && (
-                        <div className={`absolute z-30 w-full mt-3 max-h-60 overflow-y-auto rounded-2xl border-2 shadow-2xl backdrop-blur-xl ${
-                          isDarkMode ? "bg-slate-900/95 border-slate-800" : "bg-[#071a57]/95 border-[#1f53c9]"
-                        }`}>
+                        <div className="absolute z-30 w-full mt-3 max-h-60 overflow-y-auto rounded-2xl border shadow-2xl backdrop-blur-xl bg-[#081d5f]/95 border-[#2450b7]">
                           {toFilteredAccounts.map((acc: any) => (
                             <div
                               key={acc.account_id}
                               onClick={() => handleToAccountSelect(acc.account_id)}
-                              className={`px-6 py-4 cursor-pointer text-xs transition-colors border-b last:border-0 ${
-                                isDarkMode ? "hover:bg-white/5 border-white/5 text-gray-300" : "hover:bg-white/5 border-white/10 text-white"
-                              }`}
+                              className="px-6 py-4 cursor-pointer text-xs transition-colors border-b last:border-0 hover:bg-[#123283] border-[#2450b7] text-white"
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-black text-yellow-500 tracking-widest">{acc.account_id}</span>
+                                <span className="font-black text-[#d4af37] tracking-widest">{acc.account_id}</span>
                                 <span className="text-[10px] font-bold opacity-60">
                                   {acc.user_name}
                                 </span>
@@ -781,8 +751,8 @@ export default function InternalTransfer() {
               }`}
             >
               <div className="flex items-center gap-4 mb-10">
-                <div className={`p-3 rounded-2xl ${isDarkMode ? "bg-yellow-500/10" : "bg-[#143992]"}`}>
-                  <LayersIcon className="w-6 h-6 text-yellow-500" />
+                <div className="p-3 rounded-2xl bg-[#040f33] border border-[#2450b7]">
+                  <LayersIcon className="w-6 h-6 text-[#d4af37]" />
                 </div>
                 <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
                   Transfer Parameters
@@ -795,7 +765,7 @@ export default function InternalTransfer() {
                     Transfer Amount (USD)
                   </label>
                   <div className="relative">
-                    <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-2xl text-yellow-500">
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-2xl text-[#d4af37]">
                       $
                     </span>
                     <input
@@ -805,11 +775,7 @@ export default function InternalTransfer() {
                       value={amount}
                       onChange={e => setAmount(e.target.value)}
                       placeholder="0.00"
-                      className={`w-full pl-14 pr-6 py-5 text-3xl font-black rounded-3xl border-2 transition-all outline-none ${
-                        isDarkMode 
-                          ? "bg-slate-950 border-slate-800 text-white focus:border-yellow-500/50" 
-                          : "bg-[#081d5f] border-[#214fbf] text-white focus:border-yellow-500"
-                      }`}
+                      className="w-full pl-14 pr-6 py-5 text-3xl font-black rounded-3xl transition-all outline-none bg-[#0c1c59] border border-[#2450b7] text-white focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner"
                     />
                   </div>
                 </div>
@@ -819,17 +785,13 @@ export default function InternalTransfer() {
                     Ledger Annotation
                   </label>
                   <div className="relative">
-                    <MessageSquare className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-yellow-500" />
+                    <MessageSquare className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-[#d4af37]" />
                     <input
                       type="text"
                       value={comment}
                       onChange={e => setComment(e.target.value)}
                       placeholder="Enter Reference Sequence..."
-                      className={`w-full pl-16 pr-6 py-6 text-lg font-bold rounded-3xl border-2 transition-all outline-none ${
-                        isDarkMode 
-                          ? "bg-slate-950 border-slate-800 text-white focus:border-yellow-500/50" 
-                          : "bg-[#081d5f] border-[#214fbf] text-white focus:border-yellow-500"
-                      }`}
+                      className="w-full pl-16 pr-6 py-6 text-lg font-bold rounded-3xl transition-all outline-none bg-[#0c1c59] border border-[#2450b7] text-white focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner"
                     />
                   </div>
                 </div>
@@ -842,29 +804,27 @@ export default function InternalTransfer() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 20 }}
-                    className={`mt-12 p-8 rounded-[2rem] border-2 border-dashed ${
-                      isDarkMode ? "bg-white/5 border-white/10" : "bg-white/5 border-white/20"
-                    }`}
+                    className="mt-12 p-8 rounded-[2rem] border-2 border-dashed bg-[#040f33] border-[#2450b7]"
                   >
                     <div className="flex flex-col md:flex-row justify-between items-center gap-8 text-center md:text-left">
                       <div className="flex-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-yellow-500">
+                        <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-2 text-[#d4af37]">
                           Validation Finalized
                         </p>
                         <p className="text-base font-bold text-white leading-relaxed">
-                          Propagating <span className="text-yellow-500 font-black mx-1">{formatCurrency(amount)}</span> 
-                          from <span className="mx-1 px-3 py-1 rounded-lg bg-blue-500/20 text-yellow-500 font-mono">{fromAccount}</span> 
-                          to <span className="mx-1 px-3 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 font-mono">{toAccount}</span>
+                          Propagating <span className="text-[#d4af37] font-black mx-1">{formatCurrency(amount)}</span> 
+                          from <span className="mx-1 px-3 py-1 rounded-lg bg-[#0c1c59] text-[#d4af37] font-mono border border-[#2450b7]">{fromAccount}</span> 
+                          to <span className="mx-1 px-3 py-1 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 font-mono">{toAccount}</span>
                         </p>
                       </div>
 
                       <motion.button
-                        whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(234, 179, 8, 0.4)" }}
+                        whileHover={{ scale: 1.05, boxShadow: "0 0 30px rgba(212, 175, 55, 0.4)" }}
                         whileTap={{ scale: 0.95 }}
                         type="submit"
                         disabled={isSubmitting}
                         className={`w-full md:w-auto px-12 py-5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] transition-all flex items-center justify-center gap-4 ${
-                          isSubmitting ? "opacity-60 cursor-not-allowed" : "bg-[linear-gradient(135deg,#ca8a04_0%,#a16207_100%)] text-white shadow-2xl"
+                          isSubmitting ? "opacity-60 cursor-not-allowed" : "bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-xl shadow-[#d4af37]/20"
                         }`}
                       >
                         {isSubmitting ? (

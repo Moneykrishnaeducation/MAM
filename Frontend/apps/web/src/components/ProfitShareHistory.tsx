@@ -34,13 +34,13 @@ export default function ProfitShareHistory({
     fetchHistory();
   }, [isAdmin]);
 
-  // Use premium blue theme colors for light mode (which is actually the dark blue theme)
-  const headingTextClass = isDarkMode ? "text-white" : "text-white";
-  const softTextClass = isDarkMode ? "text-slate-400" : "text-[#8fb8ff]";
-  const borderClass = isDarkMode ? "border-slate-800" : "border-[#1745b3]";
-  const tableHeaderBg = isDarkMode ? "bg-slate-950/80 backdrop-blur-md" : "bg-[#0b226a]";
-  const rowHover = isDarkMode ? "hover:bg-white/5" : "hover:bg-[#0b226a]/40";
-  const rowText = isDarkMode ? "text-slate-300" : "text-slate-200";
+  // Unified premium blue theme colors matching the rest of the Admin panel
+  const headingTextClass = "text-white";
+  const softTextClass = "text-blue-300";
+  const borderClass = "border-[#24358a]";
+  const tableHeaderBg = "bg-[#0b226a] border-b border-[#24358a]";
+  const rowHover = "hover:bg-white/5";
+  const rowText = "text-white";
 
   return (
     <div>
@@ -60,13 +60,13 @@ export default function ProfitShareHistory({
           <thead className="sticky top-0 z-10">
             <tr className={tableHeaderBg}>
               {['Date', 'Manager', 'Investor', 'Profit', 'Share %', 'Commission', 'Status'].map((h) => (
-                <th key={h} className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-[#9ec0ff]'}`}>
+                <th key={h} className={`px-4 py-3 text-left text-[11px] font-black uppercase tracking-widest text-blue-300`}>
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className={`divide-y ${isDarkMode ? 'divide-white/5' : 'divide-[#153d9f]'}`}>
+          <tbody className={`divide-y divide-[#24358a]/50`}>
             {loading ? (
               <tr><td colSpan={7} className={`text-center py-8 text-sm ${softTextClass}`}>Loading...</td></tr>
             ) : data.length === 0 ? (

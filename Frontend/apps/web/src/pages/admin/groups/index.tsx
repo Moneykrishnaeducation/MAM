@@ -26,7 +26,7 @@ function Badge({ label, alias, isActive, isDemo }: { label: string; alias?: stri
     "inline-flex items-center rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest transition-colors border";
   const activeClass = isActive
     ? isDemo
-      ? "bg-sky-500/20 text-sky-400 border-sky-500/30"
+      ? "bg-[#2450b7]/40 text-[#8fb8ff] border-[#2450b7]"
       : "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
     : "bg-white/5 text-white/40 border-white/5";
 
@@ -46,8 +46,8 @@ function StatCard({ label, value, tone, icon: Icon }: { label: string; value: st
           <div className="mt-2 text-2xl font-black tracking-tighter text-white">{value}</div>
         </div>
         {Icon ? (
-          <div className="rounded-xl bg-white/5 p-3">
-            <Icon size={18} className="text-yellow-500" />
+          <div className="rounded-xl bg-[#081d5f] border border-[#2450b7] p-3">
+            <Icon size={18} className="text-[#d4af37]" />
           </div>
         ) : null}
       </div>
@@ -73,13 +73,13 @@ function GroupItem({
   selectedDemoDefault: string | null;
 }) {
   return (
-    <div className="rounded-[2rem] border p-6 transition-all duration-300 shadow-xl bg-slate-900/40 border-white/5 hover:border-yellow-500/30">
-      <div className="mb-4 rounded-2xl p-4 border flex items-center justify-between gap-2 bg-black/40 border-white/5">
+    <div className="rounded-[2rem] border p-6 transition-all duration-300 shadow-[0_30px_80px_rgba(4,15,54,0.3)] bg-[#081d5f] border-[#2450b7] hover:border-[#d4af37]/50">
+      <div className="mb-4 rounded-2xl p-4 border flex items-center justify-between gap-2 bg-[#040f33] border-[#2450b7]">
         <div className="text-base font-black tracking-tight text-white">
           {group.id}
         </div>
         <div className="flex gap-2">
-          <span className="rounded-full bg-yellow-500 px-2.5 py-1 text-[9px] font-black tracking-widest text-black uppercase">MT5</span>
+          <span className="rounded-full bg-[#d4af37]/20 border border-[#d4af37]/30 px-2.5 py-1 text-[9px] font-black tracking-widest text-[#d4af37] uppercase">MT5</span>
           {group.aliasLocked && (
             <span className="rounded-full bg-red-500/10 px-2.5 py-1 text-[9px] font-black uppercase text-red-500 border border-red-500/20">Locked</span>
           )}
@@ -87,34 +87,34 @@ function GroupItem({
       </div>
 
       <div className="grid grid-cols-3 gap-2 mb-6">
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
+        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-[#2450b7] bg-[#0c1c59] text-[#8fb8ff] hover:bg-[#123283] hover:text-white shadow-inner">
           <input
             type="checkbox"
             checked={group.enabled}
             onChange={() => onChange(group.id)}
-            className="h-4 w-4 cursor-pointer rounded accent-yellow-500"
+            className="h-4 w-4 cursor-pointer rounded accent-[#d4af37]"
           />
           Enabled
         </label>
 
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
+        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-[#2450b7] bg-[#0c1c59] text-[#8fb8ff] hover:bg-[#123283] hover:text-white shadow-inner">
           <input
             type="radio"
             checked={selectedDefault === group.id}
             onChange={() => onRadioChange(group.id, "default")}
             name={`defaultGroup-${group.id}`}
-            className="h-4 w-4 cursor-pointer accent-yellow-500"
+            className="h-4 w-4 cursor-pointer accent-[#d4af37]"
           />
           Default
         </label>
 
-        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-black/20 text-white/40 hover:bg-black/40 hover:text-white">
+        <label className="flex flex-col items-center justify-center gap-2 rounded-xl border p-3 text-[9px] font-black uppercase tracking-widest cursor-pointer transition-all border-[#2450b7] bg-[#0c1c59] text-[#8fb8ff] hover:bg-[#123283] hover:text-white shadow-inner">
           <input
             type="radio"
             checked={selectedDemoDefault === group.id}
             onChange={() => onRadioChange(group.id, "demoDefault")}
             name={`demoDefaultGroup-${group.id}`}
-            className="h-4 w-4 cursor-pointer accent-sky-500"
+            className="h-4 w-4 cursor-pointer accent-[#2450b7]"
           />
           Demo
         </label>
@@ -128,7 +128,7 @@ function GroupItem({
           disabled={group.aliasLocked}
           onChange={(e) => onAliasChange(group.id, e.target.value)}
           onBlur={() => onAliasLock(group.id)}
-          className={`w-full rounded-2xl border px-5 py-3 text-sm font-bold outline-none transition-all border-white/5 bg-black/40 text-white placeholder:text-white/20 focus:border-yellow-500/50 ${group.aliasLocked ? "cursor-not-allowed opacity-40" : ""}`}
+          className={`w-full rounded-2xl border px-5 py-3 text-sm font-bold outline-none transition-all border-[#2450b7] bg-[#0c1c59] text-white placeholder:text-[#8fb8ff]/40 focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner ${group.aliasLocked ? "cursor-not-allowed opacity-40" : ""}`}
         />
       </div>
     </div>
@@ -143,26 +143,26 @@ function GroupConfigurationGuideToggle() {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="flex w-full items-center justify-between rounded-[2rem] border px-8 py-6 text-left shadow-xl transition-all border-white/10 bg-slate-900/40"
+        className="flex w-full items-center justify-between rounded-[2rem] border px-8 py-6 text-left shadow-[0_14px_30px_rgba(4,15,54,0.3)] transition-all border-[#2450b7] bg-[#081d5f] hover:bg-[#123283]"
       >
         <span className="flex items-center gap-4 text-lg font-black uppercase tracking-tighter text-white">
-          <Info size={20} className="text-yellow-500" />
+          <Info size={20} className="text-[#d4af37]" />
           Group Configuration Guide
         </span>
-        <span className="text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full border bg-white/5 border-white/10 text-yellow-500">
+        <span className="text-[10px] font-black uppercase tracking-widest px-4 py-1 rounded-full border bg-[#040f33] border-[#2450b7] text-[#d4af37]">
           {isOpen ? "Hide Details" : "View Details"}
         </span>
       </button>
 
       {isOpen ? (
-        <div className="mt-4 rounded-[2rem] border px-8 py-8 shadow-2xl animate-in slide-in-from-top-4 duration-300 border-white/5 bg-black/40 text-white/80">
+        <div className="mt-4 rounded-[2rem] border px-8 py-8 shadow-2xl animate-in slide-in-from-top-4 duration-300 border-[#2450b7] bg-[#040f33] text-white/80">
           <ol className="list-decimal space-y-4 text-sm font-medium leading-relaxed ml-4">
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Alias Field:</strong> Optional display name for identifying groups easily in the CRM.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Default Group:</strong> The primary group assigned to new live trading accounts.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Demo Default Group:</strong> The primary group assigned to new demo trading accounts.</li>
-            <li><strong className="text-yellow-500 uppercase tracking-widest text-[11px]">Save Configuration:</strong> Commits all changes to the MT5 gateway.</li>
+            <li><strong className="text-[#d4af37] uppercase tracking-widest text-[11px]">Alias Field:</strong> Optional display name for identifying groups easily in the CRM.</li>
+            <li><strong className="text-[#d4af37] uppercase tracking-widest text-[11px]">Default Group:</strong> The primary group assigned to new live trading accounts.</li>
+            <li><strong className="text-[#d4af37] uppercase tracking-widest text-[11px]">Demo Default Group:</strong> The primary group assigned to new demo trading accounts.</li>
+            <li><strong className="text-[#d4af37] uppercase tracking-widest text-[11px]">Save Configuration:</strong> Commits all changes to the MT5 gateway.</li>
           </ol>
-          <div className="mt-6 rounded-2xl border-l-4 border-yellow-500 px-6 py-4 text-xs font-bold uppercase tracking-wide bg-yellow-500/5 text-yellow-500/80">
+          <div className="mt-6 rounded-2xl border-l-4 border-[#d4af37] px-6 py-4 text-xs font-bold uppercase tracking-wide bg-[#d4af37]/10 text-[#d4af37]">
             Warning: Changes take effect immediately for all new account registrations.
           </div>
         </div>
@@ -364,16 +364,16 @@ export default function GroupConfiguration() {
 
   if (loading) {
     return (
-      <div className="min-h-screen px-5 py-6 bg-[#050505] text-white">
+      <div className="min-h-[90vh] px-5 py-6 bg-[#0c1c59] text-white">
         <div className="mx-auto max-w-6xl space-y-6">
-          <div className="h-24 animate-pulse rounded-[2rem] border border-white/5 bg-white/5" />
+          <div className="h-24 animate-pulse rounded-[2rem] border border-[#2450b7] bg-[#081d5f]" />
           <div className="grid gap-4 md:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl border border-white/5 bg-white/5" />
+              <div key={i} className="h-24 animate-pulse rounded-2xl border border-[#2450b7] bg-[#081d5f]" />
             ))}
           </div>
-          <div className="h-40 animate-pulse rounded-[2rem] border border-white/5 bg-white/5" />
-          <div className="h-72 animate-pulse rounded-[2rem] border border-white/5 bg-white/5" />
+          <div className="h-40 animate-pulse rounded-[2rem] border border-[#2450b7] bg-[#081d5f]" />
+          <div className="h-72 animate-pulse rounded-[2rem] border border-[#2450b7] bg-[#081d5f]" />
         </div>
       </div>
     );
@@ -381,18 +381,18 @@ export default function GroupConfiguration() {
 
   if (superuserCheckDone && !isSuperuserUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-5 py-8 text-white">
-        <div className="w-full max-w-xl rounded-[2.5rem] border p-12 text-center shadow-2xl transition-all border-red-500/20 bg-slate-900/40">
+      <div className="flex min-h-[90vh] bg-[#0c1c59] items-center justify-center px-5 py-8 text-white">
+        <div className="w-full max-w-xl rounded-[2.5rem] border p-12 text-center shadow-[0_30px_80px_rgba(4,15,54,0.3)] transition-all border-red-500/20 bg-[#081d5f]">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-3xl animate-pulse bg-red-500/10">
             <ShieldCheck size={36} className="text-red-500" />
           </div>
           <h1 className="mt-8 text-4xl font-black uppercase tracking-tighter">Access Denied</h1>
-          <p className="mt-4 text-base font-medium opacity-60">
+          <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-[#8fb8ff]">
             Only superusers can access Group Configuration.
           </p>
           <button
             onClick={() => router.push("/admin/admin-users")}
-            className="mt-10 w-full rounded-2xl bg-gradient-to-r from-red-600 to-red-500 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl hover:shadow-red-500/20 transition-all active:scale-95"
+            className="mt-10 w-full rounded-2xl bg-gradient-to-r from-red-600 to-red-500 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl hover:shadow-red-500/20 transition-all active:scale-95"
           >
             Return to Directory
           </button>
@@ -407,31 +407,32 @@ export default function GroupConfiguration() {
         <title>Group Management | Admin Portal</title>
       </Head>
 
-      <div className="min-h-[90vh] px-4 py-6 md:p-8 text-white overflow-y-auto max-h-screen">
-        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8">
-          <header className="overflow-hidden transition-all rounded-[28px] border border-white/10 bg-[#111b3d] shadow-[0_24px_70px_rgba(0,0,0,0.35)]">
-            <div className="flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between border-b border-white/5 bg-black/10">
+      <div className="min-h-[90vh] px-4 py-6 md:p-8 text-white overflow-y-auto max-h-screen bg-[#0c1c59] relative">
+        <div className="absolute top-0 right-1/4 h-[520px] w-[520px] rounded-full bg-[#d4af37]/5 blur-[120px] pointer-events-none" />
+        <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 relative z-10">
+          <header className="overflow-hidden transition-all rounded-[28px] border border-[#2450b7] bg-[linear-gradient(135deg,#0a2a80_0%,#092467_100%)] shadow-[0_24px_70px_rgba(4,15,54,0.35)]">
+            <div className="flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between border-b border-[#2450b7]">
               <div className="flex flex-wrap items-center gap-4">
                 <button
                   type="button"
                   onClick={() => router.push("/admin/admin-users")}
-                  className="inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-xs font-black uppercase tracking-widest transition-all border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  className="inline-flex items-center gap-2 rounded-xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-all border-[#2450b7] bg-[#081d5f] text-[#8fb8ff] hover:bg-[#123283] hover:text-white"
                 >
                   <ChevronLeft size={16} />
                   Back
                 </button>
                 <div>
                   <h1 className="text-2xl font-black uppercase tracking-tighter text-white">Group Management</h1>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-500">Configure MT5 server groups and defaults</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37] mt-1">Configure MT5 server groups and defaults</p>
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-4 p-8 md:grid-cols-3 bg-black/20">
+            <div className="grid gap-4 p-8 md:grid-cols-3 bg-black/10">
               <StatCard
                 label="Total Groups"
                 value={stats.total}
-                tone="border-white/5 bg-white/5"
+                tone="border-[#2450b7] bg-[#040f33]"
                 icon={Sparkles}
               />
               <StatCard
@@ -443,23 +444,23 @@ export default function GroupConfiguration() {
               <StatCard
                 label="Default"
                 value={stats.defaultGroup || "None"}
-                tone="border-yellow-500/20 bg-yellow-500/5"
+                tone="border-[#d4af37]/20 bg-[#d4af37]/5"
               />
             </div>
           </header>
 
-          <section className="rounded-[2.5rem] border p-8 shadow-2xl transition-all border-white/5 bg-slate-900/40">
+          <section className="rounded-[2.5rem] border p-8 shadow-[0_30px_80px_rgba(4,15,54,0.3)] transition-all border-[#2450b7] bg-[#081d5f]">
             <div
               className="flex cursor-pointer flex-col gap-4 md:flex-row md:items-start md:justify-between group"
               onClick={() => setShowActiveConfig((prev) => !prev)}
             >
               <div className="flex items-center gap-4">
-                <div className="rounded-2xl bg-yellow-500/10 p-4 text-yellow-500 ring-1 ring-yellow-500/20 transition-transform group-hover:scale-110">
+                <div className="rounded-2xl bg-[#040f33] border border-[#2450b7] p-4 text-[#d4af37] transition-transform group-hover:scale-110">
                   <Info size={24} />
                 </div>
                 <div>
                   <h2 className="text-xl font-black uppercase tracking-tighter text-white">Active Configuration</h2>
-                  <p className="mt-1 text-sm font-medium opacity-60">
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-[#8fb8ff]">
                     Real-time snapshot of the primary group defaults.
                   </p>
                 </div>
@@ -469,11 +470,11 @@ export default function GroupConfiguration() {
                 <span className={`rounded-full px-4 py-1 text-[10px] font-black uppercase tracking-widest border transition-all ${
                   showActiveConfig
                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                    : "bg-white/5 text-white/40 border-white/5"
+                    : "bg-[#040f33] text-[#d4af37] border-[#2450b7]"
                 }`}>
                   {showActiveConfig ? "Expanded" : "Collapsed"}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-widest opacity-40">
+                <span className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff]/50">
                   Updated: {lastUpdated || "N/A"}
                 </span>
               </div>
@@ -482,14 +483,14 @@ export default function GroupConfiguration() {
             {showActiveConfig ? (
               <div className="mt-8 space-y-6 animate-in slide-in-from-top-4 duration-300">
                 <div className="grid gap-4 md:grid-cols-1">
-                  <div className="rounded-2xl border p-6 border-white/5 bg-black/40">
-                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Current Real Default</div>
+                  <div className="rounded-2xl border p-6 border-[#2450b7] bg-[#040f33]">
+                    <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#d4af37]">Current Real Default</div>
                     <div className="mt-2 text-3xl font-black tracking-tighter text-white">{selectedDefault || "Not assigned"}</div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border p-6 border-white/5 bg-black/20">
-                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-4 px-1">Available Groups</div>
+                <div className="rounded-2xl border p-6 border-[#2450b7] bg-[#040f33]">
+                  <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff] mb-4 px-1">Available Groups</div>
                   <div className="flex flex-wrap gap-2">
                     {groups.map((g) => (
                       <Badge
@@ -513,16 +514,16 @@ export default function GroupConfiguration() {
 
           <GroupConfigurationGuideToggle />
 
-          <section className="rounded-[2.5rem] border p-8 shadow-2xl transition-all border-white/5 bg-slate-900/40">
-            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b pb-8 mb-8 border-white/5">
+          <section className="rounded-[2.5rem] border p-8 shadow-[0_30px_80px_rgba(4,15,54,0.3)] transition-all border-[#2450b7] bg-[#081d5f]">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between border-b pb-8 mb-8 border-[#2450b7]">
               <div>
                 <h2 className="flex items-center gap-4 text-2xl font-black uppercase tracking-tighter text-white">
-                  <span className="rounded-2xl bg-yellow-500/10 p-4 text-yellow-500 ring-1 ring-yellow-500/20">
+                  <span className="rounded-2xl bg-[#040f33] border border-[#2450b7] p-4 text-[#d4af37]">
                     <ShieldCheck size={24} />
                   </span>
                   Group Options
                 </h2>
-                <p className="mt-2 text-sm font-medium opacity-60">
+                <p className="mt-2 text-[10px] font-black uppercase tracking-widest text-[#8fb8ff]">
                   Manage group visibility, alias overrides, and primary environment defaults.
                 </p>
               </div>
@@ -531,32 +532,32 @@ export default function GroupConfiguration() {
                 <button
                   type="button"
                   onClick={toggleSelectAll}
-                  className="inline-flex items-center gap-3 rounded-xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border-white/5 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white"
+                  className="inline-flex items-center gap-3 rounded-xl border px-5 py-3 text-[10px] font-black uppercase tracking-widest cursor-pointer transition-all border-[#2450b7] bg-[#0c1c59] text-[#8fb8ff] hover:bg-[#123283] hover:text-white"
                 >
                   <input
                     type="checkbox"
                     checked={selectAll}
                     readOnly
-                    className="h-4 w-4 cursor-pointer rounded accent-yellow-500"
+                    className="h-4 w-4 cursor-pointer rounded accent-[#d4af37]"
                   />
                   Select All
                 </button>
 
                 <div className="relative group">
-                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-yellow-500 transition-transform group-focus-within:scale-110" />
+                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#d4af37] transition-transform group-focus-within:scale-110" />
                   <input
                     type="text"
                     value={groupSearch}
                     onChange={(e) => setGroupSearch(e.target.value)}
                     placeholder="Search groups..."
-                    className="w-64 rounded-xl border pl-12 pr-5 py-3 text-sm font-bold outline-none transition-all border-white/5 bg-black/40 text-white placeholder:text-white/20 focus:border-yellow-500/50"
+                    className="w-64 rounded-xl border pl-12 pr-5 py-3 text-[11px] font-black uppercase tracking-widest outline-none transition-all border-[#2450b7] bg-[#0c1c59] text-white placeholder:text-[#8fb8ff]/40 focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 shadow-inner"
                   />
                 </div>
 
                 <button
                   type="button"
                   disabled={syncing}
-                  className="inline-flex items-center justify-center gap-3 rounded-xl bg-blue-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-blue-600/20 transition-all hover:bg-blue-500 active:scale-95 disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#0c1c59_0%,#123283_100%)] px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white border border-[#2450b7] shadow-xl hover:bg-[#1745b3] active:scale-95 disabled:opacity-50"
                   onClick={handleSyncFromMT5}
                 >
                   {syncing ? "Syncing..." : "Sync from MT5"}
@@ -564,7 +565,7 @@ export default function GroupConfiguration() {
 
                 <button
                   type="button"
-                  className="inline-flex items-center justify-center gap-3 rounded-xl bg-yellow-600 px-6 py-3.5 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-yellow-600/20 transition-all hover:bg-yellow-500 active:scale-95"
+                  className="inline-flex items-center justify-center gap-3 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] px-6 py-4 text-[10px] font-black uppercase tracking-widest text-white shadow-xl shadow-[#d4af37]/20 transition-all hover:scale-[1.02] active:scale-95"
                   onClick={() => handleSaveGroupConfig(groups as any)}
                 >
                   Save Changes
@@ -587,11 +588,11 @@ export default function GroupConfiguration() {
                   />
                 ))}
                 {groups.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed p-12 text-center text-sm font-bold uppercase tracking-widest md:col-span-2 xl:col-span-3 border-white/5 text-white/20">
+                  <div className="rounded-2xl border border-dashed border-[#2450b7] p-12 text-center text-[10px] font-black uppercase tracking-widest md:col-span-2 xl:col-span-3 text-[#8fb8ff]">
                     No editable groups discovered.
                   </div>
                 ) : filteredGroups.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed p-12 text-center text-sm font-bold uppercase tracking-widest md:col-span-2 xl:col-span-3 border-white/5 text-white/20">
+                  <div className="rounded-2xl border border-dashed border-[#2450b7] p-12 text-center text-[10px] font-black uppercase tracking-widest md:col-span-2 xl:col-span-3 text-[#8fb8ff]">
                     No matches for "{groupSearch}"
                   </div>
                 ) : null}

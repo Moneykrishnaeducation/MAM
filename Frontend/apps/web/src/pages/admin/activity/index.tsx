@@ -10,7 +10,6 @@ import {
   Search,
   ShieldCheck,
   Users,
-  Sparkles,
   X,
   Copy,
   Check,
@@ -73,10 +72,10 @@ const activityTabs: Array<{
   label: string;
   icon: React.ElementType;
 }> = [
-  { id: 'all', label: 'All Events', icon: Activity },
-  { id: 'admin', label: 'Admin Log', icon: ShieldCheck },
-  { id: 'client', label: 'Client Log', icon: Users },
-  { id: 'error', label: 'System Errors', icon: AlertTriangle },
+  { id: 'all', label: 'All', icon: Activity },
+  { id: 'admin', label: 'Admin', icon: ShieldCheck },
+  { id: 'client', label: 'Client', icon: Users },
+  { id: 'error', label: 'Errors', icon: AlertTriangle },
 ];
 
 const ACTIVITY_ENDPOINTS: Record<ActivityCategory, string> = {
@@ -272,30 +271,6 @@ export default function AdminActivityPage() {
   // Server already paginates - use logs directly
   const paginatedLogs = logs;
 
-  const paginationItems = useMemo<Array<number | 'ellipsis'>>(() => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-
-    const items: Array<number | 'ellipsis'> = [1];
-    const leftSibling = Math.max(2, safePage - 1);
-    const rightSibling = Math.min(totalPages - 1, safePage + 1);
-
-    if (leftSibling > 2) {
-      items.push('ellipsis');
-    }
-
-    for (let page = leftSibling; page <= rightSibling; page += 1) {
-      items.push(page);
-    }
-
-    if (rightSibling < totalPages - 1) {
-      items.push('ellipsis');
-    }
-
-    items.push(totalPages);
-    return items;
-  }, [safePage, totalPages]);
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -305,168 +280,77 @@ export default function AdminActivityPage() {
     } catch {}
   };
 
-  const roleLower = adminRole.toLowerCase();
-  const isViewer = roleLower === 'viewer';
-  const isAdmin = roleLower === 'admin';
-
   return (
     <>
       <Head>
         <title>Audit Logs & System Activity | Admin Portal</title>
       </Head>
 
-      <div className="w-full text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#0c1c59] text-white font-sans antialiased relative overflow-hidden">
         {/* Ambient decorative glow rings */}
         <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 md:p-8 relative z-10 space-y-6 md:space-y-8">
           
-          {/* HEADER BANNER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
-                <Activity className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
-                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> Real-Time Audit Engine
-                </div>
-                <h1 className="text-lg font-black tracking-tight text-white uppercase">
-                  {isViewer ? 'Client Activity Audit Logs' : 'System Audit Logs'}
-                </h1>
-                <p className="text-[11px] text-slate-400">
-                  {isViewer 
-                    ? 'Inspect client activity events and operational API logs.'
-                    : 'Inspect administrative actions, client API calls, security events, and system errors.'}
-                </p>
-              </div>
-            </div>
+          {/* HEADER ROW WITH TABS AND SEARCH */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#2450b7] pb-6">
+            {allowedTabs.length > 1 && (
+              <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-[#081d5f] w-full md:w-fit border border-[#2450b7] shadow-[0_20px_60px_rgba(4,15,54,0.2)]">
+                {allowedTabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  const count = tabCounts[tab.id];
 
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setReloadToken((token) => token + 1)}
-                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
-              >
-                <RefreshCw size={13} className={loading ? "animate-spin text-[#d4af37]" : ""} />
-                <span>Refresh Logs</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SUMMARY STAT CARDS */}
-          <div className={`grid gap-3 ${
-            isViewer ? 'grid-cols-1 max-w-xs' : isAdmin ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 sm:grid-cols-4'
-          }`}>
-            {!isViewer && (
-              <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Audit Events</div>
-                  <div className="text-lg font-black text-white mt-0.5">{tabCounts.all} <span className="text-[9px] text-slate-500 font-semibold uppercase">Logs</span></div>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                  <Activity size={16} />
-                </div>
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center justify-center gap-2 md:gap-3 px-4 py-3 md:px-8 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all duration-300 ${
+                        isActive
+                          ? "bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-xl shadow-[#d4af37]/20 scale-[1.02] flex-1 md:flex-none"
+                          : "text-[#8fb8ff] hover:text-white hover:bg-[#123283] flex-none"
+                      }`}
+                    >
+                      <Icon size={14} />
+                      <span className={isActive ? "inline" : "hidden md:inline"}>
+                        {tab.label}
+                      </span>
+                      
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {!isViewer && (
-              <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Admin Operations</div>
-                  <div className="text-lg font-black text-[#d4af37] mt-0.5">{tabCounts.admin} <span className="text-[9px] text-slate-500 font-semibold uppercase">Actions</span></div>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
-                  <ShieldCheck size={16} />
-                </div>
-              </div>
-            )}
-
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-              <div>
-                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Client Events</div>
-                <div className="text-lg font-black text-emerald-400 mt-0.5">{tabCounts.client} <span className="text-[9px] text-slate-500 font-semibold uppercase">Events</span></div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                <Users size={16} />
-              </div>
-            </div>
-
-            {!isViewer && !isAdmin && (
-              <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-                <div>
-                  <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">System Errors</div>
-                  <div className="text-lg font-black text-red-400 mt-0.5">{tabCounts.error} <span className="text-[9px] text-slate-500 font-semibold uppercase">Logged</span></div>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 shrink-0">
-                  <AlertTriangle size={16} />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* TAB BAR (Render only allowed tabs for current role) */}
-          {allowedTabs.length > 1 && (
-            <div className="flex items-center gap-1 p-1 rounded-xl border bg-slate-900/90 border-white/10 w-fit backdrop-blur-md overflow-x-auto max-w-full">
-              {allowedTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = activeTab === tab.id;
-                const count = tabCounts[tab.id];
-
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-black text-[11px] uppercase tracking-wider transition-all whitespace-nowrap ${
-                      isActive
-                        ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold"
-                        : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                    }`}
-                  >
-                    <Icon size={13} className={isActive ? "text-[#d4af37]" : ""} />
-                    <span>{tab.label}</span>
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-mono font-bold ${
-                      isActive ? "bg-white/20 text-white" : "bg-slate-800 text-slate-400"
-                    }`}>
-                      {formatTabCount(count)}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* MAIN TABLE CONTAINER */}
-          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl">
-            {/* TOOLBAR */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
-              <div className="relative flex-1 max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="relative group w-full md:w-80">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#d4af37] transition-colors" size={18} />
                 <input
                   type="text"
+                  placeholder="Search user, action, module..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search user, action, module, IP, record ID..."
-                  className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all"
+                  className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#2450b7] bg-[#081d5f] text-white outline-none focus:border-[#d4af37] transition-all font-bold text-sm shadow-sm placeholder:text-[#8fb8ff]/60"
                 />
                 {searchTerm && (
                   <button 
                     onClick={() => setSearchTerm('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8fb8ff] hover:text-white"
                   >
-                    <X size={12} />
+                    <X size={14} />
                   </button>
                 )}
               </div>
-
-              <div className="flex items-center gap-3">
-                <div className="text-[10px] text-slate-400 font-mono px-2.5 py-1 rounded-lg bg-slate-950/40 border border-white/5 flex items-center gap-1.5">
-                  <Clock className="w-3 h-3 text-[#d4af37]" />
-                  {lastUpdated ? `Refreshed ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : 'Syncing...'}
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => setReloadToken((token) => token + 1)}
+                className="p-3 rounded-2xl bg-[#081d5f] border border-[#2450b7] hover:bg-[#123283] hover:text-white text-[#8fb8ff] transition-all shrink-0"
+              >
+                <RefreshCw size={18} className={loading ? "animate-spin text-[#d4af37]" : ""} />
+              </button>
             </div>
+          </div>
 
             {error && (
               <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-400 font-semibold flex items-center gap-2">
@@ -475,35 +359,41 @@ export default function AdminActivityPage() {
               </div>
             )}
 
-            {/* TABLE */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead>
-                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[9px] border-b border-white/10 pb-2">
-                    <th className="pb-2 px-2.5">Log ID</th>
-                    <th className="pb-2 px-2.5">Time</th>
-                    <th className="pb-2 px-2.5">User & Role</th>
-                    <th className="pb-2 px-2.5">Action Type</th>
-                    <th className="pb-2 px-2.5">Module</th>
-                    <th className="pb-2 px-2.5">Record ID</th>
-                    <th className="pb-2 px-2.5">Category</th>
-                    <th className="pb-2 px-2.5 text-right">Details</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
+            {/* MAIN TABLE CONTAINER */}
+          <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#2450b7] rounded-[2.5rem] shadow-[0_30px_80px_rgba(4,15,54,0.25)] overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <Activity size={160} className="text-[#d4af37]" />
+            </div>
+
+            <div className="relative z-10">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-[#081d5f]">
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Log ID</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Time</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">User & Role</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Action Type</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Module</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Record ID</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Category</th>
+                      <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Details</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2450b7]">
                   {loading ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center">
-                        <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading audit records...</p>
+                      <td colSpan={8} className="p-20 text-center">
+                        <div className="w-12 h-12 border-4 border-white/10 border-t-[#d4af37] rounded-full animate-spin mx-auto mb-4" />
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Loading audit records...</p>
                       </td>
                     </tr>
                   ) : paginatedLogs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400">
-                        <Activity className="mx-auto mb-1.5 text-slate-600 h-6 w-6" />
-                        <p className="mb-0.5 text-xs font-bold text-white">No activity records found</p>
-                        <p className="text-[10px] text-slate-500">Refine search criteria or select another log category.</p>
+                      <td colSpan={8} className="p-20 text-center">
+                        <Activity className="mx-auto mb-4 text-[#8fb8ff]/30 w-16 h-16" strokeWidth={1} />
+                        <p className="mb-2 text-sm font-bold text-white uppercase tracking-widest">No activity records found</p>
+                        <p className="text-xs text-[#8fb8ff]">Refine search criteria or select another log category.</p>
                       </td>
                     </tr>
                   ) : (
@@ -512,56 +402,56 @@ export default function AdminActivityPage() {
                       const initials = getInitials(log.userName);
 
                       return (
-                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors group">
-                          <td className="py-2 px-2.5 font-mono text-xs font-bold text-[#d4af37]">
+                        <tr key={log.id} className="hover:bg-[#123283]/40 transition-colors group">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-mono text-xs font-bold text-[#d4af37]">
                             #{log.id}
                           </td>
 
-                          <td className="py-2 px-2.5">
-                            <div className="inline-flex items-center gap-1 text-slate-300 text-[10px] font-mono">
-                              <Clock size={11} className="text-slate-500" />
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <div className="inline-flex items-center gap-1.5 text-white text-[11px] font-mono">
+                              <Clock size={12} className="text-[#8fb8ff]" />
                               {log.time}
                             </div>
                           </td>
 
-                          <td className="py-2 px-2.5">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-md bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[9px] shrink-0 group-hover:border-[#d4af37]/40 transition-colors">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-[#081d5f] border border-[#2450b7] flex items-center justify-center font-bold text-white text-[10px] shrink-0">
                                 {initials}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-100 text-xs">{log.userName}</div>
-                                <div className="text-[9px] text-slate-400 font-mono uppercase">{log.userRole}</div>
+                                <div className="font-bold text-white text-xs">{log.userName}</div>
+                                <div className="text-[10px] text-[#8fb8ff] font-mono uppercase">{log.userRole}</div>
                               </div>
                             </div>
                           </td>
 
-                          <td className="py-2 px-2.5 font-bold text-slate-100 text-xs">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-bold text-white text-xs">
                             {log.actionType}
                           </td>
 
-                          <td className="py-2 px-2.5">
-                            <span className="px-2 py-0.5 rounded bg-slate-950/80 text-slate-300 border border-white/10 font-mono text-[10px] inline-block">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <span className="px-2.5 py-1 rounded-lg bg-[#081d5f] text-white border border-[#2450b7] font-mono text-[10px] inline-block">
                               {log.moduleName}
                             </span>
                           </td>
 
-                          <td className="py-2 px-2.5 font-mono text-[10px] text-[#d4af37]">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-mono text-[11px] text-[#d4af37]">
                             {log.recordId}
                           </td>
 
-                          <td className="py-2 px-2.5">
-                            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest border ${meta.style}`}>
-                              <span className={`w-1 h-1 rounded-full ${meta.dot}`} />
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border ${meta.style}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
                               {meta.label}
                             </span>
                           </td>
 
-                          <td className="py-2 px-2.5 text-right">
+                          <td className="px-6 py-4 border-b border-[#2450b7] text-right">
                             <button
                               type="button"
                               onClick={() => setInspectRow(log)}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 transition-all flex items-center gap-1 text-[11px] font-semibold ml-auto hover:border-[#d4af37]/40"
+                              className="px-3 py-1.5 rounded-xl bg-[#081d5f] hover:bg-[#123283] text-[#8fb8ff] hover:text-white border border-[#2450b7] transition-all flex items-center gap-1.5 text-[11px] font-bold ml-auto"
                             >
                               <Eye size={12} className="text-[#d4af37]" />
                               <span>Inspect</span>
@@ -575,67 +465,47 @@ export default function AdminActivityPage() {
               </table>
             </div>
 
-            {/* PAGINATION FOOTER */}
-            <div className="flex flex-col gap-2 border-t border-white/10 pt-3 mt-3 sm:flex-row sm:items-center sm:justify-between text-xs">
-              <div className="text-slate-400 font-mono text-[10px]">
-                Showing <span className="font-bold text-slate-200">{showingStart}</span> to <span className="font-bold text-slate-200">{showingEnd}</span> of <span className="font-bold text-slate-200">{serverTotal}</span> entries
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-400 text-[10px] font-semibold">Rows:</span>
+            {/* PAGINATION */}
+            <div className="p-6 md:p-8 bg-[#081d5f] border-t border-[#2450b7] flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="flex items-center gap-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">
+                  Entries <span className="text-white">{showingStart}-{showingEnd}</span> of <span className="text-white">{serverTotal}</span>
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Rows</span>
                   <select
                     value={perPage}
-                    onChange={(e) => setPerPage(Number(e.target.value))}
-                    className="rounded-lg border border-white/10 bg-slate-950/80 px-2 py-0.5 text-xs font-bold text-slate-200 outline-none transition-all cursor-pointer"
+                    onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                    className="bg-[#081d5f] border border-[#2450b7] rounded-lg px-2 py-1 text-[10px] font-black text-[#d4af37] outline-none"
                   >
                     {perPageOptions.map((size) => (
-                      <option key={size} value={size} className="bg-slate-900 text-slate-200">
-                        {size}
-                      </option>
+                      <option key={size} value={size}>{size}</option>
                     ))}
                   </select>
                 </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                    disabled={safePage === 1}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    <ChevronLeft size={12} /> Prev
-                  </button>
-
-                  {paginationItems.map((pageItem, index) =>
-                    pageItem === 'ellipsis' ? (
-                      <span key={`ellipsis-${index}`} className="text-slate-600 px-1 text-xs select-none">
-                        ...
-                      </span>
-                    ) : (
-                      <button
-                        key={pageItem}
-                        onClick={() => setCurrentPage(pageItem)}
-                        className={`w-6 h-6 rounded-lg text-xs font-bold transition-all border ${
-                          pageItem === safePage
-                            ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] border-transparent text-slate-950 font-black shadow-md'
-                            : 'bg-slate-800/60 border-white/5 text-slate-400 hover:bg-slate-800 hover:text-white'
-                        }`}
-                      >
-                        {pageItem}
-                      </button>
-                    ),
-                  )}
-
-                  <button
-                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                    disabled={safePage === totalPages}
-                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800/80 border border-white/10 text-slate-300 hover:bg-slate-800 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                  >
-                    Next <ChevronRight size={12} />
-                  </button>
-                </div>
+              </div>
+              
+              <div className="flex items-center gap-3">
+                <button
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="px-4 font-black text-[#8fb8ff] text-xs">
+                  PAGE {safePage} OF {totalPages}
+                </span>
+                <button
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
+                >
+                  <ChevronRight size={20} />
+                </button>
               </div>
             </div>
+          </div>
 
           </div>
 
@@ -643,73 +513,76 @@ export default function AdminActivityPage() {
 
         {/* AUDIT INSPECTION MODAL */}
         {inspectRow && (
-          <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
-              <div className="flex justify-between items-center mb-4 pb-2.5 border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
+          <div className="fixed inset-0 z-50 bg-[#040f33]/80 backdrop-blur-md flex items-center justify-center p-4">
+            <div className="bg-[#0c1c59] border border-[#2450b7] rounded-[2rem] p-6 max-w-lg w-full shadow-[0_30px_80px_rgba(4,15,54,0.5)] relative animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex justify-between items-center mb-6 pb-4 border-b border-[#2450b7]">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-[#081d5f] border border-[#2450b7] flex items-center justify-center text-[#d4af37] shadow-inner">
                     <Terminal size={18} />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-white uppercase tracking-tight">Audit Event Inspector</h3>
+                    <h3 className="text-xs font-black text-white uppercase tracking-widest">Audit Event Inspector</h3>
                     <p className="text-[10px] font-mono text-[#d4af37]">Log ID #{inspectRow.id}</p>
                   </div>
                 </div>
-                <button onClick={() => setInspectRow(null)} className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
-                  <X size={15} />
+                <button 
+                  onClick={() => setInspectRow(null)} 
+                  className="text-[#8fb8ff] hover:text-white p-2 rounded-xl hover:bg-[#123283] transition-colors"
+                >
+                  <X size={16} />
                 </button>
               </div>
 
-              <div className="space-y-3 text-xs">
-                <div className="grid grid-cols-2 gap-2.5 p-2.5 rounded-xl bg-slate-950/60 border border-white/5">
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 p-4 rounded-2xl bg-[#081d5f] border border-[#2450b7] shadow-inner">
                   <div>
-                    <div className="text-[9px] font-black uppercase text-slate-400 mb-0.5">User</div>
-                    <div className="font-bold text-slate-100">{inspectRow.userName}</div>
-                    <div className="text-[9px] text-slate-500 font-mono">{inspectRow.userRole}</div>
+                    <div className="text-[9px] font-black uppercase text-[#8fb8ff] tracking-widest mb-1">User</div>
+                    <div className="font-bold text-white text-xs">{inspectRow.userName}</div>
+                    <div className="text-[9px] text-[#8fb8ff] font-mono uppercase mt-0.5">{inspectRow.userRole}</div>
                   </div>
                   <div>
-                    <div className="text-[9px] font-black uppercase text-slate-400 mb-0.5">Action</div>
-                    <div className="font-bold text-slate-100">{inspectRow.actionType}</div>
-                    <div className="text-[9px] text-slate-500 font-mono">Module: {inspectRow.moduleName}</div>
+                    <div className="text-[9px] font-black uppercase text-[#8fb8ff] tracking-widest mb-1">Action</div>
+                    <div className="font-bold text-white text-xs">{inspectRow.actionType}</div>
+                    <div className="text-[9px] text-[#8fb8ff] font-mono uppercase mt-0.5">Module: {inspectRow.moduleName}</div>
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="font-semibold flex items-center gap-1.5"><Globe className="w-3.5 h-3.5 text-[#d4af37]" /> IP Address</span>
-                    <span className="font-mono text-slate-200">{inspectRow.ipAddress}</span>
+                <div className="space-y-2.5 px-1">
+                  <div className="flex items-center justify-between text-[#8fb8ff]">
+                    <span className="font-bold flex items-center gap-2 text-[11px] uppercase tracking-wider"><Globe className="w-4 h-4 text-[#d4af37]" /> IP Address</span>
+                    <span className="font-mono text-white text-[11px]">{inspectRow.ipAddress}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="font-semibold flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#d4af37]" /> Record Reference</span>
-                    <span className="font-mono text-[#d4af37] font-bold">{inspectRow.recordId}</span>
+                  <div className="flex items-center justify-between text-[#8fb8ff]">
+                    <span className="font-bold flex items-center gap-2 text-[11px] uppercase tracking-wider"><FileText className="w-4 h-4 text-[#d4af37]" /> Record Reference</span>
+                    <span className="font-mono text-[#d4af37] font-bold text-[11px]">{inspectRow.recordId}</span>
                   </div>
-                  <div className="flex items-center justify-between text-slate-300">
-                    <span className="font-semibold flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-[#d4af37]" /> Timestamp</span>
-                    <span className="font-mono text-slate-200">{inspectRow.time}</span>
+                  <div className="flex items-center justify-between text-[#8fb8ff]">
+                    <span className="font-bold flex items-center gap-2 text-[11px] uppercase tracking-wider"><Clock className="w-4 h-4 text-[#d4af37]" /> Timestamp</span>
+                    <span className="font-mono text-white text-[11px]">{inspectRow.time}</span>
                   </div>
                 </div>
 
                 <div>
-                  <div className="text-[9px] font-black uppercase tracking-wider text-slate-400 mb-1">User Agent Header</div>
-                  <div className="p-2.5 rounded-lg bg-slate-950 border border-white/5 font-mono text-[10px] text-slate-300 break-all leading-relaxed max-h-24 overflow-y-auto">
+                  <div className="text-[9px] font-black uppercase tracking-widest text-[#8fb8ff] mb-2 px-1">User Agent Header</div>
+                  <div className="p-4 rounded-2xl bg-[#081d5f] border border-[#2450b7] font-mono text-[10px] text-white break-all leading-relaxed max-h-32 overflow-y-auto shadow-inner">
                     {inspectRow.userAgent}
                   </div>
                 </div>
               </div>
 
-              <div className="mt-5 pt-2.5 border-t border-white/10 flex justify-end gap-2.5">
+              <div className="mt-6 pt-4 border-t border-[#2450b7] flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => copyToClipboard(`ID: ${inspectRow.id}\nUser: ${inspectRow.userName}\nAction: ${inspectRow.actionType}\nIP: ${inspectRow.ipAddress}`)}
-                  className="px-3.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs transition-colors flex items-center gap-1.5"
+                  className="px-4 py-3 rounded-xl bg-[#081d5f] hover:bg-[#123283] border border-[#2450b7] text-[#8fb8ff] hover:text-white uppercase font-black text-[10px] tracking-widest transition-all flex items-center gap-2"
                 >
-                  {copiedIp ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 text-slate-400" />}
+                  {copiedIp ? <Check className="w-4 h-4 text-[#d4af37]" /> : <Copy className="w-4 h-4 text-[#d4af37]" />}
                   <span>{copiedIp ? 'Copied' : 'Copy Log Info'}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setInspectRow(null)}
-                  className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black text-xs shadow-md transition-all"
+                  className="px-6 py-3 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white uppercase font-black text-[10px] tracking-widest shadow-xl shadow-[#d4af37]/20 hover:scale-[1.02] transition-all"
                 >
                   Close
                 </button>

@@ -191,10 +191,9 @@ export default function AdminManagersPage() {
     setIsModalOpen(true);
   };
 
-  const handleConfirmAction = async (actionType: string, amount: string, note: string) => {
-    if (!targetUser || isViewer) return;
+  const handleConfirmAction = async (actionType: string, amount: string, note: string): Promise<boolean> => {
+    if (!targetUser || isViewer) return false;
     setIsLoading(true);
-    setIsModalOpen(false);
 
     const endpointMap: Record<string, string> = {
       deposit: '/api/admin/managers/deposit',
@@ -224,8 +223,10 @@ export default function AdminManagersPage() {
       const isWithdrawal = actionType === 'withdraw';
       showToast(data.message || `Action "${actionType.toUpperCase()}" of $${amount} processed successfully!`, isWithdrawal);
       fetchManagers();
+      return true;
     } catch (err: any) {
       showToast(err.message || 'Error executing financial action', true);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -256,132 +257,67 @@ export default function AdminManagersPage() {
 
   return (
     <>
-      <Head>
-        <title>Managers Directory | Admin Portal</title>
-      </Head>
 
-      <div className="w-full text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#0c1c59] text-white font-sans antialiased relative overflow-hidden">
         {/* Ambient decorative glow rings */}
         <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
-          
-          {/* HEADER BANNER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
-                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> Strategy Managers Hub
-                </div>
-                <h1 className="text-lg font-black tracking-tight text-white uppercase">
-                  MAM Managers Directory
+        <div className="mt-8 p-3 sm:p-4 relative z-10 space-y-3.5">
+          {/* <div className="rounded-[2rem] bg-white/5 px-5 py-4 shadow-[0_18px_45px_rgba(4,15,54,0.22)] backdrop-blur-md">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+              <div className="space-y-2">
+                <span className="inline-flex items-center gap-2 rounded-full bg-[#d4af37]/15 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.26em] text-[#f5d77a]">
+                  <Users size={12} />
+                  Admin Workspace
+                </span>
+                <h1 className="text-3xl font-black tracking-tight text-transparent bg-gradient-to-r from-white via-blue-100 to-[#d4af37] bg-clip-text md:text-4xl">
+                  Managers Directory
                 </h1>
-                <p className="text-[11px] text-slate-400">
-                  Monitor strategy masters, capital allocation (AUM), performance fees, and investor relationships.
+                <p className="max-w-2xl text-sm text-blue-200/75">
+                  Review manager accounts, monitor balances, and manage actions from one focused view.
                 </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fetchManagers()}
-                className="px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-200 border border-white/10 text-xs font-semibold flex items-center gap-1.5 transition-all hover:border-[#d4af37]/40"
-              >
-                <RefreshCw size={13} className={isLoading ? "animate-spin text-[#d4af37]" : ""} />
-                <span>Sync Directory</span>
-              </button>
-            </div>
-          </div>
-
-          {/* SUMMARY KPI CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-              <div>
-                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Total Strategy Masters</div>
-                <div className="text-xl font-black text-white mt-0.5">{managers.length} <span className="text-[9px] text-slate-500 font-semibold uppercase">Managers</span></div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                <UserCheck size={16} />
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-200/60">
+                Live portfolio oversight
               </div>
             </div>
-
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-              <div>
-                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Combined AUM</div>
-                <div className="text-xl font-black text-[#d4af37] mt-0.5">
-                  ${totalBalanceNum.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
-                <DollarSign size={16} />
-              </div>
-            </div>
-
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-              <div>
-                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Assigned Investors</div>
-                <div className="text-xl font-black text-emerald-400 mt-0.5">{totalInvestors} <span className="text-[9px] text-slate-500 font-semibold uppercase">Clients</span></div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                <Users size={16} />
-              </div>
-            </div>
-
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 shadow-md flex items-center justify-between">
-              <div>
-                <div className="text-slate-400 text-[9px] font-black uppercase tracking-wider">Risk Level Split</div>
-                <div className="text-xs font-bold text-slate-300 mt-1 flex items-center gap-1.5">
-                  <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px]">{lowRiskCount} Low</span>
-                  <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px]">{mediumRiskCount} Med</span>
-                  <span className="px-1.5 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 text-[9px]">{highRiskCount} High</span>
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                <ShieldAlert size={16} />
-              </div>
-            </div>
-
-          </div>
-
+          </div> */}
           {/* TOAST NOTIFICATION */}
           {toastMessage && (
             <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs font-semibold flex items-center justify-between shadow-lg animate-in fade-in slide-in-from-top-2">
               <span className="flex items-center gap-2">
                 <CheckCircle2 size={15} className="text-emerald-400" /> {toastMessage}
               </span>
-              <button onClick={() => setToastMessage(null)} className="text-slate-400 hover:text-white">&times;</button>
+              <button onClick={() => setToastMessage(null)} className="text-blue-300 hover:text-white">&times;</button>
             </div>
           )}
 
           {/* MAIN TABLE CONTAINER */}
-          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-xl p-3 sm:p-4 shadow-xl">
+          <div className="rounded-[2.5rem] border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)] p-6 md:p-8 overflow-hidden">
             
             {/* TOOLBAR SEARCH & FILTERS */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-white/10">
-              <div className="relative flex-1 max-w-md">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#24358a]">
+              <div className="relative group w-full md:w-80">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Search size={16} className="text-blue-300 group-focus-within:text-white transition-colors" />
+                </div>
                 <input 
                   type="text" 
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="Search ID, Manager name, email, or account..." 
-                  className="w-full bg-slate-950/80 border border-white/10 rounded-lg pl-9 pr-8 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
+                  className="w-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 rounded-[2rem] pl-11 pr-10 py-3 text-sm text-white placeholder:text-blue-300/70 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-transparent transition-all shadow-[0_8px_32px_rgba(4,15,54,0.3)] backdrop-blur-md" 
                 />
                 {searchTerm && (
-                  <button onClick={() => setSearchTerm('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200">
-                    <X size={12} />
+                  <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-0 pr-4 flex items-center text-blue-300 hover:text-white transition-colors">
+                    <X size={14} />
                   </button>
                 )}
               </div>
 
               <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mr-1 shrink-0">Filter:</span>
+                <span className="text-[11px] text-blue-300 font-bold uppercase tracking-wider mr-1 shrink-0">Filter:</span>
                 {(['All', 'Low', 'Medium', 'High'] as const).map((r) => (
                   <button
                     key={r}
@@ -389,7 +325,7 @@ export default function AdminManagersPage() {
                     className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
                       riskFilter === r
                         ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-md font-bold'
-                        : 'bg-slate-800/80 text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                        : 'bg-[#113b95]/40 border border-[#24358a] text-blue-300 hover:text-white hover:bg-[#113b95]/60'
                     }`}
                   >
                     {r === 'All' ? 'All Risks' : `${r} Risk`}
@@ -398,11 +334,10 @@ export default function AdminManagersPage() {
               </div>
             </div>
 
-            {/* TABLE */}
-            <div className="overflow-x-auto">
+          <div className="overflow-x-auto">
               <table className="w-full text-left text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[9px] border-b border-white/10 pb-2">
+                  <tr className="text-blue-300 font-black uppercase tracking-wider text-[9px] border-b border-[#24358a] pb-2">
                     <th className="pb-2 px-2.5">Manager ID</th>
                     <th className="pb-2 px-2.5">Manager Details</th>
                     <th className="pb-2 px-2.5">Account ID</th>
@@ -420,12 +355,12 @@ export default function AdminManagersPage() {
                     <tr>
                       <td colSpan={10} className="p-8 text-center">
                         <div className="mx-auto mb-2 h-6 w-6 animate-spin rounded-full border-2 border-[#d4af37] border-t-transparent" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Loading managers directory...</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-blue-300">Loading managers directory...</p>
                       </td>
                     </tr>
                   ) : filteredManagers.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="py-8 text-center text-slate-400 text-xs">
+                      <td colSpan={10} className="py-8 text-center text-blue-300 text-xs">
                         No manager profiles match current criteria.
                       </td>
                     </tr>
@@ -439,7 +374,7 @@ export default function AdminManagersPage() {
                           <tr 
                             onClick={() => toggleRow(m.id)}
                             className={`cursor-pointer transition-colors group ${
-                              isExpanded ? 'bg-slate-800/60' : 'hover:bg-slate-800/40'
+                              isExpanded ? 'bg-white/10' : 'hover:bg-white/5'
                             }`}
                           >
                             <td className="py-2.5 px-2.5 font-mono text-xs font-bold text-[#d4af37]">
@@ -448,18 +383,18 @@ export default function AdminManagersPage() {
 
                             <td className="py-2.5 px-2.5">
                               <div className="flex items-center gap-2.5">
-                                <div className="w-7 h-7 rounded-md bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[9px] shrink-0 group-hover:border-[#d4af37]/40 transition-colors">
+                                <div className="w-7 h-7 rounded-md bg-blue-500/20 border border-blue-500/30 flex items-center justify-center font-bold text-blue-100 text-[9px] shrink-0 group-hover:border-blue-400/50 transition-colors">
                                   {initials}
                                 </div>
                                 <div>
-                                  <div className="font-bold text-slate-100 text-xs">{m.name}</div>
-                                  <div className="text-[10px] text-slate-400 font-mono">{m.email}</div>
+                                  <div className="font-bold text-white text-xs">{m.name}</div>
+                                  <div className="text-[10px] text-blue-300 font-mono">{m.email}</div>
                                 </div>
                               </div>
                             </td>
 
                             <td className="py-2.5 px-2.5 font-mono">
-                              <span className="px-2 py-0.5 rounded bg-slate-950/80 text-[#d4af37] border border-white/10 text-xs font-bold inline-block">
+                              <span className="px-2 py-0.5 rounded bg-white/5 text-[#d4af37] border border-white/10 text-xs font-bold inline-block">
                                 {m.accountId}
                               </span>
                             </td>
@@ -483,8 +418,8 @@ export default function AdminManagersPage() {
                               </span>
                             </td>
 
-                            <td className="py-2.5 px-2.5 font-mono text-slate-200 font-semibold">
-                              <span className="px-2 py-0.5 rounded bg-slate-950/80 text-white border border-white/10 text-[10px] font-bold">
+                            <td className="py-2.5 px-2.5 font-mono text-blue-200 font-semibold">
+                              <span className="px-2 py-0.5 rounded bg-white/5 text-white border border-white/10 text-[10px] font-bold">
                                 {m.share}
                               </span>
                             </td>
@@ -510,7 +445,7 @@ export default function AdminManagersPage() {
                                 className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg font-bold text-xs transition-all border ${
                                   isExpanded 
                                     ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border-transparent font-black shadow-md' 
-                                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-200 border-white/10 hover:border-[#d4af37]/40'
+                                    : 'bg-white/5 hover:bg-white/10 text-white border-white/10 hover:border-white/20'
                                 }`}
                               >
                                 <span>{isExpanded ? 'Hide Menu' : 'Manage'}</span>
@@ -523,17 +458,26 @@ export default function AdminManagersPage() {
                               For Viewer: Hide financial buttons (Deposit, Withdraw, Credit-In, Credit-Out). Show ONLY Investors & History Logs.
                               For Admin/SuperAdmin: Show all 6 buttons. */}
                           {isExpanded && (
-                            <tr className="bg-slate-950/60 border-b border-white/10">
-                              <td colSpan={10} className="p-3 sm:p-4">
-                                <div className="bg-slate-900 border border-white/10 rounded-xl p-3.5 shadow-2xl space-y-3">
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
-                                    <div className="text-xs font-bold uppercase tracking-wider text-white flex items-center gap-2">
-                                      <Sparkles size={14} className="text-[#d4af37]" />
-                                      <span>Manager Controls — <strong className="text-[#d4af37]">{m.name}</strong></span>
+                            <tr className="bg-[#040f33]/40 border-b border-[#24358a]">
+                              <td colSpan={10} className="p-4 sm:p-6">
+                                <div className="bg-[linear-gradient(180deg,rgba(11,34,106,0.6)_0%,rgba(7,26,87,0.8)_100%)] border border-[#113b95]/60 rounded-3xl p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_12px_40px_rgba(4,15,54,0.5)] space-y-5 relative overflow-hidden">
+                                  {/* Decorative background glow */}
+                                  <div className="absolute top-0 right-1/4 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+                                  
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#24358a]/60 pb-3 relative z-10">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-lg bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37]">
+                                        <Sparkles size={16} />
+                                      </div>
+                                      <div>
+                                        <div className="text-[10px] font-black uppercase tracking-widest text-blue-300">Manager Controls</div>
+                                        <div className="text-sm font-bold text-white mt-0.5">{m.name}</div>
+                                      </div>
                                     </div>
-                                    <span className="text-[10px] text-slate-400 font-mono">
-                                      Account Ref: <strong className="text-[#d4af37]">{m.accountId}</strong>
-                                    </span>
+                                    <div className="flex items-center gap-2 bg-[#040f33]/60 px-3 py-1.5 rounded-xl border border-white/5">
+                                      <span className="text-[10px] text-blue-300/70 font-black uppercase tracking-widest">Account Ref</span>
+                                      <strong className="text-sm font-mono text-[#d4af37]">{m.accountId}</strong>
+                                    </div>
                                   </div>
 
                                   <div className={`grid gap-2 ${
@@ -543,9 +487,9 @@ export default function AdminManagersPage() {
                                     {!isViewer && (
                                       <button 
                                         onClick={() => openFinancialModal(m, 'deposit')} 
-                                        className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                        className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-emerald-400/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                       >
-                                        <ArrowDownCircle size={16} className="text-emerald-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                        <ArrowDownCircle size={16} className="text-emerald-400 group-hover:scale-110 transition-transform" /> 
                                         <span>Deposit</span>
                                       </button>
                                     )}
@@ -553,9 +497,9 @@ export default function AdminManagersPage() {
                                     {!isViewer && (
                                       <button 
                                         onClick={() => openFinancialModal(m, 'withdraw')} 
-                                        className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                        className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-amber-400/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                       >
-                                        <ArrowUpCircle size={16} className="text-amber-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                        <ArrowUpCircle size={16} className="text-amber-400 group-hover:scale-110 transition-transform" /> 
                                         <span>Withdraw</span>
                                       </button>
                                     )}
@@ -563,9 +507,9 @@ export default function AdminManagersPage() {
                                     {!isViewer && (
                                       <button 
                                         onClick={() => openFinancialModal(m, 'credit-in')} 
-                                        className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                        className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-blue-400/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                       >
-                                        <PlusCircle size={16} className="text-blue-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                        <PlusCircle size={16} className="text-blue-400 group-hover:scale-110 transition-transform" /> 
                                         <span>Credit-In</span>
                                       </button>
                                     )}
@@ -573,9 +517,9 @@ export default function AdminManagersPage() {
                                     {!isViewer && (
                                       <button 
                                         onClick={() => openFinancialModal(m, 'credit-out')} 
-                                        className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                        className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-red-400/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                       >
-                                        <MinusCircle size={16} className="text-red-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                        <MinusCircle size={16} className="text-red-400 group-hover:scale-110 transition-transform" /> 
                                         <span>Credit-Out</span>
                                       </button>
                                     )}
@@ -583,27 +527,27 @@ export default function AdminManagersPage() {
                                     {/* History Log Button (Visible for all roles including Viewer) */}
                                     <button 
                                       onClick={() => openFinancialModal(m, 'history')} 
-                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-[#d4af37]/40 text-xs font-bold transition-all group"
+                                      className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-[#d4af37]/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                     >
-                                      <History size={16} className="text-[#d4af37] mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <History size={16} className="text-[#d4af37] group-hover:scale-110 transition-transform" /> 
                                       <span>History Logs</span>
                                     </button>
 
                                     {/* Profit Share History Button */}
                                     <button 
                                       onClick={() => setProfitShareModalManager(m)} 
-                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 text-slate-200 border border-white/10 hover:border-purple-500/50 text-xs font-bold transition-all group"
+                                      className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-purple-400/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                     >
-                                      <TrendingUp size={16} className="text-purple-400 mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <TrendingUp size={16} className="text-purple-400 group-hover:scale-110 transition-transform" /> 
                                       <span>Profit Shares</span>
                                     </button>
 
                                     {/* Investors List Button (Visible for all roles including Viewer) */}
                                     <button 
                                       onClick={() => openFinancialModal(m, 'investors_list')} 
-                                      className="flex flex-col items-center justify-center p-2.5 rounded-lg bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border border-transparent text-xs font-black transition-all group shadow-md"
+                                      className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 border border-transparent text-xs font-black transition-all shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] group"
                                     >
-                                      <Users size={16} className="mb-1 group-hover:scale-110 transition-transform" /> 
+                                      <Users size={16} className="group-hover:scale-110 transition-transform" /> 
                                       <span>Investors</span>
                                     </button>
                                   </div>
@@ -620,7 +564,7 @@ export default function AdminManagersPage() {
             </div>
 
             {/* Pagination Controls */}
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-white/5 pt-4">
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-blue-300 border-t border-white/5 pt-4">
               <div className="flex flex-wrap items-center gap-4">
                 {total !== null ? (
                   <span>
@@ -631,14 +575,14 @@ export default function AdminManagersPage() {
                 )}
 
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Rows per page:</span>
+                  <span className="text-blue-300">Rows per page:</span>
                   <select
                     value={perPage}
                     onChange={(e) => {
                       setPerPage(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-xs font-bold text-blue-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
                   >
                     <option value={10}>10</option>
                     <option value={50}>50</option>
@@ -654,12 +598,12 @@ export default function AdminManagersPage() {
                   type="button"
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={isLoading || page <= 1}
-                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold text-blue-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
                 >
                   Previous
                 </button>
 
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-blue-300">
                   Page <strong className="text-white">{page}</strong> {totalPages ? `of ${totalPages}` : ''}
                 </span>
 
@@ -667,7 +611,7 @@ export default function AdminManagersPage() {
                   type="button"
                   onClick={() => setPage((p) => p + 1)}
                   disabled={isLoading || totalPages === null || page >= totalPages}
-                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-xs font-bold text-blue-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
                 >
                   Next
                 </button>
@@ -688,7 +632,7 @@ export default function AdminManagersPage() {
       {/* ── Profit Share History Modal ── */}
       {profitShareModalManager && (
         <div className="fixed inset-0 z-[100005] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-5xl rounded-[2rem] border shadow-2xl bg-slate-950 border-slate-800 max-h-[90vh] overflow-y-auto relative">
+          <div className="w-full max-w-5xl rounded-[2.5rem] border shadow-[0_24px_60px_rgba(4,15,54,0.36)] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] border-[#113b95] max-h-[90vh] overflow-y-auto relative">
             <button
               type="button"
               onClick={() => setProfitShareModalManager(null)}

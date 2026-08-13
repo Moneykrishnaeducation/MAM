@@ -353,7 +353,7 @@ export default function AdminUsersManagementPage() {
         <title>Admin System Management | Admin Portal</title>
       </Head>
 
-      <div className="w-full text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#0c1c59] text-slate-100 font-sans antialiased">
         {/* Ambient decorative glow rings */}
         <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
@@ -361,19 +361,19 @@ export default function AdminUsersManagementPage() {
         <div className="max-w-7xl mx-auto p-4 sm:p-6 relative z-10 space-y-5">
           
           {/* HEADER BAR */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-[#081d5f] border border-[#2450b7] shadow-[0_30px_80px_rgba(4,15,54,0.3)]">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
+              <div className="w-12 h-12 rounded-xl bg-[#040f33] border border-[#2450b7] flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
                 <ShieldCheck className="w-6 h-6" />
               </div>
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[10px] font-black uppercase tracking-wider mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#d4af37]/20 border border-[#d4af37]/30 text-[#d4af37] text-[10px] font-black uppercase tracking-wider mb-1">
                   <Sparkles className="w-3 h-3 text-[#d4af37]" /> Governance & Credentials
                 </div>
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
                   {activeTab === 'users' ? 'Admin Directory' : 'MT5 Trade Group Config'}
                 </h1>
-                <p className="text-xs text-slate-400">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mt-1">
                   Manage administrative accounts, role permissions, and trading group configurations.
                 </p>
               </div>
@@ -383,7 +383,7 @@ export default function AdminUsersManagementPage() {
               {activeTab === 'users' && canCreateAdmin && (
                 <button 
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-gold-glow active:scale-95 shrink-0"
+                  className="flex items-center gap-2 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white font-black px-4 py-3 rounded-xl text-[10px] uppercase tracking-widest transition-all shadow-xl shadow-[#d4af37]/20 hover:scale-[1.02] active:scale-95 shrink-0"
                 >
                   <UserPlus size={15} /> Add Administrator
                 </button>
@@ -393,13 +393,13 @@ export default function AdminUsersManagementPage() {
 
           {/* TAB TOGGLE BAR — SuperAdmin & Admin */}
           {isSuperAdminRole(adminRole) && (
-            <div className="flex items-center gap-1.5 p-1 rounded-xl border bg-slate-900/90 border-white/10 w-fit backdrop-blur-md">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl border bg-[#081d5f] border-[#2450b7] w-fit shadow-[0_14px_30px_rgba(4,15,54,0.2)]">
               <button
                 onClick={() => setActiveTab('users')}
-                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${
                   activeTab === 'users' 
-                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold" 
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    ? "bg-[#2450b7] text-white shadow-inner font-bold" 
+                    : "text-[#8fb8ff] hover:text-white hover:bg-[#123283]"
                 }`}
               >
                 <UserIcon size={14} className={activeTab === 'users' ? "text-[#d4af37]" : ""} />
@@ -407,10 +407,10 @@ export default function AdminUsersManagementPage() {
               </button>
               <button
                 onClick={() => setActiveTab('groups')}
-                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all ${
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all ${
                   activeTab === 'groups' 
-                    ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold" 
-                    : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
+                    ? "bg-[#2450b7] text-white shadow-inner font-bold" 
+                    : "text-[#8fb8ff] hover:text-white hover:bg-[#123283]"
                 }`}
               >
                 <LayoutGrid size={14} className={activeTab === 'groups' ? "text-[#d4af37]" : ""} />
@@ -431,33 +431,33 @@ export default function AdminUsersManagementPage() {
 
               {/* SUMMARY STAT CARDS */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                <div className="bg-[#081d5f] border border-[#2450b7] rounded-2xl p-4 shadow-[0_14px_30px_rgba(4,15,54,0.3)] flex items-center justify-between">
                   <div>
-                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Total Administrators</div>
-                    <div className="text-2xl font-black text-white mt-0.5">{adminUsers.length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Accounts</span></div>
+                    <div className="text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest">Total Administrators</div>
+                    <div className="text-2xl font-black text-white mt-0.5">{adminUsers.length} <span className="text-[10px] text-[#8fb8ff]/50 font-black uppercase tracking-widest">Accounts</span></div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#2450b7]/20 border border-[#2450b7] flex items-center justify-center text-[#8fb8ff] shrink-0">
                     <ShieldCheck size={20} />
                   </div>
                 </div>
 
-                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                <div className="bg-[#081d5f] border border-[#2450b7] rounded-2xl p-4 shadow-[0_14px_30px_rgba(4,15,54,0.3)] flex items-center justify-between">
                   <div>
-                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">SuperAdmins</div>
+                    <div className="text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest">SuperAdmins</div>
                     <div className="text-2xl font-black text-[#d4af37] mt-0.5">
-                      {adminUsers.filter(u => u.role.toLowerCase() === 'superadmin').length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Users</span>
+                      {adminUsers.filter(u => u.role.toLowerCase() === 'superadmin').length} <span className="text-[10px] text-[#8fb8ff]/50 font-black uppercase tracking-widest">Users</span>
                     </div>
                   </div>
-                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-[#d4af37]/20 border border-[#d4af37]/30 flex items-center justify-center text-[#d4af37] shrink-0">
                     <Shield size={20} />
                   </div>
                 </div>
 
-                <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+                <div className="bg-[#081d5f] border border-[#2450b7] rounded-2xl p-4 shadow-[0_14px_30px_rgba(4,15,54,0.3)] flex items-center justify-between">
                   <div>
-                    <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Admins / Viewers</div>
+                    <div className="text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest">Admins / Viewers</div>
                     <div className="text-2xl font-black text-emerald-400 mt-0.5">
-                      {adminUsers.filter(u => ['admin','viewer'].includes(u.role.toLowerCase())).length} <span className="text-[10px] text-slate-500 font-semibold uppercase">Active</span>
+                      {adminUsers.filter(u => ['admin','viewer'].includes(u.role.toLowerCase())).length} <span className="text-[10px] text-[#8fb8ff]/50 font-black uppercase tracking-widest">Active</span>
                     </div>
                   </div>
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -467,17 +467,17 @@ export default function AdminUsersManagementPage() {
               </div>
 
               {/* LIST TABLE CONTAINER */}
-              <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-xl">
+              <div className="bg-[#081d5f] border border-[#2450b7] rounded-2xl p-4 sm:p-6 shadow-[0_30px_80px_rgba(4,15,54,0.3)]">
                 {/* TOOLBAR */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-white/10">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-[#2450b7]">
                   <div className="relative flex-1 max-w-md">
-                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#d4af37]" />
                     <input 
                       type="text" 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       placeholder="Search name, email, role or ID..." 
-                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-10 pr-9 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all" 
+                      className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-10 pr-9 py-3 text-[11px] font-black uppercase tracking-widest text-white placeholder:text-[#8fb8ff]/40 focus:outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner" 
                     />
                     {searchTerm && (
                       <button 
@@ -490,22 +490,22 @@ export default function AdminUsersManagementPage() {
                   </div>
 
                   <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-white/10 text-slate-400 text-xs font-medium">
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-[#0c1c59] border border-[#2450b7] text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest shadow-inner">
                       <Filter size={13} className="text-[#d4af37]" />
                       <span>Role:</span>
                       <select
                         value={roleFilter}
                         onChange={(e) => setRoleFilter(e.target.value)}
-                        className="bg-transparent text-xs font-bold text-slate-200 outline-none cursor-pointer"
+                        className="bg-transparent text-[10px] font-black uppercase tracking-widest text-white outline-none cursor-pointer"
                       >
-                        <option value="All" className="bg-slate-900 text-slate-200">All Roles</option>
-                        <option value="SuperAdmin" className="bg-slate-900 text-slate-200">SuperAdmin</option>
-                        <option value="Admin" className="bg-slate-900 text-slate-200">Admin</option>
-                        <option value="Viewer" className="bg-slate-900 text-slate-200">Viewer</option>
+                        <option value="All" className="bg-[#081d5f] text-white">All Roles</option>
+                        <option value="SuperAdmin" className="bg-[#081d5f] text-white">SuperAdmin</option>
+                        <option value="Admin" className="bg-[#081d5f] text-white">Admin</option>
+                        <option value="Viewer" className="bg-[#081d5f] text-white">Viewer</option>
                       </select>
                     </div>
 
-                    <div className="text-[11px] text-slate-500 font-mono px-2.5 py-1.5 rounded-xl bg-slate-950/40 border border-white/5">
+                    <div className="text-[10px] text-[#8fb8ff] font-black uppercase tracking-widest px-4 py-3 rounded-xl bg-[#0c1c59] border border-[#2450b7] shadow-inner">
                       Showing {filteredAdmins.length} of {adminUsers.length}
                     </div>
                   </div>
@@ -515,15 +515,15 @@ export default function AdminUsersManagementPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-slate-400 font-black uppercase tracking-wider text-[10px] border-b border-white/10 pb-2">
-                        <th className="pb-2.5 px-2">ID</th>
-                        <th className="pb-2.5 px-2">Administrator Info</th>
-                        <th className="pb-2.5 px-2">Access Role</th>
-                        <th className="pb-2.5 px-2">Created / Elevated</th>
-                        {canCreateAdmin && <th className="pb-2.5 px-2 text-right">Actions</th>}
+                      <tr className="text-[#8fb8ff] font-black uppercase tracking-widest text-[10px] border-b border-[#2450b7] pb-2">
+                        <th className="pb-3 px-2">ID</th>
+                        <th className="pb-3 px-2">Administrator Info</th>
+                        <th className="pb-3 px-2">Access Role</th>
+                        <th className="pb-3 px-2">Created / Elevated</th>
+                        {canCreateAdmin && <th className="pb-3 px-2 text-right">Actions</th>}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/5">
+                    <tbody className="divide-y divide-[#2450b7]/50">
                       {loading ? (
                         <tr>
                           <td colSpan={5} className="p-12 text-center">
@@ -546,59 +546,59 @@ export default function AdminUsersManagementPage() {
                           const roleLower = user.role.toLowerCase();
 
                           return (
-                            <tr key={user.id} className="hover:bg-slate-800/40 transition-colors group">
-                              <td className="py-2.5 px-2 font-mono text-xs font-bold text-[#d4af37]">
+                            <tr key={user.id} className="hover:bg-[#123283]/20 transition-colors group">
+                              <td className="py-4 px-2 font-black uppercase tracking-widest text-[10px] text-[#d4af37]">
                                 {user.userId}
                               </td>
-                              <td className="py-2.5 px-2">
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[11px] shrink-0 shadow-inner group-hover:border-[#d4af37]/40 transition-colors">
+                              <td className="py-4 px-2">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-9 h-9 rounded-xl bg-[#040f33] border border-[#2450b7] flex items-center justify-center font-black text-[#d4af37] text-[11px] shrink-0 shadow-inner group-hover:border-[#d4af37]/40 transition-colors">
                                     {initials}
                                   </div>
                                   <div>
-                                    <div className="font-bold text-slate-100">{user.name}</div>
-                                    <div className="text-[11px] text-slate-400 font-mono">{user.email}</div>
+                                    <div className="font-black text-white text-[11px] uppercase tracking-wide">{user.name}</div>
+                                    <div className="text-[10px] text-[#8fb8ff] font-black uppercase tracking-widest">{user.email}</div>
                                   </div>
                                 </div>
                               </td>
-                              <td className="py-2.5 px-2">
-                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest border ${
+                              <td className="py-4 px-2">
+                                <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border ${
                                   roleLower === 'superadmin'
-                                    ? 'text-amber-300 bg-amber-500/15 border-amber-500/30'
+                                    ? 'text-[#d4af37] bg-[#d4af37]/20 border-[#d4af37]/30'
                                     : roleLower === 'admin'
-                                    ? 'text-blue-400 bg-blue-500/15 border-blue-500/30'
+                                    ? 'text-[#8fb8ff] bg-[#2450b7]/40 border-[#2450b7]'
                                     : 'text-slate-400 bg-slate-500/15 border-slate-500/30'
                                 }`}>
                                   <span className={`w-1.5 h-1.5 rounded-full ${
-                                    roleLower === 'superadmin' ? 'bg-amber-400' : roleLower === 'admin' ? 'bg-blue-400' : 'bg-slate-400'
+                                    roleLower === 'superadmin' ? 'bg-[#d4af37]' : roleLower === 'admin' ? 'bg-[#8fb8ff]' : 'bg-slate-400'
                                   }`} />
                                   {user.role}
                                 </span>
                               </td>
-                              <td className="py-2.5 px-2">
-                                <div className="font-medium text-slate-200 flex items-center gap-1 text-[11px]">
-                                  <Clock className="w-3 h-3 text-slate-500" />
+                              <td className="py-4 px-2">
+                                <div className="font-black uppercase tracking-widest text-white flex items-center gap-1.5 text-[10px]">
+                                  <Clock className="w-3.5 h-3.5 text-[#8fb8ff]" />
                                   {date}
                                 </div>
-                                {time && <div className="text-[10px] text-slate-500 font-mono ml-4">{time}</div>}
+                                {time && <div className="text-[9px] text-[#8fb8ff]/70 font-black uppercase tracking-widest ml-5 mt-0.5">{time}</div>}
                               </td>
                               {canCreateAdmin && (
-                                <td className="py-2.5 px-2 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
+                                <td className="py-4 px-2 text-right">
+                                  <div className="flex items-center justify-end gap-2">
                                     <button
                                       onClick={() => handleOpenStatusModal(user)}
-                                      className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-white/5 hover:border-amber-500/30 transition-all"
+                                      className="p-2.5 rounded-xl bg-[#0c1c59] hover:bg-[#123283] text-[#d4af37] border border-[#2450b7] transition-all shadow-md"
                                       title="Edit Access Role"
                                     >
-                                      <Pencil size={13} />
+                                      <Pencil size={14} />
                                     </button>
 
                                     <button
                                       onClick={() => handleDeleteClick(user)}
-                                      className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-white/5 hover:border-red-500/30 transition-all"
+                                      className="p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 transition-all shadow-md"
                                       title="Delete Administrator"
                                     >
-                                      <Trash2 size={13} />
+                                      <Trash2 size={14} />
                                     </button>
                                   </div>
                                 </td>
@@ -624,8 +624,8 @@ export default function AdminUsersManagementPage() {
         {/* CREATE ADMIN MODAL */}
         {isCreateModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-3">
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-5 sm:p-8 max-w-lg w-full shadow-[0_30px_80px_rgba(4,15,54,0.3)] relative animate-in fade-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-6 border-b border-[#2450b7] pb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
                     <UserPlus size={18} />
@@ -640,137 +640,137 @@ export default function AdminUsersManagementPage() {
                 </button>
               </div>
 
-              <form onSubmit={handleCreateAdmin} className="space-y-3.5 text-xs">
-                <div className="grid grid-cols-2 gap-3">
+              <form onSubmit={handleCreateAdmin} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">First Name</label>
+                    <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">First Name</label>
                     <div className="relative">
-                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                       <input 
                         type="text" 
                         required
                         placeholder="John"
                         value={formData.firstName}
                         onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                        className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">Last Name</label>
+                    <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Last Name</label>
                     <div className="relative">
-                      <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                       <input 
                         type="text" 
                         required
                         placeholder="Doe"
                         value={formData.lastName}
                         onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                        className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Corporate Email</label>
+                  <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Corporate Email</label>
                   <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                     <input 
                       type="email" 
                       required
                       placeholder="name@company.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                      className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Master Password</label>
+                  <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Master Password</label>
                   <div className="relative">
-                    <Key className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                    <Key className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                     <input 
                       type={showPasswordInModal ? "text" : "password"} 
                       required
                       placeholder="••••••••••••"
                       value={formData.password}
                       onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-9 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                      className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-11 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner"
                     />
                     <button
                       type="button"
                       onClick={() => setShowPasswordInModal(prev => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8fb8ff] hover:text-white"
                     >
-                      {showPasswordInModal ? <EyeOff size={14} /> : <Eye size={14} />}
+                      {showPasswordInModal ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">Phone Number</label>
+                    <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Phone Number</label>
                     <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                       <input 
                         type="text" 
                         placeholder="+1 (555) 000-0000"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all text-xs"
+                        className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all shadow-inner"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-slate-300 font-semibold mb-1">Access Role</label>
+                    <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Access Role</label>
                     <div className="relative">
-                      <Shield className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+                      <Shield className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#d4af37]" />
                       <select
                         value={formData.role}
                         onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                        className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all cursor-pointer text-xs"
+                        className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all cursor-pointer shadow-inner"
                       >
-                        {isSuperAdminRole(adminRole) && <option value="SuperAdmin">Super Admin</option>}
-                        <option value="Admin">Admin</option>
-                        <option value="Viewer">Viewer</option>
+                        {isSuperAdminRole(adminRole) && <option value="SuperAdmin" className="bg-[#081d5f]">Super Admin</option>}
+                        <option value="Admin" className="bg-[#081d5f]">Admin</option>
+                        <option value="Viewer" className="bg-[#081d5f]">Viewer</option>
                       </select>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Physical Address</label>
+                  <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Physical Address</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-slate-500" />
+                    <MapPin className="absolute left-4 top-3.5 w-4 h-4 text-[#d4af37]" />
                     <textarea 
                       rows={2}
                       placeholder="Street, City, Country"
                       value={formData.address}
                       onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all resize-none text-xs"
+                      className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl pl-11 pr-4 py-3 text-white text-[11px] font-black uppercase tracking-widest placeholder:text-[#8fb8ff]/40 outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all resize-none shadow-inner"
                     />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+                <div className="flex items-center justify-end gap-3 pt-5 mt-2 border-t border-[#2450b7]">
                   <button 
                     type="button" 
                     onClick={() => setIsCreateModalOpen(false)} 
-                    className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
+                    className="px-6 py-3.5 rounded-xl bg-[#0c1c59] border border-[#2450b7] text-[#8fb8ff] font-black text-[10px] uppercase tracking-widest hover:bg-[#123283] hover:text-white transition-all shadow-inner"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit" 
                     disabled={createLoading} 
-                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black flex items-center gap-2 shadow-lg disabled:opacity-50"
+                    className="px-6 py-3.5 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-[#d4af37]/20 disabled:opacity-50 hover:scale-[1.02] active:scale-95 transition-all"
                   >
                     {createLoading ? (
                       <>
-                        <RefreshCw size={13} className="animate-spin" />
+                        <RefreshCw size={14} className="animate-spin" />
                         Creating...
                       </>
                     ) : (
@@ -786,27 +786,27 @@ export default function AdminUsersManagementPage() {
         {/* CONFIRM DELETE MODAL */}
         {isConfirmDeleteOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-red-500/30 rounded-2xl p-5 max-w-sm w-full shadow-2xl relative text-xs animate-in zoom-in-95 duration-200">
-              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 mb-3 mx-auto">
-                <Trash2 size={20} />
+            <div className="bg-[#081d5f] border border-red-500/50 rounded-2xl p-6 max-w-sm w-full shadow-[0_30px_80px_rgba(4,15,54,0.3)] relative animate-in zoom-in-95 duration-200">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mb-4 mx-auto shadow-inner">
+                <Trash2 size={24} />
               </div>
-              <h3 className="text-sm font-bold text-white text-center mb-1">Confirm Account Removal</h3>
-              <p className="text-slate-400 text-center mb-5 leading-relaxed">
-                Are you sure you want to delete <span className="text-slate-100 font-bold">{pendingDeleteItem?.name || pendingDeleteItem?.email || ''}</span>? This administrative access revocation cannot be undone.
+              <h3 className="text-sm font-black text-white text-center mb-2 uppercase tracking-tight">Confirm Account Removal</h3>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] text-center mb-6 leading-relaxed">
+                Are you sure you want to delete <span className="text-white bg-[#0c1c59] px-2 py-1 rounded-md border border-[#2450b7] ml-1 mr-1">{pendingDeleteItem?.name || pendingDeleteItem?.email || ''}</span>? This administrative access revocation cannot be undone.
               </p>
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => { setIsConfirmDeleteOpen(false); setPendingDeleteItem(null); }} 
-                  className="w-full py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
-                >
-                  Cancel
-                </button>
+              <div className="flex flex-col gap-3">
                 <button 
                   onClick={performDeleteConfirmed} 
                   disabled={deleteLoading}
-                  className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-4 rounded-xl bg-red-600 hover:bg-red-500 text-white font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-xl shadow-red-500/20 active:scale-95"
                 >
-                  {deleteLoading ? <RefreshCw size={13} className="animate-spin" /> : 'Delete User'}
+                  {deleteLoading ? <RefreshCw size={14} className="animate-spin" /> : 'Yes, Delete User'}
+                </button>
+                <button 
+                  onClick={() => { setIsConfirmDeleteOpen(false); setPendingDeleteItem(null); }} 
+                  className="w-full py-3.5 rounded-xl bg-[#0c1c59] text-[#8fb8ff] border border-[#2450b7] font-black text-[10px] uppercase tracking-widest hover:bg-[#123283] hover:text-white transition-all shadow-inner active:scale-95"
+                >
+                  Cancel
                 </button>
               </div>
             </div>
@@ -816,45 +816,45 @@ export default function AdminUsersManagementPage() {
         {/* EDIT ROLE MODAL */}
         {isRoleModalOpen && (
           <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
-            <div className="bg-slate-900 border border-white/10 rounded-2xl p-5 max-w-sm w-full shadow-2xl relative text-xs animate-in zoom-in-95 duration-200">
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-white/10">
-                <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
-                  <Pencil size={16} />
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-6 max-w-sm w-full shadow-[0_30px_80px_rgba(4,15,54,0.3)] relative animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#2450b7]">
+                <div className="w-12 h-12 rounded-xl bg-[#040f33] border border-[#2450b7] flex items-center justify-center text-[#d4af37] shadow-inner">
+                  <Pencil size={20} />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-white">Modify User Role</h3>
-                  <p className="text-[10px] text-slate-400">{selectedUserRow?.name}</p>
+                  <h3 className="text-base font-black text-white uppercase tracking-tight">Modify Role</h3>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#d4af37] mt-1">{selectedUserRow?.name}</p>
                 </div>
               </div>
               
-              <div className="space-y-3 mb-5">
+              <div className="space-y-4 mb-8">
                 <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Access Role Permission</label>
+                  <label className="block text-[#8fb8ff] text-[10px] font-black uppercase tracking-widest mb-1.5 ml-1">Access Role Permission</label>
                   <select
                     value={editRoleValue}
                     onChange={(e) => setEditRoleValue(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-[#d4af37] transition-all cursor-pointer text-xs"
+                    className="w-full bg-[#0c1c59] border border-[#2450b7] rounded-xl px-4 py-3 text-white text-[11px] font-black uppercase tracking-widest outline-none focus:border-[#d4af37] focus:ring-1 focus:ring-[#d4af37]/30 transition-all cursor-pointer shadow-inner"
                   >
-                    {isSuperAdminRole(adminRole) && <option value="SuperAdmin">SuperAdmin</option>}
-                    <option value="Admin">Admin</option>
-                    <option value="Viewer">Viewer</option>
+                    {isSuperAdminRole(adminRole) && <option value="SuperAdmin" className="bg-[#081d5f]">SuperAdmin</option>}
+                    <option value="Admin" className="bg-[#081d5f]">Admin</option>
+                    <option value="Viewer" className="bg-[#081d5f]">Viewer</option>
                   </select>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3">
-                <button 
-                  onClick={() => { setIsRoleModalOpen(false); setSelectedUserRow(null); }} 
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold hover:bg-slate-700 transition-colors"
-                >
-                  Cancel
-                </button>
+              <div className="flex flex-col gap-3">
                 <button 
                   onClick={handleUpdateRole} 
                   disabled={updateRoleLoading}
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black shadow-md hover:shadow-gold-glow transition-all flex items-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-4 rounded-xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#d4af37]/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95"
                 >
-                  {updateRoleLoading ? <RefreshCw size={13} className="animate-spin" /> : 'Update Role'}
+                  {updateRoleLoading ? <RefreshCw size={14} className="animate-spin" /> : 'Save Role Change'}
+                </button>
+                <button 
+                  onClick={() => { setIsRoleModalOpen(false); setSelectedUserRow(null); }} 
+                  className="w-full py-3.5 rounded-xl bg-[#0c1c59] text-[#8fb8ff] border border-[#2450b7] font-black text-[10px] uppercase tracking-widest hover:bg-[#123283] hover:text-white transition-all shadow-inner active:scale-95"
+                >
+                  Cancel
                 </button>
               </div>
             </div>

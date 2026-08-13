@@ -1,30 +1,23 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { 
-  LifeBuoy, 
   Search, 
-  Filter, 
   CheckCircle2, 
   Clock, 
-  XCircle, 
   AlertCircle, 
-  User, 
-  Mail, 
-  Calendar, 
-  Tag, 
+  MessageSquare,
   FileText, 
-  Paperclip, 
-  Eye, 
-  RefreshCw, 
+  ChevronLeft,
   ChevronRight,
-  ShieldAlert,
-  Plus,
-  X
+  CheckCircle,
+  RefreshCw,
+  X,
+  Plus
 } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 
 type TicketStatus = 'Open' | 'Pending' | 'Closed';
-type TicketTabFilter = 'open' | 'pending';
+type TicketTabFilter = 'open' | 'pending' | 'closed';
 
 interface TicketAttachment {
   id: string;
@@ -65,84 +58,47 @@ function isViewerOnly(role: string): boolean {
   return role.toLowerCase() === 'viewer';
 }
 
-const ReplySection = ({ onSendMessage, isSubmitting }: { onSendMessage: (message: string, file: File | null) => void, isSubmitting: boolean }) => {
-  const [localMessage, setLocalMessage] = useState("");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
-  
-  return (
-    <div>
-      <div className={`p-2 rounded-2xl border transition-all focus-within:border-amber-500/50 border-white/10 bg-slate-950/40 mb-4 flex flex-col`}>
-        <textarea
-          value={localMessage}
-          onChange={(e) => setLocalMessage(e.target.value)}
-          placeholder="Compose a response..."
-          rows={3}
-          className="w-full p-2 bg-transparent text-sm text-slate-200 outline-none font-medium resize-none placeholder:text-slate-500"
-        />
-        
-        {selectedFile && (
-          <div className="relative group rounded-xl overflow-hidden border border-white/10 shadow-lg bg-black/40 p-2 max-w-[120px] mb-2 mx-2">
-            {selectedFile.type.startsWith('image/') ? (
-              <img 
-                src={URL.createObjectURL(selectedFile)} 
-                alt={selectedFile.name} 
-                className="w-full h-20 object-cover rounded-lg mb-2" 
-                onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-              />
-            ) : (
-              <div className="w-full h-20 bg-blue-900/30 rounded-lg mb-2 flex flex-col items-center justify-center text-blue-300">
-                <FileText size={24} />
-                <span className="text-[9px] uppercase tracking-wider mt-2 font-bold px-2 truncate w-full text-center">{selectedFile.name.split('.').pop()}</span>
-              </div>
-            )}
-            <p className="text-[10px] text-slate-300 truncate w-full px-1 mb-1">{selectedFile.name}</p>
-            <button
-              type="button"
-              onClick={() => setSelectedFile(null)}
-              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        )}
-        
-        <div className="flex justify-between items-center px-2 pt-2 border-t border-white/5">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            hidden 
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                setSelectedFile(e.target.files[0]);
-              }
-            }}
-          />
-          <button 
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className={`p-2 rounded-xl transition-colors hover:bg-white/10 text-slate-400 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-wider`}
-          >
-            <Plus size={16} /> Attachment
-          </button>
-          <button
-            onClick={() => {
-              if (localMessage.trim() || selectedFile) {
-                onSendMessage(localMessage, selectedFile);
-                setLocalMessage("");
-                setSelectedFile(null);
-              }
-            }}
-            disabled={(!localMessage.trim() && !selectedFile) || isSubmitting}
-            className={`px-6 py-2 rounded-xl text-xs font-black hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:hover:scale-100 bg-amber-500 text-amber-950`}
-          >
-            {isSubmitting ? 'Sending...' : 'Send Secure Message'}
-          </button>
-        </div>
+const getMessagePreview = (message: any) => {
+  if (!message) return "";
+  const text = typeof message.content === "string" ? message.content.trim() : "";
+  if (text) return text;
+  if (message.file) {
+    const fileName = message.file.split("/").pop() || "Attachment";
+    return `[Attachment] ${fileName}`;
+  }
+  return "No content";
+};
+
+const getTicketPreview = (ticket: AdminTicket) => {
+  if (!ticket) return "";
+  const description = typeof ticket.description === "string" ? ticket.description.trim() : "";
+  if (description) return description;
+  const messages = Array.isArray(ticket.messages) ? ticket.messages : [];
+  const latestMessage = messages[messages.length - 1];
+  if (latestMessage) return getMessagePreview(latestMessage);
+  return "No description provided.";
+};
+
+const TicketModal = ({ title, onClose, children }: { title: string, onClose: () => void, children: React.ReactNode }) => (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+    <div
+      className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] rounded-[2.5rem] shadow-[0_30px_80px_rgba(4,15,54,0.45)] w-full max-w-2xl overflow-hidden border border-[#2450b7] text-white animate-in zoom-in-95 duration-200"
+    >
+      <div className="flex items-center justify-between p-8 border-b border-[#1745b3]">
+        <h3 className="text-xl md:text-2xl font-black tracking-tighter uppercase text-white">
+          {title}
+        </h3>
+        <button onClick={onClose} className="p-2 hover:bg-[#1845af] rounded-full transition-colors text-[#8fb8ff] hover:text-white" type="button">
+          <X size={24} />
+        </button>
+      </div>
+      <div className="p-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {children}
       </div>
     </div>
-  );
-};
+  </div>
+);
+
 
 export default function AdminTicketsPage() {
   const [adminRole, setAdminRole] = useState('');
@@ -163,6 +119,12 @@ export default function AdminTicketsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<AdminTicket | null>(null);
 
+  // Reply state
+  const [replyMessage, setReplyMessage] = useState("");
+  const [replyFile, setReplyFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [replyLoading, setReplyLoading] = useState(false);
+
   useEffect(() => {
     setAdminRole(getAdminRole());
   }, []);
@@ -173,7 +135,7 @@ export default function AdminTicketsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
-      if (activeTab !== 'open') params.append('status', activeTab);
+      params.append('status', activeTab);
       if (searchTerm.trim()) params.append('search', searchTerm.trim());
       params.append('page', String(page));
       params.append('per_page', String(perPage));
@@ -181,14 +143,10 @@ export default function AdminTicketsPage() {
       const res = await fetch(`/api/admin/tickets?${params.toString()}`, { credentials: 'include' });
       const data = await res.json().catch(() => null);
 
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to load support tickets');
-      }
+      if (!res.ok) throw new Error(data?.message || 'Failed to load support tickets');
 
       setTickets(data?.tickets || []);
-      if (data?.summary) {
-        setSummary(data.summary);
-      }
+      if (data?.summary) setSummary(data.summary);
       setTotal(data?.total ?? 0);
       setTotalPages(data?.total_pages ?? 1);
     } catch (err: any) {
@@ -214,7 +172,6 @@ export default function AdminTicketsPage() {
       sonnerToast.error('Viewer accounts do not have permission to modify ticket status.');
       return;
     }
-
     setStatusUpdatingId(ticketId);
     try {
       const res = await fetch(`/api/admin/tickets/${ticketId}/status`, {
@@ -223,25 +180,10 @@ export default function AdminTicketsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       });
-      const data = await res.json().catch(() => null);
+      if (!res.ok) throw new Error('Failed to update ticket status');
 
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to update ticket status');
-      }
-
-      if (newStatus === 'Closed') {
-        sonnerToast.error(`Ticket #${ticketId} status set to Closed`);
-      } else {
-        sonnerToast.success(`Ticket #${ticketId} status updated to ${newStatus}`);
-      }
-
-      setTickets((prev) =>
-        prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
-      );
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket((prev) => (prev ? { ...prev, status: newStatus } : null));
-      }
-
+      setTickets((prev) => prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t)));
+      if (selectedTicket?.id === ticketId) setSelectedTicket((prev) => (prev ? { ...prev, status: newStatus } : null));
       void fetchTickets();
     } catch (err: any) {
       sonnerToast.error(err.message || 'Error updating status');
@@ -250,22 +192,15 @@ export default function AdminTicketsPage() {
     }
   };
 
-  const [isSendingMessage, setIsSendingMessage] = useState(false);
-
-  const handleSendMessage = async (content: string, file: File | null) => {
-    if (!selectedTicket) return;
-    if (isViewer) {
-      sonnerToast.error('Viewer accounts do not have permission to send messages.');
-      return;
-    }
-
-    setIsSendingMessage(true);
+  const handleSendMessage = async () => {
+    if (!selectedTicket || (!replyMessage.trim() && !replyFile)) return;
+    if (isViewer) return sonnerToast.error('Viewer accounts do not have permission to send messages.');
+    
+    setReplyLoading(true);
     try {
       const formData = new FormData();
-      formData.append("content", content);
-      if (file) {
-        formData.append("documents", file);
-      }
+      formData.append("content", replyMessage);
+      if (replyFile) formData.append("documents", replyFile);
       
       const res = await fetch(`/api/admin/tickets/${selectedTicket.id}/message`, {
         method: "POST",
@@ -274,449 +209,405 @@ export default function AdminTicketsPage() {
       });
       
       const data = await res.json().catch(() => null);
-      if (!res.ok) {
-        throw new Error(data?.message || "Failed to send message");
-      }
+      if (!res.ok) throw new Error(data?.message || "Failed to send message");
 
       const newMessage = data.new_message;
+      setSelectedTicket((prev) => prev ? { ...prev, messages: [...(prev.messages || []), newMessage] } : prev);
+      setTickets((prev) => prev.map(t => t.id === selectedTicket.id ? { ...t, messages: [...(t.messages || []), newMessage] } : t));
       
-      setSelectedTicket((prev) => {
-        if (!prev) return prev;
-        const updatedMessages = [...(prev.messages || []), newMessage];
-        return { ...prev, messages: updatedMessages };
-      });
-
-      setTickets((prev) => prev.map(t => {
-        if (t.id === selectedTicket.id) {
-          const updatedMessages = [...(t.messages || []), newMessage];
-          return { ...t, messages: updatedMessages };
-        }
-        return t;
-      }));
-
+      setReplyMessage("");
+      setReplyFile(null);
       sonnerToast.success("Message sent successfully!");
     } catch (err: any) {
       sonnerToast.error(err.message || "Error sending message");
     } finally {
-      setIsSendingMessage(false);
+      setReplyLoading(false);
     }
   };
 
-  const getPriorityBadgeClass = (priority: string) => {
-    const p = String(priority || '').toLowerCase();
-    if (p === 'urgent' || p === 'high') {
-      return 'bg-red-500/15 border-red-500/30 text-red-400';
-    }
-    if (p === 'medium') {
-      return 'bg-amber-500/15 border-amber-500/30 text-amber-400';
-    }
-    return 'bg-blue-500/15 border-blue-500/30 text-blue-400';
-  };
-
-  const getStatusBadgeClass = (status: TicketStatus) => {
-    switch (status) {
-      case 'Open':
-        return 'bg-amber-500/15 border-amber-500/30 text-amber-400';
-      case 'Pending':
-        return 'bg-blue-500/15 border-blue-500/30 text-blue-400';
-      case 'Closed':
-        return 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400';
-      default:
-        return 'bg-slate-700/50 border-slate-600 text-slate-300';
-    }
-  };
 
   return (
     <>
       <Head>
-        <title>Client Support Tickets | Admin Panel</title>
-        <meta name="description" content="View and respond to client support tickets" />
+        <title>Tickets Directory | Admin Portal</title>
       </Head>
 
-      <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto text-slate-100">
-        
-        {/* HEADER */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/10 pb-6">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-[#d4af37]">
-                <LifeBuoy size={22} />
-              </div>
-              <h1 className="text-2xl font-black tracking-tight text-white uppercase">Client Support Tickets</h1>
-            </div>
-            <p className="mt-1 text-xs text-slate-400">
-              Manage client inquiries, technical questions, and account support requests.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => void fetchTickets()}
-            disabled={loading}
-            className="self-start md:self-auto flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition-all"
-          >
-            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-        </div>
+      <div className="w-full min-h-screen bg-[#0c1c59] text-white font-sans antialiased relative overflow-hidden">
+        {/* Ambient decorative glow rings */}
+        <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* SUMMARY CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between text-slate-400 text-xs font-semibold">
-              <span>Total Tickets</span>
-              <LifeBuoy size={16} className="text-blue-400" />
-            </div>
-            <p className="mt-2 text-2xl font-black text-white">{summary.total_tickets}</p>
-          </div>
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between text-amber-400 text-xs font-semibold">
-              <span>Open</span>
-              <AlertCircle size={16} className="text-amber-400" />
-            </div>
-            <p className="mt-2 text-2xl font-black text-amber-300">{summary.open_count}</p>
-          </div>
-          <div className="rounded-2xl border border-blue-500/20 bg-blue-500/5 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between text-blue-400 text-xs font-semibold">
-              <span>In Progress</span>
-              <Clock size={16} className="text-blue-400" />
-            </div>
-            <p className="mt-2 text-2xl font-black text-blue-300">{summary.pending_count}</p>
-          </div>
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 backdrop-blur-md">
-            <div className="flex items-center justify-between text-emerald-400 text-xs font-semibold">
-              <span>Closed</span>
-              <CheckCircle2 size={16} className="text-emerald-400" />
-            </div>
-            <p className="mt-2 text-2xl font-black text-emerald-300">{summary.closed_count}</p>
-          </div>
-        </div>
-
-        {/* FILTERS & SEARCH */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-            {(['open', 'pending'] as TicketTabFilter[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  activeTab === tab
-                    ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-md font-black'
-                    : 'bg-slate-900/60 border border-white/10 text-slate-300 hover:bg-white/10 hover:text-white'
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative flex-1 md:max-w-xs">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-            <input
-              type="text"
-              placeholder="Search subject, client, ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-900/80 border border-white/15 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-amber-500/50 transition-colors"
-            />
-          </div>
-        </div>
-
-        {/* TICKETS TABLE */}
-        <div className="rounded-2xl border border-white/10 bg-slate-900/60 overflow-hidden shadow-2xl backdrop-blur-md">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/70 border-b border-white/10 text-[11px] font-black uppercase tracking-wider text-slate-400">
-                <tr>
-                  <th className="py-3.5 px-4">Ticket ID</th>
-                  <th className="py-3.5 px-4">Client</th>
-                  <th className="py-3.5 px-4">Subject & Category</th>
-                  <th className="py-3.5 px-4">Priority</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Submitted Date</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <RefreshCw size={20} className="animate-spin text-amber-400" />
-                        <span>Loading tickets...</span>
-                      </div>
-                    </td>
-                  </tr>
-                ) : tickets.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      <p className="font-semibold text-slate-300">No tickets found</p>
-                      <p className="text-[11px] text-slate-500 mt-1">Try selecting another tab or resetting search filters.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  tickets.map((t) => (
-                    <tr key={t.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-amber-400">
-                        #{t.id}
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-bold text-white">{t.user_name}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">{t.user_id} • {t.user_email}</div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <div className="font-semibold text-slate-100 max-w-xs truncate">{t.subject}</div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                          <Tag size={10} className="text-amber-400/80" />
-                          <span>{t.category || 'General'}</span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getPriorityBadgeClass(t.priority)}`}>
-                          {t.priority || 'Normal'}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadgeClass(t.status)}`}>
-                          {t.status}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-400 font-mono text-[11px]">
-                        {t.date || 'N/A'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedTicket(t)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/20 text-xs font-semibold transition-colors"
-                          >
-                            <Eye size={13} />
-                            View
-                          </button>
-                          
-                          {!isViewer && t.status !== 'Closed' && (
-                            <button
-                              type="button"
-                              disabled={statusUpdatingId === t.id}
-                              onClick={() => void handleUpdateStatus(t.id, 'Closed')}
-                              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/20 text-xs font-semibold transition-colors disabled:opacity-50"
-                            >
-                              Close
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* PAGINATION FOOTER */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 border-t border-white/10 bg-slate-950/40 text-xs text-slate-300">
-            <div className="flex items-center gap-3">
-              <span className="text-slate-400">Rows per page:</span>
-              <select
-                value={perPage}
-                onChange={(e) => {
-                  setPerPage(Number(e.target.value));
-                  setPage(1);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-slate-900 border border-white/15 text-slate-200 text-xs focus:outline-none focus:border-amber-500/50"
-              >
-                {[5, 10, 20, 50, 100].map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-              <span className="text-slate-400">
-                Showing {total > 0 ? (page - 1) * perPage + 1 : 0} - {Math.min(page * perPage, total)} of {total} tickets
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
-              >
-                Previous
-              </button>
-              
-              <span className="px-3 py-1 text-slate-400 font-mono text-xs">
-                Page {page} of {totalPages}
-              </span>
-
-              <button
-                type="button"
-                disabled={page >= totalPages || loading}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* DETAIL MODAL */}
-        {selectedTicket && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-slate-900 p-6 shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto">
-              
-              <div className="flex items-start justify-between border-b border-white/10 pb-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-black text-amber-400">#{selectedTicket.id}</span>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadgeClass(selectedTicket.status)}`}>
-                      {selectedTicket.status}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-bold text-white mt-1">{selectedTicket.subject}</h3>
-                </div>
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 md:p-8 relative z-10 space-y-6 md:space-y-8">
+          
+          {/* HEADER ROW WITH TABS AND SEARCH */}
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-[#2450b7] pb-6">
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-[#081d5f] w-full md:w-fit border border-[#2450b7] shadow-[0_20px_60px_rgba(4,15,54,0.2)]">
+              {(['open', 'pending', 'closed'] as TicketTabFilter[]).map((tab) => (
                 <button
-                  type="button"
-                  onClick={() => setSelectedTicket(null)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center justify-center gap-2 md:gap-3 px-4 py-3 md:px-8 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] transition-all duration-300 ${
+                    activeTab === tab
+                      ? "bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-xl shadow-[#d4af37]/20 scale-[1.02] flex-1 md:flex-none"
+                      : "text-[#8fb8ff] hover:text-white hover:bg-[#123283] flex-none"
+                  }`}
                 >
-                  ✕
+                  {tab === "open" && <Clock size={14} />}
+                  {tab === "pending" && <MessageSquare size={14} />}
+                  {tab === "closed" && <CheckCircle size={14} />}
+                  <span className={activeTab === tab ? "inline" : "hidden md:inline"}>
+                    {tab === 'open' ? 'Open' : tab}
+                  </span>
                 </button>
+              ))}
+            </div>
+
+            <div className="relative group w-full md:w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-[#d4af37] transition-colors" size={18} />
+              <input
+                type="text"
+                placeholder="Search Ticket ID or Subject..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#2450b7] bg-[#081d5f] text-white outline-none focus:border-[#d4af37] transition-all font-bold text-sm shadow-sm placeholder:text-[#8fb8ff]/60"
+              />
+            </div>
+          </div>
+
+          {/* MAIN TABLE CONTAINER */}
+          <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#2450b7] rounded-[2.5rem] shadow-[0_30px_80px_rgba(4,15,54,0.25)] overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <FileText size={160} className="text-[#d4af37]" />
+            </div>
+
+            <div className="relative z-10">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-[#081d5f]">
+                      <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Timestamp</th>
+                      <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Identity</th>
+                      <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Subject</th>
+                      <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Status</th>
+                      <th className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Preview</th>
+                      <th className="px-8 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#2450b7]">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={6} className="p-20 text-center">
+                          <div className="w-12 h-12 border-4 border-white/10 border-t-[#d4af37] rounded-full animate-spin mx-auto mb-4" />
+                          <p className="font-black uppercase text-xs tracking-widest text-[#8fb8ff]">Synchronizing channels...</p>
+                        </td>
+                      </tr>
+                    ) : tickets.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-24 text-center opacity-60">
+                          <div className="w-20 h-20 bg-[#081d5f] rounded-full flex items-center justify-center mx-auto mb-6 border border-[#2450b7]">
+                            <Search className="text-[#8fb8ff]" size={32} />
+                          </div>
+                          <p className="text-2xl font-black uppercase tracking-tighter mb-2 text-white">No Records Found</p>
+                          <p className="text-xs text-[#8fb8ff] font-bold uppercase tracking-widest">System standby — awaiting inquiries</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      tickets.map((ticket, i) => {
+                        const status = (ticket.status || "Open").toLowerCase();
+                        const statusStyle = 
+                          status === "open" ? "bg-blue-500/10 text-blue-500" : 
+                          status === "pending" ? "bg-[#d4af37]/10 text-[#d4af37]" : 
+                          "bg-emerald-500/10 text-emerald-500";
+
+                        return (
+                          <tr key={ticket.id} className="group hover:bg-white/5 transition-colors">
+                            <td className="px-8 py-6">
+                              <p className="font-black text-sm text-white">{ticket.date || 'N/A'}</p>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="font-bold block text-white">{ticket.user_name || "Anonymous"}</span>
+                              <span className="text-[10px] font-black text-[#d4af37] uppercase tracking-tighter">UID: {ticket.user_id || "N/A"}</span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="font-bold block truncate max-w-[150px] text-white">
+                                {ticket.subject}
+                              </span>
+                              <span className="text-[10px] font-mono text-[#8fb8ff]">#TID-{ticket.id}</span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusStyle}`}>
+                                {status === 'open' ? 'Waiting' : status}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <p className="text-xs font-medium truncate max-w-[200px] text-[#8fb8ff]">
+                                {getTicketPreview(ticket)}
+                              </p>
+                            </td>
+                            <td className="px-8 py-6 text-right">
+                              <button
+                                onClick={() => setSelectedTicket(ticket)}
+                                className="px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest bg-[#081d5f] text-white hover:bg-[#123283] transition-all duration-300 shadow-lg shadow-blue-900/20 border border-[#2450b7]"
+                              >
+                                Access
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
               </div>
 
-              {/* CLIENT META */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-3.5 rounded-xl bg-slate-950/60 border border-white/5 text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Client Name</span>
-                  <span className="font-semibold text-white">{selectedTicket.user_name}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Client Code</span>
-                  <span className="font-mono text-slate-200">{selectedTicket.user_id}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Client Email</span>
-                  <span className="font-mono text-slate-200 truncate block">{selectedTicket.user_email}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Category</span>
-                  <span className="text-slate-200">{selectedTicket.category || 'General'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Priority</span>
-                  <span className={`font-semibold ${selectedTicket.priority === 'High' ? 'text-red-400' : 'text-blue-300'}`}>{selectedTicket.priority || 'Normal'}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-bold uppercase">Submitted</span>
-                  <span className="text-slate-300 font-mono">{selectedTicket.date || 'N/A'}</span>
-                </div>
-              </div>
-
-              {/* DESCRIPTION */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</h4>
-                <div className="p-4 rounded-xl bg-slate-950/80 border border-white/10 text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
-                  {selectedTicket.description || 'No description provided.'}
-                </div>
-              </div>
-
-              {/* ATTACHMENTS */}
-              {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1">
-                    <Paperclip size={12} />
-                    Attachments
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTicket.attachments.map((att, idx) => (
-                      <a
-                        key={att.id || idx}
-                        href={att.file_url || att.file || '#'}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-amber-300 font-medium transition-colors"
-                      >
-                        <FileText size={14} />
-                        <span>{att.name || `Attachment #${idx + 1}`}</span>
-                      </a>
-                    ))}
+              {/* PAGINATION */}
+              <div className="p-6 md:p-8 bg-[#081d5f] border-t border-[#2450b7] flex flex-col md:flex-row justify-between items-center gap-6">
+                <div className="flex items-center gap-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">
+                    Entries <span className="text-white">{tickets.length}</span> of <span className="text-white">{total}</span>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Rows</span>
+                    <select
+                      value={perPage}
+                      onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1); }}
+                      className="bg-[#081d5f] border border-[#2450b7] rounded-lg px-2 py-1 text-[10px] font-black text-[#d4af37] outline-none"
+                    >
+                      {[10, 25, 50, 100].map(size => (
+                        <option key={size} value={size}>{size}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
-              )}
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    disabled={page === 1}
+                    onClick={() => setPage(p => p - 1)}
+                    className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <span className="px-4 font-black text-[#8fb8ff] text-xs">
+                    PAGE {page} OF {totalPages}
+                  </span>
+                  <button
+                    disabled={page >= totalPages}
+                    onClick={() => setPage(p => p + 1)}
+                    className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </div>
+              </div>
 
-              {/* MESSAGES */}
-              {selectedTicket.messages && selectedTicket.messages.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Communication History</h4>
-                  <div className="space-y-3">
-                    {selectedTicket.messages.map((msg: any) => {
-                      const isAdmin = msg.sender === 'admin';
-                      return (
-                        <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
-                          <div className={`text-[10px] mb-1 font-bold ${isAdmin ? 'text-amber-400/80' : 'text-blue-400/80'}`}>
-                            {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* VIEW MODAL */}
+      {selectedTicket && (
+        <TicketModal title={`TID-${selectedTicket.id} | ${selectedTicket.subject}`} onClose={() => { setSelectedTicket(null); setReplyMessage(""); setReplyFile(null); }}>
+          <div className="space-y-8">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-6 bg-[#081d5f] p-6 rounded-3xl border border-[#2450b7] shadow-[0_20px_60px_rgba(4,15,54,0.18)]">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-1">Status</p>
+                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
+                  (selectedTicket.status || "").toLowerCase() === "open" ? "bg-blue-500/10 text-blue-300" : 
+                  (selectedTicket.status || "").toLowerCase() === "pending" ? "bg-amber-500/10 text-amber-500" : 
+                  "bg-emerald-500/10 text-emerald-500"
+                }`}>
+                  {selectedTicket.status || "Open"}
+                </span>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-1">Client</p>
+                <p className="font-bold text-sm truncate text-white">{selectedTicket.user_name || "System"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-1">Created</p>
+                <p className="font-bold text-sm text-white">{selectedTicket.date || "N/A"}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-1">Category</p>
+                <p className="font-bold text-sm uppercase text-white">{selectedTicket.category || "General"}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-3 ml-2">Original Inquiry</p>
+              <div className="p-6 rounded-[2rem] bg-[#081d5f] border border-[#2450b7]">
+                <p className="text-sm font-medium leading-relaxed whitespace-pre-wrap text-white">
+                  {selectedTicket.description || "No description provided."}
+                </p>
+              </div>
+            </div>
+
+            {/* MESSAGES */}
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-3 ml-2">Message History</p>
+              {Array.isArray(selectedTicket.messages) && selectedTicket.messages.length > 0 ? (
+                <div 
+                  className="flex flex-col gap-3 p-6 rounded-[2rem] border border-[#202c33] bg-[#0b141a] max-h-[450px] overflow-y-auto custom-scrollbar"
+                  style={{
+                    backgroundImage: `radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 0)`,
+                    backgroundSize: '24px 24px'
+                  }}
+                >
+                  {selectedTicket.messages.map((msg: any, idx: number) => {
+                    const isAdmin = msg.sender === 'admin';
+                    const date = msg.created_at ? new Date(msg.created_at) : null;
+                    const timeString = date && !isNaN(date.getTime()) ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "";
+                    
+                    return (
+                      <div
+                        key={msg.id || idx}
+                        className={`flex w-full ${isAdmin ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] rounded-lg px-3 py-2 shadow-md relative ${
+                            isAdmin
+                              ? "bg-[#005c4b] text-[#e9edef] rounded-tr-none"
+                              : "bg-[#202c33] text-[#e9edef] rounded-tl-none"
+                          }`}
+                        >
+                          {!isAdmin && (
+                            <span className="text-xs font-bold text-[#53bdeb] block mb-1">
+                              {msg.sender_name || "User"}
+                            </span>
+                          )}
+                          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words pr-12">
+                            {msg.content || ""}
                           </div>
-                          <div className={`p-3 rounded-2xl max-w-[85%] text-sm shadow-sm ${
-                            isAdmin 
-                              ? 'bg-amber-500/10 border border-amber-500/20 text-slate-200 rounded-tr-sm' 
-                              : 'bg-slate-800 border border-white/10 text-slate-200 rounded-tl-sm'
-                          }`}>
-                            {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
-                            {msg.file && (
-                              <div className="mt-2">
-                                <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs font-medium ${isAdmin ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-blue-300'}`}>
-                                  <Paperclip size={12} />
-                                  Attachment
-                                </a>
+                          
+                          {msg.file && (
+                            <div className="mt-2 bg-[#111b21] hover:bg-[#182229] transition-colors p-2.5 rounded-lg border border-white/5 flex items-center justify-between gap-3 cursor-pointer" onClick={() => window.open(msg.file, '_blank')}>
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <FileText size={18} className="text-[#00a884] shrink-0" />
+                                <span className="text-xs font-semibold truncate text-[#e9edef] max-w-[150px]">
+                                  {msg.file.split("/").pop() || "Document"}
+                                </span>
                               </div>
+                            </div>
+                          )}
+                          
+                          <div className="absolute bottom-1 right-2 flex items-center gap-1">
+                            <span className="text-[10px] text-[#8696a0] font-medium leading-none">
+                              {timeString}
+                            </span>
+                            {isAdmin && (
+                              <span className="text-[#53bdeb] text-xs font-bold leading-none select-none">
+                                ✓✓
+                              </span>
                             )}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-6 rounded-[2rem] border border-dashed border-[#2450b7] bg-[#081d5f] text-[#8fb8ff] text-sm font-medium">
+                  No messages found for this ticket.
                 </div>
               )}
-
-              {/* REPLY SECTION */}
-              {!isViewer && (
-                <div className="pt-2">
-                  <ReplySection onSendMessage={handleSendMessage} isSubmitting={isSendingMessage} />
-                </div>
-              )}
-
-              {/* ACTION FOOTER */}
-              {!isViewer && (
-                <div className="pt-4 border-t border-white/10 flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-400">Update Ticket Status:</span>
-                  <div className="flex items-center gap-2">
-                    {(['Open', 'Pending', 'Closed'] as TicketStatus[]).map((st) => (
-                      <button
-                        key={st}
-                        type="button"
-                        disabled={selectedTicket.status === st || statusUpdatingId === selectedTicket.id}
-                        onClick={() => void handleUpdateStatus(selectedTicket.id, st)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                          selectedTicket.status === st
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-200'
-                        }`}
-                      >
-                        Set {st}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
             </div>
-          </div>
-        )}
 
-      </div>
+            {/* SECURE ATTACHMENTS */}
+            {Array.isArray(selectedTicket.attachments) && selectedTicket.attachments.length > 0 && (
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#8fb8ff] mb-3 ml-2">Secure Attachments</p>
+                <div className="flex flex-wrap gap-4 p-4 rounded-[2rem] border border-[#2450b7] bg-[#081d5f]">
+                  {selectedTicket.attachments.map((att: any, idx: number) => {
+                    const fileUrl = att.file_url || att.file || '';
+                    if (!fileUrl) return null;
+                    const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(fileUrl);
+                    return (
+                      <div key={att.id || idx} className="group relative">
+                        {isImage ? (
+                          <a href={fileUrl} target="_blank" rel="noreferrer" className="block w-24 h-24 rounded-xl overflow-hidden border border-[#2450b7] hover:border-[#d4af37] transition-all shadow-lg">
+                            <img src={fileUrl} alt={att.name || 'Attachment'} className="w-full h-full object-cover" />
+                          </a>
+                        ) : (
+                          <a href={fileUrl} target="_blank" rel="noreferrer" className="flex flex-col items-center justify-center w-24 h-24 rounded-xl border border-[#2450b7] hover:border-[#d4af37] transition-all shadow-lg bg-[#040f33]">
+                            <FileText className="text-[#d4af37] mb-2" size={20} />
+                            <span className="text-[9px] font-black uppercase tracking-tighter text-[#8fb8ff] text-center px-2 truncate w-full">
+                              {att.name || 'Document'}
+                            </span>
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ACTION BUTTONS */}
+            {!isViewer && (
+              <div className="flex flex-wrap gap-3 pt-4 border-t border-[#1745b3]">
+                {selectedTicket.status === "Open" && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedTicket.id, "Pending")}
+                    className="flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-[#081d5f] text-[#8fb8ff] border border-[#2450b7] shadow-xl hover:bg-[#123283] hover:text-white transition-all flex items-center justify-center gap-2"
+                  >
+                    <Clock size={16} /> Mark as In-Progress
+                  </button>
+                )}
+                {selectedTicket.status !== "Closed" && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedTicket.id, "Closed")}
+                    className="flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-xl shadow-[#d4af37]/20 hover:brightness-105 transition-all flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={16} /> Resolve & Close
+                  </button>
+                )}
+                {selectedTicket.status === "Closed" && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedTicket.id, "Open")}
+                    className="flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-[#081d5f] text-[#8fb8ff] border border-[#2450b7] shadow-xl hover:bg-[#123283] hover:text-white transition-all flex items-center justify-center gap-2"
+                  >
+                    <RefreshCw size={16} /> Reopen Ticket
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* REPLY SECTION */}
+            {!isViewer && (
+              <div className="space-y-4 pt-6">
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#d4af37] mb-3 ml-2">Official Channel Communication</p>
+                <div className="relative">
+                  <textarea
+                    value={replyMessage}
+                    onChange={(e) => setReplyMessage(e.target.value)}
+                    placeholder="Compose a secure response to the client..."
+                    rows={4}
+                    className="w-full p-6 pb-12 rounded-[2rem] border border-[#2450b7] bg-[#081d5f] text-white outline-none focus:border-[#d4af37] transition-all font-medium text-sm shadow-inner placeholder:text-[#8fb8ff]/60 custom-scrollbar"
+                  />
+                  <div className="absolute bottom-4 left-6 flex items-center gap-2">
+                    <input type="file" ref={fileInputRef} hidden onChange={(e) => setReplyFile(e.target.files?.[0] || null)} />
+                    <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-xs font-bold text-[#8fb8ff] transition-colors border border-white/5">
+                      <Plus size={14} /> {replyFile ? replyFile.name : "Attach File"}
+                    </button>
+                    {replyFile && (
+                      <button onClick={() => setReplyFile(null)} className="text-red-400 hover:text-red-300 p-1"><X size={14}/></button>
+                    )}
+                  </div>
+                </div>
+                <button
+                  onClick={handleSendMessage}
+                  disabled={(!replyMessage.trim() && !replyFile) || replyLoading}
+                  className="w-full py-5 rounded-2xl font-black text-sm uppercase tracking-widest text-slate-900 bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] border border-[#d4af37]/30 shadow-2xl hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {replyLoading ? "Transmitting..." : "Send Secure Message"}
+                </button>
+              </div>
+            )}
+          </div>
+        </TicketModal>
+      )}
     </>
   );
 }

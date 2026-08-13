@@ -61,7 +61,7 @@ interface FinancialActionModalProps {
   onClose: () => void;
   targetUser: FinancialUserTarget | null;
   modalType: FinancialModalType;
-  onConfirmAction: (actionType: string, amount: string, note: string) => void;
+  onConfirmAction: (actionType: string, amount: string, note: string) => Promise<boolean> | void;
 }
 
 export default function FinancialActionModal({
@@ -77,6 +77,8 @@ export default function FinancialActionModal({
   const [investorsList, setInvestorsList] = useState<Array<{ id: string; name: string; email: string; invested: string; profit: string }>>([]);
   const [fetchingData, setFetchingData] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   React.useEffect(() => {
     if (!isOpen || !targetUser || !modalType) return;
@@ -138,15 +140,28 @@ export default function FinancialActionModal({
 
   if (!isOpen || !targetUser || !modalType) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (modalType !== 'history' && modalType !== 'investors_list' && (!amount || Number(amount) <= 0)) {
       alert('Please enter a valid amount.');
       return;
     }
-    onConfirmAction(modalType, amount, note);
-    setAmount('');
-    setNote('');
+    
+    setIsSubmitting(true);
+    try {
+      const success = await onConfirmAction(modalType, amount, note);
+      if (success !== false) {
+        setShowSuccess(true);
+        setTimeout(() => {
+          setShowSuccess(false);
+          setAmount('');
+          setNote('');
+          onClose();
+        }, 3200);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getTitle = () => {
@@ -174,36 +189,59 @@ export default function FinancialActionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
-<div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-[900px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 my-auto">  
+    <div className="fixed inset-0 z-50 bg-[#040f33]/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      
+      {/* SUCCESS VIDEO OVERLAY POPUP */}
+      {showSuccess && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-[#040f33]/90 backdrop-blur-xl animate-in fade-in duration-300">
+          <div className="bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] border border-emerald-500/50 rounded-3xl p-8 shadow-[0_0_80px_rgba(16,185,129,0.3)] flex flex-col items-center justify-center text-center animate-in zoom-in-50 duration-500 max-w-sm w-full relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+             <video src="/success.webm" autoPlay muted playsInline className="w-40 h-40 object-contain mb-4 z-10 filter drop-shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
+             <h2 className="text-2xl font-black text-white tracking-wider mb-2 z-10 uppercase">Success!</h2>
+             <p className="text-emerald-300/80 font-bold text-xs uppercase tracking-widest z-10">
+               {modalType?.replace('-', ' ')} Processed
+             </p>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] border border-[#113b95] rounded-[2rem] w-full max-w-[900px] shadow-[0_24px_60px_rgba(4,15,54,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden animate-in zoom-in-95 duration-150 my-auto relative">  
+        {/* Decorative background glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
+
         {/* MODAL HEADER */}
-        <div className="p-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-          <div>
-            <h3 className="font-bold text-white text-base flex items-center gap-2">
-              {getIcon()} {getTitle()}
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Account: <span className="text-blue-400 font-mono font-semibold">{targetUser.accountId}</span> • {targetUser.name} ({targetUser.id})
-            </p>
+        <div className="p-6 border-b border-[#113b95]/60 flex items-center justify-between relative z-10">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-inner">
+              {getIcon()}
+            </div>
+            <div>
+              <h3 className="font-black text-white text-lg tracking-wide">
+                {getTitle()}
+              </h3>
+              <p className="text-[11px] font-semibold tracking-wider uppercase text-blue-300/70 mt-1">
+                Account: <span className="text-blue-400 font-mono font-bold ml-1 mr-2">{targetUser.accountId}</span> • <span className="ml-2 text-white">{targetUser.name}</span> ({targetUser.id})
+              </p>
+            </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-2.5 rounded-xl text-blue-300 hover:text-white hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* USER BALANCE SUMMARY BAR */}
-        <div className="px-6 py-3 bg-slate-950/70 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div>
-            <span className="text-slate-400">Current Balance:</span> <strong className="text-emerald-400 font-bold text-sm ml-1">{targetUser.balance}</strong>
+        <div className="px-6 py-4 bg-black/10 border-b border-[#113b95]/60 flex flex-wrap items-center justify-between gap-3 text-xs relative z-10">
+          <div className="flex items-center gap-2">
+            <span className="text-blue-300/70 font-black uppercase tracking-wider text-[10px]">Current Balance:</span> <strong className="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">{targetUser.balance}</strong>
           </div>
-          <div>
-            <span className="text-slate-400">Current Credit:</span> <strong className="text-amber-400 font-bold text-sm ml-1">{targetUser.credit || '$0.00'}</strong>
+          <div className="flex items-center gap-2">
+            <span className="text-blue-300/70 font-black uppercase tracking-wider text-[10px]">Current Credit:</span> <strong className="text-amber-400 font-bold text-sm bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">{targetUser.credit || '$0.00'}</strong>
           </div>
-          <div>
-            <span className="text-slate-400">Current Equity:</span> <strong className="text-cyan-400 font-bold text-sm ml-1">{targetUser.equity || targetUser.balance}</strong>
+          <div className="flex items-center gap-2">
+            <span className="text-blue-300/70 font-black uppercase tracking-wider text-[10px]">Current Equity:</span> <strong className="text-cyan-400 font-bold text-sm bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20">{targetUser.equity || targetUser.balance}</strong>
           </div>
         </div>
 
@@ -214,16 +252,16 @@ export default function FinancialActionModal({
           {modalType === 'history' && (
             <div className="space-y-4">
               {/* Header section with summary stats */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#24358a]/80">
                 <div>
-                  <h4 className="font-bold text-slate-100 text-base tracking-tight flex items-center gap-2">
+                  <h4 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
                     Transaction & Credit Logs
                   </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Audit history and balance movements for this account</p>
+                  <p className="text-xs text-blue-300 mt-0.5">Audit history and balance movements for this account</p>
                 </div>
-                <div className="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3 py-1.5 rounded-xl shadow-inner">
-                  <span className="text-[11px] text-slate-400 font-medium">Total Records:</span>
+                <div className="flex items-center gap-2 bg-[#0f2a7a]/80 border border-[#24358a] px-3 py-1.5 rounded-xl shadow-inner">
+                  <span className="text-[11px] text-blue-300 font-medium">Total Records:</span>
                   <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
                     {historyLogs.length}
                   </span>
@@ -233,23 +271,23 @@ export default function FinancialActionModal({
               {fetchingData ? (
                 <div className="py-16 text-center">
                   <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-sm text-slate-400 font-medium">Loading history logs from database...</p>
+                  <p className="text-sm text-blue-300 font-medium">Loading history logs from database...</p>
                 </div>
               ) : fetchError ? (
                 <div className="py-8 px-4 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl">
                   <p className="text-sm text-rose-400 font-medium">{fetchError}</p>
                 </div>
               ) : historyLogs.length === 0 ? (
-                <div className="py-16 text-center bg-slate-900/40 rounded-2xl border border-slate-800/60">
-                  <svg className="w-12 h-12 mx-auto text-slate-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="py-16 text-center bg-[#0f2a7a]/40 rounded-2xl border border-[#24358a]/60">
+                  <svg className="w-12 h-12 mx-auto text-blue-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <p className="text-slate-400 font-medium text-sm">No transaction or credit records found.</p>
+                  <p className="text-blue-300 font-medium text-sm">No transaction or credit records found.</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-950/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                <div className="overflow-x-auto rounded-xl border border-[#24358a]/80 bg-[#0a1a54]/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
                   <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#0b1329] border-b border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-400 z-10">
+                    <thead className="sticky top-0 bg-[#0b1329] border-b border-[#24358a] text-[11px] font-bold uppercase tracking-wider text-blue-300 z-10">
                       <tr>
                         <th scope="col" className="py-3 px-4">Type / ID</th>
                         <th scope="col" className="py-3 px-4">Account</th>
@@ -262,7 +300,7 @@ export default function FinancialActionModal({
                         <th scope="col" className="py-3 px-4 text-center">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800/60 text-xs">
+                    <tbody className="divide-y divide-[#24358a]/60 text-xs">
                       {historyLogs.map((item: any) => {
                         const amountStr = String(item.amount || "0");
                         const isPositive = !amountStr.startsWith("-");
@@ -284,7 +322,7 @@ export default function FinancialActionModal({
                         return (
                           <tr
                             key={item.id}
-                            className="hover:bg-slate-900/60 transition-colors duration-150 group"
+                            className="hover:bg-[#0f2a7a]/60 transition-colors duration-150 group"
                           >
                             {/* Type & ID */}
                             <td className="py-3.5 px-4 whitespace-nowrap">
@@ -302,7 +340,7 @@ export default function FinancialActionModal({
                                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border inline-block w-max leading-none ${badgeStyle}`}>
                                     {item.type || "LOG"}
                                   </span>
-                                  <span className="text-[10px] font-mono text-slate-500 mt-1">
+                                  <span className="text-[10px] font-mono text-blue-400 mt-1">
                                     #{item.id}
                                   </span>
                                 </div>
@@ -310,41 +348,41 @@ export default function FinancialActionModal({
                             </td>
 
                             {/* Account */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-mono">
+                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-mono">
                               {item.account || "-"}
                             </td>
 
                             {/* Description */}
                             <td className="py-3.5 px-4 min-w-[180px]">
-                              <p className="text-slate-200 font-medium leading-snug line-clamp-2">
+                              <p className="text-blue-100 font-medium leading-snug line-clamp-2">
                                 {item.description || "-"}
                               </p>
                               {item.email && item.email !== "N/A" && (
-                                <p className="text-[11px] text-slate-500 truncate mt-0.5">
+                                <p className="text-[11px] text-blue-400 truncate mt-0.5">
                                   {item.email}
                                 </p>
                               )}
                             </td>
 
                             {/* Approval Date */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-400">
-                              <p className="text-xs text-slate-300 font-medium">{item.approval_date || item.date || "-"}</p>
+                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-300">
+                              <p className="text-xs text-blue-200 font-medium">{item.approval_date || item.date || "-"}</p>
                             </td>
 
                             {/* Approved By */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-medium">
+                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
                               {item.approved_by || "-"}
                             </td>
 
                             {/* Source */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300">
+                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200">
                               <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-300">
                                 {formatHistorySource(item)}
                               </span>
                             </td>
 
                             {/* Role */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-slate-300 font-medium">
+                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
                               {item.role || "-"}
                             </td>
 
@@ -389,35 +427,35 @@ export default function FinancialActionModal({
           {/* INVESTORS LIST VIEW (FOR MANAGER) */}
           {modalType === 'investors_list' && (
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-200 flex items-center gap-2">
+              <h4 className="font-bold text-blue-100 flex items-center gap-2">
                 <Users size={16} className="text-teal-400" /> Assigned Investors under {targetUser.name}
               </h4>
               {fetchingData ? (
-                <div className="py-8 text-center text-slate-400 font-medium">Loading investors from backend...</div>
+                <div className="py-8 text-center text-blue-300 font-medium">Loading investors from backend...</div>
               ) : fetchError && investorsList.length === 0 ? (
                 <div className="py-4 text-center text-rose-400 font-medium">{fetchError}</div>
               ) : investorsList.length === 0 ? (
-                <div className="py-8 text-center text-slate-500 font-medium">No assigned investors found for this manager.</div>
+                <div className="py-8 text-center text-blue-400 font-medium">No assigned investors found for this manager.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="text-slate-400 border-b border-slate-800">
+                      <tr className="text-blue-300 border-b border-[#24358a]">
                         <th className="pb-2 font-semibold">Investor ID</th>
                         <th className="pb-2 font-semibold">Name & Email</th>
                         <th className="pb-2 font-semibold">Invested</th>
                         <th className="pb-2 text-right font-semibold">Profit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-[#24358a]">
                       {investorsList.map((inv) => (
-                        <tr key={inv.id} className="hover:bg-slate-800/40">
+                        <tr key={inv.id} className="hover:bg-[#24358a]/40">
                           <td className="py-2.5 font-mono text-blue-400">{inv.id}</td>
                           <td className="py-2.5">
-                            <div className="font-bold text-slate-200">{inv.name}</div>
-                            <div className="text-[11px] text-slate-400">{inv.email}</div>
+                            <div className="font-bold text-blue-100">{inv.name}</div>
+                            <div className="text-[11px] text-blue-300">{inv.email}</div>
                           </td>
-                          <td className="py-2.5 text-slate-200 font-semibold">{inv.invested}</td>
+                          <td className="py-2.5 text-blue-100 font-semibold">{inv.invested}</td>
                           <td className="py-2.5 text-right font-bold text-emerald-400">{inv.profit}</td>
                         </tr>
                       ))}
@@ -430,13 +468,14 @@ export default function FinancialActionModal({
 
           {/* ACTION FORM FOR DEPOSIT, WITHDRAW, CREDIT-IN, CREDIT-OUT */}
           {(modalType === 'deposit' || modalType === 'withdraw' || modalType === 'credit-in' || modalType === 'credit-out') && (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5 mt-2">
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label className="block text-blue-200 text-[11px] font-black uppercase tracking-wider mb-2 ml-1">
                   Amount ($ USD)
                 </label>
-                <div className="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5">
-                  <DollarSign size={16} className="text-slate-400" />
+                <div className="flex items-center gap-2 bg-[#040f33]/60 border border-[#113b95]/60 rounded-xl px-4 py-3 transition-all hover:bg-[#113b95]/40 hover:border-[#113b95] focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-400/20 shadow-[inset_0_2px_10px_rgba(4,15,54,0.5)] group relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl group-focus-within:bg-blue-500/20 transition-all pointer-events-none" />
+                  <DollarSign size={18} className="text-blue-400/60 group-focus-within:text-blue-400 transition-colors z-10" />
                   <input 
                     type="number" 
                     step="0.01"
@@ -444,13 +483,13 @@ export default function FinancialActionModal({
                     placeholder="0.00"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="bg-transparent border-none text-white outline-none w-full text-sm font-mono"
+                    className="bg-transparent border-none text-white outline-none w-full text-base font-mono font-bold placeholder:text-blue-300/40 z-10 relative"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-300 font-semibold mb-1">
+                <label className="block text-blue-200 text-[11px] font-black uppercase tracking-wider mb-2 ml-1">
                   Admin Note / Reference Reason
                 </label>
                 <textarea 
@@ -458,28 +497,32 @@ export default function FinancialActionModal({
                   placeholder={`Enter details for ${modalType} operation...`}
                   value={note}
                   onChange={(e) => setNote(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-white outline-none text-xs"
+                  className="w-full bg-[#040f33]/60 border border-[#113b95]/60 rounded-xl p-4 text-white outline-none text-sm transition-all hover:bg-[#113b95]/40 hover:border-[#113b95] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 shadow-[inset_0_2px_10px_rgba(4,15,54,0.5)] placeholder:text-blue-300/40 custom-scrollbar relative z-10"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-end gap-3">
+              <div className="pt-4 border-t border-[#113b95]/60 flex justify-end gap-3 mt-6">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 font-semibold text-xs transition-colors"
+                  className="px-5 py-2.5 rounded-xl bg-white/5 text-blue-300 hover:bg-white/10 hover:text-white font-bold text-xs transition-colors border border-transparent hover:border-white/10"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md ${
-                    modalType === 'deposit' ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20' :
-                    modalType === 'withdraw' ? 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20' :
-                    modalType === 'credit-in' ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/20' :
-                    'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/20'
+                  disabled={isSubmitting}
+                  className={`px-6 py-2.5 rounded-xl font-black uppercase tracking-wider text-xs transition-all shadow-lg hover:scale-105 active:scale-95 flex items-center gap-2 ${
+                    isSubmitting ? 'opacity-70 cursor-not-allowed filter grayscale' : ''
+                  } ${
+                    modalType === 'deposit' ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-slate-950 shadow-emerald-500/25 hover:shadow-emerald-500/40' :
+                    modalType === 'withdraw' ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 shadow-amber-500/25 hover:shadow-amber-500/40' :
+                    modalType === 'credit-in' ? 'bg-gradient-to-r from-blue-500 to-blue-400 text-white shadow-blue-500/25 hover:shadow-blue-500/40' :
+                    'bg-gradient-to-r from-rose-500 to-rose-400 text-white shadow-rose-500/25 hover:shadow-rose-500/40'
                   }`}
                 >
-                  Confirm {modalType.toUpperCase()}
+                  {isSubmitting && <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />}
+                  {isSubmitting ? 'Processing...' : `Confirm ${modalType}`}
                 </button>
               </div>
             </form>
@@ -488,10 +531,10 @@ export default function FinancialActionModal({
 
         {/* MODAL FOOTER FOR NON-FORM VIEWS */}
         {(modalType === 'history' || modalType === 'investors_list') && (
-          <div className="p-4 bg-slate-900 border-t border-slate-800 flex justify-end">
+          <div className="p-5 bg-black/10 border-t border-[#113b95]/60 flex justify-end relative z-10">
             <button 
               onClick={onClose}
-              className="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-colors"
+              className="px-6 py-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold text-xs transition-colors"
             >
               Close Window
             </button>

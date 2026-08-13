@@ -267,7 +267,7 @@ export default function AdminHeader() {
 
             {/* Notifications Dropdown */}
             <div className="relative" ref={notificationsRef}>
-              <button
+              {/* <button
                 type="button"
                 onClick={() => setNotificationsOpen((open) => !open)}
                 className={iconButtonClass}
@@ -278,7 +278,7 @@ export default function AdminHeader() {
                 {unreadCount > 0 && (
                   <span className="absolute right-1 top-1 flex h-2 w-2 rounded-full bg-[#d4af37] ring-2 ring-[#0d214d] animate-pulse" />
                 )}
-              </button>
+              </button> */}
 
               {notificationsOpen && (
                 <>

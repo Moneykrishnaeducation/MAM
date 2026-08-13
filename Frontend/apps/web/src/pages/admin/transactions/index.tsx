@@ -19,7 +19,9 @@ import {
   XCircle,
   CreditCard,
   ShieldCheck,
-  Ban
+  Ban,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 type TransactionType = 'Deposit' | 'Withdraw' | 'Internal Transfer';
@@ -42,6 +44,8 @@ interface TransactionItem {
   status: TransactionStatus;
   date: string;
   destination: string;
+  account_id_from?: string;
+  account_id_to?: string;
 }
 
 interface TransactionsApiResponse {
@@ -68,7 +72,7 @@ interface TransactionsApiResponse {
 }
 
 const tabs = [
-  { id: 'pending', label: 'Pending Requests' },
+  { id: 'pending', label: 'Pending' },
   { id: 'deposit', label: 'Deposits' },
   { id: 'withdraw', label: 'Withdrawals' },
   { id: 'internal', label: 'Internal Transfers' },
@@ -126,7 +130,7 @@ function getTransactionIcon(type: TransactionType) {
     return <ArrowDownLeft className="w-4 h-4 text-emerald-400" />;
   }
   if (type === 'Withdraw') {
-    return <ArrowUpRight className="w-4 h-4 text-amber-400" />;
+    return <ArrowUpRight className="w-4 h-4 text-red-400" />;
   }
   return <ArrowLeftRight className="w-4 h-4 text-blue-400" />;
 }
@@ -230,291 +234,272 @@ export default function AdminTransactionsPage() {
         <title>Transaction History & Requests | Admin Portal</title>
       </Head>
 
-      <div className="w-full text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#0c1c59] text-white font-sans antialiased relative overflow-hidden">
         {/* Ambient background glow rings */}
         <div className="fixed top-12 left-1/4 w-80 h-80 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="fixed bottom-12 right-1/3 w-96 h-96 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto p-4 sm:p-6 relative z-10 space-y-5">
+        <div className="max-w-7xl mx-auto p-3 sm:p-4 md:p-8 relative z-10 space-y-6 md:space-y-8">
           
-          {/* HEADER BANNER */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl bg-slate-900/80 border border-white/10 backdrop-blur-xl shadow-xl">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
-                <CreditCard className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[10px] font-black uppercase tracking-wider mb-1">
-                  <Sparkles className="w-3 h-3 text-[#d4af37]" /> Financial Operations
-                </div>
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">
-                  Transaction Audit Ledger
-                </h1>
-                <p className="text-xs text-slate-400">
-                  Monitor live client deposits, withdrawals, internal fund transfers, and pending requests.
-                </p>
-              </div>
+          {/* HEADER ROW WITH TABS AND ACTIONS */}
+          <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 border-b border-[#2450b7] pb-6">
+            <div className="flex flex-wrap items-center gap-2 p-2 rounded-2xl bg-[#081d5f] w-full xl:w-fit border border-[#2450b7] shadow-[0_20px_60px_rgba(4,15,54,0.2)]">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center justify-center gap-2 md:gap-3 px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.15em] transition-all duration-300 ${
+                      isActive
+                        ? "bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-xl shadow-[#d4af37]/20 scale-[1.02] flex-1 md:flex-none"
+                        : "text-[#8fb8ff] hover:text-white hover:bg-[#123283] flex-none"
+                    }`}
+                  >
+                    {tab.id === 'pending' && <Clock size={14} />}
+                    {tab.id === 'deposit' && <ArrowDownLeft size={14} />}
+                    {tab.id === 'withdraw' && <ArrowUpRight size={14} />}
+                    {tab.id === 'internal' && <ArrowLeftRight size={14} />}
+                    <span className={isActive ? "inline" : "hidden md:inline"}>{tab.label}</span>
+                  </button>
+                );
+              })}
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto">
+              <div className="relative group flex-1 xl:w-64 min-w-[200px]">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#8fb8ff] group-focus-within:text-[#d4af37] transition-colors" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search ID, user..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 rounded-2xl border border-[#2450b7] bg-[#081d5f] text-white outline-none focus:border-[#d4af37] transition-all font-bold text-xs shadow-sm placeholder:text-[#8fb8ff]/60"
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8fb8ff] hover:text-white"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-[#081d5f] border border-[#2450b7] text-[#8fb8ff] text-[10px] font-black uppercase tracking-wider">
+                <Filter size={14} className="text-[#d4af37]" />
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-transparent text-white font-bold outline-none cursor-pointer"
+                >
+                  <option value="All" className="bg-[#081d5f]">ALL STATUSES</option>
+                  <option value="Pending" className="bg-[#081d5f]">PENDING</option>
+                  <option value="Completed" className="bg-[#081d5f]">COMPLETED</option>
+                  <option value="Processing" className="bg-[#081d5f]">PROCESSING</option>
+                  <option value="Approved" className="bg-[#081d5f]">APPROVED</option>
+                  <option value="Rejected" className="bg-[#081d5f]">REJECTED</option>
+                  <option value="Failed" className="bg-[#081d5f]">FAILED</option>
+                </select>
+              </div>
+
               <button 
                 onClick={loadTransactions}
                 disabled={loading}
-                className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-white/10 transition-colors flex items-center gap-2 text-xs font-semibold"
-                title="Refresh ledger"
+                className="p-3 rounded-2xl bg-[#081d5f] border border-[#2450b7] hover:bg-[#123283] hover:text-white text-[#8fb8ff] transition-all shrink-0"
               >
-                <RefreshCw size={14} className={loading ? "animate-spin text-[#d4af37]" : ""} />
-                <span>Refresh</span>
+                <RefreshCw size={16} className={loading ? "animate-spin text-[#d4af37]" : ""} />
               </button>
 
               <button 
                 onClick={handleExportCSV}
                 disabled={filteredTransactions.length === 0}
-                className="flex items-center gap-2 bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider transition-all shadow-lg hover:shadow-gold-glow active:scale-95 disabled:opacity-50"
+                className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white font-black text-[10px] uppercase tracking-widest shadow-xl shadow-[#d4af37]/20 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
               >
-                <FileSpreadsheet size={15} /> Export CSV
+                <FileSpreadsheet size={15} /> Export
               </button>
             </div>
           </div>
 
           {/* SUMMARY STAT CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-6 shadow-[0_20px_60px_rgba(4,15,54,0.2)] flex items-center justify-between">
               <div>
-                <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Pending Approvals</div>
-                <div className="text-xl font-black text-amber-400 mt-0.5">{summary?.pending_count ?? 0} <span className="text-[10px] text-slate-500 font-semibold uppercase">Requests</span></div>
+                <div className="text-[#8fb8ff] text-[9px] font-black uppercase tracking-[0.2em] mb-2">Pending Requests</div>
+                <div className="text-2xl font-black text-amber-400">{summary?.pending_count ?? 0}</div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-                <Clock size={18} />
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
+                <Clock size={20} />
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-6 shadow-[0_20px_60px_rgba(4,15,54,0.2)] flex items-center justify-between">
               <div>
-                <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Total Deposits</div>
-                <div className="text-xl font-black text-emerald-400 mt-0.5">{summary?.deposit_count ?? 0} <span className="text-[10px] text-slate-500 font-semibold uppercase">Completed</span></div>
+                <div className="text-[#8fb8ff] text-[9px] font-black uppercase tracking-[0.2em] mb-2">Total Deposits</div>
+                <div className="text-2xl font-black text-emerald-400">{summary?.deposit_count ?? 0}</div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-                <ArrowDownLeft size={18} />
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 shadow-inner">
+                <ArrowDownLeft size={20} />
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-6 shadow-[0_20px_60px_rgba(4,15,54,0.2)] flex items-center justify-between">
               <div>
-                <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Total Withdrawals</div>
-                <div className="text-xl font-black text-blue-400 mt-0.5">{summary?.withdrawal_count ?? 0} <span className="text-[10px] text-slate-500 font-semibold uppercase">Processed</span></div>
+                <div className="text-[#8fb8ff] text-[9px] font-black uppercase tracking-[0.2em] mb-2">Total Withdrawals</div>
+                <div className="text-2xl font-black text-blue-400">{summary?.withdrawal_count ?? 0}</div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
-                <ArrowUpRight size={18} />
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 shadow-inner">
+                <ArrowUpRight size={20} />
               </div>
             </div>
 
-            <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 shadow-lg flex items-center justify-between">
+            <div className="bg-[#081d5f] border border-[#2450b7] rounded-[2rem] p-6 shadow-[0_20px_60px_rgba(4,15,54,0.2)] flex items-center justify-between">
               <div>
-                <div className="text-slate-400 text-[10px] font-black uppercase tracking-wider">Internal Transfers</div>
-                <div className="text-xl font-black text-[#d4af37] mt-0.5">{summary?.internal_count ?? 0} <span className="text-[10px] text-slate-500 font-semibold uppercase">Moved</span></div>
+                <div className="text-[#8fb8ff] text-[9px] font-black uppercase tracking-[0.2em] mb-2">Internal Transfers</div>
+                <div className="text-2xl font-black text-[#d4af37]">{summary?.internal_count ?? 0}</div>
               </div>
-              <div className="w-9 h-9 rounded-xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0">
-                <ArrowLeftRight size={18} />
+              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shrink-0 shadow-inner">
+                <ArrowLeftRight size={20} />
               </div>
             </div>
           </div>
 
-          {/* TAB BAR */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl border bg-slate-900/90 border-white/10 w-fit backdrop-blur-md overflow-x-auto max-w-full">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-black text-xs uppercase tracking-wider transition-all whitespace-nowrap ${
-                    isActive
-                      ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md font-bold"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
-                  }`}
-                >
-                  {tab.id === 'pending' && <Clock className={`w-3.5 h-3.5 ${isActive ? "text-[#d4af37]" : ""}`} />}
-                  {tab.id === 'deposit' && <ArrowDownLeft className={`w-3.5 h-3.5 ${isActive ? "text-emerald-400" : ""}`} />}
-                  {tab.id === 'withdraw' && <ArrowUpRight className={`w-3.5 h-3.5 ${isActive ? "text-amber-400" : ""}`} />}
-                  {tab.id === 'internal' && <ArrowLeftRight className={`w-3.5 h-3.5 ${isActive ? "text-blue-400" : ""}`} />}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* MAIN TABLE CONTAINER */}
-          <div className="bg-slate-900/60 border border-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 shadow-xl">
-            {/* TOOLBAR */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-white/10">
-              <div className="relative flex-1 max-w-md">
-                <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search transaction ID, user, email, method..."
-                  className="w-full bg-slate-950/80 border border-white/10 rounded-xl pl-10 pr-9 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-[#d4af37] transition-all"
-                />
-                {searchTerm && (
-                  <button 
-                    onClick={() => setSearchTerm('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200"
-                  >
-                    <X size={13} />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-950/80 border border-white/10 text-slate-400 text-xs font-medium">
-                  <Filter size={13} className="text-[#d4af37]" />
-                  <span>Status:</span>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-transparent text-xs font-bold text-slate-200 outline-none cursor-pointer"
-                  >
-                    <option value="All" className="bg-slate-900 text-slate-200">All Statuses</option>
-                    <option value="Pending" className="bg-slate-900 text-slate-200">Pending</option>
-                    <option value="Completed" className="bg-slate-900 text-slate-200">Completed</option>
-                    <option value="Processing" className="bg-slate-900 text-slate-200">Processing</option>
-                    <option value="Approved" className="bg-slate-900 text-slate-200">Approved</option>
-                    <option value="Rejected" className="bg-slate-900 text-slate-200">Rejected</option>
-                    <option value="Failed" className="bg-slate-900 text-slate-200">Failed</option>
-                  </select>
-                </div>
-
-                <div className="text-[11px] text-slate-500 font-mono px-2.5 py-1.5 rounded-xl bg-slate-950/40 border border-white/5">
-                  Showing {filteredTransactions.length} of {transactions.length}
-                </div>
-              </div>
+            {/* MAIN TABLE CONTAINER */}
+          <div className="bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#2450b7] rounded-[2.5rem] shadow-[0_30px_80px_rgba(4,15,54,0.25)] overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-8 opacity-[0.03] pointer-events-none">
+              <CreditCard size={160} className="text-[#d4af37]" />
             </div>
 
-            {error && (
-              <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-400 font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {error}
-              </div>
-            )}
-
-            {/* TABLE */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs whitespace-nowrap">
-                <thead>
-                  <tr className="text-slate-400 font-black uppercase tracking-wider text-[10px] border-b border-white/10 pb-2">
-                    <th className="pb-2.5 px-3">Tx ID</th>
-                    <th className="pb-2.5 px-3">Type</th>
-                    <th className="pb-2.5 px-3">User Details</th>
-                    <th className="pb-2.5 px-3">Account</th>
-                    <th className="pb-2.5 px-3">Amount</th>
-                    <th className="pb-2.5 px-3">Method</th>
-                    <th className="pb-2.5 px-3">Approved By</th>
-                    <th className="pb-2.5 px-3">Approval Date</th>
-                    <th className="pb-2.5 px-3">Description</th>
-                    <th className="pb-2.5 px-3">Source</th>
-                    
-                    <th className="pb-2.5 px-3">Status</th>
-                    <th className="pb-2.5 px-3 text-right">Date & Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={13} className="p-12 text-center">
-                        <div className="mx-auto mb-2.5 h-8 w-8 animate-spin rounded-full border-3 border-[#d4af37] border-t-transparent" />
-                        <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Fetching transactions...</p>
-                      </td>
+            <div className="relative z-10">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left whitespace-nowrap">
+                  <thead>
+                    <tr className="bg-[#081d5f]">
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Tx ID</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Type</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">User Details</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Account</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Amount</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Method</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Approved By</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Approval Date</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Description</th>
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Source</th>
+                      
+                      <th className="px-6 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Status</th>
+                      <th className="px-6 py-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Date & Time</th>
                     </tr>
-                  ) : filteredTransactions.length === 0 ? (
-                    <tr>
-                      <td colSpan={13} className="p-12 text-center text-slate-400">
-                        <Activity className="mx-auto mb-2 text-slate-600 h-8 w-8" />
-                        <p className="mb-0.5 text-xs font-bold text-white">No transactions match your search or filter</p>
-                        <p className="text-[11px] text-slate-500">Select a different tab or refine your query.</p>
-                      </td>
-                    </tr>
-                  ) : (
+                  </thead>
+                  <tbody className="divide-y divide-[#2450b7]">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={12} className="p-20 text-center">
+                          <div className="w-12 h-12 border-4 border-white/10 border-t-[#d4af37] rounded-full animate-spin mx-auto mb-4" />
+                          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Fetching transactions...</p>
+                        </td>
+                      </tr>
+                    ) : filteredTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={12} className="p-20 text-center">
+                          <Activity className="mx-auto mb-4 text-[#8fb8ff]/30 w-16 h-16" strokeWidth={1} />
+                          <p className="mb-2 text-sm font-bold text-white uppercase tracking-widest">No transactions found</p>
+                          <p className="text-xs text-[#8fb8ff]">Select a different tab or refine your query.</p>
+                        </td>
+                      </tr>
+                    ) : (
                     filteredTransactions.map((item) => {
                       const statusMeta = formatStatusBadge(item.status);
                       const StatusIcon = statusMeta.icon;
                       const initials = getInitials(item.user);
 
                       return (
-                        <tr key={item.id} className="hover:bg-slate-800/40 transition-colors group">
-                          <td className="py-3 px-3 font-mono text-xs font-bold text-[#d4af37]">
+                        <tr key={item.id} className="hover:bg-[#123283]/40 transition-colors group">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-mono text-xs font-bold text-[#d4af37]">
                             {item.id}
                           </td>
 
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-2 font-bold text-slate-200">
-                              <div className="p-1 rounded-lg bg-slate-950/60 border border-white/10">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <div className="flex items-center gap-2 font-bold">
+                              <div className="p-1 rounded-lg bg-[#081d5f] border border-[#2450b7]">
                                 {getTransactionIcon(item.type)}
                               </div>
-                              <span>{item.type}</span>
+                              <span className={`text-[11px] font-black uppercase tracking-wider ${
+                                item.type === 'Deposit' ? 'text-emerald-400' :
+                                item.type === 'Withdraw' ? 'text-red-400' :
+                                'text-blue-400'
+                              }`}>
+                                {item.type}
+                              </span>
                             </div>
                           </td>
 
-                          <td className="py-3 px-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 border border-white/10 flex items-center justify-center font-bold text-slate-200 text-[10px] shrink-0 group-hover:border-[#d4af37]/40 transition-colors">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-[#081d5f] border border-[#2450b7] flex items-center justify-center font-bold text-white text-[10px] shrink-0">
                                 {initials}
                               </div>
                               <div>
-                                <div className="font-bold text-slate-100">{item.user}</div>
-                                <div className="text-[11px] text-slate-400 font-mono">{item.email}</div>
+                                <div className="font-bold text-white text-xs">{item.user}</div>
+                                <div className="text-[10px] text-[#8fb8ff] font-mono">{item.email}</div>
                               </div>
                             </div>
                           </td>
 
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-300">
-                            {item.account || item.destination || '-'}
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <span className="px-2.5 py-1 rounded-lg bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 font-mono text-[11px] font-bold inline-flex items-center gap-1.5 whitespace-nowrap">
+                              {(item.account_id_from && item.account_id_to) ? (
+                                <>
+                                  {item.account_id_from} <ArrowLeftRight className="w-3 h-3 text-[#d4af37]/70 mx-0.5" /> {item.account_id_to}
+                                </>
+                              ) : (
+                                item.account || item.destination || '-'
+                              )}
+                            </span>
                           </td>
 
-                          <td className="py-3 px-3 font-mono font-bold text-white text-sm">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-mono font-black text-white text-sm">
                             {item.amount}
                           </td>
 
-                          <td className="py-3 px-3">
-                            <span className="px-2.5 py-1 rounded-lg bg-slate-950/80 text-slate-300 border border-white/10 font-medium text-[11px] inline-block shadow-inner">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <span className="px-2.5 py-1 rounded-lg bg-[#081d5f] text-white border border-[#2450b7] font-mono text-[10px] inline-block">
                               {item.method}
                             </span>
                           </td>
 
-                          <td className="py-3 px-3 text-slate-300 text-[11px]">
+                          <td className="px-6 py-4 border-b border-[#2450b7] text-white text-[11px] font-bold">
                             {item.approved_by || '-'}
                           </td>
 
-                          <td className="py-3 px-3 font-mono text-[11px] text-slate-400">
+                          <td className="px-6 py-4 border-b border-[#2450b7] font-mono text-[10px] text-[#8fb8ff]">
                             {item.approval_date || item.date}
                           </td>
 
-                          <td className="py-3 px-3">
-                            <div className="max-w-[200px] truncate text-[11px] text-slate-300" title={item.description || '-'}>
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <div className="max-w-[200px] truncate text-[11px] text-[#8fb8ff]" title={item.description || '-'}>
                               {item.description || '-'}
                             </div>
                           </td>
 
-                          <td className="py-3 px-3">
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
                             {item.source ? (
-                              <span className="px-2 py-0.5 rounded-md bg-[#d4af37]/10 text-[#e6c687] border border-[#d4af37]/25 font-semibold text-[10px] inline-block">
+                              <span className="px-2.5 py-1 rounded-lg bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/25 font-black uppercase text-[9px] inline-block tracking-wider">
                                 {item.source}
                               </span>
                             ) : (
-                              <span className="text-slate-500 text-[11px]">-</span>
+                              <span className="text-[#8fb8ff] font-mono">-</span>
                             )}
                           </td>
 
 
-                          <td className="py-3 px-3">
-                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest border ${statusMeta.style}`}>
+                          <td className="px-6 py-4 border-b border-[#2450b7]">
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest border ${statusMeta.style}`}>
                               <span className={`w-1.5 h-1.5 rounded-full ${statusMeta.dot}`} />
                               {item.status}
                             </span>
                           </td>
 
-                          <td className="py-3 px-3 text-right font-mono text-[11px] text-slate-400">
+                          <td className="px-6 py-4 border-b border-[#2450b7] text-right font-mono text-[11px] text-[#8fb8ff]">
                             {item.date}
                           </td>
                         </tr>
@@ -525,62 +510,57 @@ export default function AdminTransactionsPage() {
               </table>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400 border-t border-white/5 pt-4">
-              <div className="flex flex-wrap items-center gap-4">
-                {total !== null ? (
-                  <span>
-                    Showing <strong className="text-white">{(page - 1) * perPage + 1}</strong> - <strong className="text-white">{Math.min(page * perPage, total)}</strong> of <strong className="text-white">{total}</strong> transactions
-                  </span>
-                ) : (
-                  <span>Showing results</span>
-                )}
-
+            {/* PAGINATION */}
+            <div className="p-6 md:p-8 bg-[#081d5f] border-t border-[#2450b7] flex flex-col md:flex-row justify-between items-center gap-6">
+              <div className="flex items-center gap-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">
+                  {total !== null ? (
+                    <>
+                      Entries <span className="text-white">{(page - 1) * perPage + 1}-{Math.min(page * perPage, total)}</span> of <span className="text-white">{total}</span>
+                    </>
+                  ) : (
+                    <span>Showing results</span>
+                  )}
+                </p>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">Rows per page:</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8fb8ff]">Rows</span>
                   <select
                     value={perPage}
                     onChange={(e) => {
                       setPerPage(Number(e.target.value));
                       setPage(1);
                     }}
-                    className="px-2.5 py-1 rounded-lg bg-slate-950/80 border border-white/10 text-xs font-bold text-slate-200 focus:outline-none focus:border-[#d4af37]/60 cursor-pointer"
+                    className="bg-[#081d5f] border border-[#2450b7] rounded-lg px-2 py-1 text-[10px] font-black text-[#d4af37] outline-none"
                   >
-                    <option value={10}>10</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                    <option value={500}>500</option>
-                    <option value={1000}>1000</option>
+                    {[10, 50, 100, 500, 1000].map(size => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
                   </select>
                 </div>
               </div>
-
-              <div className="flex items-center gap-2">
+              
+              <div className="flex items-center gap-3">
                 <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={loading || page <= 1}
-                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
                 >
-                  Previous
+                  <ChevronLeft size={20} />
                 </button>
-
-                <span className="text-xs text-slate-400">
-                  Page <strong className="text-white">{page}</strong> {totalPages ? `of ${totalPages}` : ''}
+                <span className="px-4 font-black text-[#8fb8ff] text-xs">
+                  PAGE {page} {totalPages ? `OF ${totalPages}` : ''}
                 </span>
-
                 <button
-                  type="button"
-                  onClick={() => setPage((p) => p + 1)}
                   disabled={loading || totalPages === null || page >= totalPages}
-                  className="px-3 py-1.5 rounded-lg bg-slate-950/80 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-xs font-bold text-slate-300 disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  onClick={() => setPage((p) => p + 1)}
+                  className="p-3 rounded-xl border border-[#2450b7] hover:border-[#d4af37] hover:text-[#d4af37] disabled:opacity-30 disabled:cursor-not-allowed transition-all bg-[#081d5f] text-[#8fb8ff]"
                 >
-                  Next
+                  <ChevronRight size={20} />
                 </button>
               </div>
             </div>
           </div>
-
+          </div>
         </div>
       </div>
     </>

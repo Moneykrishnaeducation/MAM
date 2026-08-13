@@ -2937,7 +2937,7 @@ export default function AdminUsersPage() {
         <title>Users Directory | Admin Portal</title>
       </Head>
 
-      <div className="w-full min-h-screen bg-[#040f36] text-slate-100 font-sans antialiased">
+      <div className="w-full min-h-screen bg-[#0c1c59] text-white font-sans antialiased relative overflow-hidden">
         {/* Ambient decorative glow rings */}
         <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
           <div className="absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full bg-blue-600/10 blur-[120px] float-anim-slow" />
@@ -2947,44 +2947,18 @@ export default function AdminUsersPage() {
 
         <div className="max-w-7xl mx-auto p-3 sm:p-4 relative z-10 space-y-3.5">
           
-          {/* HEADER BANNER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] border border-[#1d53ca] shadow-[0_24px_60px_rgba(4,15,54,0.36)]">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#d4af37]/20 to-blue-600/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shadow-inner shrink-0">
-                <Users className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#d4af37]/15 border border-[#d4af37]/35 text-[#e6c687] text-[9px] font-black uppercase tracking-wider mb-0.5">
-                  <Sparkles className="w-2.5 h-2.5 text-[#d4af37]" /> User Management Engine
-                </div>
-                <h1 className="text-lg font-black tracking-tight text-white uppercase">
-                  Users Directory
-                </h1>
-                <p className="text-[11px] text-slate-400">
-                  Manage user profiles, identity verification (KYC), payment details, and trading account statuses.
-                </p>
-              </div>
-            </div>
+          {/* ACTION BUTTONS */}
+          <div className="flex justify-end items-center gap-2">
+           
 
-            <div className="flex items-center gap-2">
+            {!isViewerAdmin && (
               <button
-                type="button"
-                onClick={() => refreshUsers()}
-                className="px-4 py-2.5 rounded-xl bg-[#0b226a]/60 hover:bg-[#102c7c] text-slate-200 border border-[#1745b3] text-xs font-bold flex items-center gap-2 transition-all hover:border-[#4d7fe0] shadow-sm hover:shadow-md"
+                onClick={() => openSubRowModal(null, 'create_user')}
+                className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-slate-950 flex items-center gap-2 transition-all shadow-[0_4px_14px_rgba(201,149,8,0.25)] hover:shadow-[0_6px_20px_rgba(201,149,8,0.4)] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
               >
-                <RefreshCw size={14} className={loading ? "animate-spin text-[#3aa0ff]" : "text-[#4d7fe0]"} />
-                <span>Sync Directory</span>
+                <Plus size={16} className="opacity-80" /> Add New User
               </button>
-
-              {!isViewerAdmin && (
-                <button
-                  onClick={() => openSubRowModal(null, 'create_user')}
-                  className="px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-slate-950 flex items-center gap-2 transition-all shadow-[0_4px_14px_rgba(201,149,8,0.25)] hover:shadow-[0_6px_20px_rgba(201,149,8,0.4)] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0"
-                >
-                  <Plus size={16} className="opacity-80" /> Add New User
-                </button>
-              )}
-            </div>
+            )}
           </div>
 
           {/* SUMMARY KPI CARDS */}
@@ -3288,7 +3262,7 @@ export default function AdminUsersPage() {
               )}
 
               <div className="flex items-center gap-2">
-                <span className="text-slate-400">Rows per page:</span>
+                <span className="text-slate-400">Rows:</span>
                 <select
                   value={perPage}
                   onChange={(e) => {

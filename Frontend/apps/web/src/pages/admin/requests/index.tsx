@@ -681,6 +681,7 @@ export default function AdminPendingRequestsPage() {
                                             <th className="pb-2 px-2.5">Email</th>
                                             <th className="pb-2 px-2.5">Phone</th>
                                             <th className="pb-2 px-2.5">Country</th>
+                                            <th className="pb-2 px-2.5">Requested Changes</th>
                                             <th className="pb-2 px-2.5">Status</th>
                                             <th className="pb-2 px-2.5 text-right">Action</th>
                                         </tr>
@@ -710,6 +711,17 @@ export default function AdminPendingRequestsPage() {
                                                 </td>
                                                 <td className="py-2.5 px-2.5 text-blue-300 text-[10px]">
                                                     {p.profileFields?.find(f => f.label === 'Country')?.value || '-'}
+                                                </td>
+                                                <td className="py-2.5 px-2.5 text-blue-200 text-xs align-top">
+                                                    {p.profileSummary ? (
+                                                        <div className="max-w-[250px] whitespace-pre-line text-[10px] leading-[1.4] text-blue-100">
+                                                            {p.profileSummary}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="max-w-[250px] text-[10px]">
+                                                            <span className="text-blue-300 font-semibold">{p.fieldToUpdate}:</span> <span className="text-white">{p.requestedValue}</span>
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="py-2.5 px-2.5">
                                                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${p.status === 'Approved' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : p.status === 'Rejected' ? 'bg-red-500/15 text-red-300 border-red-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
@@ -865,7 +877,7 @@ export default function AdminPendingRequestsPage() {
                 {selectedDetail && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/25 backdrop-blur-sm animate-in fade-in duration-200">
                         <div className="bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] border border-[#113b95] rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_32px_64px_rgba(4,15,54,0.6)] relative overflow-hidden">
-                            <div className="sticky top-0 bg-white/5 backdrop-blur-xl border-b border-white/10 px-6 py-5 flex items-center justify-between z-10">
+                            <div className="sticky top-0 bg-white/5 backdrop-blur-xl border-b border-white/10 px-6 py-5 flex items-center justify-between z-40">
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 border border-[#d4af37]/35 flex items-center justify-center text-[#d4af37]">
                                         <Eye size={18} />
@@ -1033,31 +1045,31 @@ export default function AdminPendingRequestsPage() {
                                 {/* PROFILE DETAILS */}
                                 {selectedDetail.type === 'profile' && (
                                     <div className="space-y-4">
-                                        <div className="flex items-stretch gap-3">
-                                            <div className="flex-1 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/20 relative overflow-hidden flex flex-col justify-center min-w-0">
-                                                <div className="text-[9px] font-black text-rose-400/80 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><X size={10} /> Current Value</div>
-                                                <div className="text-sm font-semibold text-rose-200/60 line-through truncate">{selectedDetail.data.currentValue}</div>
-                                            </div>
-                                            
-                                            <div className="flex items-center justify-center shrink-0">
-                                                <div className="w-8 h-8 rounded-full bg-[#113b95] border border-blue-400/30 flex items-center justify-center shadow-[0_4px_12px_rgba(17,59,149,0.5)] z-10">
-                                                    <ArrowRight size={14} className="text-blue-200" />
+
+                                        {selectedDetail.data.profileSummary && (
+                                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
+                                                <div className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText size={10} /> Requested Changes Summary</div>
+                                                <div className="text-sm text-blue-100 whitespace-pre-wrap relative z-10">
+                                                    {selectedDetail.data.profileSummary}
                                                 </div>
                                             </div>
+                                        )}
 
-                                            <div className="flex-1 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 relative overflow-hidden flex flex-col justify-center shadow-[0_0_15px_rgba(16,185,129,0.1)] min-w-0">
-                                                <div className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Check size={10} /> Requested Value</div>
-                                                <div className="text-sm font-black text-emerald-300 truncate">{selectedDetail.data.requestedValue}</div>
-                                            </div>
-                                        </div>
+                                       
 
-                                        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl -mr-8 -mt-8"></div>
-                                            <div className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText size={10} /> Reason For Change</div>
-                                            <div className="text-sm text-blue-100 italic leading-relaxed pl-3 border-l-2 border-[#d4af37]/50 relative z-10 break-words">
-                                                "{selectedDetail.data.reason}"
+                                        {selectedDetail.data.profileFields && selectedDetail.data.profileFields.length > 0 && (
+                                            <div className="p-4 rounded-2xl bg-white/5 border border-white/10 relative overflow-hidden group">
+                                                <div className="text-[9px] font-black text-blue-300 uppercase tracking-widest mb-3 flex items-center gap-1.5"><User size={10} /> Full Profile Data</div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 relative z-10">
+                                                    {selectedDetail.data.profileFields.map((field, idx) => (
+                                                        <div key={idx} className="bg-black/20 p-2.5 rounded-xl border border-white/5">
+                                                            <div className="text-[9px] text-blue-300/70 uppercase mb-0.5">{field.label}</div>
+                                                            <div className="text-xs text-white font-medium truncate" title={field.value}>{field.value || '-'}</div>
+                                                        </div>
+                                                    ))}
+                                                </div>
                                             </div>
-                                        </div>
+                                        )}
                                     </div>
                                 )}
 
