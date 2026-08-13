@@ -42,6 +42,13 @@ class CopyCommand:
     @property
     def dedupe_key(self) -> str:
         """Unique logical operation key to guarantee idempotency."""
+        if self.action == ActionType.MODIFY:
+            sl_str = f"{self.price_sl:.5f}"
+            tp_str = f"{self.price_tp:.5f}"
+            if self.total_copies > 1:
+                return f"{self.action.value}_{self.master_id}_{self.master_ticket}_{self.follower_id}_trade{self.trade_index}_sl{sl_str}_tp{tp_str}"
+            return f"{self.action.value}_{self.master_id}_{self.master_ticket}_{self.follower_id}_sl{sl_str}_tp{tp_str}"
+
         if self.total_copies > 1:
             return f"{self.action.value}_{self.master_id}_{self.master_ticket}_{self.follower_id}_trade{self.trade_index}"
         return f"{self.action.value}_{self.master_id}_{self.master_ticket}_{self.follower_id}"
