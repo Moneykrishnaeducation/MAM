@@ -497,9 +497,21 @@ class MT5ManagerActions:
     def get_closed_trades(self, login_id, from_date=None, to_date=None):
         if not self.manager:
             raise Exception("MT5 Manager not connected")
-        if to_date is None:
+            
+        if isinstance(to_date, str):
+            try:
+                to_date = datetime.strptime(to_date, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                to_date = datetime.now()
+        elif to_date is None:
             to_date = datetime.now()
-        if from_date is None:
+            
+        if isinstance(from_date, str):
+            try:
+                from_date = datetime.strptime(from_date, "%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                from_date = to_date - timedelta(days=365)
+        elif from_date is None:
             from_date = to_date - timedelta(days=365)
 
         try:

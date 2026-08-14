@@ -70,12 +70,36 @@ def get_admin_closed_positions(request, account_id: int):
         # convert the object to dict if it's not already
         pos_list = []
         for p in positions:
-            if hasattr(p, '__dict__'):
-                pos_list.append(p.__dict__)
-            elif type(p) is dict:
+            if type(p) is dict:
                 pos_list.append(p)
+            elif hasattr(p, '__dict__') and p.__dict__:
+                pos_list.append(p.__dict__)
             else:
-                pos_list.append(str(p))
+                try:
+                    time_val = getattr(p, "Time", 0)
+                    time_str = datetime.fromtimestamp(time_val).strftime("%Y-%m-%d %H:%M:%S") if time_val else ""
+                    
+                    deal_dict = {
+                        "ticket": str(getattr(p, "Deal", getattr(p, "Ticket", getattr(p, "Order", "")))),
+                        "PositionID": str(getattr(p, "PositionID", getattr(p, "Position", ""))),
+                        "Symbol": str(getattr(p, "Symbol", "")),
+                        "Action": getattr(p, "Action", 0),
+                        "Volume": float(getattr(p, "VolumeClosed", getattr(p, "Volume", 0))),
+                        "ContractSize": getattr(p, "ContractSize", 0),
+                        "PriceOpen": float(getattr(p, "PricePosition", getattr(p, "Price", 0.0))),
+                        "PriceClose": float(getattr(p, "Price", 0.0)),
+                        "TimeCreate": time_str,
+                        "TimeClose": time_str,
+                        "Profit": float(getattr(p, "Profit", 0.0)),
+                        "Storage": float(getattr(p, "Storage", getattr(p, "Swap", 0.0))),
+                        "Commission": float(getattr(p, "Commission", 0.0)),
+                        "SL": float(getattr(p, "PriceSL", getattr(p, "SL", 0.0))),
+                        "TP": float(getattr(p, "PriceTP", getattr(p, "TP", 0.0))),
+                    }
+                    pos_list.append(deal_dict)
+                except Exception as ex:
+                    logger.warning(f"Failed to serialize deal {p}: {ex}")
+                    pos_list.append(str(p))
 
         return JsonResponse(
             {
