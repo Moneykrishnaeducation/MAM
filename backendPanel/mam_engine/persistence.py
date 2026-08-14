@@ -97,7 +97,7 @@ class AsyncPersistenceManager:
                 self._queue.task_done()
 
     def _persist_dedup(self, key: str):
-        """Perform atomic SQL UPSERT into adminPanel_mt5senddedup."""
+        """Perform atomic SQL UPSERT into mt5_send_dedup."""
         try:
             from django.db import connection, close_old_connections
 
@@ -105,7 +105,7 @@ class AsyncPersistenceManager:
             safe_key = "".join([c if c.isalnum() or c in ("-", "_") else "" for c in str(key)])
             with connection.cursor() as cursor:
                 cursor.execute(
-                    'INSERT INTO "adminPanel_mt5senddedup" (key, created_at) VALUES (%s, NOW()) ON CONFLICT (key) DO NOTHING;',
+                    'INSERT INTO "mt5_send_dedup" (key, created_at) VALUES (%s, NOW()) ON CONFLICT (key) DO NOTHING;',
                     [safe_key],
                 )
         except Exception as e:
