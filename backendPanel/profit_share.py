@@ -169,6 +169,7 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
 
         payout_frequency = _normalize_frequency(payout_frequency)
         now = timezone.now()
+        is_immediate_payout = payout_frequency == "immediate"
 
         with connection.cursor() as cursor:
             cursor.execute(
@@ -188,16 +189,32 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
                     commission,
                     manager_account_id,
                     investor_account_id,
-                    'Pending',
+                    'Completed' if is_immediate_payout else 'Pending',
                 ],
             )
-            logger.info(f"[PROFIT-SHARE] Saved pending history row for {follower_id}")
+            logger.info(
+                f"[PROFIT-SHARE] Saved {'completed' if is_immediate_payout else 'pending'} history row for {follower_id}"
+            )
 
         success_investor = manager.DealerBalance(
             follower_id, -commission, 2, f"MAM Profit Share ({percentage}%)"
         )
         if not success_investor:
             logger.error(f"[PROFIT-SHARE] Failed to deduct from {follower_id}.")
+            return
+
+        if is_immediate_payout:
+            success_master = manager.DealerBalance(
+                master_login, commission, 2, f"Profit Share from Inv {follower_id}"
+            )
+            if success_master:
+                logger.info(
+                    f"[PROFIT-SHARE] Immediately credited master {master_login} with {commission}."
+                )
+            else:
+                logger.error(
+                    f"[PROFIT-SHARE] Failed to immediately credit master {master_login} with {commission}."
+                )
             return
 
         if payout_frequency not in {"weekly", "biweekly", "monthly"}:
