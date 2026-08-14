@@ -10,7 +10,7 @@ import {
   DollarSign
 } from 'lucide-react';
 
-export type FinancialModalType = 'deposit' | 'withdraw' | 'credit-in' | 'credit-out' | 'history' | 'investors_list' | null;
+export type FinancialModalType = 'deposit' | 'withdraw' | 'credit-in' | 'credit-out' | 'history' | 'transaction' | 'investors_list' | 'position' | null;
 
 export interface FinancialUserTarget {
   id: string;
@@ -79,44 +79,70 @@ export default function FinancialActionModal({
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'history' | 'position'>('history');
+  const [positions, setPositions] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      if (modalType === 'position') setActiveTab('position');
+      else if (modalType === 'history' || modalType === 'transaction') setActiveTab('history');
+    }
+  }, [isOpen, modalType]);
 
   React.useEffect(() => {
     if (!isOpen || !targetUser || !modalType) return;
 
-    if (modalType === 'history') {
-      setFetchingData(true);
-      setFetchError(null);
-      fetch(`/api/admin/managers/${targetUser.accountId}/history`, { credentials: 'include' })
-        .then(res => res.json())
-        .then(async (data) => {
-          if (data.status === 'ok' && Array.isArray(data.history) && data.history.length > 0) {
-            setHistoryLogs(data.history);
-          } else {
-            // Try investor history endpoint if manager endpoint returned no records
-            const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
-            const invData = await invRes.json();
-            if (invData.status === 'ok' && Array.isArray(invData.history)) {
-              setHistoryLogs(invData.history);
+    if (modalType === 'history' || modalType === 'transaction' || modalType === 'position') {
+      if (activeTab === 'position') {
+        setFetchingData(true);
+        setFetchError(null);
+        fetch(`/api/admin/open-positions/${targetUser.accountId}`, { credentials: 'include' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.positions && Array.isArray(data.positions)) {
+              setPositions(data.positions);
             } else {
-              setHistoryLogs([]);
-              if (invData.message) setFetchError(invData.message);
+              setPositions([]);
+              if (data.error) setFetchError(data.error);
             }
-          }
-        })
-        .catch(async () => {
-          try {
-            const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
-            const invData = await invRes.json();
-            if (invData.status === 'ok' && Array.isArray(invData.history)) {
-              setHistoryLogs(invData.history);
+          })
+          .catch(() => setFetchError("Failed to load MT5 positions."))
+          .finally(() => setFetchingData(false));
+      } else {
+        setFetchingData(true);
+        setFetchError(null);
+        fetch(`/api/admin/managers/${targetUser.accountId}/history`, { credentials: 'include' })
+          .then(res => res.json())
+          .then(async (data) => {
+            if (data.status === 'ok' && Array.isArray(data.history) && data.history.length > 0) {
+              setHistoryLogs(data.history);
             } else {
+              // Try investor history endpoint if manager endpoint returned no records
+              const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
+              const invData = await invRes.json();
+              if (invData.status === 'ok' && Array.isArray(invData.history)) {
+                setHistoryLogs(invData.history);
+              } else {
+                setHistoryLogs([]);
+                if (invData.message) setFetchError(invData.message);
+              }
+            }
+          })
+          .catch(async () => {
+            try {
+              const invRes = await fetch(`/api/admin/investors/${targetUser.accountId}/history`, { credentials: 'include' });
+              const invData = await invRes.json();
+              if (invData.status === 'ok' && Array.isArray(invData.history)) {
+                setHistoryLogs(invData.history);
+              } else {
+                setFetchError("Failed to load history.");
+              }
+            } catch {
               setFetchError("Failed to load history.");
             }
-          } catch {
-            setFetchError("Failed to load history.");
-          }
-        })
-        .finally(() => setFetchingData(false));
+          })
+          .finally(() => setFetchingData(false));
+      }
     } else if (modalType === 'investors_list') {
       setFetchingData(true);
       setFetchError(null);
@@ -136,7 +162,7 @@ export default function FinancialActionModal({
         })
         .finally(() => setFetchingData(false));
     }
-  }, [isOpen, targetUser, modalType]);
+  }, [isOpen, targetUser, modalType, activeTab]);
 
   if (!isOpen || !targetUser || !modalType) return null;
 
@@ -170,7 +196,9 @@ export default function FinancialActionModal({
       case 'withdraw': return 'Process Withdrawal Payout';
       case 'credit-in': return 'Apply Credit-In (Bonus)';
       case 'credit-out': return 'Apply Credit-Out (Deduction)';
-      case 'history': return 'Account Transaction & Credit History';
+      case 'history':
+      case 'transaction': return 'Account Transaction & Credit History';
+      case 'position': return 'MT5 Open Positions';
       case 'investors_list': return 'Assigned Investors List';
       default: return '';
     }
@@ -182,7 +210,9 @@ export default function FinancialActionModal({
       case 'withdraw': return <ArrowUpCircle size={20} className="text-blue-400" />;
       case 'credit-in': return <PlusCircle size={20} className="text-purple-400" />;
       case 'credit-out': return <MinusCircle size={20} className="text-amber-400" />;
-      case 'history': return <History size={20} className="text-indigo-400" />;
+      case 'history': 
+      case 'transaction': return <History size={20} className="text-indigo-400" />;
+      case 'position': return <DollarSign size={20} className="text-[#00ffcc]" />;
       case 'investors_list': return <Users size={20} className="text-teal-400" />;
       default: return null;
     }
@@ -249,177 +279,305 @@ export default function FinancialActionModal({
         <div className="p-6 text-xs">
           
           {/* HISTORY VIEW - TABLE FORMAT */}
-          {modalType === 'history' && (
+          {(modalType === 'history' || modalType === 'transaction' || modalType === 'position') && (
             <div className="space-y-4">
-              {/* Header section with summary stats */}
-              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#24358a]/80">
-                <div>
-                  <h4 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
-                    Transaction & Credit Logs
-                  </h4>
-                  <p className="text-xs text-blue-300 mt-0.5">Audit history and balance movements for this account</p>
+              {/* Tab Navigation */}
+              {(modalType === 'transaction' || modalType === 'position' || modalType === 'history') && (
+                <div className="flex items-center gap-2 border-b border-[#24358a]/60 pb-3 mb-2">
+                  <button
+                    onClick={() => setActiveTab('history')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'history' 
+                        ? 'bg-[#d4af37] text-slate-950 shadow-md' 
+                        : 'bg-white/5 hover:bg-white/10 text-white'
+                    }`}
+                  >
+                    History
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('position')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      activeTab === 'position' 
+                        ? 'bg-[#d4af37] text-slate-950 shadow-md' 
+                        : 'bg-white/5 hover:bg-white/10 text-white'
+                    }`}
+                  >
+                    Position
+                  </button>
                 </div>
-                <div className="flex items-center gap-2 bg-[#0f2a7a]/80 border border-[#24358a] px-3 py-1.5 rounded-xl shadow-inner">
-                  <span className="text-[11px] text-blue-300 font-medium">Total Records:</span>
-                  <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
-                    {historyLogs.length}
-                  </span>
-                </div>
-              </div>
-              
-              {fetchingData ? (
-                <div className="py-16 text-center">
-                  <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-                  <p className="text-sm text-blue-300 font-medium">Loading history logs from database...</p>
-                </div>
-              ) : fetchError ? (
-                <div className="py-8 px-4 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl">
-                  <p className="text-sm text-rose-400 font-medium">{fetchError}</p>
-                </div>
-              ) : historyLogs.length === 0 ? (
-                <div className="py-16 text-center bg-[#0f2a7a]/40 rounded-2xl border border-[#24358a]/60">
-                  <svg className="w-12 h-12 mx-auto text-blue-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <p className="text-blue-300 font-medium text-sm">No transaction or credit records found.</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-[#24358a]/80 bg-[#0a1a54]/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="sticky top-0 bg-[#0b1329] border-b border-[#24358a] text-[11px] font-bold uppercase tracking-wider text-blue-300 z-10">
-                      <tr>
-                        <th scope="col" className="py-3 px-4">Type / ID</th>
-                        <th scope="col" className="py-3 px-4">Account</th>
-                        <th scope="col" className="py-3 px-4">Description</th>
-                        <th scope="col" className="py-3 px-4">Approval Date</th>
-                        <th scope="col" className="py-3 px-4">Approved By</th>
-                        <th scope="col" className="py-3 px-4">Source</th>
-                        <th scope="col" className="py-3 px-4">Role</th>
-                        <th scope="col" className="py-3 px-4 text-right">Amount</th>
-                        <th scope="col" className="py-3 px-4 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#24358a]/60 text-xs">
-                      {historyLogs.map((item: any) => {
-                        const amountStr = String(item.amount || "0");
-                        const isPositive = !amountStr.startsWith("-");
-                        const typeRaw = (item.type || item.transaction_type || "").toLowerCase();
+              )}
 
-                        let badgeStyle = "bg-purple-500/10 text-purple-400 border-purple-500/30";
-                        if (typeRaw.includes("deposit")) {
-                          badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
-                        } else if (typeRaw.includes("credit-in") || typeRaw.includes("in")) {
-                          badgeStyle = "bg-blue-500/10 text-blue-400 border-blue-500/30";
-                        } else if (typeRaw.includes("credit-out") || typeRaw.includes("out") || typeRaw.includes("withdraw")) {
-                          badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/30";
-                        }
-
-                        const statusRaw = String(item.status || "").toLowerCase();
-                        const isCompleted = ["completed", "approved"].includes(statusRaw);
-                        const isRejected = ["rejected", "failed"].includes(statusRaw);
-
-                        return (
-                          <tr
-                            key={item.id}
-                            className="hover:bg-[#0f2a7a]/60 transition-colors duration-150 group"
-                          >
-                            {/* Type & ID */}
-                            <td className="py-3.5 px-4 whitespace-nowrap">
-                              <div className="flex items-center gap-2.5">
-                                <div
-                                  className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
-                                    isPositive
-                                      ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
-                                      : "bg-rose-500/15 text-rose-400 border border-rose-500/20"
-                                  }`}
-                                >
-                                  {isPositive ? "↗" : "↘"}
-                                </div>
-                                <div className="flex flex-col">
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border inline-block w-max leading-none ${badgeStyle}`}>
-                                    {item.type || "LOG"}
-                                  </span>
-                                  <span className="text-[10px] font-mono text-blue-400 mt-1">
-                                    #{item.id}
-                                  </span>
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* Account */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-mono">
-                              {item.account || "-"}
-                            </td>
-
-                            {/* Description */}
-                            <td className="py-3.5 px-4 min-w-[180px]">
-                              <p className="text-blue-100 font-medium leading-snug line-clamp-2">
-                                {item.description || "-"}
-                              </p>
-                              {item.email && item.email !== "N/A" && (
-                                <p className="text-[11px] text-blue-400 truncate mt-0.5">
-                                  {item.email}
-                                </p>
-                              )}
-                            </td>
-
-                            {/* Approval Date */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-300">
-                              <p className="text-xs text-blue-200 font-medium">{item.approval_date || item.date || "-"}</p>
-                            </td>
-
-                            {/* Approved By */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
-                              {item.approved_by || "-"}
-                            </td>
-
-                            {/* Source */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200">
-                              <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-300">
-                                {formatHistorySource(item)}
-                              </span>
-                            </td>
-
-                            {/* Role */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
-                              {item.role || "-"}
-                            </td>
-
-                            {/* Amount */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-right font-mono font-bold text-sm">
-                              <span className={isPositive ? "text-emerald-400" : "text-rose-400"}>
-                                {item.amount}
-                              </span>
-                            </td>
-
-                            {/* Status */}
-                            <td className="py-3.5 px-4 whitespace-nowrap text-center">
-                              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border leading-none ${
-                                isRejected
-                                  ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
-                                  : isCompleted
-                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                                  : "bg-amber-500/10 text-amber-400 border-amber-500/30"
-                              }`}>
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    isRejected
-                                      ? "bg-rose-400"
-                                      : isCompleted
-                                        ? "bg-emerald-400"
-                                        : "bg-amber-400 animate-pulse"
-                                  }`}
-                                />
-                                {item.status || "Pending"}
-                              </span>
-                            </td>
+              {activeTab === 'history' ? (
+                <>
+                  {/* Header section with summary stats */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#24358a]/80">
+                    <div>
+                      <h4 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
+                        Transaction & Credit Logs
+                      </h4>
+                      <p className="text-xs text-blue-300 mt-0.5">Audit history and balance movements for this account</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-[#0f2a7a]/80 border border-[#24358a] px-3 py-1.5 rounded-xl shadow-inner">
+                      <span className="text-[11px] text-blue-300 font-medium">Total Records:</span>
+                      <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                        {historyLogs.length}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {fetchingData ? (
+                    <div className="py-16 text-center">
+                      <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+                      <p className="text-sm text-blue-300 font-medium">Loading history logs from database...</p>
+                    </div>
+                  ) : fetchError ? (
+                    <div className="py-8 px-4 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                      <p className="text-sm text-rose-400 font-medium">{fetchError}</p>
+                    </div>
+                  ) : historyLogs.length === 0 ? (
+                    <div className="py-16 text-center bg-[#0f2a7a]/40 rounded-2xl border border-[#24358a]/60">
+                      <svg className="w-12 h-12 mx-auto text-blue-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <p className="text-blue-300 font-medium text-sm">No transaction or credit records found.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-[#24358a]/80 bg-[#0a1a54]/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 bg-[#0b1329] border-b border-[#24358a] text-[11px] font-bold uppercase tracking-wider text-blue-300 z-10">
+                          <tr>
+                            <th scope="col" className="py-3 px-4">Type / ID</th>
+                            <th scope="col" className="py-3 px-4">Account</th>
+                            <th scope="col" className="py-3 px-4">Description</th>
+                            <th scope="col" className="py-3 px-4">Approval Date</th>
+                            <th scope="col" className="py-3 px-4">Approved By</th>
+                            <th scope="col" className="py-3 px-4">Source</th>
+                            <th scope="col" className="py-3 px-4">Role</th>
+                            <th scope="col" className="py-3 px-4 text-right">Amount</th>
+                            <th scope="col" className="py-3 px-4 text-center">Status</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody className="divide-y divide-[#24358a]/60 text-xs">
+                          {historyLogs.map((item: any) => {
+                            const amountStr = String(item.amount || "0");
+                            const isPositive = !amountStr.startsWith("-");
+                            const typeRaw = (item.type || item.transaction_type || "").toLowerCase();
+
+                            let badgeStyle = "bg-purple-500/10 text-purple-400 border-purple-500/30";
+                            if (typeRaw.includes("deposit")) {
+                              badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+                            } else if (typeRaw.includes("credit-in") || typeRaw.includes("in")) {
+                              badgeStyle = "bg-blue-500/10 text-blue-400 border-blue-500/30";
+                            } else if (typeRaw.includes("credit-out") || typeRaw.includes("out") || typeRaw.includes("withdraw")) {
+                              badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/30";
+                            }
+
+                            const statusRaw = String(item.status || "").toLowerCase();
+                            const isCompleted = ["completed", "approved"].includes(statusRaw);
+                            const isRejected = ["rejected", "failed"].includes(statusRaw);
+
+                            return (
+                              <tr
+                                key={item.id}
+                                className="hover:bg-[#0f2a7a]/60 transition-colors duration-150 group"
+                              >
+                                {/* Type & ID */}
+                                <td className="py-3.5 px-4 whitespace-nowrap">
+                                  <div className="flex items-center gap-2.5">
+                                    <div
+                                      className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${
+                                        isPositive
+                                          ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20"
+                                          : "bg-rose-500/15 text-rose-400 border border-rose-500/20"
+                                      }`}
+                                    >
+                                      {isPositive ? "↗" : "↘"}
+                                    </div>
+                                    <div className="flex flex-col">
+                                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border inline-block w-max leading-none ${badgeStyle}`}>
+                                        {item.type || "LOG"}
+                                      </span>
+                                      <span className="text-[10px] font-mono text-blue-400 mt-1">
+                                        #{item.id}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Account */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-mono">
+                                  {item.account || "-"}
+                                </td>
+
+                                {/* Description */}
+                                <td className="py-3.5 px-4 min-w-[180px]">
+                                  <p className="text-blue-100 font-medium leading-snug line-clamp-2">
+                                    {item.description || "-"}
+                                  </p>
+                                  {item.email && item.email !== "N/A" && (
+                                    <p className="text-[11px] text-blue-400 truncate mt-0.5">
+                                      {item.email}
+                                    </p>
+                                  )}
+                                </td>
+
+                                {/* Approval Date */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-blue-300">
+                                  <p className="text-xs text-blue-200 font-medium">{item.approval_date || item.date || "-"}</p>
+                                </td>
+
+                                {/* Approved By */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
+                                  {item.approved_by || "-"}
+                                </td>
+
+                                {/* Source */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-blue-200">
+                                  <span className="inline-flex items-center rounded-full border border-blue-500/20 bg-blue-500/10 px-2.5 py-1 text-[10px] font-bold text-blue-300">
+                                    {formatHistorySource(item)}
+                                  </span>
+                                </td>
+
+                                {/* Role */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-blue-200 font-medium">
+                                  {item.role || "-"}
+                                </td>
+
+                                {/* Amount */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-right font-mono font-bold text-sm">
+                                  <span className={isPositive ? "text-emerald-400" : "text-rose-400"}>
+                                    {item.amount}
+                                  </span>
+                                </td>
+
+                                {/* Status */}
+                                <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold border leading-none ${
+                                    isRejected
+                                      ? "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                      : isCompleted
+                                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                      : "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                  }`}>
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        isRejected
+                                          ? "bg-rose-400"
+                                          : isCompleted
+                                            ? "bg-emerald-400"
+                                            : "bg-amber-400 animate-pulse"
+                                      }`}
+                                    />
+                                    {item.status || "Pending"}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-[#24358a]/80">
+                    <div>
+                      <h4 className="font-bold text-white text-base tracking-tight flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block" />
+                        MT5 Open Positions
+                      </h4>
+                      <p className="text-xs text-blue-300 mt-0.5">Live trades for this account from MT5</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-[#0f2a7a]/80 border border-[#24358a] px-3 py-1.5 rounded-xl shadow-inner">
+                      <span className="text-[11px] text-blue-300 font-medium">Open Trades:</span>
+                      <span className="text-xs font-bold font-mono text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-md border border-blue-500/20">
+                        {positions.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {fetchingData ? (
+                    <div className="py-16 text-center">
+                      <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
+                      <p className="text-sm text-blue-300 font-medium">Fetching live MT5 positions...</p>
+                    </div>
+                  ) : fetchError ? (
+                    <div className="py-8 px-4 text-center bg-rose-500/10 border border-rose-500/20 rounded-2xl">
+                      <p className="text-sm text-rose-400 font-medium">{fetchError}</p>
+                    </div>
+                  ) : positions.length === 0 ? (
+                    <div className="py-16 text-center bg-[#0f2a7a]/40 rounded-2xl border border-[#24358a]/60">
+                      <svg className="w-12 h-12 mx-auto text-blue-500 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      <p className="text-blue-300 font-medium text-sm">No open positions in MT5 found.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-xl border border-[#24358a]/80 bg-[#0a1a54]/40 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                      <table className="w-full text-left border-collapse">
+                        <thead className="sticky top-0 bg-[#0b1329] border-b border-[#24358a] text-[11px] font-bold uppercase tracking-wider text-blue-300 z-10">
+                          <tr>
+                            <th scope="col" className="py-3 px-4">Ticket</th>
+                            <th scope="col" className="py-3 px-4">Symbol</th>
+                            <th scope="col" className="py-3 px-4">Type</th>
+                            <th scope="col" className="py-3 px-4 text-right">Volume</th>
+                            <th scope="col" className="py-3 px-4 text-right">Open Price</th>
+                            <th scope="col" className="py-3 px-4 text-right">Current Price</th>
+                            <th scope="col" className="py-3 px-4 text-right">S/L & T/P</th>
+                            <th scope="col" className="py-3 px-4 text-right">Profit</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#24358a]/60 text-xs">
+                          {positions.map((pos: any) => {
+                            const isBuy = (pos.type && pos.type.toLowerCase() === 'buy') || pos.action === 0;
+                            const profitVal = parseFloat(pos.profit || "0");
+                            const isPositiveProfit = profitVal >= 0;
+
+                            return (
+                              <tr key={pos.ticket} className="hover:bg-[#0f2a7a]/60 transition-colors duration-150 group">
+                                <td className="py-3.5 px-4 font-mono text-blue-200">
+                                  #{pos.ticket}
+                                </td>
+                                <td className="py-3.5 px-4 font-bold text-white">
+                                  {pos.symbol}
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase border inline-block leading-none ${
+                                    isBuy ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                  }`}>
+                                    {isBuy ? "BUY" : "SELL"}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono text-blue-200">
+                                  {Number(pos.volume).toFixed(2)}
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono text-blue-200">
+                                  {pos.open_price || pos.price_open}
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono text-blue-200">
+                                  {pos.current_price || pos.price_current}
+                                </td>
+                                <td className="py-3.5 px-4 text-right text-blue-300">
+                                  <div className="flex flex-col text-[10px]">
+                                    <span>SL: {pos.sl > 0 ? pos.sl : '-'}</span>
+                                    <span>TP: {pos.tp > 0 ? pos.tp : '-'}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono font-bold text-sm">
+                                  <span className={isPositiveProfit ? "text-emerald-400" : "text-rose-400"}>
+                                    {profitVal.toFixed(2)}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -530,7 +688,7 @@ export default function FinancialActionModal({
         </div>
 
         {/* MODAL FOOTER FOR NON-FORM VIEWS */}
-        {(modalType === 'history' || modalType === 'investors_list') && (
+        {(modalType === 'history' || modalType === 'transaction' || modalType === 'position' || modalType === 'investors_list') && (
           <div className="p-5 bg-black/10 border-t border-[#113b95]/60 flex justify-end relative z-10">
             <button 
               onClick={onClose}

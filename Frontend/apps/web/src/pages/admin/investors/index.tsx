@@ -388,15 +388,24 @@ export default function AdminInvestorsPage() {
                             {/* ACTIONS COLUMN:
                                 For Viewer: Show ONLY the direct History Log button (NOT inside dropdown)
                                 For Non-Viewer: Show Manage dropdown button */}
-                            <td className="py-2.5 px-2.5 text-right">
+                            <td className="py-2.5 px-2.5 text-right flex justify-end gap-2">
                               {isViewer ? (
-                                <button 
-                                  onClick={(e) => { e.stopPropagation(); openFinancialModal(inv, 'history'); }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-[#040f33]/80 hover:bg-slate-800 text-blue-100 border border-[#113b95]/60 hover:border-[#d4af37]/40 transition-all"
-                                >
-                                  <History size={13} className="text-[#d4af37]" />
-                                  <span>History Log</span>
-                                </button>
+                                <>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); openFinancialModal(inv, 'history'); }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-[#040f33]/80 hover:bg-slate-800 text-blue-100 border border-[#113b95]/60 hover:border-[#d4af37]/40 transition-all"
+                                  >
+                                    <History size={13} className="text-[#d4af37]" />
+                                    <span>History Log</span>
+                                  </button>
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); openFinancialModal(inv, 'position'); }}
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs bg-[#040f33]/80 hover:bg-slate-800 text-blue-100 border border-[#113b95]/60 hover:border-[#00ffcc]/40 transition-all"
+                                  >
+                                    <TrendingUp size={13} className="text-[#00ffcc]" />
+                                    <span>Open Positions</span>
+                                  </button>
+                                </>
                               ) : (
                                 <button 
                                   onClick={(e) => { e.stopPropagation(); toggleRow(inv.id); }}
@@ -438,7 +447,7 @@ export default function AdminInvestorsPage() {
                                   </div>
 
                                   <div className={`grid gap-2 ${
-                                    isViewer ? 'grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-5'
+                                    isViewer ? 'grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'
                                   }`}>
                                     {/* Financial buttons hidden for Viewer role */}
                                     {!isViewer && (
@@ -489,6 +498,7 @@ export default function AdminInvestorsPage() {
                                       <History size={16} className="text-[#d4af37] group-hover:scale-110 transition-transform" /> 
                                       <span>History Logs</span>
                                     </button>
+
                                   </div>
                                 </div>
                               </td>

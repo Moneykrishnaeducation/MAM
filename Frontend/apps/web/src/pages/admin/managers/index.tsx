@@ -297,8 +297,8 @@ export default function AdminManagersPage() {
           <div className="rounded-[2.5rem] border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)] p-6 md:p-8 overflow-hidden">
             
             {/* TOOLBAR SEARCH & FILTERS */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#24358a]">
-              <div className="relative group w-full md:w-80">
+            <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 mb-6 pb-4 border-b border-[#24358a]">
+              <div className="relative group w-full md:w-96">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Search size={16} className="text-blue-300 group-focus-within:text-white transition-colors" />
                 </div>
@@ -316,21 +316,34 @@ export default function AdminManagersPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-1.5 overflow-x-auto">
-                <span className="text-[11px] text-blue-300 font-bold uppercase tracking-wider mr-1 shrink-0">Filter:</span>
-                {(['All', 'Low', 'Medium', 'High'] as const).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setRiskFilter(r)}
-                    className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                      riskFilter === r
-                        ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-md font-bold'
-                        : 'bg-[#113b95]/40 border border-[#24358a] text-blue-300 hover:text-white hover:bg-[#113b95]/60'
-                    }`}
-                  >
-                    {r === 'All' ? 'All Risks' : `${r} Risk`}
-                  </button>
-                ))}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 overflow-x-auto w-full xl:w-auto xl:justify-end">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-[11px] text-blue-300 font-bold uppercase tracking-wider mr-1">Filter:</span>
+                  {(['All', 'Low', 'Medium', 'High'] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setRiskFilter(r)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+                        riskFilter === r
+                          ? 'bg-gradient-to-r from-[#d4af37] to-[#b38728] text-slate-950 shadow-md font-bold'
+                          : 'bg-[#113b95]/40 border border-[#24358a] text-blue-300 hover:text-white hover:bg-[#113b95]/60'
+                      }`}
+                    >
+                      {r === 'All' ? 'All Risks' : `${r} Risk`}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="hidden sm:block w-px h-6 bg-[#24358a]" />
+
+                <button
+                  onClick={() => fetchManagers()}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 bg-[#113b95]/40 border border-[#24358a] text-blue-300 hover:text-white hover:bg-[#113b95]/60 hover:border-blue-400/50 px-4 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all disabled:opacity-50 shrink-0 w-full sm:w-auto"
+                >
+                  <RefreshCw size={14} className={isLoading ? "animate-spin text-[#d4af37]" : ""} />
+                  Refresh
+                </button>
               </div>
             </div>
 
@@ -524,13 +537,13 @@ export default function AdminManagersPage() {
                                       </button>
                                     )}
 
-                                    {/* History Log Button (Visible for all roles including Viewer) */}
+                                    {/* Transaction Button (Visible for all roles including Viewer) */}
                                     <button 
-                                      onClick={() => openFinancialModal(m, 'history')} 
+                                      onClick={() => openFinancialModal(m, 'transaction')} 
                                       className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-[#d4af37]/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
                                     >
                                       <History size={16} className="text-[#d4af37] group-hover:scale-110 transition-transform" /> 
-                                      <span>History Logs</span>
+                                      <span>Transaction</span>
                                     </button>
 
                                     {/* Profit Share History Button */}
