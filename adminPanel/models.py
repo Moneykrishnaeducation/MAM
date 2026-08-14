@@ -148,6 +148,7 @@ class TradingAccount(models.Model):
     )
     risk_level = fields.CharField(max_length=10, null=True)  # e.g. "Low" | "Med" | "High"
     payout_frequency = fields.CharField(max_length=20, null=True)  # e.g. "Monthly"
+    last_profit_share_at = fields.DatetimeField(null=True)
 
     # ── Lifecycle timestamps ──────────────────────────────────────────────
     status = fields.CharField(max_length=20, null=True, default="Active")
