@@ -514,19 +514,32 @@ class MT5ManagerActions:
 
         closed_deals = []
         for d in deals:
+            symbol = str(getattr(d, "Symbol", "") or "").strip()
+            if not symbol:
+                continue
+
             action = getattr(d, "Action", None)
             entry = getattr(d, "Entry", None)
-            symbol = getattr(d, "Symbol", None)
-            volume_closed = getattr(d, "VolumeClosed", 0)
-            if (
-                entry == 1
-                and symbol
-                and str(symbol).strip() != ""
-                and volume_closed
-                and float(volume_closed) > 0
-                and action in (0, 1)
-            ):
+            volume_closed = (
+                getattr(d, "VolumeClosed", None)
+                or getattr(d, "Volume", None)
+                or getattr(d, "VolumeInitial", None)
+                or 0
+            )
+            if not volume_closed or float(volume_closed) <= 0:
+                continue
+
+            # MT5 closed/history rows can vary by server build.
+            # Keep anything that clearly looks like a valid completed deal.
+            if entry in (None, 1, 2, "1", "2") or action in (0, 1, 2, 3, 4, 5, 6):
                 closed_deals.append(d)
+
+        logger.info(
+            "[MT5] Closed trade lookup for login_id=%s returned %s raw deal(s), %s after filtering",
+            login_id,
+            len(deals) if hasattr(deals, "__len__") else "unknown",
+            len(closed_deals),
+        )
         return closed_deals
 
     def get_open_positions(self, login_id: int):
