@@ -91,6 +91,21 @@ class MAMCopyEngine:
         if not followers:
             return
 
+        # If this position originated from a triggered pending order, clean up the follower's pending orders
+        # to prevent the follower from having both a market order (copied here) AND a pending order that triggers later.
+        orig_order_ticket = getattr(order_obj, "Order", 0)
+        if orig_order_ticket > 0 or getattr(order_obj, "State", 0) == 4:
+            try:
+                class MockOrder:
+                    pass
+                mock = MockOrder()
+                mock.Login = master_id
+                mock.Order = master_ticket
+                mock.Symbol = getattr(order_obj, "Symbol", "")
+                self.route_master_order_delete(mock)
+            except Exception as e:
+                logger.debug(f"[ENGINE_CLEANUP] Failed to cleanup pending orders for {master_ticket}: {e}")
+
         leader_user = self.cache.get_user(self.manager_api, master_id)
         leader_balance = getattr(leader_user, "Balance", 1.0) or 1.0
         symbol_info = self.cache.get_symbol(self.manager_api, order_obj.Symbol)
@@ -130,7 +145,13 @@ class MAMCopyEngine:
                     if multi_count > 1
                     else f"{master_id}_{master_ticket}"
                 )
-                if comment in existing_comments or any(c.startswith(comment) for c in existing_comments):
+                already_open = False
+                for c in existing_comments:
+                    if c == comment or (c.startswith(comment) and (len(c) == len(comment) or not c[len(comment)].isdigit())):
+                        already_open = True
+                        break
+                        
+                if already_open:
                     logger.info(
                         f"[ENGINE_SKIP] Follower {fid} already has open position for {comment}. Skipping duplicate OPEN."
                     )
@@ -239,9 +260,42 @@ class MAMCopyEngine:
             return
 
         followers = self.cache.get_followers(self.manager_api, master_id)
+        if not followers:
+            return
+
+        leader_user = self.cache.get_user(self.manager_api, master_id)
+        leader_balance = getattr(leader_user, "Balance", 1.0) or 1.0
+        symbol_info = self.cache.get_symbol(self.manager_api, order_obj.Symbol)
+        symbol_min_vol = getattr(symbol_info, "VolumeMin", 0.01) or 0.01
+
+        base_vol = getattr(order_obj, "VolumeCurrent", getattr(order_obj, "VolumeInitial", 0.0)) or 0.0
+
         for fid in followers:
             cfg = self.cache.get_follower_config(fid)
             multi_count = cfg.multi_trade_count if cfg else 1
+            copy_mode = cfg.copy_mode if cfg else "proportional"
+            copy_factor = cfg.copy_factor if cfg else 1.0
+
+            follower_user = self.cache.get_user(self.manager_api, fid)
+            follower_balance = getattr(follower_user, "Balance", 1.0) or 1.0
+
+            if copy_mode == "fixed_multiple":
+                calc_vol = float(base_vol) * copy_factor
+            else:
+                calc_vol = float(base_vol) * (follower_balance / leader_balance)
+
+            final_vol = max(
+                symbol_min_vol,
+                int(calc_vol / symbol_min_vol) * symbol_min_vol
+                if symbol_min_vol > 0
+                else calc_vol,
+            )
+            
+            follower_orders = self.manager_api.OrderGetOpen(fid) or []
+            existing_orders = {str(getattr(o, "Comment", "")): getattr(o, "Order", 0) for o in follower_orders}
+            
+            follower_positions = self.manager_api.PositionGet(fid) or []
+            existing_position_comments = {str(getattr(p, "Comment", "")) for p in follower_positions}
 
             for trade_idx in range(1, multi_count + 1):
                 comment = (
@@ -249,19 +303,50 @@ class MAMCopyEngine:
                     if multi_count > 1
                     else f"{master_id}_{master_ticket}"
                 )
+                
+                found_ticket = 0
+                for ext_comment, t_id in existing_orders.items():
+                    # Exact match or starts with comment plus a non-digit (to prevent trade1 matching trade10)
+                    if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
+                        found_ticket = t_id
+                        break
+                        
+                if found_ticket > 0:
+                    follower_ticket = found_ticket
+                    action = ActionType.PENDING_UPDATE
+                    cmd_id = f"ord_upd_{master_ticket}_{fid}_{follower_ticket}"
+                    target_ticket = follower_ticket
+                else:
+                    # Check if it already triggered into a position
+                    already_triggered = False
+                    for ext_comment in existing_position_comments:
+                        if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
+                            already_triggered = True
+                            break
+                            
+                    if already_triggered:
+                        logger.info(f"[ENGINE_SKIP] Follower {fid} already has open position for pending order {comment}. Skipping PENDING_OPEN.")
+                        continue
+                        
+                    action = ActionType.PENDING_OPEN
+                    cmd_id = f"ord_pending_{master_ticket}_{fid}_{trade_idx}"
+                    target_ticket = master_ticket
+                    
                 cmd = CopyCommand(
-                    command_id=f"ord_pending_{master_ticket}_{fid}_{trade_idx}",
+                    command_id=cmd_id,
                     master_id=master_id,
-                    master_ticket=master_ticket,
+                    master_ticket=target_ticket,
                     follower_id=fid,
-                    action=ActionType.PENDING_OPEN,
+                    action=action,
                     symbol=order_obj.Symbol,
-                    volume=order_obj.VolumeCurrent,
+                    volume=final_vol,
                     order_type=order_obj.Type,
                     price_order=getattr(order_obj, "PriceOrder", 0.0) or 0.0,
                     price_trigger=getattr(order_obj, "PriceTrigger", 0.0) or 0.0,
                     price_sl=getattr(order_obj, "PriceSL", 0.0) or 0.0,
                     price_tp=getattr(order_obj, "PriceTP", 0.0) or 0.0,
+                    type_time=getattr(order_obj, "TypeTime", 0),
+                    time_expiration=getattr(order_obj, "TimeExpiration", 0),
                     comment=comment,
                     trade_index=trade_idx,
                     total_copies=multi_count,

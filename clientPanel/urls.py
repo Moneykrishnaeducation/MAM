@@ -23,6 +23,7 @@ from clientPanel.view.mam_managers import (
     list_my_mam_managers,
     reset_investor_password,
     toggle_manager_status,
+    trigger_manager_settlement,
 )
 from clientPanel.view.OpenPositions import get_client_open_positions
 from clientPanel.view.payment_details import client_payment_details
@@ -79,6 +80,11 @@ urlpatterns = [
         "mam-managers/<str:account_id>/status",
         client_only(toggle_manager_status),
         name="mam-manager-status",
+    ),
+    path(
+        "mam-managers/<str:account_id>/trigger-settlement",
+        client_only(trigger_manager_settlement),
+        name="mam-manager-trigger-settlement",
     ),
     path(
         "mam-managers/reset-password",

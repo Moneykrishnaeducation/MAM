@@ -173,6 +173,21 @@ class StatefulReconciler:
                         )
 
                         if not already_exists:
+                            follower_positions = self.manager_api.PositionGet(fid) or []
+                            already_triggered = any(
+                                p.Comment
+                                and (
+                                    p.Comment == expected_prefix
+                                    or p.Comment.startswith(f"{expected_prefix}_trade")
+                                )
+                                for p in follower_positions
+                            )
+                            if already_triggered:
+                                logger.debug(
+                                    f"[RECONCILER-SKIP] Master {master_id} pending order {master_ticket} already triggered on follower {fid}."
+                                )
+                                continue
+
                             logger.info(
                                 f"[RECONCILER-MISSING] Master {master_id} pending order {master_ticket} missing on follower {fid}. Dispatching..."
                             )
@@ -209,3 +224,4 @@ class StatefulReconciler:
                         )
         except Exception as e:
             logger.debug(f"[RECONCILER] Order resync check error for master {master_id}: {e}")
+

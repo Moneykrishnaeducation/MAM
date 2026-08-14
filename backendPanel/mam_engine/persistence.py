@@ -97,7 +97,7 @@ class AsyncPersistenceManager:
                 self._queue.task_done()
 
     def _persist_dedup(self, key: str):
-        """Perform atomic SQL UPSERT into mt5_send_dedup."""
+        """Perform atomic SQL UPSERT into adminPanel_mt5senddedup."""
         try:
             from django.db import connection, close_old_connections
 
@@ -105,7 +105,7 @@ class AsyncPersistenceManager:
             safe_key = "".join([c if c.isalnum() or c in ("-", "_") else "" for c in str(key)])
             with connection.cursor() as cursor:
                 cursor.execute(
-                    'INSERT INTO "mt5_send_dedup" (key, created_at) VALUES (%s, NOW()) ON CONFLICT (key) DO NOTHING;',
+                    'INSERT INTO "adminPanel_mt5senddedup" (key, created_at) VALUES (%s, NOW()) ON CONFLICT (key) DO NOTHING;',
                     [safe_key],
                 )
         except Exception as e:
@@ -187,11 +187,64 @@ class AsyncPersistenceManager:
                         verified = True
                         break
 
+                elif cmd.action in (ActionType.PENDING_OPEN, ActionType.PENDING_UPDATE):
+                    orders = manager_api.OrderGetOpen(cmd.follower_id) or []
+                    matched = None
+                    for o in orders:
+                        c = str(getattr(o, "Comment", ""))
+                        if (
+                            c == cmd.comment
+                            or master_id_ticket in c
+                            or c.startswith(master_id_ticket)
+                        ):
+                            matched = o
+                            break
+                    if matched:
+                        logger.info(
+                            f"[VERIFY_SUCCESS] trade={cmd.dedupe_key} follower={cmd.follower_id} "
+                            f"order={matched.Order} symbol={matched.Symbol} volume={matched.VolumeCurrent:.2f}"
+                        )
+                        verified = True
+                        break
+
+                elif cmd.action == ActionType.DELETE_ORDER:
+                    orders = manager_api.OrderGetOpen(cmd.follower_id) or []
+                    still_open = False
+                    for o in orders:
+                        c = str(getattr(o, "Comment", ""))
+                        ord_id = getattr(o, "Order", 0)
+                        # For DELETE_ORDER, cmd.master_ticket is the follower's order ticket
+                        if (
+                            ord_id == cmd.master_ticket
+                            or c == cmd.comment
+                            or master_id_ticket in c
+                        ):
+                            still_open = True
+                            break
+
+                    if not still_open:
+                        logger.info(
+                            f"[VERIFY_SUCCESS] trade={cmd.dedupe_key} follower={cmd.follower_id} "
+                            f"op=DELETE_ORDER order_deleted_successfully"
+                        )
+                        verified = True
+                        break
+
             if not verified:
                 if cmd.action in (ActionType.OPEN, ActionType.MODIFY):
                     logger.warning(
                         f"[VERIFY_MISMATCH] trade={cmd.dedupe_key} follower={cmd.follower_id} "
                         f"reason=POSITION_NOT_FOUND_ON_MT5"
+                    )
+                elif cmd.action in (ActionType.PENDING_OPEN, ActionType.PENDING_UPDATE):
+                    logger.warning(
+                        f"[VERIFY_MISMATCH] trade={cmd.dedupe_key} follower={cmd.follower_id} "
+                        f"reason=ORDER_NOT_FOUND_ON_MT5"
+                    )
+                elif cmd.action == ActionType.DELETE_ORDER:
+                    logger.warning(
+                        f"[VERIFY_MISMATCH] trade={cmd.dedupe_key} follower={cmd.follower_id} "
+                        f"reason=ORDER_STILL_OPEN_AFTER_DELETE"
                     )
                 else:
                     logger.warning(
@@ -200,3 +253,4 @@ class AsyncPersistenceManager:
                     )
         except Exception as e:
             logger.debug(f"[VERIFY_ERROR] Verification exception for follower {cmd.follower_id}: {e}")
+

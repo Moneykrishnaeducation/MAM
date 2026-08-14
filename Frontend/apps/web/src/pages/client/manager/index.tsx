@@ -162,6 +162,32 @@ export default function ClientManagerPage() {
     setShowInvestorListModal(true);
   };
 
+  const handleTriggerSettlement = async () => {
+    if (!activeManager?.accountId) return;
+    try {
+      const res = await fetch(`/api/client/mam-managers/${activeManager.accountId}/trigger-settlement`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json();
+      if (res.ok && data.status === 'ok') {
+        showManagerToast(data.message || 'Settlement triggered successfully!');
+        // Refresh manager detail to update wallet balances
+        if (selectedManager?.accountId) {
+          const detailRes = await fetch(`/api/client/my-mam-managers/${selectedManager.accountId}/detail`, { credentials: 'include' });
+          if (detailRes.ok) {
+            const detailData = await detailRes.json();
+            setSelectedManagerDetail(detailData.manager);
+          }
+        }
+      } else {
+        showManagerToast(data.message || 'Failed to trigger settlement.');
+      }
+    } catch (err) {
+      showManagerToast('Error triggering settlement.');
+    }
+  };
+
   const handleToggleStatus = async () => {
     if (!activeManager?.accountId) return;
     setIsTogglingStatus(true);
@@ -1004,7 +1030,7 @@ export default function ClientManagerPage() {
                   <div className="flex justify-between items-center mb-6">
                     <h4 className="text-[11px] font-extrabold uppercase tracking-widest text-white">Profit Share Wallet</h4>
                     <button 
-                      onClick={() => showManagerToast('Settlement triggered successfully!')}
+                      onClick={handleTriggerSettlement}
                       className={`px-4 py-2 rounded-lg font-black text-[11px] transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass} flex items-center gap-2`}
                     >
                       <DollarSign size={14} /> Trigger Settlement

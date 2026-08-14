@@ -8,7 +8,7 @@ from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.views.decorators.csrf import csrf_exempt
 
-from adminPanel.models import ClientUser, TradingAccount
+from adminPanel.models import ClientUser, TradingAccount, ProfitShareHistory
 from adminPanel.mt5.services import MT5ManagerActions
 from adminPanel.view.mail import _frontend_base_url
 from backendPanel.database import ensure_db_initialized
@@ -154,8 +154,13 @@ async def get_my_mam_manager_detail(request, account_id: str):
         return _error(f"MAM Manager account {account_id} not found or access denied", status=404)
 
     manager_row = _serialize_manager_row(manager, investor_count)
-    pending_wallet = float(manager.balance or 0.0)
-    settled_value = float(max(float(manager.balance or 0.0) - float(manager.equity or 0.0), 0.0))
+    
+    pending_rows = await ProfitShareHistory.filter(master_login=str(manager.account_id), status="Pending").values("commission_amount")
+    pending_wallet = sum(float(r["commission_amount"] or 0) for r in pending_rows)
+
+    settled_rows = await ProfitShareHistory.filter(master_login=str(manager.account_id), status="Completed").values("commission_amount")
+    settled_value = sum(float(r["commission_amount"] or 0) for r in settled_rows)
+    
     manager_row.update(
         {
             "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
@@ -637,6 +642,65 @@ async def toggle_manager_status(request, account_id: str):
             "message": f"MAM Manager account {mam_master.account_id} is now {mam_master.status}",
             "account_status": mam_master.status,
             "is_enabled": mam_master.is_enabled,
+        }
+    )
+
+
+@csrf_exempt
+@permission_required(IsClient)
+async def trigger_manager_settlement(request, account_id: str):
+    """Trigger manual settlement of pending profit share commissions for a manager."""
+    if request.method != "POST":
+        return _error("Only POST method is allowed", status=405)
+
+    await ensure_db_initialized()
+    user_id = await _resolve_client_user_id(request)
+
+    mam_master = (
+        await TradingAccount.filter(
+            account_id=str(account_id), account_type="MAM", user_id=user_id
+        ).first()
+        or await TradingAccount.filter(id=account_id, account_type="MAM", user_id=user_id).first()
+    )
+    if not mam_master:
+        return _error(f"MAM Master account {account_id} not found or access denied", status=404)
+
+    pending_rows = await ProfitShareHistory.filter(
+        master_login=str(mam_master.account_id), status="Pending"
+    ).all()
+
+    if not pending_rows:
+        return JsonResponse({"status": "ok", "message": "No pending settlement."})
+
+    total_commission = sum(float(r.commission_amount or 0) for r in pending_rows)
+
+    if total_commission > 0:
+        try:
+            mt5 = MT5ManagerActions()
+            if mt5.connection_error:
+                return _error(f"MT5 Connection failed: {mt5.connection_error}", status=500)
+            
+            success = mt5.deposit_funds(
+                login_id=int(mam_master.account_id),
+                amount=total_commission,
+                comment="Profit Share Settlement"
+            )
+            if not success:
+                return _error("Failed to credit master account on MT5 server", status=500)
+        except Exception as e:
+            logger.error(f"Error triggering settlement: {e}")
+            return _error(f"Error triggering settlement: {str(e)}", status=500)
+
+    # Update all pending to completed
+    for row in pending_rows:
+        row.status = "Completed"
+        await row.save()
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Successfully settled ${total_commission:,.2f} to manager account {mam_master.account_id}",
+            "settled_amount": total_commission
         }
     )
 

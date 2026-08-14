@@ -67,14 +67,31 @@ class MT5DealerExecutor:
                     command=cmd, success=False, error_message="Failed to build MT5 request"
                 )
 
-            # 4. Dispatch to MT5 via DealerSend
+            # 4. Dispatch to MT5 via DealerSend or OrderDelete
             mt5_send_start = time.time()
             success = False
+            last_err = ""
             try:
-                success = bool(self.manager_api.DealerSend(mt_req, self.dealer_sink))
+                if cmd.action == ActionType.DELETE_ORDER:
+                    ret = self.manager_api.OrderDelete(cmd.master_ticket)
+                    if isinstance(ret, bool):
+                        success = ret
+                    elif isinstance(ret, tuple) and len(ret) > 1:
+                        ret_code = ret[1]
+                        success = (getattr(ret_code, "value", ret_code) == 0) or ("MT_RET_OK" in str(ret))
+                    elif isinstance(ret, int):
+                        success = (ret == 0 or ret == 10009)
+                    else:
+                        success = ("MT_RET_OK" in str(ret))
+                    
+                    if not success:
+                        last_err = str(ret)
+                else:
+                    success = bool(self.manager_api.DealerSend(mt_req, self.dealer_sink))
             except Exception as ex:
+                last_err = str(ex)
                 logger.error(
-                    f"[DEALER_ERROR] DealerSend exception for follower {cmd.follower_id}: {ex}"
+                    f"[DEALER_ERROR] MT5 exception for follower {cmd.follower_id}: {ex}"
                 )
 
             mt5_send_ms = (time.time() - mt5_send_start) * 1000.0
@@ -122,7 +139,7 @@ class MT5DealerExecutor:
                     command=cmd,
                     success=False,
                     error_message=last_err,
-                    queue_wait_ms=queue_wait_ms,
+                    queue_wait_ms=dispatch_delay_ms,
                     mt5_send_ms=mt5_send_ms,
                     total_latency_ms=total_latency_ms,
                 )
@@ -170,6 +187,19 @@ class MT5DealerExecutor:
                 req.PriceTrigger = cmd.price_trigger
                 req.PriceSL = cmd.price_sl
                 req.PriceTP = cmd.price_tp
+                req.TypeTime = 0  # ORDER_TIME_GTC
+                req.TypeFill = 2  # ORDER_FILLING_RETURN
+
+            elif cmd.action == ActionType.PENDING_UPDATE:
+                req.Action = 203  # TA_DEALER_ORD_MODIFY
+                if cmd.master_ticket > 0:
+                    req.Order = cmd.master_ticket
+                req.Type = cmd.order_type
+                req.PriceOrder = cmd.price_order
+                req.PriceTrigger = cmd.price_trigger
+                req.PriceSL = cmd.price_sl
+                req.PriceTP = cmd.price_tp
+                req.TypeTime = 0  # ORDER_TIME_GTC
 
             elif cmd.action == ActionType.DELETE_ORDER:
                 req.Action = 204
@@ -180,3 +210,4 @@ class MT5DealerExecutor:
         except Exception as e:
             logger.error(f"[DEALER] Failed to build MT5 request for command {cmd.command_id}: {e}")
             return None
+
