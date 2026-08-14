@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
 import ProfitShareHistory from '@/components/ProfitShareHistory';
+import ClosedPositionsModal from '@/components/Admin/ClosedPositionsModal';
 
 /* ─── Cookie & Role Helpers ────────────────────────────── */
 function getAdminRole(): string {
@@ -81,6 +82,10 @@ export default function AdminManagersPage() {
 
   // Profit Share Modal State
   const [profitShareModalManager, setProfitShareModalManager] = useState<ManagerData | null>(null);
+
+  // Closed Positions Modal State
+  const [isClosedPositionsOpen, setIsClosedPositionsOpen] = useState(false);
+  const [closedPositionsUser, setClosedPositionsUser] = useState<{id: string, name: string, accountId: string} | null>(null);
 
   // Load state from API endpoint
   const [managers, setManagers] = useState<ManagerData[]>([]);
@@ -494,7 +499,7 @@ export default function AdminManagersPage() {
                                   </div>
 
                                   <div className={`grid gap-2 ${
-                                    isViewer ? 'grid-cols-2 max-w-sm' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-6'
+                                    isViewer ? 'grid-cols-2 max-w-md' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8'
                                   }`}>
                                     {/* Financial buttons hidden for Viewer role */}
                                     {!isViewer && (
@@ -553,6 +558,18 @@ export default function AdminManagersPage() {
                                     >
                                       <TrendingUp size={16} className="text-purple-400 group-hover:scale-110 transition-transform" /> 
                                       <span>Profit Shares</span>
+                                    </button>
+                                    
+                                    {/* Closed Positions Button */}
+                                    <button 
+                                      onClick={() => {
+                                        setClosedPositionsUser({ id: m.id, name: m.name, accountId: m.accountId });
+                                        setIsClosedPositionsOpen(true);
+                                      }} 
+                                      className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-blue-500/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
+                                    >
+                                      <CheckCircle2 size={16} className="text-blue-400 group-hover:scale-110 transition-transform" /> 
+                                      <span>Closed Positions</span>
                                     </button>
 
                                     {/* Investors List Button (Visible for all roles including Viewer) */}
@@ -657,6 +674,13 @@ export default function AdminManagersPage() {
           </div>
         </div>
       )}
+
+      {/* ── Closed Positions Modal ── */}
+      <ClosedPositionsModal
+        isOpen={isClosedPositionsOpen}
+        onClose={() => setIsClosedPositionsOpen(false)}
+        targetUser={closedPositionsUser}
+      />
     </>
   );
 }

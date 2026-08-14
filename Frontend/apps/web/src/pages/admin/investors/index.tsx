@@ -22,6 +22,7 @@ import {
   X
 } from 'lucide-react';
 import FinancialActionModal, { type FinancialModalType, type FinancialUserTarget } from '@/components/Admin/FinancialActionModal';
+import ClosedPositionsModal from '@/components/Admin/ClosedPositionsModal';
 
 /* ─── Cookie & Role Helpers ────────────────────────────── */
 function getAdminRole(): string {
@@ -74,6 +75,10 @@ export default function AdminInvestorsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalType, setModalType] = useState<FinancialModalType>(null);
   const [targetUser, setTargetUser] = useState<FinancialUserTarget | null>(null);
+
+  // Closed Positions Modal State
+  const [isClosedPositionsOpen, setIsClosedPositionsOpen] = useState(false);
+  const [closedPositionsUser, setClosedPositionsUser] = useState<{id: string, name: string, accountId: string} | null>(null);
 
   // Load state from API endpoint
   const [investors, setInvestors] = useState<InvestorData[]>([]);
@@ -499,6 +504,17 @@ export default function AdminInvestorsPage() {
                                       <span>History Logs</span>
                                     </button>
 
+                                    {/* Closed Positions Button */}
+                                    <button 
+                                      onClick={() => {
+                                        setClosedPositionsUser({ id: inv.id, name: inv.name, accountId: inv.accountId });
+                                        setIsClosedPositionsOpen(true);
+                                      }} 
+                                      className="flex flex-row items-center justify-center gap-2 p-3 rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-[#00ffcc]/50 text-xs font-bold transition-all shadow-sm hover:shadow-md group"
+                                    >
+                                      <CheckCircle2 size={16} className="text-[#00ffcc] group-hover:scale-110 transition-transform" /> 
+                                      <span>Closed Positions</span>
+                                    </button>
                                   </div>
                                 </div>
                               </td>
@@ -576,6 +592,12 @@ export default function AdminInvestorsPage() {
         targetUser={targetUser}
         modalType={modalType}
         onConfirmAction={handleConfirmAction}
+      />
+      
+      <ClosedPositionsModal
+        isOpen={isClosedPositionsOpen}
+        onClose={() => setIsClosedPositionsOpen(false)}
+        targetUser={closedPositionsUser}
       />
     </>
   );

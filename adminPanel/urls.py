@@ -43,6 +43,7 @@ from adminPanel.view.manager_fund_actions import (
 )
 from adminPanel.view.non_demo_accounts import non_demo_accounts_api
 from adminPanel.view.open_positions import get_admin_open_positions, get_admin_user_open_positions
+from adminPanel.view.closed_positions import get_admin_closed_positions
 from adminPanel.view.pending_requests import (
     decide_pending_request,
     list_pending_banks,
@@ -171,6 +172,16 @@ urlpatterns = [
         "open-positions/<int:account_id>",
         admin_only(get_admin_open_positions),
         name="open-positions-no-slash",
+    ),
+    path(
+        "closed-positions/<int:account_id>/",
+        admin_only(get_admin_closed_positions),
+        name="closed-positions",
+    ),
+    path(
+        "closed-positions/<int:account_id>",
+        admin_only(get_admin_closed_positions),
+        name="closed-positions-no-slash",
     ),
     path("managers", admin_only(list_managers), name="managers"),
     path("investors", admin_only(list_investors), name="investors"),
