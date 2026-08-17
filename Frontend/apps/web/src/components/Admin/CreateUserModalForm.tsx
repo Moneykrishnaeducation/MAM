@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, User, Mail, Phone, Globe, Lock } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, EyeOff, User, Mail, Phone, Globe, Lock, ChevronDown } from 'lucide-react';
 import { type CreateUserFormData } from '@/types/user';
 
 interface CreateUserModalFormProps {
@@ -13,10 +13,22 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('Client');
   const [country, setCountry] = useState('United States');
+  const [countries, setCountries] = useState<string[]>([]);
   const [balance, setBalance] = useState('10000');
   const [leverage, setLeverage] = useState('1:100');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/countries/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.countries) {
+          setCountries(data.countries);
+        }
+      })
+      .catch(err => console.error('Failed to load countries', err));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,13 +96,17 @@ export default function CreateUserModalForm({ onSubmit, onCancel }: CreateUserMo
           <label className={labelClasses}>Country</label>
           <div className="relative">
             <Globe size={15} className={iconClasses} />
-            <input 
-              type="text" 
+            <select
               value={country} 
               onChange={e => setCountry(e.target.value)} 
-              placeholder="United States" 
-              className={inputClasses} 
-            />
+              className={`${inputClasses} appearance-none cursor-pointer`}
+            >
+              <option value="United States">United States</option>
+              {countries.filter(c => c !== 'United States').map(c => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+            <ChevronDown size={15} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#4d7fe0] pointer-events-none" />
           </div>
         </div>
 

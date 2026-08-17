@@ -28,6 +28,7 @@ from backendPanel.static_frontend import (
     get_frontend_static_dirs,
     iter_frontend_candidates,
 )
+from backendPanel.views import get_countries
 from clientPanel.view.login import login_client
 
 
@@ -180,6 +181,7 @@ urlpatterns = [
     path("api/current-group-config/", get_current_group_config),
     path("api/save-group-configuration/", save_group_configuration),
     path("api/save-demo-group-configuration/", save_demo_group_configuration),
+    path("api/countries/", get_countries, name="api-countries"),
     path("api/admin/", include("adminPanel.urls")),
     path("api/client/", include("clientPanel.urls")),
     path("api/notifications/", get_notifications, name="api-client-notifications"),
