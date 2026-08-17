@@ -145,12 +145,12 @@ export default function AdminSidebar() {
       {isOpen && (
         <div
           onClick={() => setSidebarOpen(false)}
-          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200 md:hidden"
+          className="fixed inset-0 z-[999] bg-black/40 backdrop-blur-xs animate-in fade-in duration-200 md:hidden"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col overflow-hidden border-r border-white/15 shadow-2xl transition-all duration-300 md:sticky ${
+        className={`fixed left-0 top-0 z-[1000] flex h-screen flex-col overflow-hidden border-r border-white/15 shadow-2xl transition-all duration-300 md:sticky ${
           isOpen
             ? "w-[17.5rem] translate-x-0 opacity-100"
             : "w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0 md:border-none"

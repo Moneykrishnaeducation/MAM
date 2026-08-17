@@ -107,12 +107,12 @@ export default function ClientSidebar() {
               }),
             )
           }
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 md:hidden"
+          className="fixed inset-0 z-[999] bg-black/60 backdrop-blur-sm animate-in fade-in duration-300 md:hidden"
         />
       )}
 
       <aside
-        className={`fixed left-0 top-0 z-50 flex h-screen flex-col justify-between border-r border-white/10 shadow-[12px_0_40px_rgba(7,16,39,0.28)] transition-all duration-300 md:sticky
+        className={`fixed left-0 top-0 z-[1000] flex h-screen flex-col justify-between border-r border-white/10 shadow-[12px_0_40px_rgba(7,16,39,0.28)] transition-all duration-300 md:sticky
           ${isOpen
             ? 'w-68 translate-x-0 p-2 opacity-100'
             : 'w-0 -translate-x-full overflow-hidden p-0 opacity-0 md:translate-x-0 md:w-0 md:p-0'
