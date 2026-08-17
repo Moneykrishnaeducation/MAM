@@ -504,8 +504,6 @@ export default function InternalTransfer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-6">
                   {[
                     { label: 'Instant Settlement', text: 'Funds are moved immediately between internal accounts.' },
-                    { label: 'Eligible Accounts', text: 'Only Live, MAM Master, and Investment accounts are supported.' },
-                    { label: 'Blocked Accounts', text: 'CENT and Demo accounts are strictly excluded from internal transfers.' },
                     { label: 'Audit Trail', text: 'All internal movements are logged for compliance and security monitoring.' },
                   ].map((item, i) => (
                     <div key={i} className="flex gap-5 items-start">

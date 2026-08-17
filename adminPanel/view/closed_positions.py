@@ -58,6 +58,20 @@ def get_admin_closed_positions(request, account_id: int):
         from_date = request.GET.get("from_date")
         to_date = request.GET.get("to_date")
 
+        raw_page = request.GET.get("page")
+        raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
+        paginate = raw_page is not None or raw_per_page is not None
+        
+        def _parse_positive_int(val, default):
+            try:
+                parsed = int(str(val).strip())
+                return max(1, parsed)
+            except (ValueError, TypeError):
+                return default
+                
+        page = _parse_positive_int(raw_page, 1)
+        per_page = _parse_positive_int(raw_per_page, 10)
+
         logger.info(f"[ADMIN] Fetching closed positions for account_id: {account_id}, {from_date} to {to_date}")
 
         if from_date and len(from_date) == 10:
@@ -67,45 +81,112 @@ def get_admin_closed_positions(request, account_id: int):
 
         positions, mt5_status = async_to_sync(fetch_closed_positions_for_account)(account_id, from_date, to_date)
 
-        # convert the object to dict if it's not already
-        pos_list = []
-        for p in positions:
-            if type(p) is dict:
-                pos_list.append(p)
-            elif hasattr(p, '__dict__') and p.__dict__:
-                pos_list.append(p.__dict__)
+        def get_val(obj, keys, default):
+            if isinstance(obj, dict):
+                for k in keys:
+                    if k in obj and obj[k] is not None: return obj[k]
+                return default
             else:
-                try:
-                    time_val = getattr(p, "Time", 0)
-                    time_str = datetime.fromtimestamp(time_val).strftime("%Y-%m-%d %H:%M:%S") if time_val else ""
+                for k in keys:
+                    if hasattr(obj, k):
+                        val = getattr(obj, k)
+                        if val is not None: return val
+                return default
+
+        merged_positions = {}
+        for p in positions:
+            try:
+                position_id = str(get_val(p, ["PositionID", "Position"], ""))
+                if not position_id or position_id == "0":
+                    continue
                     
-                    deal_dict = {
-                        "ticket": str(getattr(p, "Deal", getattr(p, "Ticket", getattr(p, "Order", "")))),
-                        "PositionID": str(getattr(p, "PositionID", getattr(p, "Position", ""))),
-                        "Symbol": str(getattr(p, "Symbol", "")),
-                        "Action": getattr(p, "Action", 0),
-                        "Volume": float(getattr(p, "VolumeClosed", getattr(p, "Volume", 0))),
-                        "ContractSize": getattr(p, "ContractSize", 0),
-                        "PriceOpen": float(getattr(p, "PricePosition", getattr(p, "Price", 0.0))),
-                        "PriceClose": float(getattr(p, "Price", 0.0)),
+                entry = int(get_val(p, ["Entry"], 1))
+                time_val = get_val(p, ["Time"], 0)
+                time_str = datetime.fromtimestamp(time_val).strftime("%Y-%m-%d %H:%M:%S") if time_val else ""
+                
+                vol_closed = float(get_val(p, ["VolumeClosed"], 0.0))
+                vol_base = float(get_val(p, ["Volume"], 0.0))
+                raw_volume = vol_closed if vol_closed > 0 else vol_base
+                volume = raw_volume if entry in (1, 2, 3) else 0.0
+                
+                profit = float(get_val(p, ["Profit"], 0.0))
+                storage = float(get_val(p, ["Storage", "Swap"], 0.0))
+                commission = float(get_val(p, ["Commission"], 0.0))
+                
+                price_close = float(get_val(p, ["Price"], 0.0))
+                price_pos = float(get_val(p, ["PricePosition"], 0.0))
+                
+                if entry == 0:
+                    price_open = price_close
+                else:
+                    price_open = price_pos if price_pos > 0 else price_close
+                
+                if position_id in merged_positions:
+                    existing = merged_positions[position_id]
+                    existing["Volume"] += volume
+                    existing["Profit"] += profit
+                    existing["Storage"] += storage
+                    existing["Commission"] += commission
+                    
+                    if not existing["TimeClose"] or (time_str and time_str >= existing["TimeClose"]):
+                        if entry in (1, 2, 3):
+                            existing["TimeClose"] = time_str
+                            existing["PriceClose"] = price_close
+                            existing["ticket"] = str(get_val(p, ["Deal", "Ticket", "Order"], existing["ticket"]))
+                            
+                    if not existing["TimeCreate"] or (time_str and time_str <= existing["TimeCreate"]):
+                        existing["TimeCreate"] = time_str
+                        if price_open > 0:
+                            existing["PriceOpen"] = price_open
+                else:
+                    merged_positions[position_id] = {
+                        "ticket": str(get_val(p, ["Deal", "Ticket", "Order"], "")),
+                        "PositionID": position_id,
+                        "Symbol": str(get_val(p, ["Symbol"], "")),
+                        "Action": get_val(p, ["Action"], 0),
+                        "Volume": volume,
+                        "ContractSize": get_val(p, ["ContractSize"], 0),
+                        "PriceOpen": price_open,
+                        "PriceClose": price_close if entry in (1, 2, 3) else 0.0,
                         "TimeCreate": time_str,
-                        "TimeClose": time_str,
-                        "Profit": float(getattr(p, "Profit", 0.0)),
-                        "Storage": float(getattr(p, "Storage", getattr(p, "Swap", 0.0))),
-                        "Commission": float(getattr(p, "Commission", 0.0)),
-                        "SL": float(getattr(p, "PriceSL", getattr(p, "SL", 0.0))),
-                        "TP": float(getattr(p, "PriceTP", getattr(p, "TP", 0.0))),
+                        "TimeClose": time_str if entry in (1, 2, 3) else "",
+                        "Profit": profit,
+                        "Storage": storage,
+                        "Commission": commission,
+                        "SL": float(get_val(p, ["PriceSL", "SL"], 0.0)),
+                        "TP": float(get_val(p, ["PriceTP", "TP"], 0.0)),
                     }
-                    pos_list.append(deal_dict)
-                except Exception as ex:
-                    logger.warning(f"Failed to serialize deal {p}: {ex}")
-                    pos_list.append(str(p))
+            except Exception as ex:
+                logger.warning(f"Error parsing MT5 closed position: {ex}")
+
+        pos_list = []
+        for pos in merged_positions.values():
+            pos["Volume"] = float(f"{(pos['Volume'] / 10000.0):.2f}")
+            pos_list.append(pos)
+            
+        pos_list.sort(key=lambda x: x["TimeClose"], reverse=True)
+        
+        total = len(pos_list)
+        if paginate:
+            total_pages = max(1, (total + per_page - 1) // per_page)
+            page = min(page, total_pages) if total > 0 else 1
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            paginated_list = pos_list[start_idx:end_idx]
+        else:
+            paginated_list = pos_list
+            total_pages = 1
+            per_page = total
 
         return JsonResponse(
             {
                 "success": True,
                 "account_id": str(account_id),
-                "positions": pos_list,
+                "positions": paginated_list,
+                "total": total,
+                "page": page,
+                "per_page": per_page,
+                "total_pages": total_pages,
                 "mt5_status": mt5_status,
             }
         )

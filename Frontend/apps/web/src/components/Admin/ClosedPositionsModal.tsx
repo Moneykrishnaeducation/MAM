@@ -33,6 +33,11 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
   const [error, setError] = useState<string | null>(null);
 
   const [dateRange, setDateRange] = useState<{from: string, to: string}>({ from: '', to: '' });
+  
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(20);
+  const [totalItems, setTotalItems] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   const setPresetDate = (days: number) => {
     const to = new Date();
@@ -40,6 +45,7 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
     from.setDate(to.getDate() - days);
     setDateRange({ from: from.toISOString().split('T')[0], to: to.toISOString().split('T')[0] });
     setActiveFilter(days.toString() as any);
+    setPage(1);
   };
 
   useEffect(() => { if (isOpen) setPresetDate(7); }, [isOpen]);
@@ -49,10 +55,12 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/closed-positions/${targetUser.accountId}?from_date=${dateRange.from}&to_date=${dateRange.to}`);
+      const res = await fetch(`/api/admin/closed-positions/${targetUser.accountId}?from_date=${dateRange.from}&to_date=${dateRange.to}&page=${page}&per_page=${perPage}`);
       const data = await res.json();
       if (data.success) {
         setPositions(data.positions || []);
+        setTotalItems(data.total || 0);
+        setTotalPages(data.total_pages || 1);
       } else {
         setError(data.message || 'Failed to fetch closed positions');
         setPositions([]);
@@ -65,7 +73,7 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
     }
   };
 
-  useEffect(() => { if (isOpen && dateRange.from && dateRange.to) fetchClosedPositions(); }, [isOpen, dateRange, targetUser]);
+  useEffect(() => { if (isOpen && dateRange.from && dateRange.to) fetchClosedPositions(); }, [isOpen, dateRange, targetUser, page, perPage]);
 
   if (!isOpen || !targetUser) return null;
 
@@ -148,7 +156,7 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
               <input type="text" placeholder="Search symbol..." value={searchSymbol} onChange={e => setSearchSymbol(e.target.value)} className="pl-9 pr-4 py-1.5 bg-[#0f172a] border border-[#1e3a8a] rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 w-48" />
             </div>
-            <button onClick={fetchClosedPositions} className="p-1.5 rounded-lg border border-[#1e3a8a] text-blue-300 hover:bg-[#1e3a8a] hover:text-white transition-colors">
+            <button onClick={() => { setPage(1); fetchClosedPositions(); }} className="p-1.5 rounded-lg border border-[#1e3a8a] text-blue-300 hover:bg-[#1e3a8a] hover:text-white transition-colors">
               <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
             </button>
           </div>
@@ -158,7 +166,7 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
           <div className="px-5 py-3 bg-[#0f172a] border-b border-[#1e3a8a] flex items-center gap-4 animate-in slide-in-from-top-2">
             <label className="text-xs font-semibold text-blue-200 flex items-center gap-2">From: <input type="date" value={dateRange.from} onChange={e => setDateRange({...dateRange, from: e.target.value})} className="bg-[#0a1128] border border-[#1e3a8a] rounded px-2 py-1 text-white" /></label>
             <label className="text-xs font-semibold text-blue-200 flex items-center gap-2">To: <input type="date" value={dateRange.to} onChange={e => setDateRange({...dateRange, to: e.target.value})} className="bg-[#0a1128] border border-[#1e3a8a] rounded px-2 py-1 text-white" /></label>
-            <button onClick={fetchClosedPositions} className="px-4 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold">Apply Filter</button>
+            <button onClick={() => { setPage(1); fetchClosedPositions(); }} className="px-4 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs font-bold">Apply Filter</button>
           </div>
         )}
 
@@ -220,6 +228,29 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
                   })}
                 </tbody>
               </table>
+              {totalPages > 1 && (
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-4 p-4 border-t border-[#1e3a8a] bg-[#0f172a]">
+                  <div className="text-sm text-slate-400 font-medium">
+                    Showing <span className="text-white">{(page - 1) * perPage + 1}</span> to <span className="text-white">{Math.min(page * perPage, totalItems)}</span> of <span className="text-white">{totalItems}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-4 py-1.5 bg-[#0a1128] border border-[#1e3a8a] text-blue-300 rounded-lg hover:bg-blue-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold text-sm"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="px-4 py-1.5 bg-[#0a1128] border border-[#1e3a8a] text-blue-300 rounded-lg hover:bg-blue-600 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all font-semibold text-sm"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
