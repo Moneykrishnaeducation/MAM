@@ -632,7 +632,7 @@ function LoginCard({
             </button>
 
             {/* Google Workspace SSO Quick Button below divider */}
-            <div className="">
+            {/* <div className="">
               <div className="relative text-center my-3">
                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-800" /></div>
                 <span className="relative bg-slate-950/90 px-3 text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Or enterprise identity</span>
@@ -651,7 +651,7 @@ function LoginCard({
                 </svg>
                 <span>Sign in with Google Workspace</span>
               </button>
-            </div>
+            </div> */}
           </form>
         )}
 

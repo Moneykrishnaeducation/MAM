@@ -97,19 +97,45 @@ async def admin_mails(request):
     await ensure_db_initialized()
 
     if request.method == "GET":
+        from tortoise.expressions import Q
+        import math
+
         status_filter = str(request.GET.get("status") or "").strip().lower()
-        limit_raw = request.GET.get("limit") or "25"
+        category_filter = str(request.GET.get("category") or "").strip().lower()
+        search_query = str(request.GET.get("search") or "").strip()
+        
         try:
-            limit = max(1, min(int(limit_raw), 100))
+            page = max(1, int(request.GET.get("page") or "1"))
         except (TypeError, ValueError):
-            limit = 25
+            page = 1
+            
+        try:
+            page_size = max(1, min(int(request.GET.get("page_size") or "25"), 100))
+        except (TypeError, ValueError):
+            page_size = 25
 
         query = AdminMailMessage.all().order_by("-created_at")
-        if status_filter:
+        
+        if status_filter and status_filter != "all":
             query = query.filter(status=status_filter)
+            
+        if category_filter and category_filter != "all":
+            query = query.filter(source=category_filter)
+            
+        if search_query:
+            query = query.filter(
+                Q(subject__icontains=search_query) |
+                Q(body__icontains=search_query) |
+                Q(from_email__icontains=search_query)
+            )
 
-        messages = await query.limit(limit)
+        total_count = await query.count()
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        
+        offset = (page - 1) * page_size
+        messages = await query.offset(offset).limit(page_size)
         payload = [_serialize_mail_message(message) for message in messages]
+        
         summary = {
             "draft": await AdminMailMessage.filter(status="draft").count(),
             "queued": await AdminMailMessage.filter(status="queued").count(),
@@ -118,7 +144,14 @@ async def admin_mails(request):
             "failed": await AdminMailMessage.filter(status="failed").count(),
         }
         return JsonResponse(
-            {"status": "ok", "messages": payload, "summary": summary, "count": len(payload)}
+            {
+                "status": "ok", 
+                "messages": payload, 
+                "summary": summary, 
+                "count": total_count,
+                "total_pages": total_pages,
+                "current_page": page
+            }
         )
 
     try:
