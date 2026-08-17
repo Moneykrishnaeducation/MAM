@@ -3,18 +3,16 @@
 from __future__ import annotations
 
 import logging
-import os
-import sys
 import threading
 import time
-from typing import Any, List, Optional
+from typing import Any
 
 from backendPanel.mam_engine.dealer import MT5DealerExecutor
-from backendPanel.mam_engine.events import ActionType, CopyCommand, TradeExecutionResult
+from backendPanel.mam_engine.events import ActionType, CopyCommand
 from backendPanel.mam_engine.idempotency import IdempotencyEngine
 from backendPanel.mam_engine.persistence import AsyncPersistenceManager
 from backendPanel.mam_engine.reconciler import StatefulReconciler
-from backendPanel.mam_engine.routing_cache import AGENT_CODE_PREFIX, RoutingCache
+from backendPanel.mam_engine.routing_cache import RoutingCache
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +148,7 @@ class MAMCopyEngine:
                     if c == comment or (c.startswith(comment) and (len(c) == len(comment) or not c[len(comment)].isdigit())):
                         already_open = True
                         break
-                        
+
                 if already_open:
                     logger.info(
                         f"[ENGINE_SKIP] Follower {fid} already has open position for {comment}. Skipping duplicate OPEN."
@@ -191,9 +189,6 @@ class MAMCopyEngine:
         followers = self.cache.get_followers(self.manager_api, master_id)
 
         for fid in followers:
-            cfg = self.cache.get_follower_config(fid)
-            multi_count = cfg.multi_trade_count if cfg else 1
-
             follower_positions = self.manager_api.PositionGet(fid) or []
             expected_prefix = f"{master_id}_{master_ticket}"
 
@@ -290,10 +285,10 @@ class MAMCopyEngine:
                 if symbol_min_vol > 0
                 else calc_vol,
             )
-            
+
             follower_orders = self.manager_api.OrderGetOpen(fid) or []
             existing_orders = {str(getattr(o, "Comment", "")): getattr(o, "Order", 0) for o in follower_orders}
-            
+
             follower_positions = self.manager_api.PositionGet(fid) or []
             existing_position_comments = {str(getattr(p, "Comment", "")) for p in follower_positions}
 
@@ -303,14 +298,14 @@ class MAMCopyEngine:
                     if multi_count > 1
                     else f"{master_id}_{master_ticket}"
                 )
-                
+
                 found_ticket = 0
                 for ext_comment, t_id in existing_orders.items():
                     # Exact match or starts with comment plus a non-digit (to prevent trade1 matching trade10)
                     if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
                         found_ticket = t_id
                         break
-                        
+
                 if found_ticket > 0:
                     follower_ticket = found_ticket
                     action = ActionType.PENDING_UPDATE
@@ -323,15 +318,15 @@ class MAMCopyEngine:
                         if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
                             already_triggered = True
                             break
-                            
+
                     if already_triggered:
                         logger.info(f"[ENGINE_SKIP] Follower {fid} already has open position for pending order {comment}. Skipping PENDING_OPEN.")
                         continue
-                        
+
                     action = ActionType.PENDING_OPEN
                     cmd_id = f"ord_pending_{master_ticket}_{fid}_{trade_idx}"
                     target_ticket = master_ticket
-                    
+
                 cmd = CopyCommand(
                     command_id=cmd_id,
                     master_id=master_id,
@@ -386,11 +381,34 @@ class MAMCopyEngine:
                     self.dispatch_parallel(cmd)
 
     def _create_dealer_sink(self) -> Any:
+        retcode_map = {
+            10004: "TRADE_RETCODE_REQUOTE",
+            10006: "TRADE_RETCODE_REJECT (Request rejected by dealer)",
+            10008: "TRADE_RETCODE_PLACED (Order placed)",
+            10009: "TRADE_RETCODE_DONE (Request completed successfully)",
+            10010: "TRADE_RETCODE_DONE_PARTIAL",
+            10011: "TRADE_RETCODE_ERROR",
+            10012: "TRADE_RETCODE_TIMEOUT",
+            10013: "TRADE_RETCODE_INVALID",
+            10014: "TRADE_RETCODE_INVALID_VOLUME",
+            10015: "TRADE_RETCODE_INVALID_PRICE",
+            10016: "TRADE_RETCODE_INVALID_STOPS",
+            10017: "TRADE_RETCODE_TRADE_DISABLED",
+            10018: "TRADE_RETCODE_MARKET_CLOSED",
+            10019: "TRADE_RETCODE_NO_MONEY (Insufficient funds/margin on follower account)",
+            10020: "TRADE_RETCODE_PRICE_CHANGED",
+            10021: "TRADE_RETCODE_PRICE_OFF",
+            10022: "TRADE_RETCODE_TOO_MANY_REQUESTS",
+        }
+
         class DealerSink:
             def OnDealerResult(self, result):
                 retcode = getattr(result, "Retcode", 0)
                 if retcode not in (10009, 10008):
-                    logger.warning(f"[DEALER_SINK] Request rejected with retcode {retcode}")
+                    desc = retcode_map.get(retcode, f"Retcode {retcode}")
+                    logger.warning(
+                        f"[DEALER_SINK] Request rejected with retcode {retcode} ({desc})"
+                    )
 
             def OnDealerAnswer(self, answer):
                 pass

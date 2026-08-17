@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 import os
 import time
-from typing import Any, Callable, List
+from collections.abc import Callable
+from typing import Any
 
 from backendPanel.mam_engine.events import ActionType, CopyCommand
 from backendPanel.mam_engine.idempotency import IdempotencyEngine
@@ -63,7 +64,7 @@ class StatefulReconciler:
         except Exception as e:
             logger.error(f"[RECONCILER] Error during differential resync: {e}")
 
-    def _reconcile_master_positions(self, master_id: int, followers: List[int]):
+    def _reconcile_master_positions(self, master_id: int, followers: list[int]):
         try:
             positions = self.manager_api.PositionGet(master_id) or []
             for pos in positions:
@@ -96,9 +97,6 @@ class StatefulReconciler:
                         )
 
                         if not already_exists:
-                            logger.info(
-                                f"[RECONCILER-MISSING] Master {master_id} position {master_ticket} missing on follower {fid}. Dispatching copy..."
-                            )
                             cfg = self.cache.get_follower_config(fid)
                             multi_count = cfg.multi_trade_count if cfg else 1
                             copy_mode = cfg.copy_mode if cfg else "proportional"
@@ -125,6 +123,16 @@ class StatefulReconciler:
                                     if multi_count > 1
                                     else expected_prefix
                                 )
+                                dedupe_key = f"OPEN_{master_id}_{master_ticket}_{fid}"
+                                if multi_count > 1:
+                                    dedupe_key += f"_trade{trade_idx}"
+
+                                if self.idempotency.is_recently_processed(dedupe_key):
+                                    continue
+
+                                logger.info(
+                                    f"[RECONCILER-MISSING] Master {master_id} position {master_ticket} missing on follower {fid}. Dispatching copy..."
+                                )
                                 cmd = CopyCommand(
                                     command_id=f"resync_pos_{master_ticket}_{fid}_{trade_idx}",
                                     master_id=master_id,
@@ -148,7 +156,7 @@ class StatefulReconciler:
         except Exception as e:
             logger.debug(f"[RECONCILER] Position resync check error for master {master_id}: {e}")
 
-    def _reconcile_master_orders(self, master_id: int, followers: List[int]):
+    def _reconcile_master_orders(self, master_id: int, followers: list[int]):
         try:
             orders = self.manager_api.OrderGetOpen(master_id) or []
             for ord_obj in orders:
@@ -199,6 +207,16 @@ class StatefulReconciler:
                                     f"{expected_prefix}_trade{trade_idx}"
                                     if multi_count > 1
                                     else expected_prefix
+                                )
+                                dedupe_key = f"PENDING_OPEN_{master_id}_{master_ticket}_{fid}"
+                                if multi_count > 1:
+                                    dedupe_key += f"_trade{trade_idx}"
+
+                                if self.idempotency.is_recently_processed(dedupe_key):
+                                    continue
+
+                                logger.info(
+                                    f"[RECONCILER-MISSING] Master {master_id} pending order {master_ticket} missing on follower {fid}. Dispatching..."
                                 )
                                 cmd = CopyCommand(
                                     command_id=f"resync_ord_{master_ticket}_{fid}_{trade_idx}",
