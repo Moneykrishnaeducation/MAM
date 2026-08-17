@@ -48,55 +48,6 @@ async def async_create_superuser(
         )
         created = True
 
-    # 2. Sync to client_users table (ClientUser model)
-    client_user = await ClientUser.filter(email=email_clean).first()
-    if client_user:
-        client_user.name = name
-        client_user.password_hash = pwd_hash
-        client_user.role = role
-        client_user.status = "Active"
-        client_user.verified = True
-        client_user.kyc_status = "Verified"
-        if not client_user.phone and phone:
-            client_user.phone = phone
-        await client_user.save()
-    else:
-        count = await ClientUser.all().count()
-        user_code = f"USR-{1000 + count + 1}"
-
-        client_user = await ClientUser.create(
-            user_code=user_code,
-            name=name,
-            email=email_clean,
-            password_hash=pwd_hash,
-            phone=phone,
-            role=role,
-            status="Active",
-            verified=True,
-            country="United States",
-            tier="VIP Premium",
-            kyc_status="Verified",
-        )
-
-    # Ensure profile exists for client_user
-    profile = await ClientProfile.filter(user_id=client_user.id).first()
-    if not profile:
-        await ClientProfile.create(
-            user_id=client_user.id,
-            full_name=name,
-            email=email_clean,
-            phone=phone,
-            country="United States",
-            tier="VIP Premium",
-            kyc_status="Verified",
-        )
-    else:
-        profile.full_name = name
-        profile.email = email_clean
-        if not profile.phone and phone:
-            profile.phone = phone
-        await profile.save()
-
     return admin_user, created
 
 

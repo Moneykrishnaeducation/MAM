@@ -59,6 +59,11 @@ class ClientUser(models.Model):
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
+    async def save(self, *args, **kwargs) -> None:
+        if self.role not in ["Client", "Client User"]:
+            raise ValueError(f"ClientUser role must be 'Client' or 'Client User', got '{self.role}'")
+        await super().save(*args, **kwargs)
+
     class Meta:
         table = "client_users"
 

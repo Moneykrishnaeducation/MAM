@@ -370,13 +370,13 @@ class TestAdminPanelModels:
 
     async def test_admin_dashboard(self):
         """Test admin dashboard summary payload and admin-only access."""
-        await ClientUser.create(
+        await AdminUser.create(
             name="System Admin",
             email="system.admin@example.com",
             role="Admin",
             department="Operations",
             permissions=["View Reports", "User Approvals"],
-            verified=True,
+            status="Active",
         )
         await ClientUser.create(
             user_code="USR-DASH-A",
@@ -1569,7 +1569,7 @@ class TestClientPanelModels:
 
     async def test_admin_login_and_dashboard_token_lookup(self):
         """Test admin login response and bearer-token access to the admin dashboard."""
-        admin_user = await ClientUser.create(
+        admin_user = await AdminUser.create(
             name="Root Admin",
             email="root.admin@example.com",
             password_hash=hash_client_password("Admin@2026!"),
@@ -1577,7 +1577,6 @@ class TestClientPanelModels:
             department="Operations",
             permissions=["User Approvals", "View Reports"],
             status="Active",
-            verified=True,
         )
 
         login_request = type(
