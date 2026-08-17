@@ -187,24 +187,19 @@ export default function AdminPendingRequestsPage() {
 
     const loadRequestCounts = async () => {
         try {
-            // The summary API is unreliable, so we fetch the data for all tabs directly to guarantee accurate notification counts on page load
-            const [dep, wit, doc, pro, ban, cry] = await Promise.all([
-                fetch(REQUEST_ENDPOINTS['deposit'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-                fetch(REQUEST_ENDPOINTS['withdraw'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-                fetch(REQUEST_ENDPOINTS['documents'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-                fetch(REQUEST_ENDPOINTS['profile'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-                fetch(REQUEST_ENDPOINTS['bank'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-                fetch(REQUEST_ENDPOINTS['crypto'], { credentials: 'include' }).then(r => r.json().catch(() => ({}))),
-            ]);
-
-            setRequestCounts({
-                deposit: dep.requests ? dep.requests.length : 0,
-                withdraw: wit.requests ? wit.requests.length : 0,
-                documents: doc.requests ? doc.requests.length : 0,
-                profile: pro.requests ? pro.requests.length : 0,
-                bank: ban.requests ? ban.requests.length : 0,
-                crypto: cry.requests ? cry.requests.length : 0,
-            });
+            const res = await fetch('/api/admin/requests/summary', { credentials: 'include' });
+            const data = await res.json();
+            if (data.status === 'ok' && data.summary) {
+                const s = data.summary;
+                setRequestCounts({
+                    deposit: s.deposit ?? s.deposits ?? 0,
+                    withdraw: s.withdraw ?? s.withdrawals ?? 0,
+                    documents: s.documents ?? 0,
+                    profile: s.profile ?? s.profiles ?? 0,
+                    bank: s.bank ?? s.banks ?? 0,
+                    crypto: s.crypto ?? s.cryptos ?? 0,
+                });
+            }
         } catch (err) {
             console.error('Failed to load requests counts:', err);
         }

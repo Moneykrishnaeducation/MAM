@@ -7,7 +7,6 @@ import logging
 from collections.abc import Iterable
 from datetime import datetime
 
-from backendPanel.mail_queue import queue_email_message
 from django.http import JsonResponse
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -18,6 +17,7 @@ from tortoise.expressions import Q
 from adminPanel.models import ClientUser, PendingRequest
 from adminPanel.view.admin_identity import resolve_admin_display_name
 from adminPanel.view.mail import _frontend_base_url
+from backendPanel.mail_queue import queue_email_message
 from backendPanel.permissions import IsAdmin, permission_required
 from clientPanel.view.common import (
     apply_approved_document_request,
@@ -484,7 +484,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         )
     elif request_type in {"document", "documents"}:
         requested_value = file_name or request.client_name
-        
+
     user = getattr(request, "user", None)
     real_email = (
         (user.email if user else None)
@@ -492,7 +492,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         or payload.get("client_email")
         or _requester_email(request.client_name)
     )
-        
+
     return {
         "id": f"{tab[:3].upper()}-{request.id}",
         "userId": request.user_id or payload.get("user_id") or payload.get("profile_id") or "",
@@ -604,10 +604,23 @@ async def list_pending_cryptos(request):
 @require_http_methods(["GET"])
 async def list_pending_requests_summary(request):
     summary: dict[str, int] = {}
-    for tab in TAB_ALIASES:
-        summary[tab] = len(await _fetch_pending_requests_for_tab(tab))
+    for tab, aliases in TAB_ALIASES.items():
+        cond = _match_condition(aliases)
+        qs = PendingRequest.filter(status__iexact="pending")
+        if cond is not None:
+            qs = qs.filter(cond)
+        summary[tab] = await qs.count()
 
-    return JsonResponse({"status": "ok", "summary": summary, "total": sum(summary.values())})
+    # Map singular tab keys for frontend compatibility
+    summary["deposit"] = summary.get("deposits", 0)
+    summary["withdraw"] = summary.get("withdrawals", 0)
+    summary["documents"] = summary.get("documents", 0)
+    summary["profile"] = summary.get("profiles", 0)
+    summary["bank"] = summary.get("banks", 0)
+    summary["crypto"] = summary.get("cryptos", 0)
+
+    total_count = sum(summary[k] for k in ["deposits", "withdrawals", "documents", "profiles", "banks", "cryptos"])
+    return JsonResponse({"status": "ok", "summary": summary, "total": total_count})
 
 
 def _resolve_pending_request_id(request_id: str) -> int | None:
