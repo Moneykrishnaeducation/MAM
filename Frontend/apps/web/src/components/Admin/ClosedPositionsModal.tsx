@@ -190,8 +190,6 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
                     <th className="py-3 px-4">Symbol</th>
                     <th className="py-3 px-4">Type</th>
                     <th className="py-3 px-4 text-right">Volume</th>
-                    <th className="py-3 px-4 text-right">Contract Size</th>
-                    <th className="py-3 px-4 text-right">Effective Lots</th>
                     <th className="py-3 px-4 text-right">Open Price</th>
                     <th className="py-3 px-4 text-center">S / L</th>
                     <th className="py-3 px-4 text-center">T / P</th>
@@ -212,8 +210,6 @@ export default function ClosedPositionsModal({ isOpen, onClose, targetUser }: Cl
                         <td className="py-2.5 px-4 text-blue-200">#{pos.PositionID || pos.ticket}</td>
                         <td className="py-2.5 px-4 font-bold text-white font-sans">{pos.Symbol}</td>
                         <td className="py-2.5 px-4 font-sans"><span className={`px-2 py-0.5 rounded text-[10px] font-bold ${typeIsBuy ? 'text-emerald-400' : 'text-rose-400'}`}>{typeIsBuy ? 'Buy' : 'Sell'}</span></td>
-                        <td className="py-2.5 px-4 text-right">{pos.Volume}</td>
-                        <td className="py-2.5 px-4 text-right">{pos.ContractSize || '-'}</td>
                         <td className="py-2.5 px-4 text-right">{pos.Volume}</td>
                         <td className="py-2.5 px-4 text-right">{pos.PriceOpen}</td>
                         <td className="py-2.5 px-4 text-center text-slate-400">{pos.SL || '-'}</td>

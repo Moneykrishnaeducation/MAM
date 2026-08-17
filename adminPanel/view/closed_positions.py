@@ -145,7 +145,6 @@ def get_admin_closed_positions(request, account_id: int):
                         "Symbol": str(get_val(p, ["Symbol"], "")),
                         "Action": get_val(p, ["Action"], 0),
                         "Volume": volume,
-                        "ContractSize": get_val(p, ["ContractSize"], 0),
                         "PriceOpen": price_open,
                         "PriceClose": price_close if entry in (1, 2, 3) else 0.0,
                         "TimeCreate": time_str,
