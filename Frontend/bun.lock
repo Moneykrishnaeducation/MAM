@@ -6,14 +6,14 @@
       "name": "Frontend",
       "dependencies": {
         "@Frontend/env": "workspace:*",
-        "dotenv": "latest",
-        "zod": "latest",
+        "dotenv": "^17.4.2",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@Frontend/config": "workspace:*",
-        "prettier": "latest",
-        "turbo": "latest",
-        "typescript": "latest",
+        "prettier": "^3.9.6",
+        "turbo": "^2.10.8",
+        "typescript": "^7.0.2",
       },
     },
     "apps/web": {

@@ -109,6 +109,37 @@ RESYNC_COOLDOWN = float(os.getenv("RESYNC_COOLDOWN", "15.0"))
 _global_engine: Optional[Any] = None
 
 
+def get_engine_health_status() -> dict:
+    """Return live health status metrics of the MAM Copy Trading Engine and web server."""
+    global _global_engine
+    engine_active = bool(_global_engine and getattr(_global_engine, "_active", False))
+
+    if engine_active:
+        last_ts = getattr(_global_engine, "_last_activity_ts", time())
+        idle_seconds = round(time() - last_ts, 1)
+        dedupe_keys = len(getattr(_global_engine.idempotency, "_recent_copies", {}))
+        return {
+            "web_status": "Operational",
+            "mt5_bridge_status": "Connected",
+            "is_active": True,
+            "engine_active": True,
+            "idle_seconds": idle_seconds,
+            "engine_mode": "Zero-Queue Parallel",
+            "dedupe_cache_keys": dedupe_keys,
+            "persistence_workers": 4,
+        }
+    return {
+        "web_status": "Operational",
+        "mt5_bridge_status": "Standby",
+        "is_active": True,
+        "engine_active": False,
+        "idle_seconds": 0.0,
+        "engine_mode": "Queue-Free Parallel",
+        "dedupe_cache_keys": 0,
+        "persistence_workers": 0,
+    }
+
+
 class ManagerEventRouter:
     """Routes master manager events concurrently into the MAMCopyEngine partitioning layer."""
 
