@@ -103,6 +103,8 @@ async def admin_mails(request):
         status_filter = str(request.GET.get("status") or "").strip().lower()
         category_filter = str(request.GET.get("category") or "").strip().lower()
         search_query = str(request.GET.get("search") or "").strip()
+        from_date = str(request.GET.get("from") or "").strip()
+        to_date = str(request.GET.get("to") or "").strip()
         
         try:
             page = max(1, int(request.GET.get("page") or "1"))
@@ -120,7 +122,38 @@ async def admin_mails(request):
             query = query.filter(status=status_filter)
             
         if category_filter and category_filter != "all":
-            query = query.filter(source=category_filter)
+            if category_filter == "broadcast":
+                query = query.filter(source="admin")
+            elif category_filter == "deposit":
+                query = query.filter(subject__icontains="deposit")
+            elif category_filter == "withdrawal":
+                query = query.filter(subject__icontains="withdraw")
+            elif category_filter == "security":
+                query = query.filter(
+                    Q(subject__icontains="password") |
+                    Q(subject__icontains="verification") |
+                    Q(subject__icontains="login") |
+                    Q(subject__icontains="code") |
+                    Q(subject__icontains="security")
+                )
+            elif category_filter == "account":
+                query = query.filter(
+                    Q(subject__icontains="account") |
+                    Q(subject__icontains="profile") |
+                    Q(subject__icontains="kyc") |
+                    Q(subject__icontains="welcome") |
+                    Q(subject__icontains="credentials") |
+                    Q(subject__icontains="detail")
+                )
+            elif category_filter == "trade_report":
+                query = query.filter(
+                    Q(subject__icontains="trade") |
+                    Q(subject__icontains="report") |
+                    Q(subject__icontains="statement") |
+                    Q(subject__icontains="margin")
+                )
+            else:
+                query = query.filter(source=category_filter)
             
         if search_query:
             query = query.filter(
@@ -128,6 +161,14 @@ async def admin_mails(request):
                 Q(body__icontains=search_query) |
                 Q(from_email__icontains=search_query)
             )
+
+        if from_date:
+            query = query.filter(created_at__gte=from_date)
+        if to_date:
+            # To include the entire end day, we could append time if only date is provided
+            if len(to_date) == 10:  # YYYY-MM-DD
+                to_date = f"{to_date}T23:59:59.999Z"
+            query = query.filter(created_at__lte=to_date)
 
         total_count = await query.count()
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
@@ -143,11 +184,41 @@ async def admin_mails(request):
             "sent": await AdminMailMessage.filter(status="sent").count(),
             "failed": await AdminMailMessage.filter(status="failed").count(),
         }
+        
+        category_counts = {
+            "all": total_count,
+            "broadcast": await AdminMailMessage.filter(source="admin").count(),
+            "deposit": await AdminMailMessage.filter(subject__icontains="deposit").count(),
+            "withdrawal": await AdminMailMessage.filter(subject__icontains="withdraw").count(),
+            "security": await AdminMailMessage.filter(
+                Q(subject__icontains="password") |
+                Q(subject__icontains="verification") |
+                Q(subject__icontains="login") |
+                Q(subject__icontains="code") |
+                Q(subject__icontains="security")
+            ).count(),
+            "account": await AdminMailMessage.filter(
+                Q(subject__icontains="account") |
+                Q(subject__icontains="profile") |
+                Q(subject__icontains="kyc") |
+                Q(subject__icontains="welcome") |
+                Q(subject__icontains="credentials") |
+                Q(subject__icontains="detail")
+            ).count(),
+            "trade_report": await AdminMailMessage.filter(
+                Q(subject__icontains="trade") |
+                Q(subject__icontains="report") |
+                Q(subject__icontains="statement") |
+                Q(subject__icontains="margin")
+            ).count(),
+        }
+        
         return JsonResponse(
             {
                 "status": "ok", 
                 "messages": payload, 
-                "summary": summary, 
+                "summary": summary,
+                "categories": category_counts,
                 "count": total_count,
                 "total_pages": total_pages,
                 "current_page": page

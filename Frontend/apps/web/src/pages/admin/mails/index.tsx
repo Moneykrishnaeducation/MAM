@@ -41,7 +41,9 @@ import {
   MoreVertical,
   Star,
   Printer,
-  Code
+  Code,
+  Menu,
+  Edit2
 } from "lucide-react";
 
 // Category Configuration & Colors
@@ -67,6 +69,8 @@ const MailPage = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
@@ -96,6 +100,7 @@ const MailPage = () => {
   // Stats & Toast
   const [toast, setToast] = useState<{message: string, variant: string} | null>(null);
   const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
   // Icon & Color map for dynamic categories
   const getCategoryMeta = (catId: string) => {
@@ -120,6 +125,8 @@ const MailPage = () => {
         category: selectedCategory,
         status: selectedStatus,
         search: searchQuery,
+        from: fromDate,
+        to: toDate,
         page: page.toString(),
         page_size: '15'
       });
@@ -135,7 +142,7 @@ const MailPage = () => {
       setTotalPages(data.total_pages || 1);
       setTotalCount(data.count || 0);
       setCurrentPage(data.current_page || 1);
-      setCategoryCounts({});
+      setCategoryCounts(data.categories || {});
       setStatusCounts(data.summary || {});
     } catch (err: any) {
       console.error("Failed to fetch email queue:", err);
@@ -159,7 +166,7 @@ const MailPage = () => {
   // Fetch emails whenever category, status, search, or page changes
   useEffect(() => {
     fetchEmails(currentPage);
-  }, [selectedCategory, selectedStatus, currentPage]);
+  }, [selectedCategory, selectedStatus, currentPage, fromDate, toDate]);
 
   // Handle Search Input with debounce
   useEffect(() => {
@@ -291,10 +298,32 @@ const MailPage = () => {
   return (
     <>
       {/* Main Gmail-like Interface */}
-      <div className="w-full h-[calc(100vh-80px)] flex flex-col bg-transparent text-white overflow-hidden p-3 sm:p-6 relative">
+      <div className="w-full h-[calc(100vh-60px)] md:h-[calc(100vh-80px)] flex flex-col bg-transparent text-white overflow-hidden md:p-6 relative">
         
         {/* Top Gmail Header & Action Bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-[#081942]/90 p-4 rounded-3xl border border-[#1D3B8A] shadow-xl backdrop-blur-xl flex-shrink-0">
+        {/* Mobile Search Header (Gmail Dark) */}
+        <div className="md:hidden px-4 pt-3 pb-1 bg-transparent flex-shrink-0">
+          <div className="flex items-center bg-[#081942]/80 border border-[#1D3B8A] rounded-full px-4 py-3 shadow-md backdrop-blur-md">
+            <Menu 
+              className="w-6 h-6 text-[#8FB8FF] mr-4 cursor-pointer" 
+              onClick={() => setIsMobileMenuOpen(true)} 
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search in mail"
+              className="flex-1 bg-transparent border-none text-[15px] text-gray-200 outline-none placeholder:text-gray-400"
+            />
+            <Sparkles className="w-5 h-5 text-gray-300 ml-2" />
+            <div className="w-8 h-8 bg-[#ff5722] rounded-full flex items-center justify-center text-white font-bold text-sm ml-4">
+              N
+            </div>
+          </div>
+          <h2 className="text-gray-200 text-xs font-semibold tracking-wide mt-5 mb-1 px-1">Inbox</h2>
+        </div>
+
+        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-[#081942]/90 p-4 rounded-3xl border border-[#1D3B8A] shadow-xl backdrop-blur-xl flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-3 rounded-2xl bg-gradient-to-br from-[#0e2a78] to-[#081942] border border-[#244eb5] text-[#E0B01D]">
               <Mail className="w-6 h-6" />
@@ -309,9 +338,9 @@ const MailPage = () => {
             </div>
           </div>
 
-          {/* Search Input Bar */}
-          <div className="flex-1 max-w-xl mx-0 md:mx-6">
-            <div className="relative">
+          {/* Filters Row: Search & Date Pickers */}
+          <div className="flex-1 max-w-2xl mx-0 md:mx-6 flex flex-col sm:flex-row items-center gap-3">
+            <div className="relative flex-1 w-full">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8FB8FF]" />
               <input
                 type="text"
@@ -325,6 +354,24 @@ const MailPage = () => {
                   <X className="w-4 h-4" />
                 </button>
               )}
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <input 
+                type="date" 
+                value={fromDate}
+                onChange={(e) => { setFromDate(e.target.value); setCurrentPage(1); }}
+                className="w-full sm:w-[130px] px-3 py-2 text-xs font-semibold rounded-xl border border-[#1D3B8A] bg-[#051336] focus:border-[#E0B01D] text-[#8FB8FF] outline-none transition-all cursor-pointer"
+                title="From Date"
+              />
+              <span className="text-[#8FB8FF] text-xs font-bold">-</span>
+              <input 
+                type="date" 
+                value={toDate}
+                onChange={(e) => { setToDate(e.target.value); setCurrentPage(1); }}
+                className="w-full sm:w-[130px] px-3 py-2 text-xs font-semibold rounded-xl border border-[#1D3B8A] bg-[#051336] focus:border-[#E0B01D] text-[#8FB8FF] outline-none transition-all cursor-pointer"
+                title="To Date"
+              />
             </div>
           </div>
 
@@ -424,51 +471,53 @@ const MailPage = () => {
           </div>
 
           {/* Right Display Pane: Main Mail List OR Full In-Page Email Reader (Gmail style) */}
-          <div className="flex-1 flex flex-col bg-[#081942]/90 rounded-3xl border border-[#1D3B8A] backdrop-blur-xl overflow-hidden shadow-2xl">
+          <div className="flex-1 flex flex-col bg-transparent md:bg-[#081942]/90 md:rounded-3xl md:border border-[#1D3B8A] backdrop-blur-xl overflow-hidden md:shadow-2xl">
             
             {selectedEmail ? (
               /* GMAIL FULL IN-PAGE EMAIL READER VIEW */
               <div className="flex-1 flex flex-col h-full bg-[#081942] animate-in fade-in">
                 
                 {/* Gmail Reader Header Action Toolbar */}
-                <div className="p-4 border-b border-[#1D3B8A] bg-[#051336] flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
+                <div className="p-3 sm:p-4 border-b border-[#1D3B8A] bg-[#051336] flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-[200px]">
                     <button
                       onClick={() => setSelectedEmail(null)}
-                      className="p-2.5 rounded-2xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white hover:border-[#E0B01D] transition-all flex items-center gap-2 text-xs font-bold"
+                      className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white hover:border-[#E0B01D] transition-all flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs font-bold"
                       title="Back to inbox list"
                     >
-                      <ArrowLeft className="w-4 h-4" />
+                      <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       Back
                     </button>
-                    <div className="h-6 w-[1px] bg-[#1D3B8A]" />
-                    <span className="text-xs font-black uppercase tracking-widest text-[#E0B01D]">
+                    <div className="h-4 sm:h-6 w-[1px] bg-[#1D3B8A]" />
+                    <span className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#E0B01D] truncate max-w-[140px] sm:max-w-none">
                       {selectedEmail.source || 'Admin'}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(selectedEmail.status)}
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="scale-90 sm:scale-100 origin-right">
+                      {getStatusBadge(selectedEmail.status)}
+                    </div>
                     <button
                       onClick={() => setShowJsonDebugger(!showJsonDebugger)}
-                      className={`p-2 rounded-xl border transition-all text-xs font-bold flex items-center gap-1.5 ${
+                      className={`hidden sm:flex p-2 rounded-xl border transition-all text-xs font-bold items-center gap-1.5 ${
                         showJsonDebugger ? 'bg-[#E0B01D] text-[#030a1c] border-[#E0B01D]' : 'bg-[#081942] border-[#1D3B8A] text-[#8FB8FF] hover:text-white'
                       }`}
                       title="Toggle JSON Payload Inspection"
                     >
                       <Code className="w-4 h-4" />
-                      <span className="hidden sm:inline">JSON</span>
+                      <span>JSON</span>
                     </button>
                     <button
                       onClick={() => window.print()}
-                      className="p-2 rounded-xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white"
+                      className="hidden sm:flex p-2 rounded-xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white"
                       title="Print Email"
                     >
                       <Printer className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setSelectedEmail(null)}
-                      className="p-2 rounded-xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white"
+                      className="hidden sm:flex p-2 rounded-xl bg-[#081942] border border-[#1D3B8A] text-[#8FB8FF] hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -476,43 +525,43 @@ const MailPage = () => {
                 </div>
 
                 {/* Gmail Reader Body */}
-                <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-4 sm:space-y-6">
                   
                   {/* Subject Line */}
-                  <div className="border-b border-[#1D3B8A]/60 pb-5">
-                    <h2 className="text-2xl font-black text-white tracking-tight">
+                  <div className="border-b border-[#1D3B8A]/60 pb-4 sm:pb-5">
+                    <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
                       {selectedEmail.subject || '(No Subject)'}
                     </h2>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs font-medium text-[#8FB8FF]/60">
+                      <span className="text-[10px] sm:text-xs font-medium text-[#8FB8FF]/60">
                         Queue ID: #{selectedEmail.id}
                       </span>
                     </div>
                   </div>
 
                   {/* Sender & Recipient Header Card */}
-                  <div className="flex items-start justify-between gap-4 p-5 rounded-2xl bg-[#051336] border border-[#1D3B8A]">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#0e2a78] to-[#081942] border border-[#E0B01D] flex items-center justify-center text-lg font-black text-[#E0B01D]">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-[#051336] border border-[#1D3B8A]">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0 rounded-2xl bg-gradient-to-br from-[#0e2a78] to-[#081942] border border-[#E0B01D] flex items-center justify-center text-base sm:text-lg font-black text-[#E0B01D]">
                         {(selectedEmail.to && selectedEmail.to[0]) ? selectedEmail.to[0].charAt(0).toUpperCase() : 'V'}
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-black text-white">{(selectedEmail.to && selectedEmail.to.join(', ')) || 'No recipients'}</span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-black text-white truncate max-w-full">{(selectedEmail.to && selectedEmail.to.join(', ')) || 'No recipients'}</span>
                           {(selectedEmail.cc && selectedEmail.cc.length > 0) && (
-                            <span className="text-xs font-semibold text-[#8FB8FF]">CC: {selectedEmail.cc.join(', ')}</span>
+                            <span className="text-[10px] sm:text-xs font-semibold text-[#8FB8FF] truncate">CC: {selectedEmail.cc.join(', ')}</span>
                           )}
                         </div>
-                        <p className="text-xs font-medium text-[#8FB8FF] mt-0.5">
+                        <p className="text-[10px] sm:text-xs font-medium text-[#8FB8FF] mt-0.5 truncate">
                           To: <span className="text-white">{(selectedEmail.to && selectedEmail.to.join(', ')) || ''}</span>
                         </p>
                       </div>
                     </div>
 
-                    <div className="text-right text-xs font-semibold text-[#8FB8FF]">
+                    <div className="text-left sm:text-right text-[10px] sm:text-xs font-semibold text-[#8FB8FF] pl-14 sm:pl-0">
                       <div>{formatDate(selectedEmail.created_at)}</div>
                       {selectedEmail.sent_at && (
-                        <div className="text-[10px] text-emerald-400 mt-1">Sent: {formatDate(selectedEmail.sent_at)}</div>
+                        <div className="text-[10px] text-emerald-400 mt-0.5 sm:mt-1">Sent: {formatDate(selectedEmail.sent_at)}</div>
                       )}
                     </div>
                   </div>
@@ -568,7 +617,7 @@ const MailPage = () => {
               /* MAIN MAIL LIST VIEW */
               <>
                 {/* Category selector pill bar for Mobile screens */}
-                <div className="flex lg:hidden overflow-x-auto gap-2 p-3 border-b border-[#1D3B8A] scrollbar-none">
+                <div className="hidden md:flex lg:hidden overflow-x-auto gap-2 p-3 border-b border-[#1D3B8A] scrollbar-none">
                   {CATEGORIES.map((cat) => (
                     <button
                       key={cat.id}
@@ -585,7 +634,7 @@ const MailPage = () => {
                 </div>
 
                 {/* Mail Items Table List */}
-                <div className="flex-1 overflow-y-auto divide-y divide-[#1D3B8A]/50">
+                <div className="flex-1 overflow-y-auto divide-y divide-[#1D3B8A]/50 scrollbar-thin scrollbar-thumb-[#1D3B8A] scrollbar-track-transparent">
                   {loading ? (
                     <div className="h-full flex flex-col items-center justify-center p-12 text-center text-[#8FB8FF]">
                       <RefreshCw className="w-8 h-8 animate-spin mb-4 text-[#E0B01D]" />
@@ -612,43 +661,64 @@ const MailPage = () => {
                       <div
                         key={mail.id}
                         onClick={() => setSelectedEmail(mail)}
-                        className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-[#0d286d]/40 transition-all cursor-pointer gap-3"
+                        className="group flex flex-row items-start justify-between p-4 md:p-4 md:hover:bg-[#0d286d]/40 transition-all cursor-pointer gap-3"
                       >
-                        {/* Left: Recipient & Event Type */}
-                        <div className="flex items-center gap-3 sm:w-1/4 min-w-0">
-                          <div className="w-9 h-9 rounded-2xl bg-[#051336] border border-[#1D3B8A] flex items-center justify-center text-xs font-black text-[#E0B01D] group-hover:border-[#E0B01D] transition-all flex-shrink-0">
+                        {/* Left Avatar */}
+                        <div className="flex-shrink-0">
+                          <div className="w-11 h-11 md:w-9 md:h-9 rounded-full md:rounded-2xl bg-[#ff6b6b] md:bg-[#051336] md:border border-[#1D3B8A] flex items-center justify-center text-lg md:text-xs font-normal md:font-black text-black md:text-[#E0B01D] transition-all">
                             {(mail.to && mail.to[0]) ? mail.to[0].charAt(0).toUpperCase() : 'M'}
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-white truncate">
-                              {(mail.to && mail.to.join(', ')) || 'No recipients'}
+                        </div>
+
+                        {/* Mobile Text Block */}
+                        <div className="md:hidden flex-1 min-w-0 ml-1">
+                          <div className="flex justify-between items-baseline mb-0.5">
+                            <p className="text-[15px] font-bold text-gray-100 truncate pr-2">
+                              {(mail.to && mail.to[0]) || 'No recipient'}
                             </p>
-                            <span className="inline-block text-[9px] font-black uppercase tracking-wider text-[#8FB8FF]/80">
-                              {mail.source || 'Admin'}
+                            <span className="text-[11px] text-gray-400 shrink-0">
+                              {formatDate(mail.created_at)}
                             </span>
                           </div>
+                          <p className="text-[14px] font-bold text-gray-200 truncate mb-0.5">
+                            {mail.subject || '(No Subject)'}
+                          </p>
+                          <div className="flex justify-between items-start">
+                            <p className="text-[13px] text-gray-400 truncate pr-2">
+                              {mail.body?.substring(0, 80) || ''}
+                            </p>
+                            <Star className="w-5 h-5 text-gray-500 shrink-0" />
+                          </div>
                         </div>
 
-                        {/* Middle: Subject & Context snippet */}
-                        <div className="flex-1 min-w-0 px-0 sm:px-4">
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs font-bold text-white truncate group-hover:text-[#E0B01D] transition-colors">
-                              {mail.subject || '(No Subject)'}
+                        {/* Desktop Text Block (Original Layout but wrapped) */}
+                        <div className="hidden md:flex flex-1 min-w-0 items-center justify-between">
+                          <div className="flex items-center gap-3 w-1/4 min-w-0">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-white truncate">
+                                {(mail.to && mail.to.join(', ')) || 'No recipients'}
+                              </p>
+                              <span className="inline-block text-[9px] font-black uppercase tracking-wider text-[#8FB8FF]/80">
+                                {mail.source || 'Admin'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 px-4">
+                            <div className="flex items-center gap-2">
+                              <p className="text-xs font-bold text-white truncate group-hover:text-[#E0B01D] transition-colors">
+                                {mail.subject || '(No Subject)'}
+                              </p>
+                            </div>
+                            <p className="text-[11px] font-medium text-[#8FB8FF]/60 truncate mt-0.5">
+                              {mail.body?.substring(0, 80) || ''}
                             </p>
                           </div>
-                          <p className="text-[11px] font-medium text-[#8FB8FF]/60 truncate mt-0.5">
-                            {mail.body?.substring(0, 80) || ''}
-                          </p>
-                        </div>
-
-                        {/* Right: Status & Date */}
-                        <div className="flex items-center justify-between sm:justify-end gap-4 flex-shrink-0">
-                          <div>
-                            {getStatusBadge(mail.status)}
+                          <div className="flex items-center justify-end gap-4 flex-shrink-0">
+                            <div>{getStatusBadge(mail.status)}</div>
+                            <span className="text-[11px] font-semibold text-[#8FB8FF]/70 whitespace-nowrap">
+                              {formatDate(mail.created_at)}
+                            </span>
                           </div>
-                          <span className="text-[11px] font-semibold text-[#8FB8FF]/70 whitespace-nowrap">
-                            {formatDate(mail.created_at)}
-                          </span>
                         </div>
                       </div>
                     ))
@@ -689,15 +759,26 @@ const MailPage = () => {
           </div>
         </div>
 
-        {/* FLOATING GMAIL-STYLE COMPOSE WIDGET (Bottom Right Dock) */}
+        {/* COMPOSE OVERLAY BACKDROP */}
+        {isComposeOpen && !isComposeMinimized && (
+          <div 
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] animate-in fade-in"
+            onClick={() => {
+              // Only close if we are not maximized or doing something else, but standard modals often close on outside click.
+              // We'll leave it without onClick closing for safety to prevent accidental loss of draft.
+            }}
+          />
+        )}
+
+        {/* FLOATING GMAIL-STYLE COMPOSE WIDGET */}
         {isComposeOpen && (
           <div
-            className={`fixed z-50 transition-all duration-300 shadow-2xl border border-[#244eb5] rounded-t-3xl overflow-hidden bg-[#081942] flex flex-col ${
+            className={`fixed z-50 transition-all duration-300 shadow-2xl border border-[#244eb5] overflow-hidden bg-[#081942] flex flex-col ${
               isComposeMaximized
-                ? 'inset-6 rounded-3xl'
+                ? 'inset-0 sm:inset-6 rounded-none sm:rounded-3xl transform-none'
                 : isComposeMinimized
-                ? 'bottom-0 right-6 w-80 h-12'
-                : 'bottom-0 right-6 w-full max-w-xl h-[540px]'
+                ? 'bottom-0 right-0 sm:right-6 w-full sm:w-80 h-12 rounded-t-2xl sm:rounded-t-3xl transform-none'
+                : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[95%] sm:w-full sm:max-w-xl h-[85vh] sm:h-[600px] rounded-2xl sm:rounded-3xl'
             }`}
           >
             {/* Compose Header Bar */}
@@ -778,22 +859,22 @@ const MailPage = () => {
                 </div>
 
                 {/* Gmail-Style Bottom Bar Buttons */}
-                <div className="pt-2 flex items-center justify-between gap-3 flex-shrink-0 border-t border-[#1D3B8A]/60">
-                  <div className="flex items-center gap-2">
+                <div className="p-3 flex flex-col sm:flex-row items-center justify-between gap-3 flex-shrink-0 border-t border-[#1D3B8A]/60">
+                  <div className="flex flex-col sm:flex-row w-full sm:w-auto items-stretch sm:items-center gap-2 flex-1">
                     <button
                       type="submit"
                       disabled={sendingLoading || broadcastLoading || !formData.email}
-                      className="px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-[#E0B01D] to-[#C99508] text-[#030a1c] disabled:opacity-40 hover:brightness-110 flex items-center gap-2 shadow-lg shadow-[#E0B01D]/20 active:scale-95 transition-all"
+                      className="px-4 py-3 sm:px-5 sm:py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-[#E0B01D] to-[#C99508] text-[#030a1c] disabled:opacity-40 hover:brightness-110 flex items-center justify-center gap-2 shadow-lg shadow-[#E0B01D]/20 active:scale-95 transition-all w-full sm:w-auto"
                     >
                       {sendingLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                       Send Direct
                     </button>
-
+                    
                     <button
                       type="button"
                       onClick={handleSendBroadcast}
                       disabled={sendingLoading || broadcastLoading}
-                      className="px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-[#0d286d] text-white border border-[#244eb5] hover:bg-[#123283] flex items-center gap-2 transition-all"
+                      className="px-4 py-3 sm:py-2.5 rounded-xl font-black text-xs uppercase tracking-wider bg-[#0d286d] text-white border border-[#244eb5] hover:bg-[#123283] flex items-center justify-center gap-2 transition-all w-full sm:w-auto"
                     >
                       {broadcastLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Users className="w-3.5 h-3.5 text-yellow-400" />}
                       Broadcast All ({activeUsersCount ?? '--'})
@@ -803,7 +884,7 @@ const MailPage = () => {
                   <button
                     type="button"
                     onClick={() => setFormData({ email: '', subject: '', message: '' })}
-                    className="p-2 rounded-xl text-[#8FB8FF]/60 hover:text-rose-400 hover:bg-rose-500/10 transition-all"
+                    className="p-3 sm:p-2 rounded-xl text-[#8FB8FF]/60 hover:text-rose-400 hover:bg-rose-500/10 transition-all self-end sm:self-auto hidden sm:block"
                     title="Discard draft"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -816,7 +897,18 @@ const MailPage = () => {
 
       </div>
 
+      
+      {/* Mobile Floating Compose Button */}
+      <button 
+        className="md:hidden fixed bottom-20 right-5 pl-4 pr-5 py-3.5 bg-[#c2e7ff] text-[#001d35] rounded-2xl flex items-center gap-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-10 hover:bg-[#a6d5fa] transition-colors"
+        onClick={() => { setIsComposeOpen(true); setIsComposeMinimized(false); setIsComposeMaximized(true); }}
+      >
+        <Edit2 className="w-5 h-5" />
+        <span className="font-semibold text-[15px]">Compose</span>
+      </button>
+
       {/* Toast Notification */}
+
       {toast && (
         <div className="fixed top-20 right-8 z-50 animate-in slide-in-from-bottom-4 fade-in duration-300">
           <div className={`px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-3 border-2 ${
@@ -824,6 +916,101 @@ const MailPage = () => {
           }`}>
             {toast.variant === 'error' ? <AlertCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
             <span className="text-sm font-black tracking-tight">{toast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      {isMobileMenuOpen && (
+        <div className="md:hidden fixed inset-0 z-[100] flex">
+          {/* Overlay */}
+          <div 
+            className="absolute inset-0 bg-black/60 transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          ></div>
+          
+          {/* Sidebar Panel */}
+          <div className="relative w-[280px] max-w-[80%] bg-[#081942] h-full flex flex-col shadow-2xl animate-in slide-in-from-left duration-300 border-r border-[#1D3B8A]">
+            <div className="p-5 border-b border-[#1D3B8A] flex items-center gap-3">
+              <Mail className="w-6 h-6 text-[#E0B01D]" />
+              <h2 className="text-xl font-bold text-white">Mail Hub</h2>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-3 scrollbar-none flex flex-col gap-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8FB8FF] px-3 py-2">
+                Categories by Type
+              </div>
+              
+              {(dynamicCategoriesList.length > 0 ? dynamicCategoriesList : CATEGORIES).map(cat => {
+                const meta = getCategoryMeta(cat.id);
+                const IconComp = cat.icon || meta.icon;
+                const colorClass = cat.color || meta.color;
+                const isSelected = selectedCategory === cat.id;
+                const count = cat.count ?? categoryCounts[cat.id] ?? 0;
+                
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setCurrentPage(1);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={`flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
+                      isSelected 
+                        ? 'bg-gradient-to-r from-[#0d286d] to-[#081f59] text-white border border-[#244eb5] shadow-lg' 
+                        : 'text-[#8FB8FF] hover:bg-[#051336]/60 hover:text-white border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-1.5 rounded-xl border ${colorClass}`}>
+                        <IconComp className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="truncate">{cat.label}</span>
+                    </div>
+                    {count > 0 && (
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                        isSelected ? 'bg-[#E0B01D] text-[#030a1c]' : 'bg-[#051336] text-[#8FB8FF] border border-[#1D3B8A]'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+
+              <div className="my-2 border-t border-[#1D3B8A]/60" />
+
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8FB8FF] px-3 py-1">
+                Filter by Status
+              </div>
+              
+              {['all', 'queued', 'sent', 'failed'].map((st) => (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setSelectedStatus(st);
+                    setCurrentPage(1);
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold capitalize transition-all ${
+                    selectedStatus === st
+                      ? 'bg-[#051336] text-[#E0B01D] border border-[#E0B01D]/40'
+                      : 'text-[#8FB8FF]/80 hover:text-white border border-transparent'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${
+                      st === 'sent' ? 'bg-emerald-400' : st === 'queued' ? 'bg-amber-400' : st === 'failed' ? 'bg-rose-400' : 'bg-blue-400'
+                    }`} />
+                    {st}
+                  </span>
+                  <span className="text-[10px] opacity-60 font-semibold">
+                    {st === 'all' ? totalCount : statusCounts[st] ?? 0}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
