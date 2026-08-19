@@ -17,7 +17,7 @@ from clientPanel.verification.ocr_engine import check_document_quality, extract_
 from clientPanel.verification.classifier import classify_document
 from clientPanel.verification.identity_verifier import verify_identity_document
 from clientPanel.verification.residence_verifier import verify_residence_document
-from clientPanel.verification.scoring_engine import evaluate_verification_decision
+from clientPanel.verification.scoring_engine import evaluate_verification_decision, format_human_readable_reason
 
 logger = logging.getLogger(__name__)
 
@@ -96,15 +96,17 @@ async def verify_identity_api(request):
     doc.identity_uploaded_at = timezone.now()
     await doc.save()
 
+    human_reason = format_human_readable_reason(reason, warnings, profile.full_name)
+
     response_data = {
-        "message": reason,
-        "human_readable_reason": reason,
+        "message": human_reason,
+        "human_readable_reason": human_reason,
         "id": doc.id,
         "status": decision,
         "verification_status": decision,
         "confidence_score": final_score,
-        "reason": reason,
-        "verification_reason": reason,
+        "reason": human_reason,
+        "verification_reason": human_reason,
         "document_type": "identity",
         "document": file_url,
         "extracted_data": extracted_data,
@@ -155,15 +157,17 @@ async def verify_residence_api(request):
     doc.address_uploaded_at = timezone.now()
     await doc.save()
 
+    human_reason = format_human_readable_reason(reason, warnings, profile.full_name)
+
     response_data = {
-        "message": reason,
-        "human_readable_reason": reason,
+        "message": human_reason,
+        "human_readable_reason": human_reason,
         "id": doc.id,
         "status": decision,
         "verification_status": decision,
         "confidence_score": final_score,
-        "reason": reason,
-        "verification_reason": reason,
+        "reason": human_reason,
+        "verification_reason": human_reason,
         "document_type": "residence",
         "document": file_url,
         "extracted_data": extracted_data,
