@@ -132,6 +132,24 @@ async def get_client_profile(request):
     except ValueError as exc:
         return _error(str(exc), status=400)
 
+    # Immediately update the profile so auto-verification has data to compare against
+    if "full_name" in submission_payload and submission_payload["full_name"]:
+        profile.full_name = submission_payload["full_name"]
+    if "phone" in submission_payload and submission_payload["phone"]:
+        profile.phone = submission_payload["phone"]
+    if "country" in submission_payload and submission_payload["country"]:
+        profile.country = submission_payload["country"]
+    if "date_of_birth" in submission_payload and submission_payload["date_of_birth"]:
+        profile.date_of_birth = submission_payload["date_of_birth"]
+    if "address" in submission_payload and submission_payload["address"]:
+        profile.address = submission_payload["address"]
+    if "city" in submission_payload and submission_payload["city"]:
+        profile.city = submission_payload["city"]
+    if "postal_code" in submission_payload and submission_payload["postal_code"]:
+        profile.postal_code = submission_payload["postal_code"]
+    
+    await profile.save(update_fields=["full_name", "phone", "country", "date_of_birth", "address", "city", "postal_code"])
+
     pending_request = await create_profile_pending_request(user, user, submission_payload)
 
     try:

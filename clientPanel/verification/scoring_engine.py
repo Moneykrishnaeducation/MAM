@@ -89,12 +89,6 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
         errors.append(duplicate_msg)
         return decision, confidence_int, reason, errors
 
-    if not is_type_valid:
-        decision = 'rejected' if type_confidence > 75.0 else 'manual_review'
-        reason = f"document_type_mismatch: {type_mismatch_reason}"
-        errors.append(type_mismatch_reason)
-        return decision, confidence_int, reason, errors
-
     # Major Name Mismatch Override
     if scores_dict.get('name_match_score', 0) < 40.0:
         decision = 'rejected'
@@ -107,6 +101,12 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
         decision = 'rejected'
         reason = "major_dob_mismatch: The date of birth on the uploaded document does not match your registered profile date of birth."
         errors.append(reason)
+        return decision, confidence_int, reason, errors
+
+    if not is_type_valid:
+        decision = 'rejected' if type_confidence > 75.0 else 'manual_review'
+        reason = f"document_type_mismatch: {type_mismatch_reason}"
+        errors.append(type_mismatch_reason)
         return decision, confidence_int, reason, errors
 
     # Major Address Mismatch Override for Residence

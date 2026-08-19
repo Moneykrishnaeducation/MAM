@@ -31,7 +31,9 @@ import {
   X,
   Edit,
   Eye,
-  EyeOff
+  EyeOff,
+  FileUp,
+  CheckCircle,
 } from 'lucide-react';
 import { ProfileSkeleton } from '@/components/client-page-skeletons';
 
@@ -166,6 +168,11 @@ type ActivityLogEntry = {
   details: string;
   ip_address: string;
   time: string | null;
+};
+
+type WizardResult = {
+  status: DocumentStatus;
+  reason: string;
 };
 
 const INITIAL_PAYMENT_DETAILS: PaymentDetails = {
@@ -323,6 +330,21 @@ export default function ClientProfilePage() {
   const [isSecuritySaving, setIsSecuritySaving] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLogEntry[]>([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [showWizardModal, setShowWizardModal] = useState(false);
+  const [wizardStep, setWizardStep] = useState<1 | 2 | 3>(1);
+  const [wizardLoading, setWizardLoading] = useState(false);
+  const [wizardError, setWizardError] = useState<string | null>(null);
+  const [wizardForm, setWizardForm] = useState({
+    phone: '',
+    dateOfBirth: '',
+    address: '',
+    city: '',
+    postalCode: '',
+  });
+  const [wizardIdFile, setWizardIdFile] = useState<File | null>(null);
+  const [wizardAddressFile, setWizardAddressFile] = useState<File | null>(null);
+  const [wizardIdResult, setWizardIdResult] = useState<WizardResult | null>(null);
+  const [wizardAddressResult, setWizardAddressResult] = useState<WizardResult | null>(null);
   const documentInputRefs = useRef<Record<DocumentSlotId, HTMLInputElement | null>>({
     identity: null,
     address: null,
@@ -341,6 +363,16 @@ export default function ClientProfilePage() {
   const goldButtonClass =
     'bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_16px_30px_rgba(201,149,8,0.28)]';
 
+  const wizardStep1Done = Boolean(
+    wizardForm.phone.trim() &&
+      wizardForm.dateOfBirth &&
+      wizardForm.address.trim() &&
+      wizardForm.city.trim() &&
+      wizardForm.postalCode.trim(),
+  );
+  const wizardStep2Done = wizardIdResult?.status === 'approved' || wizardIdResult?.status === 'pending';
+  const wizardStep3Done = wizardAddressResult?.status === 'approved' || wizardAddressResult?.status === 'pending';
+
   const showProfileToast = (message: string, isError = false) => {
     setToastMessage(message);
     if (isError) {
@@ -350,6 +382,151 @@ export default function ClientProfilePage() {
     }
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
+  };
+
+  const openVerificationWizard = () => {
+    setWizardForm({
+      phone: personalForm.phone,
+      dateOfBirth: personalForm.dateOfBirth,
+      address: personalForm.address,
+      city: personalForm.city,
+      postalCode: personalForm.postalCode,
+    });
+    setWizardStep(1);
+    setWizardError(null);
+    setWizardIdFile(null);
+    setWizardAddressFile(null);
+    setWizardIdResult(null);
+    setWizardAddressResult(null);
+    setShowWizardModal(true);
+  };
+
+  const handleWizardStep1Submit = async () => {
+    if (!wizardStep1Done) {
+      setWizardError('Complete all profile and address fields before continuing.');
+      return;
+    }
+
+    setWizardLoading(true);
+    setWizardError(null);
+
+    try {
+      const response = await fetch('/api/client/profile', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: personalFullName,
+          email: personalForm.email,
+          phone: wizardForm.phone,
+          country: personalForm.country,
+          address: wizardForm.address,
+          city: wizardForm.city,
+          postalCode: wizardForm.postalCode,
+          dateOfBirth: wizardForm.dateOfBirth,
+        }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || 'Unable to submit profile details.');
+      }
+
+      setPersonalForm((prev) => ({
+        ...prev,
+        phone: wizardForm.phone,
+        dateOfBirth: wizardForm.dateOfBirth,
+        address: wizardForm.address,
+        city: wizardForm.city,
+        postalCode: wizardForm.postalCode,
+      }));
+      setProfileAddress(`${wizardForm.address}, ${wizardForm.city}`.trim());
+      setWizardStep(2);
+      showProfileToast(data?.message || 'Profile details submitted for approval.');
+    } catch (error) {
+      setWizardError(error instanceof Error ? error.message : 'Unable to submit profile details.');
+    } finally {
+      setWizardLoading(false);
+    }
+  };
+
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/client/documents', {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.documents) {
+          setDocuments(normalizeDocumentCards(data.documents));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch documents', err);
+    }
+  };
+
+  const handleWizardDocumentSubmit = async (documentType: DocumentSlotId, file: File | null) => {
+    if (!file) {
+      setWizardError(`Select your ${documentType === 'identity' ? 'identity' : 'address'} proof first.`);
+      return;
+    }
+
+    setWizardLoading(true);
+    setWizardError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('document', file);
+      
+      const endpoint = documentType === 'identity' 
+        ? '/api/profile/documents/identity/' 
+        : '/api/profile/documents/residence/';
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData,
+      });
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        throw new Error(data?.message || data?.reason || 'Unable to verify document.');
+      }
+
+      const resultStatus = normalizeDocumentStatus(data?.status || 'pending');
+      const result: WizardResult = {
+        status: resultStatus,
+        reason: data?.reason || data?.message || 'Document submitted for review.',
+      };
+
+      if (resultStatus === 'rejected') {
+        toast.error(`${documentType === 'identity' ? 'ID' : 'Address'} Proof Rejected: ${result.reason}`);
+        if (documentType === 'identity') {
+          setWizardIdResult(result);
+        } else {
+          setWizardAddressResult(result);
+        }
+        await fetchDocuments();
+        return;
+      }
+
+      toast.success(`${documentType === 'identity' ? 'ID' : 'Address'} Proof ${resultStatus === 'approved' ? 'Approved' : 'Submitted'} Successfully!`);
+
+      if (documentType === 'identity') {
+        setWizardIdResult(result);
+        setWizardStep(3);
+      } else {
+        setWizardAddressResult(result);
+        setShowWizardModal(false);
+      }
+      setUploadNotice(`${file.name} processed.`);
+      await fetchDocuments();
+    } catch (error) {
+      setWizardError(error instanceof Error ? error.message : 'Unable to submit document.');
+    } finally {
+      setWizardLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -861,10 +1038,7 @@ export default function ClientProfilePage() {
 
   return (
     <>
-      <Head>
-        <title>My Profile | Client Portal</title>
-        <meta name="description" content="View and manage your student profile and MAM preferences" />
-      </Head>
+  
 
       <div className="relative isolate flex-1 overflow-hidden p-6 md:p-10 space-y-12">
         <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
@@ -878,6 +1052,126 @@ export default function ClientProfilePage() {
             <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
               <span>{toastMessage}</span>
+            </div>
+          )}
+
+          {showWizardModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md">
+              <div className={`w-full max-w-2xl rounded-[2rem] border p-6 shadow-2xl ${panelClass}`}>
+                <div className="mb-6 flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-400">Guided verification</p>
+                    <h2 className="mt-2 text-xl font-black text-white">Profile &amp; document submission</h2>
+                    <p className={`mt-1 text-xs ${softTextClass}`}>Submit your profile details, identity proof, and address proof in order.</p>
+                  </div>
+                  <button type="button" onClick={() => setShowWizardModal(false)} className="rounded-xl p-2 text-slate-400 transition-colors hover:bg-white/10 hover:text-white" aria-label="Close verification workflow">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="mb-6 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/5 p-2">
+                  {[
+                    { step: 1 as const, label: 'Profile', done: wizardStep1Done, disabled: false },
+                    { step: 2 as const, label: 'ID proof', done: wizardStep2Done, disabled: !wizardStep1Done && wizardStep < 2 },
+                    { step: 3 as const, label: 'Address proof', done: wizardStep3Done, disabled: !wizardStep2Done && wizardStep < 3 },
+                  ].map((item) => (
+                    <button
+                      key={item.step}
+                      type="button"
+                      disabled={item.disabled}
+                      onClick={() => setWizardStep(item.step)}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
+                        wizardStep === item.step
+                          ? 'bg-amber-500 text-slate-950 shadow-lg'
+                          : item.done
+                            ? 'border border-green-500/30 bg-green-500/20 text-green-400'
+                            : item.disabled
+                              ? 'cursor-not-allowed bg-black/20 text-white/20 opacity-50'
+                              : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {item.done && <CheckCircle size={12} />}
+                      {item.step}. {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {wizardStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <Info size={18} className="mt-0.5 shrink-0 text-amber-400" />
+                      <p className={`text-xs font-semibold leading-relaxed ${softTextClass}`}>These details are submitted for approval and used when reviewing your documents.</p>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Phone number
+                        <input value={wizardForm.phone} onChange={(event) => setWizardForm((prev) => ({ ...prev, phone: event.target.value.replace(/[^0-9+ ()-]/g, '') }))} className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm ${inputClass}`} placeholder="Phone number" />
+                      </label>
+                      <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Date of birth
+                        <input type="date" value={wizardForm.dateOfBirth} onChange={(event) => setWizardForm((prev) => ({ ...prev, dateOfBirth: event.target.value }))} className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm ${inputClass}`} />
+                      </label>
+                    </div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-slate-400">Street address
+                      <input value={wizardForm.address} onChange={(event) => setWizardForm((prev) => ({ ...prev, address: event.target.value }))} className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm ${inputClass}`} placeholder="Street address" />
+                    </label>
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      {(['city', 'postalCode'] as const).map((field) => (
+                        <label key={field} className="text-[10px] font-black uppercase tracking-widest text-slate-400">{field === 'postalCode' ? 'Postal code' : 'City'}
+                          <input value={wizardForm[field]} onChange={(event) => setWizardForm((prev) => ({ ...prev, [field]: event.target.value }))} className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm ${inputClass}`} placeholder={field === 'postalCode' ? 'Postal code' : 'City'} />
+                        </label>
+                      ))}
+                      <div className="hidden sm:block" />
+                    </div>
+                    {wizardError && <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">{wizardError}</p>}
+                    <button type="button" onClick={() => void handleWizardStep1Submit()} disabled={wizardLoading} className={`w-full rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest transition-all disabled:cursor-not-allowed disabled:opacity-60 ${goldButtonClass}`}>
+                      {wizardLoading ? 'Submitting profile...' : 'Submit profile & continue'}
+                    </button>
+                  </div>
+                )}
+
+                {(wizardStep === 2 || wizardStep === 3) && (
+                  <div className="space-y-5">
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                      <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400"><IdCard size={16} /> Reviewing against your submitted profile</p>
+                      <p className={`mt-2 text-xs ${softTextClass}`}>{personalFullName} · {wizardForm.dateOfBirth} · {wizardForm.city}</p>
+                    </div>
+
+                    {wizardStep === 2 && (
+                      <>
+                        <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-white/15 bg-white/5 p-8 text-center transition-colors hover:border-amber-400">
+                          <input type="file" accept={DOCUMENT_ACCEPT} hidden onChange={(event) => setWizardIdFile(event.target.files?.[0] || null)} />
+                          <FileUp size={38} className="mx-auto mb-3 text-amber-400" />
+                          <p className="text-xs font-black uppercase tracking-widest text-white">{wizardIdFile?.name || 'Select identity proof'}</p>
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Passport, national ID, license, or voter ID</p>
+                        </label>
+                        {wizardIdResult && <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs font-bold text-amber-200">{wizardIdResult.reason}</p>}
+                        {wizardError && <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">{wizardError}</p>}
+                        <div className="flex gap-3">
+                          <button type="button" onClick={() => setWizardStep(1)} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-white/10">Back</button>
+                          <button type="button" onClick={() => void handleWizardDocumentSubmit('identity', wizardIdFile)} disabled={wizardLoading || !wizardIdFile} className={`flex-1 rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest transition-all disabled:opacity-60 ${goldButtonClass}`}>{wizardLoading ? 'Submitting identity proof...' : 'Submit identity proof'}</button>
+                        </div>
+                      </>
+                    )}
+
+                    {wizardStep === 3 && (
+                      <>
+                        <label className="block cursor-pointer rounded-2xl border-2 border-dashed border-white/15 bg-white/5 p-8 text-center transition-colors hover:border-amber-400">
+                          <input type="file" accept={DOCUMENT_ACCEPT} hidden onChange={(event) => setWizardAddressFile(event.target.files?.[0] || null)} />
+                          <FileUp size={38} className="mx-auto mb-3 text-amber-400" />
+                          <p className="text-xs font-black uppercase tracking-widest text-white">{wizardAddressFile?.name || 'Select address proof'}</p>
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Bank statement, utility bill, or residence certificate</p>
+                        </label>
+                        {wizardAddressResult && <p className="rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs font-bold text-amber-200">{wizardAddressResult.reason}</p>}
+                        {wizardError && <p className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-bold text-red-400">{wizardError}</p>}
+                        <div className="flex gap-3">
+                          <button type="button" onClick={() => setWizardStep(2)} className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-xs font-black uppercase tracking-widest text-white hover:bg-white/10">Back</button>
+                          <button type="button" onClick={() => void handleWizardDocumentSubmit('address', wizardAddressFile)} disabled={wizardLoading || !wizardAddressFile} className={`flex-1 rounded-2xl px-5 py-4 text-xs font-black uppercase tracking-widest transition-all disabled:opacity-60 ${goldButtonClass}`}>{wizardLoading ? 'Submitting address proof...' : 'Submit address proof & finish'}</button>
+                        </div>
+                        {wizardStep3Done && <button type="button" onClick={() => setShowWizardModal(false)} className="w-full text-center text-xs font-bold text-amber-400 hover:text-amber-300">Close workflow</button>}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1183,7 +1477,7 @@ export default function ClientProfilePage() {
                     <div className="flex flex-wrap justify-end gap-3">
                       <button
                         type="button"
-                        onClick={() => setIsPersonalEditing(true)}
+                        onClick={() => setShowWizardModal(true)}
                         className={`inline-flex items-center rounded-xl px-6 py-3 text-xs font-black transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
                       >
                         <Edit size={14} className="mr-2" />
@@ -1290,9 +1584,10 @@ export default function ClientProfilePage() {
                         <h4 className="text-xs font-bold text-slate-100">Document Vault</h4>
                         <p className="text-[11px] text-slate-400 mt-1">Review the latest identity and address verification files.</p>
                       </div>
-                      <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">
-                        {documentStats.total} documents
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">{documentStats.total} documents</span>
+                        <button type="button" onClick={openVerificationWizard} className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider ${goldButtonClass}`}>Guided verification</button>
+                      </div>
                     </div>
 
                     {uploadNotice && (
@@ -1319,14 +1614,27 @@ export default function ClientProfilePage() {
                             Status: {DOCUMENT_STATUS_LABELS[documents.identity.status].toUpperCase()}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => openDocumentPicker('identity')}
-                            disabled={isDocumentSaving}
-                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
-                          >
-                            Update Document
-                          </button>
+                          <div className="mt-4 flex w-full flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() => openDocumentPicker('identity')}
+                              disabled={isDocumentSaving}
+                              className="flex-1 rounded-2xl bg-[#274aab] px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
+                            >
+                              Manual Upload
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWizardStep(2);
+                                openVerificationWizard();
+                              }}
+                              disabled={isDocumentSaving}
+                              className="flex-1 rounded-2xl bg-amber-600 px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 shadow-md border border-amber-600"
+                            >
+                              Auto Verify
+                            </button>
+                          </div>
 
                           <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                             {documents.identity.fileName
@@ -1366,14 +1674,27 @@ export default function ClientProfilePage() {
                             Status: {DOCUMENT_STATUS_LABELS[documents.address.status].toUpperCase()}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => openDocumentPicker('address')}
-                            disabled={isDocumentSaving}
-                            className="mt-4 w-full rounded-2xl bg-[#274aab] px-5 py-3 text-[11px] font-black uppercase tracking-[0.24em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
-                          >
-                            Update Document
-                          </button>
+                          <div className="mt-4 flex w-full flex-col gap-2 sm:flex-row">
+                            <button
+                              type="button"
+                              onClick={() => openDocumentPicker('address')}
+                              disabled={isDocumentSaving}
+                              className="flex-1 rounded-2xl bg-[#274aab] px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-[#335fce] shadow-md border border-[#274aab]"
+                            >
+                              Manual Upload
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setWizardStep(3);
+                                openVerificationWizard();
+                              }}
+                              disabled={isDocumentSaving}
+                              className="flex-1 rounded-2xl bg-amber-600 px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 shadow-md border border-amber-600"
+                            >
+                              Auto Verify
+                            </button>
+                          </div>
 
                           <p className="mt-3 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">
                             {documents.address.fileName

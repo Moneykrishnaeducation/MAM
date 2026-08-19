@@ -85,7 +85,7 @@ def classify_document(ocr_text, expected_doc_type):
             return False, 'residence', confidence, "Document uploaded as Identity appears to be a Proof of Residence / Bank Statement."
         if invalid_score >= 2:
             return False, 'invalid', confidence, "Document uploaded as Identity is not a valid government identity proof."
-        if identity_score >= 1 or detected_type == 'generic_document':
+        if identity_score >= 1:
             return True, 'identity', max(confidence, 65.0), ""
         return False, detected_type, 40.0, f"Uploaded document text does not match expected '{expected}' document format."
 
@@ -99,7 +99,7 @@ def classify_document(ocr_text, expected_doc_type):
             return False, 'identity', confidence, "Document uploaded as Residence appears to be an Identity card / Passport."
         if invalid_score >= 2:
             return False, 'invalid', confidence, "Document uploaded as Residence is not a valid utility bill / bank statement proof."
-        if residence_score >= 1 or detected_type == 'generic_document':
+        if residence_score >= 1:
             return True, 'residence', max(confidence, 65.0), ""
         return False, detected_type, 40.0, f"Uploaded document text does not match expected '{expected}' document format."
 
