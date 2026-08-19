@@ -487,7 +487,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
 
     user = getattr(request, "user", None)
     real_email = (
-        (user.email if user else None)
+        (user.email if hasattr(user, "email") else None)
         or payload.get("email")
         or payload.get("client_email")
         or _requester_email(request.client_name)
