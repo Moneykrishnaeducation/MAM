@@ -164,7 +164,7 @@ def compare_addresses(profile_address_dict, ocr_text):
         'street': profile_address_dict.get('address', ''),
         'city': profile_address_dict.get('city', ''),
         'state': profile_address_dict.get('state', ''),
-        'zip_code': profile_address_dict.get('zip_code', ''),
+        'postal_code': profile_address_dict.get('postal_code', ''),
         'country': profile_address_dict.get('country', ''),
     }
 
@@ -177,7 +177,7 @@ def compare_addresses(profile_address_dict, ocr_text):
         'street': 0.35,
         'city': 0.30,
         'state': 0.15,
-        'zip_code': 0.15,
+        'postal_code': 0.15,
         'country': 0.05,
     }
 

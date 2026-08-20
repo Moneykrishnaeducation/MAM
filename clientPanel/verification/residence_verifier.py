@@ -124,7 +124,7 @@ def extract_residence_fields(ocr_text):
                     "post",
                     "flat",
                     "apt",
-                    "address:",
+                    "address",
                 ]
             ):
                 address_lines.append(line)
@@ -137,7 +137,7 @@ def extract_residence_fields(ocr_text):
     return extracted
 
 
-def verify_residence_document(user, document_instance, file_path, ocr_text, quality_metrics):
+def verify_residence_document(user, document_instance, file_path, ocr_text, quality_metrics, identity_doc_number=None):
     """
     Full verification evaluation for a Residence document against user profile.
 
@@ -152,32 +152,21 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
     if not profile_full_name:
         profile_full_name = getattr(user, 'email', '')
 
-    # Check if doc_number matches an approved Identity Document for this user or raw text contains ID doc_number
     doc_number_matched_id_proof = False
-    if user:
-        try:
-            from clientPanel.models import UserDocument
-
-            id_docs = UserDocument.objects.filter(user=user, document_type="identity")
-            for id_doc in id_docs:
-                id_num = (id_doc.extracted_data or {}).get("doc_number")
-                if id_num:
-                    clean_id_num = re.sub(r"[\s\-]", "", str(id_num).upper())
-                    clean_res_num = re.sub(
-                        r"[\s\-]", "", str(extracted.get("doc_number") or "").upper()
-                    )
-                    clean_raw_text = re.sub(r"[\s\-]", "", str(ocr_text).upper())
-                    if clean_id_num and (
-                        clean_id_num == clean_res_num
-                        or clean_id_num in clean_raw_text
-                        or (len(clean_id_num) >= 4 and clean_id_num[-4:] in clean_raw_text)
-                    ):
-                        doc_number_matched_id_proof = True
-                        if not extracted.get("doc_number"):
-                            extracted["doc_number"] = id_num
-                        break
-        except Exception:
-            pass
+    if identity_doc_number:
+        clean_id_num = re.sub(r"[\s\-]", "", str(identity_doc_number).upper())
+        clean_res_num = re.sub(
+            r"[\s\-]", "", str(extracted.get("doc_number") or "").upper()
+        )
+        clean_raw_text = re.sub(r"[\s\-]", "", str(ocr_text).upper())
+        if clean_id_num and (
+            clean_id_num == clean_res_num
+            or clean_id_num in clean_raw_text
+            or (len(clean_id_num) >= 4 and clean_id_num[-4:] in clean_raw_text)
+        ):
+            doc_number_matched_id_proof = True
+            if not extracted.get("doc_number"):
+                extracted["doc_number"] = identity_doc_number
 
     doc_name = extracted.get('full_name')
     if doc_name and any(
@@ -236,7 +225,7 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
         "address": getattr(user, "address", ""),
         "city": getattr(user, "city", ""),
         "state": getattr(user, "state", ""),
-        "zip_code": getattr(user, "zip_code", ""),
+        "postal_code": getattr(user, "postal_code", ""),
         "country": getattr(user, "country", ""),
     }
 

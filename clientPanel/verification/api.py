@@ -23,7 +23,7 @@ from clientPanel.view.documents import _save_uploaded_document
 
 logger = logging.getLogger(__name__)
 
-def _run_verification_pipeline(profile, file_path, document_type):
+def _run_verification_pipeline(profile, file_path, document_type, identity_doc_number=None):
     """Runs the OCR and verification rules dynamically."""
     abs_path = os.path.join(settings.MEDIA_ROOT, file_path)
 
@@ -43,7 +43,7 @@ def _run_verification_pipeline(profile, file_path, document_type):
     if document_type == 'identity':
         scores_dict, extracted_data, warnings = verify_identity_document(profile, None, abs_path, ocr_text, quality_metrics)
     else:
-        scores_dict, extracted_data, warnings = verify_residence_document(profile, None, abs_path, ocr_text, quality_metrics)
+        scores_dict, extracted_data, warnings = verify_residence_document(profile, None, abs_path, ocr_text, quality_metrics, identity_doc_number=identity_doc_number)
 
     # 6. Evaluate final decision
     decision, final_score, reason, decision_warnings = evaluate_verification_decision(
@@ -87,6 +87,7 @@ async def verify_identity_api(request):
     doc, created = await ClientDocument.get_or_create(user_id=profile.id)
     doc.identity_file_name = uploaded_file.name
     doc.identity_file_path = file_url
+    doc.identity_extracted_data = extracted_data
 
     status_mapping = {
         'approved': 'approved',
@@ -144,15 +145,21 @@ async def verify_residence_api(request):
 
     file_path, file_url = _save_uploaded_document(uploaded_file, profile.id, "residence")
 
+    # Fetch existing document for identity cross-check
+    doc, created = await ClientDocument.get_or_create(user_id=profile.id)
+    identity_doc_number = None
+    if doc.identity_extracted_data:
+        identity_doc_number = doc.identity_extracted_data.get("doc_number")
+
     # Run verification dynamically in a thread
     decision, final_score, reason, extracted_data, warnings = await asyncio.to_thread(
-        _run_verification_pipeline, profile, file_path, "residence"
+        _run_verification_pipeline, profile, file_path, "residence", identity_doc_number
     )
 
     # Save to database
-    doc, created = await ClientDocument.get_or_create(user_id=profile.id)
     doc.address_file_name = uploaded_file.name
     doc.address_file_path = file_url
+    doc.address_extracted_data = extracted_data
 
     status_mapping = {
         'approved': 'approved',

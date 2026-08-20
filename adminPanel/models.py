@@ -325,10 +325,12 @@ class ClientDocument(models.Model):
     identity_file_path = fields.CharField(max_length=500, null=True)
     identity_status = fields.CharField(max_length=50, default="pending")
     identity_uploaded_at = fields.DatetimeField(null=True)
+    identity_extracted_data = fields.JSONField(null=True)
     address_file_name = fields.CharField(max_length=255, null=True)
     address_file_path = fields.CharField(max_length=500, null=True)
     address_status = fields.CharField(max_length=50, default="pending")
     address_uploaded_at = fields.DatetimeField(null=True)
+    address_extracted_data = fields.JSONField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
 
