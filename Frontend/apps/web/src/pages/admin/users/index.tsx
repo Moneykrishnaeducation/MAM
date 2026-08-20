@@ -896,11 +896,33 @@ type TradingFilter = 'all' | 'manager' | 'investor';
 
 function TradingModal({ user }: { user: UserData }) {
   const [filter, setFilter] = useState<TradingFilter>('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [allAccounts, setAllAccounts] = useState<TradingAccount[]>([]);
 
-  /* Build unified list from both sources */
-  const allAccounts: TradingAccount[] = user.tradingAccounts?.length
-    ? user.tradingAccounts
-    : [{ ...user.tradingAccount, accountRole: user.role.toLowerCase().includes('manager') ? 'manager' : 'investor' }];
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    
+    fetch(`/api/admin/users/${getAdminUserApiId(user)}/trading_account/details`, { credentials: 'include' })
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data?.message || 'Unable to load trading accounts.');
+        return data;
+      })
+      .then((data) => {
+        if (!active) return;
+        setAllAccounts(data.trading_accounts || []);
+      })
+      .catch((err) => {
+        if (active) setError(err.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [user]);
 
   const filtered = allAccounts.filter((a) => filter === 'all' || a.accountRole === filter);
 
@@ -939,8 +961,19 @@ function TradingModal({ user }: { user: UserData }) {
         </div>
       </div>
 
+      {error && !loading && (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
+          {error}
+        </div>
+      )}
+
       {/* Account table */}
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10 text-slate-500">
+          <Layers size={36} className="mx-auto mb-3 opacity-30 animate-pulse" />
+          <p>Loading trading accounts...</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-10 text-slate-500">
           <Layers size={36} className="mx-auto mb-3 opacity-30" />
           <p>{filter === 'all' ? 'No trading accounts found' : `No ${selectedFilterLabel} accounts found`}</p>
@@ -1315,7 +1348,7 @@ function BankCryptoModal({ user, isViewerAdmin = false }: { user: UserData; isVi
   /* Determine type from backend or legacy field */
   const initType: 'bank' | 'crypto' = (() => {
     if (user.paymentDetails?.paymentType) return user.paymentDetails.paymentType;
-    if (user.bankCrypto.cryptoWallet && user.bankCrypto.cryptoWallet !== 'Not Configured') return 'crypto';
+    if (user.bankCrypto?.cryptoWallet && user.bankCrypto?.cryptoWallet !== 'Not Configured') return 'crypto';
     return 'bank';
   })();
 
@@ -1324,17 +1357,17 @@ function BankCryptoModal({ user, isViewerAdmin = false }: { user: UserData; isVi
   /* Bank form */
   const [bank, setBank] = useState({
     accountHolder: (user.paymentDetails as any)?.accountHolder ?? user.name,
-    accountNumber: (user.paymentDetails as any)?.accountNumber ?? user.bankCrypto.accountMask ?? '',
-    bankName: (user.paymentDetails as any)?.bankName ?? user.bankCrypto.bankName ?? '',
+    accountNumber: (user.paymentDetails as any)?.accountNumber ?? user.bankCrypto?.accountMask ?? '',
+    bankName: (user.paymentDetails as any)?.bankName ?? user.bankCrypto?.bankName ?? '',
     ifscSwift: (user.paymentDetails as any)?.ifscSwift ?? '',
     branch: (user.paymentDetails as any)?.branch ?? '',
     country: (user.paymentDetails as any)?.country ?? user.country,
   });
 
   /* Crypto form — network fetched from backend */
-  const initNetwork = (user.paymentDetails as any)?.network ?? user.bankCrypto.cryptoWallet?.match(/\(([^)]+)\)/)?.[1] ?? 'USDT-TRC20';
+  const initNetwork = (user.paymentDetails as any)?.network ?? user.bankCrypto?.cryptoWallet?.match(/\(([^)]+)\)/)?.[1] ?? 'USDT-TRC20';
   const [crypto, setCrypto] = useState({
-    cryptoAddress: (user.paymentDetails as any)?.cryptoAddress ?? (user.bankCrypto.cryptoWallet ?? '').replace(/\s*\([^)]+\)/, '').trim(),
+    cryptoAddress: (user.paymentDetails as any)?.cryptoAddress ?? (user.bankCrypto?.cryptoWallet ?? '').replace(/\s*\([^)]+\)/, '').trim(),
     network: initNetwork,
   });
   const [networks, setNetworks]     = useState<string[]>(FALLBACK_NETWORKS);
