@@ -433,68 +433,6 @@ async def list_client_users(request):
 
     results = []
     for user in page_users:
-        bank_detail = None
-        crypto_detail = None
-        bank_detail, crypto_detail = await get_client_payment_details(user)
-        document_detail = await get_client_document_details(user)
-        identity_request = await get_latest_document_request(user, "identity")
-        address_request = await get_latest_document_request(user, "address")
-
-        # Fetch associated TradingAccount entries
-        t_accs = await TradingAccount.filter(user_id=user.id)
-        trading_accounts_data = [
-            {
-                "accNumber": acc.account_id,
-                "accountRole": "manager" if acc.account_type.upper() == "MAM" else "investor",
-                "type": acc.account_type,
-                "balance": float(acc.balance),
-                "equity": float(acc.equity),
-                "leverage": f"{acc.leverage}x",
-                "server": "VTIndex-Live01",
-                "currency": "USD",
-                "marginFree": float(acc.margin_free),
-                "activeTrades": 0,
-                "status": acc.status or "Active",
-                "agent": getattr(settings, "MT5_DEFAULT_AGENT", 426)
-                if acc.account_type.upper() == "MAM"
-                else None,
-            }
-            for acc in t_accs
-        ]
-
-        # Primary trading account (for backward compatibility / default view)
-        primary_acc = trading_accounts_data[0] if trading_accounts_data else None
-
-        bank_account_number = bank_detail.account_number if bank_detail else ""
-        crypto_wallet_address = crypto_detail.wallet_address if crypto_detail else ""
-        crypto_network = crypto_detail.network if crypto_detail else "USDT-TRC20"
-        payment_details = {
-            "paymentType": "bank" if bank_detail else ("crypto" if crypto_detail else "bank"),
-            "accountHolder": bank_detail.account_holder
-            if bank_detail and bank_detail.account_holder
-            else user.name,
-            "accountNumber": bank_account_number,
-            "bankName": bank_detail.bank_name if bank_detail else "",
-            "ifscSwift": bank_detail.ifsc_swift if bank_detail else "",
-            "branch": bank_detail.branch if bank_detail and bank_detail.branch else "",
-            "country": bank_detail.country if bank_detail and bank_detail.country else user.country,
-            "bankStatus": bank_detail.status if bank_detail else "pending",
-            "network": crypto_network,
-            "cryptoAddress": crypto_wallet_address,
-            "cryptoCurrency": crypto_detail.currency if crypto_detail else "USDT",
-            "cryptoStatus": crypto_detail.status if crypto_detail else "pending",
-        }
-
-        bank_crypto = {
-            "accountMask": _mask_account_number(bank_account_number)
-            if bank_account_number
-            else "Not Configured",
-            "bankName": bank_detail.bank_name if bank_detail else "Not Configured",
-            "cryptoWallet": f"{crypto_wallet_address} ({crypto_network})".strip()
-            if crypto_wallet_address
-            else "Not Configured",
-        }
-
         results.append(
             {
                 "id": user.user_code or f"USR-{user.id:03d}",
@@ -508,23 +446,6 @@ async def list_client_users(request):
                 "country": user.country,
                 "joined": user.joined.strftime("%Y-%m-%d") if user.joined else None,
                 "avatar": user.avatar,
-                "tradingAccount": primary_acc,
-                "tradingAccounts": trading_accounts_data,
-                "profile": _serialize_client_profile(user),
-                "kyc": {
-                    "status": user.kyc_status,
-                    "document_detail": serialize_client_document_detail(document_detail),
-                    "documents": build_document_details_payload(
-                        profile=user,
-                        document_detail=document_detail,
-                        identity_request=identity_request,
-                        address_request=address_request,
-                    ),
-                },
-                "paymentDetails": payment_details,
-                "bankCrypto": bank_crypto,
-                "transactions": [],
-                "tickets": [],
             }
         )
 

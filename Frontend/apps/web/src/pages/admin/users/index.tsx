@@ -1432,16 +1432,16 @@ function BankCryptoModal({ user, isViewerAdmin = false }: { user: UserData; isVi
   }, [user.id]);
 
   /* Fetch supported networks from backend on mount */
-  useEffect(() => {
-    setNetLoading(true);
-    fetch('/api/crypto-networks')
-      .then((r) => r.json())
-      .then((data: { networks?: string[] }) => {
-        if (data.networks?.length) setNetworks(data.networks);
-      })
-      .catch(() => {})
-      .finally(() => setNetLoading(false));
-  }, []);
+  // useEffect(() => {
+  //   setNetLoading(true);
+  //   fetch('/api/crypto-networks')
+  //     .then((r) => r.json())
+  //     .then((data: { networks?: string[] }) => {
+  //       if (data.networks?.length) setNetworks(data.networks);
+  //     })
+  //     .catch(() => {})
+  //     .finally(() => setNetLoading(false));
+  // }, []);
 
   const handleSave = async () => {
     setSaving(true);
@@ -2554,54 +2554,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  useEffect(() => {
-    if (activeModalType !== 'account_active' || !activeModalUser) return;
-
-    const controller = new AbortController();
-    const userId = activeModalUser.id;
-
-    const apiUserId = getAdminUserApiId(activeModalUser);
-
-    fetch(`/api/admin/users/${apiUserId}/kyc`, {
-      credentials: 'include',
-      signal: controller.signal,
-    })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data?.message || 'Failed to load account status');
-        }
-        return data as { user?: { status?: string | null } };
-      })
-      .then((data) => {
-        if (controller.signal.aborted) return;
-        const nextStatus = data?.user?.status ? String(data.user.status) : activeModalUser.status;
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === userId
-              ? {
-                  ...u,
-                  status: nextStatus as UserData['status'],
-                }
-              : u,
-          ),
-        );
-        setActiveModalUser((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: nextStatus as UserData['status'],
-              }
-            : prev,
-        );
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
-        console.error('Failed to refresh account status:', err);
-      });
-
-    return () => controller.abort();
-  }, [activeModalType, activeModalUser?.id]);
 
   const toggleDropdownRow = (userId: string) =>
     setExpandedRowId((prev) => (prev === userId ? null : userId));
