@@ -599,7 +599,11 @@ const Tickets = () => {
 
   const handleSelect = (key: "status" | "dateRange", value: string) => {
     if (key === 'status') {
-      void fetchTickets(value.toLowerCase() as TicketStatusFilter);
+      const nextStatus = value.toLowerCase() as TicketStatusFilter;
+      if (selectedStatus !== nextStatus) {
+        setSelectedStatus(nextStatus);
+        setCurrentPage(1);
+      }
     } else {
       setFilters((prev) => ({ ...prev, [key]: value }));
     }
@@ -756,7 +760,12 @@ const Tickets = () => {
             <button
               key={status}
               type="button"
-              onClick={() => fetchTickets(status)}
+              onClick={() => {
+                if (selectedStatus !== status) {
+                  setSelectedStatus(status);
+                  setCurrentPage(1);
+                }
+              }}
               aria-pressed={selectedStatus === status}
               aria-label={`${formatTicketStatusLabel(status)} tickets`}
               className={`flex min-w-[7rem] flex-1 items-center justify-center gap-2 rounded-3xl px-4 py-3 text-[10px] font-black uppercase tracking-[0.12em] transition-all duration-300 sm:flex-none sm:px-5 sm:py-3.5 sm:text-xs sm:tracking-widest ${
