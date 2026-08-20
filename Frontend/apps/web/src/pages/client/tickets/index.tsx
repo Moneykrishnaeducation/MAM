@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Head from "next/head";
-import { Search, Filter, X, Plus, ChevronDown, FileText, Check } from "lucide-react";
+import { Search, Filter, X, Plus, ChevronDown, FileText, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from 'next-themes';
 import { TicketsSkeleton } from '@/components/client-page-skeletons';
 
@@ -97,9 +97,21 @@ async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {
   }
 }
 
-async function fetchClientTickets(status: TicketStatusFilter = "all") {
-  return fetchClientEndpoint<{ tickets?: ClientTicketApi[]; user_id?: string; status_filter?: string }>(
-    `/api/client/tickets?status=${encodeURIComponent(status)}`,
+async function fetchClientTickets(status: TicketStatusFilter = "all", page: number = 1, perPage: number = 10) {
+  return fetchClientEndpoint<{ 
+    tickets?: ClientTicketApi[]; 
+    user_id?: string; 
+    status_filter?: string;
+    pagination?: {
+      page: number;
+      per_page: number;
+      total: number;
+      total_pages: number;
+      has_next: boolean;
+      has_previous: boolean;
+    };
+  }>(
+    `/api/client/tickets?status=${encodeURIComponent(status)}&page=${page}&per_page=${perPage}`,
   );
 }
 
@@ -345,7 +357,16 @@ const Tickets = () => {
 
   
 
-  const fetchTickets = async (status: TicketStatusFilter = "all") => {
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+  const [pagination, setPagination] = useState({
+    total: 0,
+    totalPages: 1,
+    hasNext: false,
+    hasPrevious: false,
+  });
+
+  const fetchTickets = async (status: TicketStatusFilter = "all", page: number = currentPage, perPage: number = pageSize) => {
     const requestId = requestIdRef.current + 1;
     requestIdRef.current = requestId;
 
@@ -359,7 +380,7 @@ const Tickets = () => {
     }));
 
     try {
-      const response = await fetchClientTickets(nextStatus);
+      const response = await fetchClientTickets(nextStatus, page, perPage);
       if (requestId !== requestIdRef.current) {
         return;
       }
@@ -378,6 +399,16 @@ const Tickets = () => {
 
       setTickets(liveTickets);
       setUserId(createdBy);
+      
+      if (response.pagination) {
+        setPagination({
+          total: response.pagination.total,
+          totalPages: response.pagination.total_pages,
+          hasNext: response.pagination.has_next,
+          hasPrevious: response.pagination.has_previous,
+        });
+      }
+      
       setError("");
     } catch {
       if (requestId !== requestIdRef.current) {
@@ -394,8 +425,8 @@ const Tickets = () => {
   };
 
   useEffect(() => {
-    void fetchTickets("all");
-  }, []);
+    void fetchTickets(selectedStatus, currentPage, pageSize);
+  }, [currentPage, pageSize, selectedStatus]);
 
   useEffect(
     () => () => {
@@ -454,9 +485,43 @@ const Tickets = () => {
         return true;
       });
     }
-
     setFilteredTickets(result);
   }, [tickets, searchTerm, filters]);
+
+  const totalTransactions = pagination.total;
+  const totalPages = Math.max(1, pagination.totalPages);
+  const safePage = pagination.page || currentPage;
+
+  const showingStart = Math.min(totalTransactions, (safePage - 1) * pageSize + 1);
+  const showingEnd = Math.min(totalTransactions, safePage * pageSize);
+
+  const paginationItems = React.useMemo<Array<number | 'ellipsis'>>(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    const items: Array<number | 'ellipsis'> = [1];
+    const leftSibling = Math.max(2, safePage - 1);
+    const rightSibling = Math.min(totalPages - 1, safePage + 1);
+
+    if (leftSibling > 2) {
+      items.push('ellipsis');
+    }
+
+    for (let page = leftSibling; page <= rightSibling; page += 1) {
+      items.push(page);
+    }
+
+    if (rightSibling < totalPages - 1) {
+      items.push('ellipsis');
+    }
+
+    if (totalPages > 1) {
+      items.push(totalPages);
+    }
+
+    return items;
+  }, [totalPages, safePage]);
 
   if (isInitialLoading && activePage === "view") {
     return (
@@ -845,9 +910,60 @@ const Tickets = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Controls */}
+          {filteredTickets.length > 0 && (
+            <div className={`flex flex-col gap-4 border-t ${borderMutedClass} px-6 py-4 lg:flex-row lg:items-center lg:justify-between`}>
+              <div className={`text-xs font-bold uppercase tracking-[0.2em] ${softTextClass}`}>
+                SHOWING {showingStart} TO {showingEnd} OF {totalTransactions}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                  disabled={safePage === 1 || !pagination.hasPrevious}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <ChevronLeft size={13} />
+                  Prev
+                </button>
+
+                {paginationItems.map((pageItem, index) =>
+                  pageItem === 'ellipsis' ? (
+                    <span key={`ellipsis-${index}`} className="px-1 text-xs select-none text-slate-600">
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={pageItem}
+                      type="button"
+                      onClick={() => setCurrentPage(pageItem)}
+                      className={`min-w-[32px] h-8 rounded-lg border text-xs font-bold transition-all ${
+                        pageItem === safePage
+                          ? 'border-amber-500 bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                          : 'border-slate-700 bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {pageItem}
+                    </button>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                  disabled={safePage === totalPages || !pagination.hasNext}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs font-medium text-slate-300 transition-all hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  Next
+                  <ChevronRight size={13} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
-
       {/* ===================== CREATE TICKET PAGE ===================== */}
       {activePage === "create" && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl mx-auto">

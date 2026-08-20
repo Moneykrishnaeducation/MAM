@@ -112,7 +112,7 @@ def _serialize_ticket(ticket: ClientTicket, request=None) -> dict:
 
 def _extract_ticket_payload(request) -> tuple[dict, list]:
     content_type = str(
-        getattr(request, "content_type", "") or request.META.get("CONTENT_TYPE", "")
+        getattr(request, "content_type", "") or getattr(request, "META", {}).get("CONTENT_TYPE", "")
     ).lower()
     if content_type.startswith("multipart/form-data"):
         files = (
@@ -173,12 +173,36 @@ async def get_client_tickets(request):
     filtered_tickets = [
         ticket for ticket in tickets if _ticket_matches_status(ticket.status, requested_status)
     ]
+
+    try:
+        page = max(1, int(request.GET.get("page", 1)))
+    except ValueError:
+        page = 1
+    try:
+        per_page = max(1, min(100, int(request.GET.get("per_page", 10))))
+    except ValueError:
+        per_page = 10
+
+    total_tickets = len(filtered_tickets)
+    total_pages = (total_tickets + per_page - 1) // per_page
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+    paginated_tickets = filtered_tickets[start_idx:end_idx]
+
     return JsonResponse(
         {
             "status": "ok",
             "user_id": profile.id,
             "status_filter": requested_status or "all",
-            "tickets": [_serialize_ticket(ticket, request) for ticket in filtered_tickets],
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total_tickets,
+                "total_pages": total_pages,
+                "has_next": page < total_pages,
+                "has_previous": page > 1,
+            },
+            "tickets": [_serialize_ticket(ticket, request) for ticket in paginated_tickets],
         }
     )
 
