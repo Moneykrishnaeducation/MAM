@@ -77,25 +77,18 @@ async def get_client_dashboard(request):
             "raw_value": my_investor_count,
         },
         {
-            "key": "Total_Investments",
-            "title": "Total Investments",
-            "value": _format_currency(total_allocated),
-            "raw_value": total_allocated,
-            # "subtitle": f"{len(investments)} active allocation{'s' if len(investments) != 1 else ''}" if investments else None,
-        },
-        {
-            "key": "balance",
-            "title": "MAM Balance",
-            "value": _format_currency(total_balance),
-            "raw_value": total_balance,
-            # "subtitle": f"Account {accounts[0].account_number}" if accounts else None,
-        },
-        {
             "key": "available_managers",
             "title": "Available MAM Managers",
             "value": str(all_manager_count),
             "raw_value": all_manager_count,
             # "subtitle": None,
+        },
+        {
+            "key": "balance",
+            "title": "Total Balance",
+            "value": _format_currency(total_balance),
+            "raw_value": total_balance,
+            # "subtitle": f"Account {accounts[0].account_number}" if accounts else None,
         },
     ]
 

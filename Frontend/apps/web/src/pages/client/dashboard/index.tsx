@@ -882,7 +882,7 @@ export default function ClientDashboardPage() {
         <title>Student Dashboard | Client Portal</title>
       </Head>
         
-        <div className="p-6 md:p-8">
+        <div className="px-6 py-3 md:p-8">
           {/* Action Buttons */}
           <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
             <button
@@ -908,7 +908,7 @@ export default function ClientDashboardPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {dashboardCards.map((st, idx) => {
               const IconComp = dashboardCardIcons[st.key] || BookOpen;
               const isFallbackCard = !dashboardData?.cards?.length;
