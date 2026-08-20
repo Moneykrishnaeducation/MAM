@@ -312,7 +312,7 @@ export default function ClientInternalTransfer() {
     }
   };
 
-  const fromFilteredAccounts = filterAccounts(fromSearch, accounts);
+  const fromFilteredAccounts = filterAccounts(fromSearch, accounts).filter((acc: any) => acc.account_id !== toAccount);
   const toFilteredAccounts = filterAccounts(toSearch, accounts).filter((acc: any) => acc.account_id !== fromAccount);
 
   return (
