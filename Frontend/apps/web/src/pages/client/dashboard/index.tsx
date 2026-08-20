@@ -415,14 +415,18 @@ const DashboardWithdrawalModal = ({
   accountStatus,
   tradingAccounts,
 }: DashboardWithdrawalModalProps) => {
-  const [selectedAccount, setSelectedAccount] = useState(accountNumber || '');
+  const [selectedAccount, setSelectedAccount] = useState('');
   const [destinationType, setDestinationType] = useState<'bank' | 'crypto'>('bank');
   const [amount, setAmount] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setSelectedAccount(accountNumber || '');
-  }, [accountNumber, open]);
+    if (open) {
+      setSelectedAccount('');
+      setAmount('');
+      setDestinationType('bank');
+    }
+  }, [open]);
 
   if (!open) {
     return null;
@@ -612,11 +616,6 @@ const DashboardWithdrawalModal = ({
                   <option value="" disabled className="bg-[#071a57] text-white">
                     Select Account
                   </option>
-                  {accountNumber ? (
-                    <option value={accountNumber} className="bg-[#071a57] text-white">
-                      Portal Wallet ({maskWithdrawalAccount(accountNumber)}) — {formatWithdrawalCurrency(accountBalance ?? 0, currencyLabel)}
-                    </option>
-                  ) : null}
                   {tradingAccounts?.map((acc) => (
                     <option key={acc.account_id} value={acc.account_id} className="bg-[#071a57] text-white">
                       {acc.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} ({maskWithdrawalAccount(acc.account_id)}) — {formatWithdrawalCurrency(acc.balance, currencyLabel)}
@@ -782,9 +781,6 @@ export default function ClientDashboardPage() {
         setDashboardData(db ? (db as ClientDashboardPayload) : null);
         setClientProfile(db?.client ? (db.client as ClientProfilePayload) : null);
         setClientAccount(db?.account ? (db.account as ClientAccountPayload) : null);
-        if (db?.account?.account_number) {
-          setSelectedDepositAccount(db.account.account_number);
-        }
         setClientInvestments(
           db?.investments && Array.isArray(db.investments)
             ? (db.investments as ClientInvestmentPayload[])
@@ -1102,9 +1098,6 @@ export default function ClientDashboardPage() {
                         <span className="truncate">
                           {selectedDepositAccount
                             ? (() => {
-                                if (selectedDepositAccount === clientAccount?.account_number) {
-                                  return `Portal Wallet (${clientAccount?.account_number}) - ${formatCurrency(clientAccount?.balance)}`;
-                                }
                                 const matchedAccount = dashboardData?.trading_accounts?.find((acc) => acc.account_id === selectedDepositAccount);
                                 if (matchedAccount) {
                                   return `${matchedAccount.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} (${matchedAccount.account_id}) - ${formatCurrency(matchedAccount.balance)}`;
@@ -1117,18 +1110,6 @@ export default function ClientDashboardPage() {
                       </button>
                       {depositAccountMenuOpen && (
                         <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#071a57] shadow-2xl custom-scrollbar">
-                          {clientAccount?.account_number && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedDepositAccount(clientAccount.account_number);
-                                setDepositAccountMenuOpen(false);
-                              }}
-                              className="block w-full px-4 py-3 text-left text-sm font-black text-white transition hover:bg-white/10"
-                            >
-                              Portal Wallet ({clientAccount.account_number}) - {formatCurrency(clientAccount.balance)}
-                            </button>
-                          )}
                           {dashboardData?.trading_accounts?.map((acc) => (
                             <button
                               key={acc.account_id}
