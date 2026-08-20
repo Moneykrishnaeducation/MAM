@@ -19,6 +19,7 @@ from adminPanel.view.client_transactions import (
     get_client_transactions_details,
     list_client_transactions,
 )
+from adminPanel.view.client_trading import get_client_trading_details
 from adminPanel.view.dashboard import get_admin_dashboard
 from adminPanel.view.internal_transfer import internal_transfer_api
 from adminPanel.view.investor_fund_actions import (
@@ -50,9 +51,7 @@ from adminPanel.view.pending_requests import (
     list_pending_cryptos,
     list_pending_deposits,
     list_pending_documents,
-    list_pending_profiles,
     list_pending_requests,
-    list_pending_requests_summary,
     list_pending_withdrawals,
 )
 from adminPanel.view.profit_share import list_admin_profit_share
@@ -86,11 +85,9 @@ super_admin_only = permission_required(IsSuperAdmin)
 urlpatterns = [
     path("dashboard", admin_only(get_admin_dashboard), name="dashboard"),
     path("requests", admin_only(list_pending_requests), name="requests"),
-    path("requests/summary", admin_only(list_pending_requests_summary), name="requests-summary"),
     path("requests/deposits", admin_only(list_pending_deposits), name="requests-deposits"),
     path("requests/withdrawals", admin_only(list_pending_withdrawals), name="requests-withdrawals"),
     path("requests/documents", admin_only(list_pending_documents), name="requests-documents"),
-    path("requests/profiles", admin_only(list_pending_profiles), name="requests-profiles"),
     path("requests/banks", admin_only(list_pending_banks), name="requests-banks"),
     path("requests/cryptos", admin_only(list_pending_cryptos), name="requests-cryptos"),
     path(
@@ -170,6 +167,11 @@ urlpatterns = [
         "users/<str:user_id>/transactions/details",
         admin_only(get_client_transactions_details),
         name="get-client-transactions-details",
+    ),
+    path(
+        "users/<str:user_id>/trading_account/details",
+        admin_only(get_client_trading_details),
+        name="get-client-trading-details",
     ),
     path(
         "open-positions/<int:account_id>/",

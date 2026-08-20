@@ -31,7 +31,6 @@ TAB_ALIASES: dict[str, tuple[str, ...]] = {
     "deposits": ("deposit", "deposits"),
     "withdrawals": ("withdraw", "withdrawal", "withdrawals"),
     "documents": ("document", "documents", "kyc", "verification"),
-    "profiles": ("profile", "profiles"),
     "banks": ("bank", "banks", "bank account"),
     "cryptos": ("crypto", "cryptos", "wallet", "wallets"),
 }
@@ -40,7 +39,6 @@ TAB_DEFAULT_METHODS = {
     "deposits": "Bank Wire Transfer",
     "withdrawals": "Bank Transfer",
     "documents": "Document Upload",
-    "profiles": "Profile Update",
     "banks": "Bank Transfer",
     "cryptos": "Crypto USDT",
 }
@@ -49,7 +47,6 @@ TAB_DEFAULT_TITLES = {
     "deposits": "Deposit",
     "withdrawals": "Withdrawal",
     "documents": "Document",
-    "profiles": "Profile Update",
     "banks": "Bank Account",
     "cryptos": "Crypto Wallet",
 }
@@ -421,12 +418,6 @@ async def _resolve_user_for_pending_request(pending_request: PendingRequest) -> 
     return None
 
 
-def _tab_for_request_type(request_type: str | None) -> str:
-    normalized = _sanitize_request_type(request_type)
-    for tab, aliases in TAB_ALIASES.items():
-        if normalized in aliases:
-            return tab
-    return "profiles"
 
 
 def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
@@ -559,9 +550,24 @@ async def _fetch_pending_requests_for_tab(tab: str) -> list[dict]:
     return [_serialize_pending_request(item, tab) for item in items]
 
 
+async def _get_summary() -> tuple[dict[str, int], int]:
+    summary: dict[str, int] = {}
+    for tab_name, aliases in TAB_ALIASES.items():
+        cond = _match_condition(aliases)
+        qs = PendingRequest.filter(status__iexact="pending")
+        if cond is not None:
+            qs = qs.filter(cond)
+        summary[tab_name] = await qs.count()
+
+    total_count = sum(
+        summary[k] for k in ["deposits", "withdrawals", "documents", "banks", "cryptos"]
+    )
+    return summary, total_count
+
 async def _tab_response(tab: str) -> JsonResponse:
     items = await _fetch_pending_requests_for_tab(tab)
-    return JsonResponse({"status": "ok", "tab": tab, "count": len(items), "requests": items})
+    summary, total = await _get_summary()
+    return JsonResponse({"status": "ok", "tab": tab, "count": len(items), "requests": items, "summary": summary, "total_pending": total})
 
 
 @permission_required(IsAdmin)
@@ -570,8 +576,8 @@ async def list_pending_requests(request):
     requests: list[dict] = []
     for tab in TAB_ALIASES:
         requests.extend(await _fetch_pending_requests_for_tab(tab))
-
-    return JsonResponse({"status": "ok", "requests": requests})
+    summary, total = await _get_summary()
+    return JsonResponse({"status": "ok", "requests": requests, "summary": summary, "total_pending": total})
 
 
 @permission_required(IsAdmin)
@@ -592,10 +598,10 @@ async def list_pending_documents(request):
     return await _tab_response("documents")
 
 
-@permission_required(IsAdmin)
-@require_http_methods(["GET"])
-async def list_pending_profiles(request):
-    return await _tab_response("profiles")
+# @permission_required(IsAdmin)
+# @require_http_methods(["GET"])
+# async def list_pending_profiles(request):
+#     return await _tab_response("profiles")
 
 
 @permission_required(IsAdmin)
@@ -610,29 +616,7 @@ async def list_pending_cryptos(request):
     return await _tab_response("cryptos")
 
 
-@permission_required(IsAdmin)
-@require_http_methods(["GET"])
-async def list_pending_requests_summary(request):
-    summary: dict[str, int] = {}
-    for tab, aliases in TAB_ALIASES.items():
-        cond = _match_condition(aliases)
-        qs = PendingRequest.filter(status__iexact="pending")
-        if cond is not None:
-            qs = qs.filter(cond)
-        summary[tab] = await qs.count()
 
-    # Map singular tab keys for frontend compatibility
-    summary["deposit"] = summary.get("deposits", 0)
-    summary["withdraw"] = summary.get("withdrawals", 0)
-    summary["documents"] = summary.get("documents", 0)
-    summary["profile"] = summary.get("profiles", 0)
-    summary["bank"] = summary.get("banks", 0)
-    summary["crypto"] = summary.get("cryptos", 0)
-
-    total_count = sum(
-        summary[k] for k in ["deposits", "withdrawals", "documents", "profiles", "banks", "cryptos"]
-    )
-    return JsonResponse({"status": "ok", "summary": summary, "total": total_count})
 
 
 def _resolve_pending_request_id(request_id: str) -> int | None:

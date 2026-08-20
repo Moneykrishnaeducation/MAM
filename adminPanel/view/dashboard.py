@@ -150,15 +150,6 @@ async def get_admin_dashboard(request):
             "status": "ok",
             "dashboard": {
                 "cards": cards,
-                "summary": {
-                    "admin_users": len(admin_users),
-                    "client_users": len(client_users),
-                    "managers": len(managers),
-                    "investors": len(investors),
-                    "mam_accounts": len(mam_accounts),
-                    "pending_requests": pending_count,
-                    "total_aum": total_aum,
-                },
                 "recent_registrations": [
                     {
                         "id": user.user_code or f"USR-{user.id:03d}",
@@ -171,37 +162,6 @@ async def get_admin_dashboard(request):
                         "avatar": user.avatar,
                     }
                     for user in recent_clients
-                ],
-                "recent_requests": [
-                    {
-                        "id": request.id,
-                        "type": request.request_type,
-                        "client": request.client_name,
-                        "amount": request.amount,
-                        "status": request.status,
-                        "created_at": _format_timestamp(request.created_at),
-                    }
-                    for request in pending_requests
-                ],
-                "recent_activity_logs": [
-                    {
-                        "id": log.id,
-                        "action": log.action_type,
-                        "user": log.user_name,
-                        "user_name": log.user_name,
-                        "user_role": log.user_role,
-                        "action_type": log.action_type,
-                        "module_name": log.module_name,
-                        "record_id": log.record_id,
-                        "old_values": log.old_values,
-                        "new_values": log.new_values,
-                        "ip_address": log.ip_address,
-                        "user_agent": log.user_agent,
-                        "details": f"{log.module_name}{f' #{log.record_id}' if log.record_id else ''}",
-                        "time": _format_timestamp(log.timestamp),
-                        "timestamp": _format_timestamp(log.timestamp),
-                    }
-                    for log in recent_activity_logs
                 ],
                 "quick_actions": [
                     {"label": "Add User", "href": "/admin/activity", "icon": "UserPlus"},

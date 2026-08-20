@@ -164,6 +164,18 @@ export default function AdminPendingRequestsPage() {
             const res = await fetch(endpoint, { credentials: 'include' });
             const data = await res.json();
             const requests = data.status === 'ok' ? data.requests || [] : [];
+            
+            if (data.status === 'ok' && data.summary) {
+                const s = data.summary;
+                setRequestCounts({
+                    deposit: s.deposits ?? 0,
+                    withdraw: s.withdrawals ?? 0,
+                    documents: s.documents ?? 0,
+                    profile: s.profiles ?? 0,
+                    bank: s.banks ?? 0,
+                    crypto: s.cryptos ?? 0,
+                });
+            }
 
             if (tab === 'deposit') {
                 setDeposits(requests);
@@ -184,30 +196,6 @@ export default function AdminPendingRequestsPage() {
             setLoading(false);
         }
     };
-
-    const loadRequestCounts = async () => {
-        try {
-            const res = await fetch('/api/admin/requests/summary', { credentials: 'include' });
-            const data = await res.json();
-            if (data.status === 'ok' && data.summary) {
-                const s = data.summary;
-                setRequestCounts({
-                    deposit: s.deposit ?? s.deposits ?? 0,
-                    withdraw: s.withdraw ?? s.withdrawals ?? 0,
-                    documents: s.documents ?? 0,
-                    profile: s.profile ?? s.profiles ?? 0,
-                    bank: s.bank ?? s.banks ?? 0,
-                    crypto: s.crypto ?? s.cryptos ?? 0,
-                });
-            }
-        } catch (err) {
-            console.error('Failed to load requests counts:', err);
-        }
-    };
-
-    useEffect(() => {
-        void loadRequestCounts();
-    }, []);
 
     useEffect(() => {
         void loadActiveTabData(activeTab);
@@ -277,7 +265,7 @@ export default function AdminPendingRequestsPage() {
             }
 
             updateState((data?.request?.status as 'Approved' | 'Rejected' | undefined) || newStatus);
-            await Promise.all([loadRequestCounts(), loadActiveTabData()]);
+            await Promise.all([loadActiveTabData()]);
             closeModal();
             const isRejection = newStatus === 'Rejected';
             showToast(data?.message || successMessage, isRejection);
