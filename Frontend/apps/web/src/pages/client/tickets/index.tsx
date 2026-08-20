@@ -360,6 +360,7 @@ const Tickets = () => {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(10);
   const [pagination, setPagination] = useState({
+    page: 1,
     total: 0,
     totalPages: 1,
     hasNext: false,
@@ -402,6 +403,7 @@ const Tickets = () => {
       
       if (response.pagination) {
         setPagination({
+          page: response.pagination.page,
           total: response.pagination.total,
           totalPages: response.pagination.total_pages,
           hasNext: response.pagination.has_next,
@@ -428,12 +430,12 @@ const Tickets = () => {
     void fetchTickets(selectedStatus, currentPage, pageSize);
   }, [currentPage, pageSize, selectedStatus]);
 
-  useEffect(
-    () => () => {
-      requestIdRef.current += 1;
-    },
-    [],
-  );
+  // useEffect(
+  //   () => () => {
+  //     requestIdRef.current += 1;
+  //   },
+  //   [],
+  // );
   const [filteredTickets, setFilteredTickets] = useState<Ticket[]>([]);
 
   // Apply filters and search term to tickets
