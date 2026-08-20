@@ -214,10 +214,26 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
     elif extracted.get("matched_id_proof_number") is False:
         name_score = 0.0
     elif is_relationship_addr:
-        name_score = 85.0
-        # If it happens to match anyway, boost it
-        if doc_name and compare_names(profile_full_name, doc_name) >= 60.0:
-            name_score = 100.0
+        # It's likely the back side of an Aadhaar card.
+        # Let's check if the user's name appears ANYWHERE in the text (e.g. they uploaded front+back).
+        best_name_score = 0.0
+        if ocr_text:
+            all_lines = [line.strip() for line in ocr_text.split("\n") if len(line.strip()) >= 3]
+            for raw_line in all_lines:
+                clean_l = re.sub(r"[^a-zA-Z0-9\s\.]", "", raw_line).strip()
+                if len(clean_l) >= 3:
+                    sc = compare_names(profile_full_name, clean_l)
+                    if sc > best_name_score:
+                        best_name_score = sc
+        
+        if best_name_score >= 60.0:
+            name_score = best_name_score
+        else:
+            # The name is completely missing. Without a cross-matched ID proof number, we cannot securely accept this!
+            name_score = 0.0
+            warnings.append(
+                "Name not found on address proof. If this is the back side of an ID, please upload a combined image of the front and back to verify your name, or ensure you use the same document for Identity Proof."
+            )
     elif doc_name:
         name_score = compare_names(profile_full_name, doc_name)
         if name_score < 45.0:

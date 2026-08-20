@@ -74,7 +74,7 @@ async def log_post_activity(request, response=None) -> ActivityLog | None:
 
     try:
         await ensure_db_initialized()
-        path = request.path or ""
+        path = getattr(request, "path", "") or ""
 
         # Ignore noisy / login status polling paths if needed
         if path.endswith("/login") or path.endswith("/logout"):

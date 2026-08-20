@@ -2414,7 +2414,7 @@ class TestClientPanelModels:
             == "My withdrawal has been pending for two business days."
         )
 
-        saved = await ClientTicket.filter(client_profile_id=profile.id).first()
+        saved = await ClientTicket.filter(user_id=user.id).first()
         assert saved is not None
 
         detail_request = type(

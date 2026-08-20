@@ -166,18 +166,22 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
 
     # Date of Birth (DOB) Extraction if not set by MRZ
     if not extracted["dob"]:
+        # Tesseract often inserts spaces into numbers (e.g., "04/1 2/2002"). Remove spaces for robust date matching.
+        text_no_spaces = re.sub(r'\s+', '', text_lower)
+        ocr_no_spaces = re.sub(r'\s+', '', ocr_text)
+        
         dob_match = re.search(
-            r"(?:dob|date of birth|birth date|bday|born|date de naissance|fecha de nacimiento)[:\s]*([0-9]{1,4}[-/.\s][0-9]{1,2}[-/.\s][0-9]{2,4}|[0-9]{1,2}\s+[a-z]{3,9}\s+[0-9]{4})",
-            text_lower,
+            r"(?:dob|dateofbirth|birthdate|bday|born|datedenaissance|fechadenacimiento)[:]*([0-9]{1,4}[-/.\s][0-9]{1,2}[-/.\s][0-9]{2,4}|[0-9]{1,2}[a-z]{3,9}[0-9]{4})",
+            text_no_spaces,
         )
         if dob_match:
             extracted["dob"] = dob_match.group(1).strip()
         else:
             dates_ymd = re.findall(
-                r"\b(19\d\d|20[0-2]\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b", ocr_text
+                r"(19\d\d|20[0-2]\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])", ocr_no_spaces
             )
             dates_dmy = re.findall(
-                r"\b(0[1-9]|[12]\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](19\d\d|20[0-2]\d)\b", ocr_text
+                r"(0[1-9]|[12]\d|3[01])[-/.](0[1-9]|1[0-2])[-/.](19\d\d|20[0-2]\d)", ocr_no_spaces
             )
             if dates_ymd:
                 extracted["dob"] = f"{dates_ymd[0][0]}-{dates_ymd[0][1]}-{dates_ymd[0][2]}"
