@@ -161,24 +161,16 @@ async def get_my_mam_manager_detail(request, account_id: str):
     settled_rows = await ProfitShareHistory.filter(master_login=str(manager.account_id), status="Completed").values("commission_amount")
     settled_value = sum(float(r["commission_amount"] or 0) for r in settled_rows)
     
+    manager_row.pop("account_settings", None)
+    manager_row.pop("investorsList", None)
+
     manager_row.update(
         {
             "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
             "role": manager.risk_level or "MAM Portfolio Manager",
             "phone": str(manager.account_id or ""),
             "avatar": _manager_avatar(manager_row["name"]),
-            "investorsList": investors,
             "investors_count": investor_count,
-            "accountSettings": {
-                "accountName": manager.account_name or manager_row["name"],
-                "payoutCycle": manager.payout_frequency or "weekly",
-                "algoTrading": "Automatic"
-                if manager.copy_trade_enabled or manager.dual_trade_enabled
-                else "Manual",
-                "status": manager.status or "Active",
-                "leverage": f"1:{manager.leverage}",
-                "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
-            },
             "performanceSummary": {
                 "aum": float(manager.balance or 0.0),
                 "netBalance": float(manager.balance or 0.0),
@@ -778,3 +770,38 @@ async def reset_investor_password(request):
     except Exception as e:
         logger.error(f"Error resetting password for account {account_id}: {e}")
         return _error(f"Error resetting password: {str(e)}", status=500)
+
+
+@permission_required(IsClient)
+async def get_mam_manager_settings(request, account_id: str):
+    """Fetch the specific Account Settings modal data dynamically."""
+    await ensure_db_initialized()
+    user_id = await _resolve_client_user_id(request)
+
+    manager = (
+        await TradingAccount.filter(
+            account_id=str(account_id), account_type="MAM", user_id=user_id
+        ).prefetch_related("user").first()
+        or await TradingAccount.filter(
+            id=account_id, account_type="MAM", user_id=user_id
+        ).prefetch_related("user").first()
+    )
+    if not manager:
+        return _error(f"MAM Master account {account_id} not found or access denied", status=404)
+
+    return JsonResponse(
+        {
+            "status": "ok",
+            "accountSettings": {
+                "accountName": manager.account_name or (manager.user.name if manager.user else "MAM Manager"),
+                "payoutCycle": manager.payout_frequency or "weekly",
+                "algoTrading": "Automatic"
+                if manager.copy_trade_enabled or manager.dual_trade_enabled
+                else "Manual",
+                "status": manager.status or "Active",
+                "leverage": f"1:{manager.leverage}",
+                "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
+            }
+        }
+    )
+

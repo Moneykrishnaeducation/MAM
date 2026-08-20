@@ -3,12 +3,9 @@ import Head from 'next/head';
 import { useTheme } from 'next-themes';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  UserCheck,
   Mail,
   Phone,
   Search,
-  MessageSquare,
-  Calendar,
   TrendingUp,
   Shield,
   Users,
@@ -106,7 +103,6 @@ export default function ClientManagerPage() {
   const [usdtAmount, setUsdtAmount] = useState('');
   const [isPageLoading, setIsPageLoading] = useState(true);
   const [convertedAmount, setConvertedAmount] = useState<any>(null);
-  const [newLeverage, setNewLeverage] = useState<string>('500');
   const [passwordType, setPasswordType] = useState<'Investor' | 'Manager' | 'None'>('Investor');
   const [newInvestorPassword, setNewInvestorPassword] = useState<string>('');
   const [confirmInvestorPassword, setConfirmInvestorPassword] = useState<string>('');
@@ -117,7 +113,6 @@ export default function ClientManagerPage() {
   const [managerInfo, setManagerInfo] = useState<ManagerRow>(DEFAULT_MANAGER_ROW);
   const [allManagers, setAllManagers] = useState<ManagerRow[]>([]);
   const [clientAccount, setClientAccount] = useState<ClientAccountSummary | null>(null);
-  const [clientInvestments, setClientInvestments] = useState<ClientInvestmentSummary[]>([]);
   const [pagination, setPagination] = useState({
     page: 1,
     perPage: 10,
@@ -134,9 +129,34 @@ export default function ClientManagerPage() {
 
   const [popupInvestors, setPopupInvestors] = useState<any[]>([]);
   const [isPopupInvestorsLoading, setIsPopupInvestorsLoading] = useState<boolean>(false);
+  const [managerSettings, setManagerSettings] = useState<any>(null);
+  const [isSettingsLoading, setIsSettingsLoading] = useState<boolean>(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState<boolean>(false);
   const managerCardRef = useRef<HTMLDivElement | null>(null);
   const hasLoadedInitialDataRef = useRef(false);
+
+  const handleOpenSettingsModal = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    setShowAccountSettingsModal(true);
+    if (!activeManager?.accountId) return;
+    setIsSettingsLoading(true);
+    try {
+      const res = await fetch(`/api/client/my-mam-managers/${activeManager.accountId}/settings`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setManagerSettings(data.accountSettings || null);
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setIsSettingsLoading(false);
+    }
+  };
 
   const fetchManagerInvestorsList = async (accountId: string) => {
     setIsPopupInvestorsLoading(true);
@@ -971,7 +991,7 @@ export default function ClientManagerPage() {
                     <div className="w-full space-y-3">
                       <button
                         type="button"
-                        onClick={() => setShowAccountSettingsModal(true)}
+                        onClick={handleOpenSettingsModal}
                         className={`w-full py-3 rounded-xl font-black transition-all text-sm hover:scale-105 ${goldButtonClass} flex items-center justify-center gap-2`}
                       >
                         <Settings size={16} /> Account Settings
@@ -1093,6 +1113,12 @@ export default function ClientManagerPage() {
                 <X size={18} />
               </button>
             </div>
+            {isSettingsLoading ? (
+              <div className="flex flex-col items-center justify-center p-12 text-center">
+                <div className="w-8 h-8 border-4 border-blue-500 border-t-amber-400 rounded-full animate-spin mb-3" />
+                <p className={`font-bold text-xs ${softTextClass}`}>Loading account settings...</p>
+              </div>
+            ) : (
             <div className="space-y-5 px-6 py-6">
               <div className={`rounded-3xl border p-4 bg-white/[0.02] ${borderMutedClass}`}>
                 <div className="flex items-center justify-between gap-4 mb-3">
@@ -1100,6 +1126,12 @@ export default function ClientManagerPage() {
                     <div className={`text-[10px] uppercase tracking-[0.24em] ${softTextClass}`}>Security Access</div>
                     <div className="text-sm font-black text-white">Reset Account Password</div>
                   </div>
+                  {managerSettings && (
+                    <div className="text-right">
+                       <div className={`text-[10px] uppercase tracking-[0.24em] ${softTextClass}`}>Status</div>
+                       <div className="text-sm font-black text-white">{managerSettings.status}</div>
+                    </div>
+                  )}
                 </div>
                 <div className="space-y-3">
                   <div>
@@ -1216,6 +1248,7 @@ export default function ClientManagerPage() {
                 </button>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}
