@@ -165,8 +165,13 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
             or (len(clean_id_num) >= 4 and clean_id_num[-4:] in clean_raw_text)
         ):
             doc_number_matched_id_proof = True
+            extracted["matched_id_proof_number"] = True
             if not extracted.get("doc_number"):
                 extracted["doc_number"] = identity_doc_number
+        elif clean_id_num and clean_res_num and len(clean_id_num) == 12 and len(clean_res_num) == 12:
+            # Both are 12-digit Aadhaar numbers but they do not match!
+            warnings.append(f"Aadhaar number mismatch: ID Proof ({clean_id_num}) does not match Address Proof ({clean_res_num}).")
+            extracted["matched_id_proof_number"] = False
 
     doc_name = extracted.get('full_name')
     if doc_name and any(
@@ -206,6 +211,8 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
 
     if doc_number_matched_id_proof:
         name_score = 95.0
+    elif extracted.get("matched_id_proof_number") is False:
+        name_score = 0.0
     elif is_relationship_addr:
         name_score = 85.0
         # If it happens to match anyway, boost it
