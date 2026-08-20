@@ -134,7 +134,7 @@ async def get_client_profile(request):
 
     # Immediately update the profile so auto-verification has data to compare against
     if "full_name" in submission_payload and submission_payload["full_name"]:
-        profile.full_name = submission_payload["full_name"]
+        profile.name = submission_payload["full_name"]
     if "phone" in submission_payload and submission_payload["phone"]:
         profile.phone = submission_payload["phone"]
     if "country" in submission_payload and submission_payload["country"]:
@@ -148,7 +148,7 @@ async def get_client_profile(request):
     if "postal_code" in submission_payload and submission_payload["postal_code"]:
         profile.postal_code = submission_payload["postal_code"]
     
-    await profile.save(update_fields=["full_name", "phone", "country", "date_of_birth", "address", "city", "postal_code"])
+    await profile.save(update_fields=["name", "phone", "country", "date_of_birth", "address", "city", "postal_code"])
 
     pending_request = await create_profile_pending_request(user, user, submission_payload)
 

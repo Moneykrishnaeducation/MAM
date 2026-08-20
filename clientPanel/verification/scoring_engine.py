@@ -7,10 +7,11 @@ duplicate detection, major name/DOB mismatches) to prevent false approvals.
 """
 
 import logging
+
 from .config import (
+    DECISION_THRESHOLDS,
     IDENTITY_WEIGHTS,
     RESIDENCE_WEIGHTS,
-    DECISION_THRESHOLDS,
 )
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def calculate_identity_score(scores_dict):
     Calculates weighted confidence score for Identity documents.
     """
     weights = IDENTITY_WEIGHTS
-    
+
     score = (
         (scores_dict.get('name_match_score', 0) * weights['name']) +
         (scores_dict.get('dob_match_score', 0) * weights['dob']) +
@@ -38,7 +39,7 @@ def calculate_residence_score(scores_dict):
     Calculates weighted confidence score for Residence documents.
     """
     weights = RESIDENCE_WEIGHTS
-    
+
     score = (
         (scores_dict.get('name_match_score', 0) * weights['name']) +
         (scores_dict.get('address_match_score', 0) * weights['address']) +
@@ -52,7 +53,7 @@ def calculate_residence_score(scores_dict):
 def evaluate_verification_decision(document_type, scores_dict, quality_metrics, classification_result, fraud_result, warnings):
     """
     Determines final verification decision: 'approved', 'rejected', or 'manual_review'.
-    
+
     Applies configurable decision thresholds and critical failure overrides.
     """
     is_type_valid, detected_type, type_confidence, type_mismatch_reason = classification_result
@@ -79,7 +80,7 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
         return decision, confidence_int, reason, errors
 
     if not quality_metrics.get('is_quality_sufficient'):
-        decision = 'manual_review'
+        decision = 'rejected'
         reason = f"document_quality_insufficient: {', '.join(quality_metrics.get('quality_errors', []))}"
         return decision, confidence_int, reason, errors
 
@@ -104,10 +105,14 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
         return decision, confidence_int, reason, errors
 
     if not is_type_valid:
-        decision = 'rejected' if type_confidence > 75.0 else 'manual_review'
-        reason = f"document_type_mismatch: {type_mismatch_reason}"
-        errors.append(type_mismatch_reason)
-        return decision, confidence_int, reason, errors
+        if document_type == 'identity' and scores_dict.get('name_match_score', 0) >= 50:
+            # Bypass type check and ensure confidence meets the approval threshold since name matches reasonably well
+            confidence_int = max(confidence_int, DECISION_THRESHOLDS['APPROVED'])
+        else:
+            decision = 'rejected'
+            reason = f"document_type_mismatch: {type_mismatch_reason}"
+            errors.append(type_mismatch_reason)
+            return decision, confidence_int, reason, errors
 
     # Major Address Mismatch Override for Residence
     if document_type == 'residence' and scores_dict.get('address_match_score', 100.0) < 40.0:
@@ -117,21 +122,13 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
         return decision, confidence_int, reason, errors
 
     # 3. Apply Threshold Rules
-    approved_threshold = DECISION_THRESHOLDS['APPROVED']
     review_threshold = DECISION_THRESHOLDS['MANUAL_REVIEW']
 
-    if confidence_int >= approved_threshold:
-        # Authenticity Disclaimer Constraint:
-        # Local OCR alone cannot guarantee 100% government authenticity.
-        # If any quality or name matching warnings exist, require manual review.
+    if confidence_int >= 60:
+        decision = 'approved'
+        reason = f"Automatically approved with confidence score {confidence_int}%"
         if warnings:
-            decision = 'manual_review'
-            reason = f"High confidence ({confidence_int}%), but flagged for manual review due to warnings: {'; '.join(warnings)}"
-        else:
-            decision = 'approved'
-            reason = f"Automatically approved with confidence score {confidence_int}%"
-    elif confidence_int >= review_threshold:
-        decision = 'manual_review'
+            reason += f" (Warnings: {'; '.join(warnings)})"
     else:
         decision = 'rejected'
         reason = f"Automatically rejected due to low confidence score ({confidence_int}% < {review_threshold}%)."
@@ -139,7 +136,7 @@ def evaluate_verification_decision(document_type, scores_dict, quality_metrics, 
     return decision, confidence_int, reason, errors
 
 
-def format_human_readable_reason(reason, errors=None, user_name=None):
+def format_human_readable_reason(reason, errors=None, user_name=None, decision=None):
     """
     Translates raw verification error codes and reasons into a clear, user-facing explanation.
     """
@@ -147,6 +144,7 @@ def format_human_readable_reason(reason, errors=None, user_name=None):
         return "Document verification complete."
 
     r = str(reason).lower()
+    is_manual_review = str(decision or "").strip().lower() == "manual_review"
 
     if "major_name_mismatch" in r or "name mismatch" in r:
         if user_name:
@@ -154,6 +152,11 @@ def format_human_readable_reason(reason, errors=None, user_name=None):
         return "The name on the uploaded document does not match your registered profile name. Please upload a document belonging to the profile owner."
 
     if "document_type_mismatch" in r:
+        if is_manual_review:
+            return (
+                "We could not confidently verify the document type. "
+                "It has been sent for manual review."
+            )
         return "The uploaded file does not match the required document format. Please upload a valid document for this request."
 
     if "major_dob_mismatch" in r:

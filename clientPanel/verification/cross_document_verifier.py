@@ -1,5 +1,6 @@
 import logging
 import re
+
 from .matching import compare_names, compare_dob
 
 logger = logging.getLogger(__name__)
@@ -58,9 +59,9 @@ def verify_cross_documents(user):
     id_doc_num = (identity_doc.extracted_data or {}).get('doc_number')
     res_doc_num = (residence_doc.extracted_data or {}).get('doc_number')
 
-    user_profile_name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip()
+    user_profile_name = getattr(user, 'name', '').strip()
     if not user_profile_name:
-        user_profile_name = getattr(user, 'username', '') or getattr(user, 'email', '')
+        user_profile_name = getattr(user, 'email', '')
 
     target_name = id_name or user_profile_name
 
@@ -121,6 +122,7 @@ def verify_cross_documents(user):
     if not res_name and res_raw_text:
         try:
             from .identity_verifier import extract_identity_fields
+
             res_fields = extract_identity_fields(res_raw_text, user_profile_name=id_name or user_profile_name)
             res_name = res_fields.get('full_name')
         except Exception:
@@ -191,6 +193,7 @@ def verify_cross_documents(user):
         if not res_check_name and res_raw_text:
             try:
                 from .identity_verifier import extract_identity_fields
+
                 res_fields = extract_identity_fields(res_raw_text, user_profile_name=user_profile_name)
                 res_check_name = res_fields.get('full_name')
             except Exception:

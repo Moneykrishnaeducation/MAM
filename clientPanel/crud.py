@@ -4,8 +4,8 @@ from adminPanel.models import (
     ClientAccount,
     ClientTicket,
     ClientTransaction,
-    MyInvestment,
     ClientUser,
+    MyInvestment,
 )
 
 
@@ -57,8 +57,8 @@ async def create_client_profile(
     user = await ClientUser.filter(id=user_id).first()
     if user is None:
         raise ValueError("Client user not found")
-    user.full_name = full_name
     user.name = full_name
+    user.full_name = full_name
     user.email = email
     user.phone = phone
     user.country = country

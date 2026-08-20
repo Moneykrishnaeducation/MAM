@@ -46,7 +46,6 @@ class ClientUser(models.Model):
     status = fields.CharField(max_length=50, default="Active")
     verified = fields.BooleanField(default=True)
     country = fields.CharField(max_length=100, default="United States")
-    full_name = fields.CharField(max_length=255, null=True)
     date_of_birth = fields.CharField(max_length=50, null=True)
     address = fields.CharField(max_length=255, null=True)
     city = fields.CharField(max_length=100, null=True)
@@ -63,6 +62,24 @@ class ClientUser(models.Model):
         if self.role not in ["Client", "Client User"]:
             raise ValueError(f"ClientUser role must be 'Client' or 'Client User', got '{self.role}'")
         await super().save(*args, **kwargs)
+
+    @property
+    def full_name(self) -> str:
+        """Compatibility alias for code that still expects a full_name attribute."""
+        return self.name
+
+    @full_name.setter
+    def full_name(self, value: str | None) -> None:
+        self.name = str(value or "").strip()
+
+    @classmethod
+    async def create(cls, **kwargs: Any):
+        """Accept legacy full_name kwargs while storing the value in name."""
+        data = dict(kwargs)
+        full_name = data.pop("full_name", None)
+        if full_name is not None and not data.get("name"):
+            data["name"] = full_name
+        return await super().create(**data)
 
     class Meta:
         table = "client_users"
@@ -324,7 +341,7 @@ class ClientProfile(models.Model):
 
     id = fields.IntField(primary_key=True)
     user_id = fields.IntField(unique=True, index=True)
-    full_name = fields.CharField(max_length=255)
+    name = fields.CharField(max_length=255)
     email = fields.CharField(max_length=255, unique=True, index=True)
     phone = fields.CharField(max_length=50, null=True)
     country = fields.CharField(max_length=100, default="United States")
@@ -341,7 +358,25 @@ class ClientProfile(models.Model):
         table = "client_profiles"
 
     def __repr__(self) -> str:
-        return f"<ClientProfile(user_id={self.user_id}, name={self.full_name})>"
+        return f"<ClientProfile(user_id={self.user_id}, name={self.name})>"
+
+    @property
+    def full_name(self) -> str:
+        """Compatibility alias for code that still expects a full_name attribute."""
+        return self.name
+
+    @full_name.setter
+    def full_name(self, value: str | None) -> None:
+        self.name = str(value or "").strip()
+
+    @classmethod
+    async def create(cls, **kwargs: Any):
+        """Accept legacy full_name kwargs while storing the value in name."""
+        data = dict(kwargs)
+        full_name = data.pop("full_name", None)
+        if full_name is not None and not data.get("name"):
+            data["name"] = full_name
+        return await super().create(**data)
 
 
 class ClientBankDetail(models.Model):

@@ -87,6 +87,11 @@ def compare_names(profile_name, document_name):
         token_sort_score = float(fuzz.token_sort_ratio(n1, n2))
         token_set_score = float(fuzz.token_set_ratio(n1, n2))
         partial_score = float(fuzz.partial_ratio(n1, n2))
+        
+        # Prevent short random substrings from forcing a high partial match
+        if len(n1) <= 6 or len(n2) <= 6:
+            partial_score = 0.0
+                
         weighted_score = max(token_sort_score, token_set_score, partial_score * 0.9)
     else:
         # Fallback using difflib
@@ -273,8 +278,28 @@ def compare_dob(profile_dob, extracted_dob_str):
     if prof_date and ext_date:
         if prof_date == ext_date:
             return True, 100.0, f"Exact DOB match ({prof_date.isoformat()})."
+        elif (
+            prof_date.year == ext_date.year
+            and prof_date.month == ext_date.day
+            and prof_date.day == ext_date.month
+        ):
+            return (
+                True,
+                90.0,
+                f"DOB match with swapped day/month ({prof_date.isoformat()} vs {ext_date.isoformat()}).",
+            )
+        elif (
+            prof_date.year == ext_date.year
+            and prof_date.month == ext_date.month
+            and abs(prof_date.day - ext_date.day) <= 1
+        ):
+            return True, 80.0, "DOB match with minor day variation."
         else:
-            return False, 0.0, f"DOB mismatch: Profile ({prof_date.isoformat()}) vs Document ({ext_date.isoformat()})."
+            return (
+                False,
+                0.0,
+                f"DOB mismatch: Profile ({prof_date.isoformat()}) vs Document ({ext_date.isoformat()}).",
+            )
 
     # String comparison fallback if parsing failed
     str_prof = str(profile_dob).lower().strip()

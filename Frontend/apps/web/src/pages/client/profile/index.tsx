@@ -40,7 +40,7 @@ import { ProfileSkeleton } from '@/components/client-page-skeletons';
 type ProfileTab = 'personal' | 'security' | 'activity' | 'documents' | 'payments';
 
 type DocumentSlotId = 'identity' | 'address';
-type DocumentStatus = 'approved' | 'pending' | 'rejected';
+type DocumentStatus = 'approved' | 'pending' | 'rejected' | 'manual_review';
 
 type DocumentCard = {
   id: DocumentSlotId;
@@ -76,6 +76,7 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   approved: 'Approved',
   pending: 'Pending Review',
   rejected: 'Rejected',
+  manual_review: 'Manual Review',
 };
 
 const DOCUMENT_STATUS_CLASSES = (status: DocumentStatus, isDarkMode: boolean): string => {
@@ -83,6 +84,7 @@ const DOCUMENT_STATUS_CLASSES = (status: DocumentStatus, isDarkMode: boolean): s
     approved: isDarkMode ? 'border-amber-500/25 bg-amber-500/10 text-amber-400' : 'border-amber-500/25 bg-amber-500/10 text-amber-300',
     pending: isDarkMode ? 'border-slate-800 bg-slate-800 text-slate-400' : 'border-slate-500/20 bg-slate-500/10 text-slate-300',
     rejected: isDarkMode ? 'border-red-500/20 bg-red-500/10 text-red-400' : 'border-red-500/20 bg-red-500/10 text-red-300',
+    manual_review: isDarkMode ? 'border-amber-500/20 bg-amber-500/10 text-amber-300' : 'border-amber-500/20 bg-amber-500/10 text-amber-400',
   };
   return mapping[status];
 };
@@ -228,7 +230,12 @@ const normalizePaymentDetails = (details: ClientPaymentDetailsApi | null | undef
 
 const normalizeDocumentStatus = (value: unknown): DocumentStatus => {
   const normalized = String(value || 'pending').trim().toLowerCase();
-  if (normalized === 'approved' || normalized === 'pending' || normalized === 'rejected') {
+  if (
+    normalized === 'approved' ||
+    normalized === 'pending' ||
+    normalized === 'rejected' ||
+    normalized === 'manual_review'
+  ) {
     return normalized;
   }
   return 'pending';
@@ -281,6 +288,18 @@ export default function ClientProfilePage() {
   const isDarkMode = theme === 'dark';
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('personal');
+
+  useEffect(() => {
+    const savedTab = localStorage.getItem('profileActiveTab') as ProfileTab;
+    if (savedTab && ['personal', 'security', 'activity', 'documents', 'payments'].includes(savedTab)) {
+      setActiveTab(savedTab);
+    }
+  }, []);
+
+  const handleTabChange = (tab: ProfileTab) => {
+    setActiveTab(tab);
+    localStorage.setItem('profileActiveTab', tab);
+  };
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('Profile Settings saved successfully!');
   const [profileUserId, setProfileUserId] = useState<string | null>(null);
@@ -370,8 +389,14 @@ export default function ClientProfilePage() {
       wizardForm.city.trim() &&
       wizardForm.postalCode.trim(),
   );
-  const wizardStep2Done = wizardIdResult?.status === 'approved' || wizardIdResult?.status === 'pending';
-  const wizardStep3Done = wizardAddressResult?.status === 'approved' || wizardAddressResult?.status === 'pending';
+  const wizardStep2Done =
+    wizardIdResult?.status === 'approved' ||
+    wizardIdResult?.status === 'pending' ||
+    wizardIdResult?.status === 'manual_review';
+  const wizardStep3Done =
+    wizardAddressResult?.status === 'approved' ||
+    wizardAddressResult?.status === 'pending' ||
+    wizardAddressResult?.status === 'manual_review';
 
   const showProfileToast = (message: string, isError = false) => {
     setToastMessage(message);
@@ -384,7 +409,7 @@ export default function ClientProfilePage() {
     setTimeout(() => setShowToast(false), 3000);
   };
 
-  const openVerificationWizard = () => {
+  const openVerificationWizard = (initialStep: 1 | 2 | 3 = 1) => {
     setWizardForm({
       phone: personalForm.phone,
       dateOfBirth: personalForm.dateOfBirth,
@@ -392,7 +417,7 @@ export default function ClientProfilePage() {
       city: personalForm.city,
       postalCode: personalForm.postalCode,
     });
-    setWizardStep(1);
+    setWizardStep(initialStep);
     setWizardError(null);
     setWizardIdFile(null);
     setWizardAddressFile(null);
@@ -494,14 +519,28 @@ export default function ClientProfilePage() {
         throw new Error(data?.message || data?.reason || 'Unable to verify document.');
       }
 
-      const resultStatus = normalizeDocumentStatus(data?.status || 'pending');
+      const verificationStatus = normalizeDocumentStatus(data?.verification_status || data?.status || 'pending');
+      const resultStatus = verificationStatus;
+      const documentLabel = documentType === 'identity' ? 'ID' : 'Address';
+      const resultMessage =
+        String(
+          data?.verification_reason ||
+            data?.human_readable_reason ||
+            data?.reason ||
+            data?.message ||
+            '',
+        ).trim() || 'Document submitted for review.';
       const result: WizardResult = {
         status: resultStatus,
-        reason: data?.reason || data?.message || 'Document submitted for review.',
+        reason: resultMessage,
       };
 
-      if (resultStatus === 'rejected') {
-        toast.error(`${documentType === 'identity' ? 'ID' : 'Address'} Proof Rejected: ${result.reason}`);
+      if (verificationStatus !== 'approved') {
+        if (verificationStatus === 'manual_review') {
+          toast.warning(`${documentLabel} Proof Needs Review: ${result.reason}`);
+        } else {
+          toast.error(`${documentLabel} Proof Rejected: ${result.reason}`);
+        }
         if (documentType === 'identity') {
           setWizardIdResult(result);
         } else {
@@ -511,7 +550,7 @@ export default function ClientProfilePage() {
         return;
       }
 
-      toast.success(`${documentType === 'identity' ? 'ID' : 'Address'} Proof ${resultStatus === 'approved' ? 'Approved' : 'Submitted'} Successfully!`);
+      toast.success(`${documentLabel} Proof Approved Successfully!`);
 
       if (documentType === 'identity') {
         setWizardIdResult(result);
@@ -519,6 +558,7 @@ export default function ClientProfilePage() {
       } else {
         setWizardAddressResult(result);
         setShowWizardModal(false);
+        handleTabChange('documents');
       }
       setUploadNotice(`${file.name} processed.`);
       await fetchDocuments();
@@ -1023,7 +1063,7 @@ export default function ClientProfilePage() {
       stats[document.status] += document.fileName || document.uploadedAt ? 1 : 0;
       return stats;
     },
-    { total: 0, approved: 0, pending: 0, rejected: 0 },
+    { total: 0, approved: 0, pending: 0, rejected: 0, manual_review: 0 },
   );
 
   const paymentMethodsCount = [
@@ -1048,15 +1088,16 @@ export default function ClientProfilePage() {
         </div>
 
         <div className="relative z-10">
-          {showToast && (
-            <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          {showToast && typeof document !== 'undefined' ? createPortal(
+            <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-[9999] animate-in fade-in slide-in-from-bottom-4 duration-300">
               <Check size={18} />
               <span>{toastMessage}</span>
-            </div>
-          )}
+            </div>,
+            document.body
+          ) : null}
 
-          {showWizardModal && (
-            <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md">
+          {showWizardModal && typeof document !== 'undefined' ? createPortal(
+            <div className="fixed inset-0 z-[9990] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md">
               <div className={`w-full max-w-2xl rounded-[2rem] border p-6 shadow-2xl ${panelClass}`}>
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
@@ -1132,7 +1173,7 @@ export default function ClientProfilePage() {
                   <div className="space-y-5">
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                       <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-amber-400"><IdCard size={16} /> Reviewing against your submitted profile</p>
-                      <p className={`mt-2 text-xs ${softTextClass}`}>{personalFullName} · {wizardForm.dateOfBirth} · {wizardForm.city}</p>
+                       <p className={`mt-2 text-xs ${softTextClass}`}>Name: {personalFullName} · DOB: {wizardForm.dateOfBirth} · City: {wizardForm.city}</p>
                     </div>
 
                     {wizardStep === 2 && (
@@ -1173,7 +1214,7 @@ export default function ClientProfilePage() {
                 )}
               </div>
             </div>
-          )}
+          , document.body) : null}
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-4 space-y-6">
@@ -1268,7 +1309,7 @@ export default function ClientProfilePage() {
               <div className={`rounded-[2.5rem] border p-6 ${panelClass}`}>
                 <div className={`flex border-b ${borderMutedClass} gap-6 mb-6 overflow-x-auto pb-1 scrollbar-hide`}>
                   <button 
-                    onClick={() => setActiveTab('personal')}
+                    onClick={() => handleTabChange('personal')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'personal' 
                         ? 'border-amber-500 text-amber-400' 
@@ -1278,7 +1319,7 @@ export default function ClientProfilePage() {
                     <User size={15} /> Personal Details
                   </button>
                   <button 
-                    onClick={() => setActiveTab('security')}
+                    onClick={() => handleTabChange('security')}
                     className={`flex items-center gap-2 pb-3.5 text-xs font-black uppercase tracking-widest transition-all border-b-2 whitespace-nowrap ${
                       activeTab === 'security' 
                         ? 'border-amber-500 text-amber-400' 
@@ -1349,7 +1390,7 @@ export default function ClientProfilePage() {
                         </div>
                       </div>
                       <div>
-                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>Last Name</label>
+                        <label className={`text-[11px] font-black uppercase tracking-widest block mb-2 ${softTextClass}`}>DOB</label>
                         <div
                           className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${inputClass} ${
                             isPersonalEditing
@@ -1360,10 +1401,10 @@ export default function ClientProfilePage() {
                           <User size={15} className="text-slate-400" />
                           <input
                             type="text"
-                            value={personalForm.lastName}
+                            value={personalForm.dateOfBirth}
                             readOnly={!isPersonalEditing}
                             onChange={(event) =>
-                              setPersonalForm((prev) => ({ ...prev, lastName: event.target.value }))
+                              setPersonalForm((prev) => ({ ...prev, dateOfBirth: event.target.value }))
                             }
                             className={`w-full border-none bg-transparent text-xs outline-none text-white ${
                               isPersonalEditing ? '' : 'cursor-not-allowed text-slate-300'
@@ -1483,14 +1524,7 @@ export default function ClientProfilePage() {
                         <Edit size={14} className="mr-2" />
                         Edit
                       </button>
-                      <button
-                        type="submit"
-                        disabled={!isPersonalEditing || isPersonalSaving}
-                        className={`inline-flex items-center rounded-xl px-6 py-3 text-xs font-black transition-all uppercase tracking-widest hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50 ${goldButtonClass}`}
-                      >
-                        <Check size={14} className="mr-2" />
-                        {isPersonalSaving ? 'Saving...' : 'Save Changes'}
-                      </button>
+                     
                     </div>
                   </form>
                 )}
@@ -1586,7 +1620,7 @@ export default function ClientProfilePage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">{documentStats.total} documents</span>
-                        <button type="button" onClick={openVerificationWizard} className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider ${goldButtonClass}`}>Guided verification</button>
+                        <button type="button" onClick={() => openVerificationWizard()} className={`rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider ${goldButtonClass}`}>Guided verification</button>
                       </div>
                     </div>
 
@@ -1626,8 +1660,7 @@ export default function ClientProfilePage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setWizardStep(2);
-                                openVerificationWizard();
+                                openVerificationWizard(2);
                               }}
                               disabled={isDocumentSaving}
                               className="flex-1 rounded-2xl bg-amber-600 px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 shadow-md border border-amber-600"
@@ -1686,8 +1719,7 @@ export default function ClientProfilePage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setWizardStep(3);
-                                openVerificationWizard();
+                                openVerificationWizard(3);
                               }}
                               disabled={isDocumentSaving}
                               className="flex-1 rounded-2xl bg-amber-600 px-3 py-3 text-[10px] font-black uppercase tracking-[0.2em] text-white transition-all hover:bg-amber-500 shadow-md border border-amber-600"

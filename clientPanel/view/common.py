@@ -73,7 +73,7 @@ def _owner_user_id(owner: ClientProfile | ClientUser) -> int:
 def _serialize_client_profile(profile: ClientProfile | ClientUser) -> dict:
     return {
         "user_id": getattr(profile, "user_id", None) or getattr(profile, "id", None),
-        "full_name": getattr(profile, "full_name", None) or getattr(profile, "name", None),
+        "full_name": getattr(profile, "name", None),
         "email": getattr(profile, "email", None),
         "phone": getattr(profile, "phone", None),
         "country": getattr(profile, "country", None),
@@ -798,8 +798,22 @@ def build_document_details_payload(
     def _merge_pending(slot: str, request: PendingRequest | None) -> None:
         if request is None:
             return
-        payload = request.payload or {}
+        
         slot_payload = document_data[slot]
+        
+        # Prevent older pending requests from overriding newer auto-verified documents
+        if request.created_at and slot_payload.get("uploaded_at"):
+            from datetime import datetime
+            try:
+                doc_time = datetime.strptime(slot_payload["uploaded_at"], "%Y-%m-%d %H:%M:%S")
+                # Need to strip timezone from request.created_at if it's aware to compare
+                req_time = request.created_at.replace(tzinfo=None)
+                if req_time < doc_time:
+                    return
+            except Exception:
+                pass
+                
+        payload = request.payload or {}
         slot_payload["file_name"] = (
             str(
                 payload.get("file_name")

@@ -35,50 +35,50 @@ logger = logging.getLogger(__name__)
 def process_document_verification(document_id, performed_by_user=None, ip_address=None):
     """
     Main entry point for processing document verification on a UserDocument instance.
-    
+
     Returns dict with verification results.
     """
     try:
-        doc = UserDocument.objects.select_related('user').get(id=document_id)
+        doc = UserDocument.objects.select_related("user").get(id=document_id)
     except UserDocument.DoesNotExist:
         logger.error(f"UserDocument #{document_id} not found.")
-        return {'error': f"Document #{document_id} not found."}
+        return {"error": f"Document #{document_id} not found."}
 
     user = doc.user
     prev_status = doc.verification_status or doc.status
 
     # Set status to processing
-    doc.verification_status = 'processing'
-    doc.status = 'processing'
-    doc.save(update_fields=['verification_status', 'status', 'updated_at'])
+    doc.verification_status = "processing"
+    doc.status = "processing"
+    doc.save(update_fields=["verification_status", "status", "updated_at"])
 
     file_path = doc.document.path if doc.document else ""
 
     if not file_path or not os.path.exists(file_path):
-        doc.verification_status = 'failed'
-        doc.status = 'failed'
+        doc.verification_status = "failed"
+        doc.status = "failed"
         doc.verification_reason = "Document file path does not exist on disk."
         doc.verification_errors = ["File missing on storage."]
         doc.save()
-        
+
         _create_audit_log(
             document=doc,
             user=user,
-            action='system_error',
+            action="system_error",
             prev_status=prev_status,
-            new_status='failed',
+            new_status="failed",
             confidence=0,
             reason="Document file path does not exist on disk.",
             errors=["File missing on storage."],
             performed_by=performed_by_user,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
         return {
-            'document_id': doc.id,
-            'document_type': doc.document_type,
-            'status': 'failed',
-            'confidence_score': 0,
-            'reason': "Document file path does not exist on disk.",
+            "document_id": doc.id,
+            "document_type": doc.document_type,
+            "status": "failed",
+            "confidence_score": 0,
+            "reason": "Document file path does not exist on disk.",
         }
 
     # Step 1: Compute File Hash & Check Duplication
@@ -100,11 +100,11 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
     classification_res = classify_document(ocr_text, doc.document_type)
 
     # Step 5 & 6: Specific Verification Pipeline (Identity vs Residence)
-    if doc.document_type == 'identity':
+    if doc.document_type == "identity":
         scores_dict, extracted_data, warnings = verify_identity_document(
             user, doc, file_path, ocr_text, quality_res
         )
-    else: # residence
+    else:  # residence
         scores_dict, extracted_data, warnings = verify_residence_document(
             user, doc, file_path, ocr_text, quality_res
         )
@@ -115,12 +115,7 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
     # Step 7 & 8: Calculate Confidence Score & Evaluate Decision
     fraud_res = (is_duplicate, duplicate_msg)
     decision, confidence_score, reason, errors = evaluate_verification_decision(
-        doc.document_type,
-        scores_dict,
-        quality_res,
-        classification_res,
-        fraud_res,
-        warnings
+        doc.document_type, scores_dict, quality_res, classification_res, fraud_res, warnings
     )
 
     # Step 9: Save Database Results & Update User Status atomically
@@ -132,7 +127,7 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
         doc.extracted_data = extracted_data
         doc.verification_errors = errors
         doc.verified_at = timezone.now()
-        doc.verification_method = 'automatic'
+        doc.verification_method = "automatic"
         doc.save()
 
         # Update User Profile Verification Status Flags
@@ -141,10 +136,11 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
         # Step 9.5: Run Cross-Document Consistency Check if both documents exist
         try:
             from .cross_document_verifier import verify_cross_documents
+
             cross_res = verify_cross_documents(user)
             if not cross_res.get('is_consistent', True):
                 logger.warning(f"Cross-document mismatch detected for user {user.id}: {cross_res['explanation']}")
-                p_name = f"{getattr(user, 'first_name', '')} {getattr(user, 'last_name', '')}".strip() or getattr(user, 'username', '')
+                p_name = getattr(user, 'name', '').strip() or getattr(user, 'email', '')
                 failing_docs = cross_res.get('failing_docs', [])
                 failing_ids = [f[0] for f in failing_docs]
 
@@ -186,7 +182,7 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
         _create_audit_log(
             document=doc,
             user=user,
-            action='automatic_verification',
+            action="automatic_verification",
             prev_status=prev_status,
             new_status=decision,
             confidence=confidence_score,
@@ -194,29 +190,32 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
             reason=reason,
             errors=errors,
             performed_by=performed_by_user,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
 
         # Step 11: Auto-Delete Physical Storage File if Document is Rejected
-        if decision == 'rejected' or doc.status == 'rejected':
+        if decision == "rejected" or doc.status == "rejected":
             try:
                 from .sanitization import purge_rejected_document_file
+
                 purge_rejected_document_file(doc)
                 logger.info(f"Auto-deleted physical file for rejected document #{doc.id}")
             except Exception as p_err:
                 logger.warning(f"Failed to purge rejected document file #{doc.id}: {p_err}")
 
-    logger.info(f"Document Verification Completed for #{doc.id} ({doc.document_type}): Status={decision}, Score={confidence_score}%, Reason='{reason}'")
+    logger.info(
+        f"Document Verification Completed for #{doc.id} ({doc.document_type}): Status={decision}, Score={confidence_score}%, Reason='{reason}'"
+    )
 
     return {
-        'document_id': doc.id,
-        'document_type': doc.document_type,
-        'status': decision,
-        'verification_method': doc.verification_method,
-        'confidence_score': confidence_score,
-        'reason': reason,
-        'extracted_data': extracted_data,
-        'verification_errors': errors,
+        "document_id": doc.id,
+        "document_type": doc.document_type,
+        "status": decision,
+        "verification_method": doc.verification_method,
+        "confidence_score": confidence_score,
+        "reason": reason,
+        "extracted_data": extracted_data,
+        "verification_errors": errors,
     }
 
 
@@ -229,34 +228,46 @@ def _sync_user_profile_status(user, document, decision):
 
     update_fields = []
 
-    if document.document_type == 'identity':
-        if decision == 'approved':
+    if document.document_type == "identity":
+        if decision == "approved":
             user.id_proof_verified = True
-            update_fields.append('id_proof_verified')
-        elif decision == 'rejected':
+            update_fields.append("id_proof_verified")
+        elif decision == "rejected":
             user.id_proof_verified = False
-            update_fields.append('id_proof_verified')
-    elif document.document_type == 'residence':
-        if decision == 'approved':
+            update_fields.append("id_proof_verified")
+    elif document.document_type == "residence":
+        if decision == "approved":
             user.address_proof_verified = True
-            update_fields.append('address_proof_verified')
-        elif decision == 'rejected':
+            update_fields.append("address_proof_verified")
+        elif decision == "rejected":
             user.address_proof_verified = False
-            update_fields.append('address_proof_verified')
+            update_fields.append("address_proof_verified")
 
     # Update overall user verification status
-    if getattr(user, 'id_proof_verified', False) and getattr(user, 'address_proof_verified', False):
-        user.verification_status = 'verified'
-        update_fields.append('verification_status')
-    elif decision == 'rejected':
-        user.verification_status = 'rejected'
-        update_fields.append('verification_status')
+    if getattr(user, "id_proof_verified", False) and getattr(user, "address_proof_verified", False):
+        user.verification_status = "verified"
+        update_fields.append("verification_status")
+    elif decision == "rejected":
+        user.verification_status = "rejected"
+        update_fields.append("verification_status")
 
     if update_fields:
         user.save(update_fields=list(set(update_fields)))
 
 
-def _create_audit_log(document, user, action, prev_status, new_status, confidence, reason, errors, performed_by=None, ip_address=None, extracted=None):
+def _create_audit_log(
+    document,
+    user,
+    action,
+    prev_status,
+    new_status,
+    confidence,
+    reason,
+    errors,
+    performed_by=None,
+    ip_address=None,
+    extracted=None,
+):
     """
     Creates an immutable audit log entry in DocumentVerificationAuditLog.
     """
@@ -272,7 +283,7 @@ def _create_audit_log(document, user, action, prev_status, new_status, confidenc
             verification_reason=reason,
             verification_errors=errors or [],
             performed_by=performed_by,
-            ip_address=ip_address
+            ip_address=ip_address,
         )
     except Exception as e:
         logger.error(f"Failed to create document verification audit log: {e}")
