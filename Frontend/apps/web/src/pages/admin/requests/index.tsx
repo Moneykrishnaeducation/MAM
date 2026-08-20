@@ -430,17 +430,7 @@ export default function AdminPendingRequestsPage() {
                            
                         </button>
 
-                        <button
-                            onClick={() => setActiveTab('profile')}
-                            className={`relative flex items-center justify-center gap-2 px-5 py-2.5 rounded-3xl font-black text-xs uppercase tracking-[0.12em] transition-all whitespace-nowrap ${activeTab === 'profile'
-                                    ? 'border border-[#d3a11a] bg-[linear-gradient(135deg,#e0b01d_0%,#c99508_100%)] text-white shadow-[0_12px_28px_rgba(201,149,8,0.28)]'
-                                    : 'border border-[#113b95] bg-[linear-gradient(180deg,#071a57_0%,#0a205f_100%)] text-[#d8e4ff] hover:border-[#1c4fc3] hover:text-white'
-                                }`}
-                        >
-                            <User size={14} />
-                            <span>Profile</span>
-                            
-                        </button>
+                        
 
                         <button
                             onClick={() => setActiveTab('bank')}
