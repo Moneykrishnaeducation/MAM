@@ -65,7 +65,6 @@ async def get_client_profile_details(request, user_id: str):
     return JsonResponse(
         {
             "status": "ok",
-            "user": _serialize_admin_client_user(user),
             "profile": _serialize_client_profile(user),
         }
     )
@@ -85,7 +84,6 @@ async def update_client_profile(request, user_id: str):
         return JsonResponse(
             {
                 "status": "ok",
-                "user": _serialize_admin_client_user(user),
                 "profile": _serialize_client_profile(user),
             }
         )

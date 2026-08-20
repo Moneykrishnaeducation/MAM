@@ -1260,7 +1260,7 @@ function ProfileModal({
       </div>
 
       {/* Tier & KYC Status */}
-      <div className="grid grid-cols-2 gap-4">
+      {/* <div className="grid grid-cols-2 gap-4">
         <ProfileSelectField
           label="Account Tier"
           value={form.tier}
@@ -1279,7 +1279,7 @@ function ProfileModal({
           helper="Tracks the current identity verification state."
           editing={editingEnabled}
         />
-      </div>
+      </div> */}
 
       <div className="flex flex-col gap-3 rounded-[1.6rem] border border-[#1745b3] bg-[#081d5f]/90 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -3431,48 +3431,68 @@ export default function AdminUsersPage() {
                   )}
 
                   {activeModalType === 'account_active' && (
-                    <div className="space-y-4">
-                     
-                      <div className="bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4 flex items-center justify-between">
-                        <div>
-                          <p className="text-[#8fb8ff] text-[10px] uppercase tracking-wider mb-1">Current Status</p>
+                    <div className="flex flex-col items-center justify-center text-center space-y-6 py-4">
+                      <div className="flex flex-col items-center gap-3">
+                        <p className="text-[#8fb8ff] text-[11px] font-bold uppercase tracking-wider">Current Account Status</p>
+                        <div className="scale-125 transform">
                           <StatusBadge status={activeModalUser.status} />
                         </div>
+                      </div>
+
+                      <div className="w-full max-w-sm mx-auto bg-[#081d5f]/60 rounded-xl p-5 border border-[#1745b3]/50">
+                        <p className="text-[13px] leading-relaxed text-slate-300 mb-5">
+                          {isAccountActive(activeModalUser.status)
+                            ? "This user currently has full access. Setting their account to inactive will suspend their login privileges."
+                            : "This user's account is currently suspended. Setting their account to active will restore their login privileges."}
+                        </p>
+                        
                         <button
                           onClick={() => { void toggleUserActiveStatus(activeModalUser.id); }}
                           disabled={Boolean(statusSavingByUserId[activeModalUser.id])}
-                          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                          className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold transition-all shadow-sm hover:-translate-y-0.5 ${
                             isAccountActive(activeModalUser.status)
-                              ? 'bg-red-600/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30'
-                              : 'bg-emerald-600/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30'
-                          } disabled:opacity-60 disabled:cursor-not-allowed`}
+                              ? 'bg-red-500/15 text-red-400 hover:bg-red-600 hover:text-white border border-red-500/30 hover:shadow-[0_4px_14px_rgba(220,38,38,0.3)]'
+                              : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-600 hover:text-white border border-emerald-500/30 hover:shadow-[0_4px_14px_rgba(16,185,129,0.3)]'
+                          } disabled:opacity-60 disabled:hover:translate-y-0 disabled:cursor-not-allowed`}
                         >
                           {statusSavingByUserId[activeModalUser.id] ? (
-                            <RefreshCw size={14} className="animate-spin" />
+                            <RefreshCw size={16} className="animate-spin" />
                           ) : (
-                            <Power size={14} />
+                            <Power size={16} />
                           )}
-                          {isAccountActive(activeModalUser.status) ? 'Set Inactive' : 'Set Active'}
+                          {isAccountActive(activeModalUser.status) ? 'Suspend Account (Set Inactive)' : 'Activate Account (Set Active)'}
                         </button>
                       </div>
                     </div>
                   )}
 
                   {activeModalType === 'delete_user' && (
-                    <div className="space-y-4">
-                      <SectionTitle icon={Trash2} label="Delete User" color="text-red-400" />
-                      <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
-                        <p className="text-red-400 font-bold text-sm">⚠ This action is irreversible</p>
-                        <p className="text-[#8fb8ff] text-xs mt-1">
-                          Permanently delete <strong className="text-white">{activeModalUser.name}</strong> ({activeModalUser.email}) and all associated data?
+                    <div className="flex flex-col items-center justify-center text-center space-y-5 py-2">
+                      <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20 mb-2">
+                        <AlertCircle size={28} className="text-red-500" />
+                      </div>
+                      
+                      <div>
+                        <h4 className="text-lg font-bold text-white mb-2">Delete User Account?</h4>
+                        <p className="text-sm text-[#8fb8ff] max-w-sm mx-auto leading-relaxed">
+                          This action is <strong className="text-red-400">irreversible</strong>. You are about to permanently delete <strong className="text-white">{activeModalUser.name}</strong> ({activeModalUser.email}) and all associated data.
                         </p>
                       </div>
-                      <button
-                        onClick={() => { void handleDeleteUser(activeModalUser.id, activeModalUser.name); }}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all"
-                      >
-                        <Trash2 size={14} /> Confirm Delete
-                      </button>
+
+                      <div className="w-full flex items-center justify-center gap-3 pt-6 mt-2 border-t border-[#1745b3]">
+                        <button
+                          onClick={closeModal}
+                          className="px-5 py-2.5 rounded-xl bg-transparent hover:bg-[#1745b3]/50 text-slate-300 font-bold text-xs transition-all border border-[#1745b3]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={() => { void handleDeleteUser(activeModalUser.id, activeModalUser.name); }}
+                          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition-all shadow-[0_4px_14px_rgba(220,38,38,0.3)] hover:-translate-y-0.5"
+                        >
+                          <Trash2 size={14} /> Confirm Delete
+                        </button>
+                      </div>
                     </div>
                   )}
                 </>
