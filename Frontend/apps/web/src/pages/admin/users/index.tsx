@@ -947,9 +947,9 @@ function TradingModal({ user }: { user: UserData }) {
         </div>
       ) : (
         <div className="rounded-2xl border border-[#1745b3] bg-[#081d5f] overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[360px] overflow-y-auto custom-scrollbar">
             <table className="w-full min-w-[1120px] border-collapse text-left text-xs">
-              <thead className="sticky top-0 z-10">
+              <thead className="sticky top-0 z-20">
                 <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Account</th>
                   <th className="px-4 py-3 font-semibold whitespace-nowrap">Role</th>
@@ -1824,7 +1824,7 @@ function AddAccountModal({
 
   return (
     <div className="space-y-5 text-xs">
-      <SectionTitle icon={PlusCircle} label="Create MT5 Account" color="text-emerald-400" />
+     
 
       {/* ── Account Type Toggle ── */}
       <div className="flex items-center gap-2 p-1 bg-[#081d5f] rounded-2xl border border-[#1745b3]">
@@ -3357,11 +3357,12 @@ export default function AdminUsersPage() {
                               <table className="w-full text-left text-xs border-collapse">
                                 <thead className="sticky top-0 z-10">
                                   <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
-                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Ticket ID</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Timestamp</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Identity</th>
                                     <th className="px-4 py-3 font-semibold w-full">Subject</th>
                                     <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
-                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
-                                    <th className="px-4 py-3 font-semibold whitespace-nowrap"></th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap hidden sm:table-cell">Preview</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap text-right">Actions</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[#153d9f]/60 bg-[#071a57]">
@@ -3375,97 +3376,25 @@ export default function AdminUsersPage() {
                                     .map((t) => (
                                       <React.Fragment key={t.id}>
                                         <tr 
-                                          className="hover:bg-[#0a205f]/60 transition-colors cursor-pointer group"
-                                          onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
+                                          className="hover:bg-[#0a205f]/80 transition-all duration-200 group border-l-[3px] border-l-transparent hover:border-l-blue-500"
                                         >
-                                          <td className="px-4 py-3 font-mono text-blue-400 font-bold whitespace-nowrap">{t.id}</td>
-                                          <td className="px-4 py-3 text-slate-300 font-medium group-hover:text-blue-300 transition-colors">{t.subject}</td>
+                                          <td className="px-4 py-3 text-[#8fb8ff] text-[11px] whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5"><Clock size={12} className="text-[#6f92e7]" /> {t.date}</div>
+                                          </td>
+                                          <td className="px-4 py-3 font-mono text-blue-300 font-bold whitespace-nowrap text-[11px]">{t.id}</td>
+                                          <td className="px-4 py-3 text-slate-200 font-medium group-hover:text-white transition-colors">{t.subject}</td>
                                           <td className="px-4 py-3 whitespace-nowrap">
                                             <StatusBadge status={t.status} />
                                           </td>
-                                          <td className="px-4 py-3 text-[#6f92e7] whitespace-nowrap">
-                                            <div className="flex items-center gap-1.5"><Clock size={12} /> {t.date}</div>
+                                          <td className="px-4 py-3 text-slate-400 text-[11px] whitespace-nowrap max-w-[200px] truncate hidden sm:table-cell" title={t.description || t.category || 'No preview available'}>
+                                            {t.description || t.category || '-'}
                                           </td>
-                                          <td className="px-4 py-3 text-[#8fb8ff] text-right whitespace-nowrap">
-                                            {expandedTicketId === t.id ? <ChevronUp size={16} className="inline-block" /> : <ChevronDown size={16} className="inline-block" />}
+                                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                                            <button className="px-3 py-1.5 rounded-lg bg-[#1745b3]/20 text-blue-400 text-[10px] font-bold uppercase tracking-wide hover:bg-[#1745b3]/60 hover:text-white transition-colors border border-[#1745b3]/40 hover:border-[#1745b3]">
+                                              View
+                                            </button>
                                           </td>
                                         </tr>
-                                        {expandedTicketId === t.id && (
-                                          <tr>
-                                            <td colSpan={5} className="p-0 border-t-0">
-                                              <div className="p-4 bg-[#040f33]">
-                                                {t.description && (
-                                                  <div className="mb-4">
-                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1">Description</h4>
-                                                    <div className="text-[11px] text-[#dbe8ff] bg-[#0b226a]/50 p-3 rounded-xl border border-[#1745b3] whitespace-pre-wrap">
-                                                      {t.description}
-                                                    </div>
-                                                  </div>
-                                                )}
-                                                
-                                                {t.attachments && t.attachments.length > 0 && (
-                                                  <div className="mb-4">
-                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1.5">Attachments</h4>
-                                                    <div className="flex flex-wrap gap-2">
-                                                      {t.attachments.map((att: any, idx: number) => (
-                                                        <a
-                                                          key={att.id || idx}
-                                                          href={att.file_url || att.file || '#'}
-                                                          target="_blank"
-                                                          rel="noreferrer"
-                                                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1745b3]/30 border border-[#1745b3] hover:bg-[#1745b3] text-[10px] text-[#dbe8ff] transition-colors"
-                                                        >
-                                                          <FileText size={12} className="text-blue-400" />
-                                                          <span>{att.name || `Attachment #${idx + 1}`}</span>
-                                                        </a>
-                                                      ))}
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                                {t.messages && t.messages.length > 0 && (
-                                                  <div className="mb-4">
-                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-2">Communication History</h4>
-                                                    <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                                                      {t.messages.map((msg: any) => {
-                                                        const isAdmin = msg.sender === 'admin';
-                                                        return (
-                                                          <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
-                                                            <div className={`text-[9px] mb-0.5 font-bold ${isAdmin ? 'text-indigo-400' : 'text-blue-400'}`}>
-                                                              {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
-                                                            </div>
-                                                            <div className={`p-2.5 rounded-xl max-w-[90%] text-[11px] ${
-                                                              isAdmin 
-                                                                ? 'bg-indigo-500/20 border border-indigo-500/30 text-[#dbe8ff] rounded-tr-sm' 
-                                                                : 'bg-[#1745b3]/30 border border-[#1745b3] text-[#dbe8ff] rounded-tl-sm'
-                                                            }`}>
-                                                              {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
-                                                              {msg.file && (
-                                                                <div className="mt-1.5">
-                                                                  <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-bold ${isAdmin ? 'bg-indigo-500/30 text-indigo-300' : 'bg-[#1745b3] text-blue-300'}`}>
-                                                                    <Paperclip size={10} />
-                                                                    Attachment
-                                                                  </a>
-                                                                </div>
-                                                              )}
-                                                            </div>
-                                                          </div>
-                                                        );
-                                                      })}
-                                                    </div>
-                                                  </div>
-                                                )}
-
-                                                {!isViewerAdmin && (
-                                                  <ReplySection 
-                                                    onSendMessage={(msg, file) => handleTicketSendMessage(t.id, msg, file)} 
-                                                    isSubmitting={isSendingMessage} 
-                                                  />
-                                                )}
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        )}
                                       </React.Fragment>
                                     ))}
                                   
@@ -3477,13 +3406,30 @@ export default function AdminUsersPage() {
                                       return true;
                                     }).length === 0 && !ticketDetailsByUserId[activeModalUser.id]?.loading && (
                                       <tr>
-                                        <td colSpan={5} className="text-[#6f92e7] text-xs text-center py-6">
-                                          No {activeTicketTab.toLowerCase()} tickets found.
+                                        <td colSpan={6} className="text-[#6f92e7] text-xs text-center py-8 bg-[#081d5f]/30">
+                                          <div className="flex flex-col items-center justify-center opacity-70">
+                                            <Ticket size={24} className="mb-2 text-[#1745b3]" />
+                                            <span>No {activeTicketTab.toLowerCase()} tickets found.</span>
+                                          </div>
                                         </td>
                                       </tr>
                                   )}
                                 </tbody>
                               </table>
+                            </div>
+                            <div className="px-4 py-3 bg-[#0b226a] border-t border-[#1745b3] flex items-center justify-between">
+                              <span className="text-[10px] font-medium text-[#8fb8ff] uppercase tracking-wider">
+                                Total {activeTicketTab} Tickets
+                              </span>
+                              <span className="text-xs font-bold text-white bg-[#1745b3]/50 px-2.5 py-0.5 rounded-full border border-[#1745b3]">
+                                {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
+                                  .filter((t) => {
+                                    if (activeTicketTab === 'Open') return t.status === 'Open';
+                                    if (activeTicketTab === 'Pending') return t.status === 'In Progress';
+                                    if (activeTicketTab === 'Close') return t.status === 'Closed';
+                                    return true;
+                                  }).length}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -3501,7 +3447,7 @@ export default function AdminUsersPage() {
 
                   {activeModalType === 'account_active' && (
                     <div className="space-y-4">
-                      <SectionTitle icon={Power} label="Account Status" color="text-[#9ec0ff]" />
+                     
                       <div className="bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4 flex items-center justify-between">
                         <div>
                           <p className="text-[#8fb8ff] text-[10px] uppercase tracking-wider mb-1">Current Status</p>
@@ -3549,13 +3495,7 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Modal Footer */}
-            {activeModalType !== 'create_user' && activeModalType !== 'profile' && activeModalType !== 'transactions' && activeModalType !== 'trading' && activeModalType !== 'tickets' && (
-              <div className="p-5 bg-transparent border-t border-[#1745b3] flex justify-end">
-                <button onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-[#1745b3] bg-[#0b226a]/40 hover:bg-[#102c7c] hover:border-[#2450b7] text-slate-300 font-bold text-xs transition-all">
-                  Close
-                </button>
-              </div>
-            )}
+            
           </div>
         </div>
       )}
