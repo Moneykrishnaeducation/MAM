@@ -96,7 +96,9 @@ def _format_source(transaction: ClientTransaction) -> str:
         return source_value
 
     role = str(transaction.role or "").strip()
-    action = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+    action = str(
+        transaction.transaction_type or transaction.payment_method or "Transaction"
+    ).strip()
     action = action.replace("-", " ").replace("_", " ").title() or "Transaction"
     return " ".join(part for part in [role, action] if part).strip() or "Transaction"
 
@@ -192,7 +194,11 @@ async def list_admin_transactions(request):
         for transaction in transactions
         if _transaction_matches_tab(transaction, tab)
         and _transaction_matches_search(transaction, search)
-        and (not status_q or status_q == "all" or str(transaction.status or "").strip().lower() == status_q)
+        and (
+            not status_q
+            or status_q == "all"
+            or str(transaction.status or "").strip().lower() == status_q
+        )
     ]
 
     summary = {

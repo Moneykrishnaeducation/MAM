@@ -13,7 +13,9 @@ from backendPanel.database import ensure_db_initialized
 logger = logging.getLogger(__name__)
 
 
-async def fetch_closed_positions_for_account(account_id: int, from_date: str = None, to_date: str = None):
+async def fetch_closed_positions_for_account(
+    account_id: int, from_date: str = None, to_date: str = None
+):
     """Fetch closed positions for a specific MT5 account ID."""
     await ensure_db_initialized()
     positions = []
@@ -61,36 +63,42 @@ def get_admin_closed_positions(request, account_id: int):
         raw_page = request.GET.get("page")
         raw_per_page = request.GET.get("per_page") or request.GET.get("limit")
         paginate = raw_page is not None or raw_per_page is not None
-        
+
         def _parse_positive_int(val, default):
             try:
                 parsed = int(str(val).strip())
                 return max(1, parsed)
             except (ValueError, TypeError):
                 return default
-                
+
         page = _parse_positive_int(raw_page, 1)
         per_page = _parse_positive_int(raw_per_page, 10)
 
-        logger.info(f"[ADMIN] Fetching closed positions for account_id: {account_id}, {from_date} to {to_date}")
+        logger.info(
+            f"[ADMIN] Fetching closed positions for account_id: {account_id}, {from_date} to {to_date}"
+        )
 
         if from_date and len(from_date) == 10:
             from_date += " 00:00:00"
         if to_date and len(to_date) == 10:
             to_date += " 23:59:59"
 
-        positions, mt5_status = async_to_sync(fetch_closed_positions_for_account)(account_id, from_date, to_date)
+        positions, mt5_status = async_to_sync(fetch_closed_positions_for_account)(
+            account_id, from_date, to_date
+        )
 
         def get_val(obj, keys, default):
             if isinstance(obj, dict):
                 for k in keys:
-                    if k in obj and obj[k] is not None: return obj[k]
+                    if k in obj and obj[k] is not None:
+                        return obj[k]
                 return default
             else:
                 for k in keys:
                     if hasattr(obj, k):
                         val = getattr(obj, k)
-                        if val is not None: return val
+                        if val is not None:
+                            return val
                 return default
 
         merged_positions = {}
@@ -99,42 +107,52 @@ def get_admin_closed_positions(request, account_id: int):
                 position_id = str(get_val(p, ["PositionID", "Position"], ""))
                 if not position_id or position_id == "0":
                     continue
-                    
+
                 entry = int(get_val(p, ["Entry"], 1))
                 time_val = get_val(p, ["Time"], 0)
-                time_str = datetime.fromtimestamp(time_val).strftime("%Y-%m-%d %H:%M:%S") if time_val else ""
-                
+                time_str = (
+                    datetime.fromtimestamp(time_val).strftime("%Y-%m-%d %H:%M:%S")
+                    if time_val
+                    else ""
+                )
+
                 vol_closed = float(get_val(p, ["VolumeClosed"], 0.0))
                 vol_base = float(get_val(p, ["Volume"], 0.0))
                 raw_volume = vol_closed if vol_closed > 0 else vol_base
                 volume = raw_volume if entry in (1, 2, 3) else 0.0
-                
+
                 profit = float(get_val(p, ["Profit"], 0.0))
                 storage = float(get_val(p, ["Storage", "Swap"], 0.0))
                 commission = float(get_val(p, ["Commission"], 0.0))
-                
+
                 price_close = float(get_val(p, ["Price"], 0.0))
                 price_pos = float(get_val(p, ["PricePosition"], 0.0))
-                
+
                 if entry == 0:
                     price_open = price_close
                 else:
                     price_open = price_pos if price_pos > 0 else price_close
-                
+
                 if position_id in merged_positions:
                     existing = merged_positions[position_id]
                     existing["Volume"] += volume
                     existing["Profit"] += profit
                     existing["Storage"] += storage
                     existing["Commission"] += commission
-                    
-                    if not existing["TimeClose"] or (time_str and time_str >= existing["TimeClose"]):
+
+                    if not existing["TimeClose"] or (
+                        time_str and time_str >= existing["TimeClose"]
+                    ):
                         if entry in (1, 2, 3):
                             existing["TimeClose"] = time_str
                             existing["PriceClose"] = price_close
-                            existing["ticket"] = str(get_val(p, ["Deal", "Ticket", "Order"], existing["ticket"]))
-                            
-                    if not existing["TimeCreate"] or (time_str and time_str <= existing["TimeCreate"]):
+                            existing["ticket"] = str(
+                                get_val(p, ["Deal", "Ticket", "Order"], existing["ticket"])
+                            )
+
+                    if not existing["TimeCreate"] or (
+                        time_str and time_str <= existing["TimeCreate"]
+                    ):
                         existing["TimeCreate"] = time_str
                         if price_open > 0:
                             existing["PriceOpen"] = price_open
@@ -162,9 +180,9 @@ def get_admin_closed_positions(request, account_id: int):
         for pos in merged_positions.values():
             pos["Volume"] = float(f"{(pos['Volume'] / 10000.0):.2f}")
             pos_list.append(pos)
-            
+
         pos_list.sort(key=lambda x: x["TimeClose"], reverse=True)
-        
+
         total = len(pos_list)
         if paginate:
             total_pages = max(1, (total + per_page - 1) // per_page)

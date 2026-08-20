@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 # Try importing rapidfuzz for fast fuzzy matching
 try:
     from rapidfuzz import fuzz
+
     RAPIDFUZZ_AVAILABLE = True
 except ImportError:
     RAPIDFUZZ_AVAILABLE = False
@@ -34,7 +35,7 @@ def normalize_name(name_str):
     if not name_str:
         return ""
     text = name_str.lower()
-    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
     tokens = text.split()
     # Filter honorific titles
     filtered = [t for t in tokens if t not in NAME_TITLES]
@@ -44,12 +45,12 @@ def normalize_name(name_str):
 def compare_names(profile_name, document_name):
     """
     Compares profile name against extracted document name.
-    
+
     Supports:
     - Name order variation (e.g. 'Tamizharasan V' vs 'V Tamizharasan')
     - Single letter initials (e.g. 'V' matching 'Velusamy' or 'V')
     - Partial token matching
-    
+
     Returns similarity score float (0.0 to 100.0).
     """
     n1 = normalize_name(profile_name)
@@ -76,7 +77,8 @@ def compare_names(profile_name, document_name):
 
     main_overlap = any(
         t1 == t2 or (RAPIDFUZZ_AVAILABLE and fuzz.ratio(t1, t2) >= 60.0)
-        for t1 in main_tokens1 for t2 in main_tokens2
+        for t1 in main_tokens1
+        for t2 in main_tokens2
     )
 
     if main_tokens1 and main_tokens2 and not main_overlap:
@@ -87,15 +89,16 @@ def compare_names(profile_name, document_name):
         token_sort_score = float(fuzz.token_sort_ratio(n1, n2))
         token_set_score = float(fuzz.token_set_ratio(n1, n2))
         partial_score = float(fuzz.partial_ratio(n1, n2))
-        
+
         # Prevent short random substrings from forcing a high partial match
         if len(n1) <= 6 or len(n2) <= 6:
             partial_score = 0.0
-                
+
         weighted_score = max(token_sort_score, token_set_score, partial_score * 0.9)
     else:
         # Fallback using difflib
         import difflib
+
         ratio = difflib.SequenceMatcher(None, n1, n2).ratio() * 100.0
         sorted_n1 = " ".join(sorted(tokens1))
         sorted_n2 = " ".join(sorted(tokens2))
@@ -105,7 +108,7 @@ def compare_names(profile_name, document_name):
     if main_overlap:
         single_initials1 = [t for t in tokens1 if len(t) == 1]
         single_initials2 = [t for t in tokens2 if len(t) == 1]
-        
+
         if single_initials1 or single_initials2:
             # Check if full tokens match the initial
             for init in single_initials1:
@@ -130,9 +133,9 @@ def normalize_address(address_str):
     if not address_str:
         return ""
     text = address_str.lower()
-    text = re.sub(r'[^a-z0-9\s]', ' ', text)
+    text = re.sub(r"[^a-z0-9\s]", " ", text)
     tokens = text.split()
-    
+
     normalized_tokens = []
     for token in tokens:
         expanded = ADDRESS_ABBREVIATIONS.get(token, token)
@@ -144,28 +147,28 @@ def normalize_address(address_str):
 def compare_addresses(profile_address_dict, ocr_text):
     """
     Intelligent address matching algorithm.
-    
+
     Checks if profile address components (street, city, state, zip_code, country)
     match or appear inside extracted document text.
-    
+
     Example:
     Profile: city="Chennai"
     Document: "123 Main St, Chennai, Tamil Nadu 600001"
     Returns high match score!
-    
+
     Returns tuple: (score: float 0-100, match_details: dict)
     """
     if not profile_address_dict or not ocr_text:
-        return 0.0, {'matched_components': [], 'score': 0.0}
+        return 0.0, {"matched_components": [], "score": 0.0}
 
     ocr_norm = normalize_address(ocr_text)
 
     components = {
-        'street': profile_address_dict.get('address', ''),
-        'city': profile_address_dict.get('city', ''),
-        'state': profile_address_dict.get('state', ''),
-        'postal_code': profile_address_dict.get('postal_code', ''),
-        'country': profile_address_dict.get('country', ''),
+        "street": profile_address_dict.get("address", ""),
+        "city": profile_address_dict.get("city", ""),
+        "state": profile_address_dict.get("state", ""),
+        "postal_code": profile_address_dict.get("postal_code", ""),
+        "country": profile_address_dict.get("country", ""),
     }
 
     matched_components = []
@@ -174,11 +177,11 @@ def compare_addresses(profile_address_dict, ocr_text):
     gained_weights = 0.0
 
     weights = {
-        'street': 0.35,
-        'city': 0.30,
-        'state': 0.15,
-        'postal_code': 0.15,
-        'country': 0.05,
+        "street": 0.35,
+        "city": 0.30,
+        "state": 0.15,
+        "postal_code": 0.15,
+        "country": 0.05,
     }
 
     for comp_key, comp_val in components.items():
@@ -216,14 +219,14 @@ def compare_addresses(profile_address_dict, ocr_text):
             score = float(fuzz.partial_ratio(norm_prof, ocr_norm))
         else:
             score = 70.0 if norm_prof in ocr_norm else 40.0
-        return round(score, 2), {'matched_components': ['fallback_similarity'], 'score': score}
+        return round(score, 2), {"matched_components": ["fallback_similarity"], "score": score}
 
     final_score = (gained_weights / total_weights) * 100.0
 
     return min(100.0, round(final_score, 2)), {
-        'matched_components': matched_components,
-        'component_scores': component_scores,
-        'score': round(final_score, 2)
+        "matched_components": matched_components,
+        "component_scores": component_scores,
+        "score": round(final_score, 2),
     }
 
 
@@ -239,10 +242,18 @@ def parse_date_string(date_str):
         return date_str if isinstance(date_str, datetime.date) else date_str.date()
 
     cleaned = str(date_str).strip()
-    
+
     formats = [
-        '%Y-%m-%d', '%d/%m/%Y', '%m/%d/%Y', '%d-%m-%Y', '%Y/%m/%d',
-        '%d %b %Y', '%d %B %Y', '%b %d, %Y', '%B %d, %Y', '%d-%b-%Y'
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%m/%d/%Y",
+        "%d-%m-%Y",
+        "%Y/%m/%d",
+        "%d %b %Y",
+        "%d %B %Y",
+        "%b %d, %Y",
+        "%B %d, %Y",
+        "%d-%b-%Y",
     ]
 
     for fmt in formats:
@@ -253,7 +264,7 @@ def parse_date_string(date_str):
             continue
 
     # Regex search for ISO YYYY-MM-DD
-    match = re.search(r'\b(19\d\d|20\d\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b', cleaned)
+    match = re.search(r"\b(19\d\d|20\d\d)[-/.](0[1-9]|1[0-2])[-/.](0[1-9]|[12]\d|3[01])\b", cleaned)
     if match:
         try:
             return datetime.date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
@@ -266,7 +277,7 @@ def parse_date_string(date_str):
 def compare_dob(profile_dob, extracted_dob_str):
     """
     Compares profile date of birth against extracted DOB from document.
-    
+
     Returns tuple: (is_match: bool, score: float 0-100, details: str)
     """
     if not profile_dob or not extracted_dob_str:

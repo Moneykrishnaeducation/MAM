@@ -138,13 +138,20 @@ def _build_transaction_counts(transactions: list[ClientTransaction]) -> dict:
             1 for tx in transactions if str(tx.status).strip().lower() in {"pending", "processing"}
         ),
         "DEPOSIT": sum(
-            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"deposit", "deposits"}
+            1
+            for tx in transactions
+            if str(tx.transaction_type).strip().lower() in {"deposit", "deposits"}
         ),
         "WITHDRAWAL": sum(
-            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"withdrawal", "withdrawals", "withdraw"}
+            1
+            for tx in transactions
+            if str(tx.transaction_type).strip().lower() in {"withdrawal", "withdrawals", "withdraw"}
         ),
         "INTERNAL_TRANSFER": sum(
-            1 for tx in transactions if str(tx.transaction_type).strip().lower() in {"internal_transfer", "internal-transfer", "transfer"}
+            1
+            for tx in transactions
+            if str(tx.transaction_type).strip().lower()
+            in {"internal_transfer", "internal-transfer", "transfer"}
         ),
     }
 

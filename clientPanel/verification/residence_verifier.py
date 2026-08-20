@@ -20,7 +20,7 @@ def extract_residence_fields(ocr_text):
     Regex and pattern extraction for Proof of Residence documents.
     """
     extracted = {
-        'full_name': None,
+        "full_name": None,
         "extracted_address": None,
         "statement_date": None,
         "doc_number": None,
@@ -92,7 +92,7 @@ def extract_residence_fields(ocr_text):
         re.IGNORECASE,
     )
     if name_match:
-        extracted['full_name'] = name_match.group(1).strip()
+        extracted["full_name"] = name_match.group(1).strip()
 
     # Address Extraction (look for lines containing numbers + street keywords or postal codes, ignoring government headers)
     lines = [line.strip() for line in ocr_text.split("\n") if len(line.strip()) > 8]
@@ -137,7 +137,9 @@ def extract_residence_fields(ocr_text):
     return extracted
 
 
-def verify_residence_document(user, document_instance, file_path, ocr_text, quality_metrics, identity_doc_number=None):
+def verify_residence_document(
+    user, document_instance, file_path, ocr_text, quality_metrics, identity_doc_number=None
+):
     """
     Full verification evaluation for a Residence document against user profile.
 
@@ -148,16 +150,14 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
     extracted = extract_residence_fields(ocr_text)
 
     # 1. Compare Full Name
-    profile_full_name = getattr(user, 'name', '').strip()
+    profile_full_name = getattr(user, "name", "").strip()
     if not profile_full_name:
-        profile_full_name = getattr(user, 'email', '')
+        profile_full_name = getattr(user, "email", "")
 
     doc_number_matched_id_proof = False
     if identity_doc_number:
         clean_id_num = re.sub(r"[\s\-]", "", str(identity_doc_number).upper())
-        clean_res_num = re.sub(
-            r"[\s\-]", "", str(extracted.get("doc_number") or "").upper()
-        )
+        clean_res_num = re.sub(r"[\s\-]", "", str(extracted.get("doc_number") or "").upper())
         clean_raw_text = re.sub(r"[\s\-]", "", str(ocr_text).upper())
         if clean_id_num and (
             clean_id_num == clean_res_num
@@ -168,28 +168,35 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
             extracted["matched_id_proof_number"] = True
             if not extracted.get("doc_number"):
                 extracted["doc_number"] = identity_doc_number
-        elif clean_id_num and clean_res_num and len(clean_id_num) == 12 and len(clean_res_num) == 12:
+        elif (
+            clean_id_num and clean_res_num and len(clean_id_num) == 12 and len(clean_res_num) == 12
+        ):
             # Both are 12-digit Aadhaar numbers but they do not match!
-            warnings.append(f"Aadhaar number mismatch: ID Proof ({clean_id_num}) does not match Address Proof ({clean_res_num}).")
+            warnings.append(
+                f"Aadhaar number mismatch: ID Proof ({clean_id_num}) does not match Address Proof ({clean_res_num})."
+            )
             extracted["matched_id_proof_number"] = False
 
-    doc_name = extracted.get('full_name')
+    doc_name = extracted.get("full_name")
     if doc_name and any(
         kw in doc_name.lower()
         for kw in ["psa", "s/o", "d/o", "w/o", "c/o", "government", "authority", "india"]
     ):
         doc_name = None
-        extracted['full_name'] = None
+        extracted["full_name"] = None
 
     if not doc_name and ocr_text:
         try:
             from .identity_verifier import extract_identity_fields
 
             id_fields = extract_identity_fields(ocr_text, user_profile_name=profile_full_name)
-            candidate_name = id_fields.get('full_name')
-            if candidate_name and not any(kw in candidate_name.lower() for kw in ['psa', 's/o', 'd/o', 'w/o', 'c/o', 'government', 'authority']):
+            candidate_name = id_fields.get("full_name")
+            if candidate_name and not any(
+                kw in candidate_name.lower()
+                for kw in ["psa", "s/o", "d/o", "w/o", "c/o", "government", "authority"]
+            ):
                 doc_name = candidate_name
-                extracted['full_name'] = doc_name
+                extracted["full_name"] = doc_name
         except Exception:
             doc_name = None
 
@@ -225,7 +232,7 @@ def verify_residence_document(user, document_instance, file_path, ocr_text, qual
                     sc = compare_names(profile_full_name, clean_l)
                     if sc > best_name_score:
                         best_name_score = sc
-        
+
         if best_name_score >= 60.0:
             name_score = best_name_score
         else:

@@ -5,40 +5,40 @@ with open("Frontend/apps/web/src/pages/admin/mails/index.tsx", "r", encoding="ut
 
 # 1. Add new icons from lucide-react
 if "Menu," not in content:
-    content = content.replace("from \"lucide-react\";", "Menu,\n  Edit2,\n  from \"lucide-react\";")
+    content = content.replace('from "lucide-react";', 'Menu,\n  Edit2,\n  from "lucide-react";')
     # Fix potential syntax issue if I just replaced it naively
     content = content.replace("Edit2,\n  from", "Edit2,\n} from")
 
 # 2. Main wrapper background
 content = content.replace(
     'className="w-full h-[calc(100vh-80px)] flex flex-col bg-transparent text-white overflow-hidden p-3 sm:p-6 relative"',
-    'className="w-full h-[calc(100vh-60px)] md:h-[calc(100vh-80px)] flex flex-col bg-[#121212] md:bg-transparent text-white overflow-hidden md:p-6 relative"'
+    'className="w-full h-[calc(100vh-60px)] md:h-[calc(100vh-80px)] flex flex-col bg-[#121212] md:bg-transparent text-white overflow-hidden md:p-6 relative"',
 )
 
 # 3. Top Gmail Header & Action Bar -> Hide on mobile
 content = content.replace(
     '<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-[#081942]/90 p-4 rounded-3xl border border-[#1D3B8A] shadow-xl backdrop-blur-xl flex-shrink-0">',
-    '{/* Mobile Search Header (Gmail Dark) */}\n        <div className="md:hidden px-4 pt-3 pb-1 bg-[#121212] flex-shrink-0">\n          <div className="flex items-center bg-[#2d2c30] rounded-full px-4 py-3 shadow-md">\n            <Menu className="w-6 h-6 text-gray-300 mr-4" />\n            <input\n              type="text"\n              value={searchQuery}\n              onChange={(e) => setSearchQuery(e.target.value)}\n              placeholder="Search in mail"\n              className="flex-1 bg-transparent border-none text-[15px] text-gray-200 outline-none placeholder:text-gray-400"\n            />\n            <Sparkles className="w-5 h-5 text-gray-300 ml-2" />\n            <div className="w-8 h-8 bg-[#ff5722] rounded-full flex items-center justify-center text-white font-bold text-sm ml-4">\n              N\n            </div>\n          </div>\n          <h2 className="text-gray-200 text-xs font-semibold tracking-wide mt-5 mb-1 px-1">Inbox</h2>\n        </div>\n\n        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-[#081942]/90 p-4 rounded-3xl border border-[#1D3B8A] shadow-xl backdrop-blur-xl flex-shrink-0">'
+    '{/* Mobile Search Header (Gmail Dark) */}\n        <div className="md:hidden px-4 pt-3 pb-1 bg-[#121212] flex-shrink-0">\n          <div className="flex items-center bg-[#2d2c30] rounded-full px-4 py-3 shadow-md">\n            <Menu className="w-6 h-6 text-gray-300 mr-4" />\n            <input\n              type="text"\n              value={searchQuery}\n              onChange={(e) => setSearchQuery(e.target.value)}\n              placeholder="Search in mail"\n              className="flex-1 bg-transparent border-none text-[15px] text-gray-200 outline-none placeholder:text-gray-400"\n            />\n            <Sparkles className="w-5 h-5 text-gray-300 ml-2" />\n            <div className="w-8 h-8 bg-[#ff5722] rounded-full flex items-center justify-center text-white font-bold text-sm ml-4">\n              N\n            </div>\n          </div>\n          <h2 className="text-gray-200 text-xs font-semibold tracking-wide mt-5 mb-1 px-1">Inbox</h2>\n        </div>\n\n        <div className="hidden md:flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 bg-[#081942]/90 p-4 rounded-3xl border border-[#1D3B8A] shadow-xl backdrop-blur-xl flex-shrink-0">',
 )
 
 # 4. Hide Category pill bar on mobile
 content = content.replace(
     '<div className="flex lg:hidden overflow-x-auto gap-2 p-3 border-b border-[#1D3B8A] scrollbar-none">',
-    '<div className="hidden md:flex lg:hidden overflow-x-auto gap-2 p-3 border-b border-[#1D3B8A] scrollbar-none">'
+    '<div className="hidden md:flex lg:hidden overflow-x-auto gap-2 p-3 border-b border-[#1D3B8A] scrollbar-none">',
 )
 
 # 5. Mail List container styling
 content = content.replace(
     '<div className="flex-1 flex flex-col bg-[#081942]/90 rounded-3xl border border-[#1D3B8A] backdrop-blur-xl overflow-hidden shadow-2xl">',
-    '<div className="flex-1 flex flex-col bg-[#121212] md:bg-[#081942]/90 md:rounded-3xl md:border border-[#1D3B8A] backdrop-blur-xl overflow-hidden md:shadow-2xl">'
+    '<div className="flex-1 flex flex-col bg-[#121212] md:bg-[#081942]/90 md:rounded-3xl md:border border-[#1D3B8A] backdrop-blur-xl overflow-hidden md:shadow-2xl">',
 )
 content = content.replace(
     '<div className="flex-1 overflow-y-auto divide-y divide-[#1D3B8A]/50">',
-    '<div className="flex-1 overflow-y-auto divide-y divide-[#2d2c30] md:divide-[#1D3B8A]/50">'
+    '<div className="flex-1 overflow-y-auto divide-y divide-[#2d2c30] md:divide-[#1D3B8A]/50">',
 )
 
 # 6. Mail Item Replacement
-old_mail_item = '''<div
+old_mail_item = """<div
                         key={mail.id}
                         onClick={() => setSelectedEmail(mail)}
                         className="group flex flex-col sm:flex-row sm:items-center justify-between p-4 hover:bg-[#0d286d]/40 transition-all cursor-pointer gap-3"
@@ -79,9 +79,9 @@ old_mail_item = '''<div
                             {formatDate(mail.created_at)}
                           </span>
                         </div>
-                      </div>'''
+                      </div>"""
 
-new_mail_item = '''<div
+new_mail_item = """<div
                         key={mail.id}
                         onClick={() => setSelectedEmail(mail)}
                         className="group flex flex-row items-start justify-between p-4 md:p-4 md:hover:bg-[#0d286d]/40 transition-all cursor-pointer gap-3"
@@ -143,7 +143,7 @@ new_mail_item = '''<div
                             </span>
                           </div>
                         </div>
-                      </div>'''
+                      </div>"""
 
 if old_mail_item in content:
     content = content.replace(old_mail_item, new_mail_item)
@@ -151,7 +151,7 @@ else:
     print("Warning: Mail item template not found exactly.")
 
 # 7. Add Floating Mobile Compose Button
-compose_button = '''
+compose_button = """
       {/* Mobile Floating Compose Button */}
       <button 
         className="md:hidden fixed bottom-20 right-5 pl-4 pr-5 py-3.5 bg-[#c2e7ff] text-[#001d35] rounded-2xl flex items-center gap-2.5 shadow-[0_4px_12px_rgba(0,0,0,0.5)] z-40 hover:bg-[#a6d5fa] transition-colors"
@@ -162,8 +162,8 @@ compose_button = '''
       </button>
 
       {/* Toast Notification */}
-'''
-content = content.replace('{/* Toast Notification */}', compose_button)
+"""
+content = content.replace("{/* Toast Notification */}", compose_button)
 
 
 with open("Frontend/apps/web/src/pages/admin/mails/index.tsx", "w", encoding="utf-8") as f:

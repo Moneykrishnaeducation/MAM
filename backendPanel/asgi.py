@@ -93,19 +93,23 @@ async def application(scope, receive, send):
                 message = await receive()
                 if message["type"] == "lifespan.startup":
                     await ctx.init(config=TORTOISE_ORM)
-                    logger.info("[STARTUP] Checking database schema & auto-syncing model modifications...")
+                    logger.info(
+                        "[STARTUP] Checking database schema & auto-syncing model modifications..."
+                    )
                     await ctx.generate_schemas(safe=True)
                     await auto_sync_db_schema()
                     set_global_context(ctx)
                     _global_tortoise_ctx = ctx
                     try:
                         from adminPanel.view.balance_sync import start_balance_sync_thread
+
                         logger.info("[STARTUP] Initializing MT5 Account Balance Sync thread...")
                         start_balance_sync_thread(interval_seconds=5.0)
                     except Exception as sync_err:
                         logger.warning(f"[STARTUP] Could not start balance sync thread: {sync_err}")
                     try:
                         from backendPanel.mail_queue import start_mail_queue_thread
+
                         logger.info("[STARTUP] Initializing mail queue worker thread...")
                         start_mail_queue_thread(interval_seconds=5.0, batch_size=100)
                     except Exception as mail_err:
@@ -133,11 +137,13 @@ async def application(scope, receive, send):
 
         # Respond immediately to CORS preflight OPTIONS requests
         if scope.get("method") == "OPTIONS":
-            await send_with_cors({
-                "type": "http.response.start",
-                "status": 204,
-                "headers": [],
-            })
+            await send_with_cors(
+                {
+                    "type": "http.response.start",
+                    "status": 204,
+                    "headers": [],
+                }
+            )
             await send({"type": "http.response.body", "body": b""})
             return
 

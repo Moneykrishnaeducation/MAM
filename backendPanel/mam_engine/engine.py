@@ -94,24 +94,26 @@ class MAMCopyEngine:
         orig_order_ticket = getattr(order_obj, "Order", 0)
         if orig_order_ticket > 0 or getattr(order_obj, "State", 0) == 4:
             try:
+
                 class MockOrder:
                     pass
+
                 mock = MockOrder()
                 mock.Login = master_id
                 mock.Order = master_ticket
                 mock.Symbol = getattr(order_obj, "Symbol", "")
                 self.route_master_order_delete(mock)
             except Exception as e:
-                logger.debug(f"[ENGINE_CLEANUP] Failed to cleanup pending orders for {master_ticket}: {e}")
+                logger.debug(
+                    f"[ENGINE_CLEANUP] Failed to cleanup pending orders for {master_ticket}: {e}"
+                )
 
         leader_user = self.cache.get_user(self.manager_api, master_id)
         leader_balance = getattr(leader_user, "Balance", 1.0) or 1.0
         symbol_info = self.cache.get_symbol(self.manager_api, order_obj.Symbol)
         symbol_min_vol = getattr(symbol_info, "VolumeMin", 0.01) or 0.01
 
-        base_vol = (
-            getattr(order_obj, "VolumeInitial", getattr(order_obj, "Volume", 0.0)) or 0.0
-        )
+        base_vol = getattr(order_obj, "VolumeInitial", getattr(order_obj, "Volume", 0.0)) or 0.0
 
         for fid in followers:
             cfg = self.cache.get_follower_config(fid)
@@ -129,9 +131,7 @@ class MAMCopyEngine:
 
             final_vol = max(
                 symbol_min_vol,
-                int(calc_vol / symbol_min_vol) * symbol_min_vol
-                if symbol_min_vol > 0
-                else calc_vol,
+                int(calc_vol / symbol_min_vol) * symbol_min_vol if symbol_min_vol > 0 else calc_vol,
             )
 
             follower_positions = self.manager_api.PositionGet(fid) or []
@@ -145,7 +145,10 @@ class MAMCopyEngine:
                 )
                 already_open = False
                 for c in existing_comments:
-                    if c == comment or (c.startswith(comment) and (len(c) == len(comment) or not c[len(comment)].isdigit())):
+                    if c == comment or (
+                        c.startswith(comment)
+                        and (len(c) == len(comment) or not c[len(comment)].isdigit())
+                    ):
                         already_open = True
                         break
 
@@ -263,7 +266,9 @@ class MAMCopyEngine:
         symbol_info = self.cache.get_symbol(self.manager_api, order_obj.Symbol)
         symbol_min_vol = getattr(symbol_info, "VolumeMin", 0.01) or 0.01
 
-        base_vol = getattr(order_obj, "VolumeCurrent", getattr(order_obj, "VolumeInitial", 0.0)) or 0.0
+        base_vol = (
+            getattr(order_obj, "VolumeCurrent", getattr(order_obj, "VolumeInitial", 0.0)) or 0.0
+        )
 
         for fid in followers:
             cfg = self.cache.get_follower_config(fid)
@@ -281,16 +286,18 @@ class MAMCopyEngine:
 
             final_vol = max(
                 symbol_min_vol,
-                int(calc_vol / symbol_min_vol) * symbol_min_vol
-                if symbol_min_vol > 0
-                else calc_vol,
+                int(calc_vol / symbol_min_vol) * symbol_min_vol if symbol_min_vol > 0 else calc_vol,
             )
 
             follower_orders = self.manager_api.OrderGetOpen(fid) or []
-            existing_orders = {str(getattr(o, "Comment", "")): getattr(o, "Order", 0) for o in follower_orders}
+            existing_orders = {
+                str(getattr(o, "Comment", "")): getattr(o, "Order", 0) for o in follower_orders
+            }
 
             follower_positions = self.manager_api.PositionGet(fid) or []
-            existing_position_comments = {str(getattr(p, "Comment", "")) for p in follower_positions}
+            existing_position_comments = {
+                str(getattr(p, "Comment", "")) for p in follower_positions
+            }
 
             for trade_idx in range(1, multi_count + 1):
                 comment = (
@@ -302,7 +309,13 @@ class MAMCopyEngine:
                 found_ticket = 0
                 for ext_comment, t_id in existing_orders.items():
                     # Exact match or starts with comment plus a non-digit (to prevent trade1 matching trade10)
-                    if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
+                    if ext_comment == comment or (
+                        ext_comment.startswith(comment)
+                        and (
+                            len(ext_comment) == len(comment)
+                            or not ext_comment[len(comment)].isdigit()
+                        )
+                    ):
                         found_ticket = t_id
                         break
 
@@ -315,12 +328,20 @@ class MAMCopyEngine:
                     # Check if it already triggered into a position
                     already_triggered = False
                     for ext_comment in existing_position_comments:
-                        if ext_comment == comment or (ext_comment.startswith(comment) and (len(ext_comment) == len(comment) or not ext_comment[len(comment)].isdigit())):
+                        if ext_comment == comment or (
+                            ext_comment.startswith(comment)
+                            and (
+                                len(ext_comment) == len(comment)
+                                or not ext_comment[len(comment)].isdigit()
+                            )
+                        ):
                             already_triggered = True
                             break
 
                     if already_triggered:
-                        logger.info(f"[ENGINE_SKIP] Follower {fid} already has open position for pending order {comment}. Skipping PENDING_OPEN.")
+                        logger.info(
+                            f"[ENGINE_SKIP] Follower {fid} already has open position for pending order {comment}. Skipping PENDING_OPEN."
+                        )
                         continue
 
                     action = ActionType.PENDING_OPEN
@@ -363,9 +384,7 @@ class MAMCopyEngine:
         for fid in followers:
             follower_orders = self.manager_api.OrderGetOpen(fid) or []
             for o in follower_orders:
-                if o.Comment == expected_prefix or o.Comment.startswith(
-                    f"{expected_prefix}_trade"
-                ):
+                if o.Comment == expected_prefix or o.Comment.startswith(f"{expected_prefix}_trade"):
                     cmd = CopyCommand(
                         command_id=f"ord_del_{master_ticket}_{fid}_{o.Order}",
                         master_id=master_id,

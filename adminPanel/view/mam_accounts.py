@@ -275,4 +275,3 @@ async def create_account_api(request):
 
 
 create_mam_account = create_account_api
-

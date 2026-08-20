@@ -48,7 +48,9 @@ from backendPanel.database import ensure_db_initialized
 AVATAR_FILENAME_RE = re.compile(r"^data:image/(?P<ext>png|jpeg|jpg|gif|webp);base64,")
 logger = logging.getLogger(__name__)
 
-CLIENT_LOGIN_URL = f"{getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000').rstrip('/')}/client/login"
+CLIENT_LOGIN_URL = (
+    f"{getattr(settings, 'FRONTEND_BASE_URL', 'http://localhost:3000').rstrip('/')}/client/login"
+)
 
 
 def _generate_temporary_password(length: int = 12) -> str:
@@ -513,7 +515,18 @@ async def list_client_users(request):
 
         # Apply basic search filtering on the server side if requested
         if search_q:
-            filtered = [r for r in results if search_q in (str(r.get('name') or '') + ' ' + str(r.get('email') or '') + ' ' + str(r.get('id') or '')).lower()]
+            filtered = [
+                r
+                for r in results
+                if search_q
+                in (
+                    str(r.get("name") or "")
+                    + " "
+                    + str(r.get("email") or "")
+                    + " "
+                    + str(r.get("id") or "")
+                ).lower()
+            ]
             total = len(filtered)
             total_pages = max(1, (total + per_page - 1) // per_page)
             page = min(page, total_pages)
@@ -667,6 +680,15 @@ async def update_client_user_documents(request, user_id: str):
 
         setattr(document, status_field, status)
         updated_slots.append(doc_type)
+
+        # Update the pending request so the client-side UI syncs with the admin's decision
+        from clientPanel.view.common import get_latest_document_request
+
+        norm_type = "identity" if doc_type == "id_proof" else "address"
+        latest_req = await get_latest_document_request(user, norm_type)
+        if latest_req and str(latest_req.status or "").strip().lower() != status:
+            latest_req.status = status.title()
+            await latest_req.save(update_fields=["status"])
 
     await document.save()
 
@@ -1007,7 +1029,10 @@ def _format_activity_details(log: ActivityLog) -> str:
     if log.action_type:
         parts.append(log.action_type)
     return " · ".join(part for part in parts if part)
+
+
 from adminPanel.audit import format_action_name
+
 
 def _serialize_activity_log(log: ActivityLog) -> dict:
     """Serialize a single activity log row for activity APIs."""
@@ -1061,8 +1086,10 @@ async def _list_activity_logs_by_category(request, category: str | None = None):
 
     if search_q:
         results = [
-            r for r in results
-            if search_q in f"{r.get('user_name') or ''} {r.get('user_role') or ''} {r.get('action_type') or ''} {r.get('module_name') or ''} {r.get('details') or ''}".lower()
+            r
+            for r in results
+            if search_q
+            in f"{r.get('user_name') or ''} {r.get('user_role') or ''} {r.get('action_type') or ''} {r.get('module_name') or ''} {r.get('details') or ''}".lower()
         ]
 
     total = len(results)

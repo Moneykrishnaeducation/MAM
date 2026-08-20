@@ -78,21 +78,21 @@ class MT5DealerExecutor:
                         success = ret
                     elif isinstance(ret, tuple) and len(ret) > 1:
                         ret_code = ret[1]
-                        success = (getattr(ret_code, "value", ret_code) == 0) or ("MT_RET_OK" in str(ret))
+                        success = (getattr(ret_code, "value", ret_code) == 0) or (
+                            "MT_RET_OK" in str(ret)
+                        )
                     elif isinstance(ret, int):
-                        success = (ret == 0 or ret == 10009)
+                        success = ret == 0 or ret == 10009
                     else:
-                        success = ("MT_RET_OK" in str(ret))
-                    
+                        success = "MT_RET_OK" in str(ret)
+
                     if not success:
                         last_err = str(ret)
                 else:
                     success = bool(self.manager_api.DealerSend(mt_req, self.dealer_sink))
             except Exception as ex:
                 last_err = str(ex)
-                logger.error(
-                    f"[DEALER_ERROR] MT5 exception for follower {cmd.follower_id}: {ex}"
-                )
+                logger.error(f"[DEALER_ERROR] MT5 exception for follower {cmd.follower_id}: {ex}")
 
             mt5_send_ms = (time.time() - mt5_send_start) * 1000.0
             total_latency_ms = (time.time() - start_time) * 1000.0
@@ -210,4 +210,3 @@ class MT5DealerExecutor:
         except Exception as e:
             logger.error(f"[DEALER] Failed to build MT5 request for command {cmd.command_id}: {e}")
             return None
-

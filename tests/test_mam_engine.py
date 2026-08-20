@@ -5,7 +5,10 @@ import pytest
 from unittest.mock import MagicMock
 
 from backendPanel.mam_engine.events import ActionType, CopyCommand, TradeExecutionResult
-from backendPanel.mam_engine.follower_actor import FollowerExecutionPartition, FollowerPartitionManager
+from backendPanel.mam_engine.follower_actor import (
+    FollowerExecutionPartition,
+    FollowerPartitionManager,
+)
 from backendPanel.mam_engine.idempotency import IdempotencyEngine
 from backendPanel.mam_engine.routing_cache import FollowerConfig, RoutingCache
 

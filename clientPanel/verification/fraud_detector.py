@@ -24,7 +24,7 @@ def calculate_file_hash(file_path):
         return None
     sha256 = hashlib.sha256()
     try:
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             while chunk := f.read(65536):
                 sha256.update(chunk)
         return sha256.hexdigest()
@@ -36,7 +36,7 @@ def calculate_file_hash(file_path):
 def check_duplicate_document(file_hash, current_doc_id, current_user):
     """
     Checks if the exact same file hash exists for a document uploaded by another user.
-    
+
     Returns tuple: (is_duplicate: bool, original_doc_info: str)
     """
     if not file_hash:
@@ -58,7 +58,7 @@ def check_duplicate_document(file_hash, current_doc_id, current_user):
 def check_tampering_anomalies(file_path):
     """
     Performs basic automated image tampering detection.
-    
+
     Checks:
     - Unexpected image aspect ratios (e.g. extremely stretched or cropped banner images)
     - Suspiciously low noise levels or artificial digital text overlay boxes
@@ -67,7 +67,7 @@ def check_tampering_anomalies(file_path):
     suspicious = False
 
     ext = os.path.splitext(file_path)[1].lower()
-    if ext == '.pdf':
+    if ext == ".pdf":
         return False, []
 
     try:
@@ -89,7 +89,7 @@ def check_tampering_anomalies(file_path):
         # Color standard deviation check across color channels
         b, g, r = cv2.split(cv_img)
         std_b, std_g, std_r = np.std(b), np.std(g), np.std(r)
-        
+
         # Check if one channel has extreme anomaly
         if abs(std_b - std_g) > 60 or abs(std_r - std_g) > 60:
             suspicious = True

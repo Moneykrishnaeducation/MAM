@@ -184,10 +184,16 @@ urlpatterns = [
     path("api/countries/", get_countries, name="api-countries"),
     path("api/admin/", include("adminPanel.urls")),
     path("api/client/", include("clientPanel.urls")),
-    
-    path("api/profile/documents/identity/", __import__("clientPanel.verification.api").verification.api.verify_identity_api, name="crm-verify-identity"),
-    path("api/profile/documents/residence/", __import__("clientPanel.verification.api").verification.api.verify_residence_api, name="crm-verify-residence"),
-
+    path(
+        "api/profile/documents/identity/",
+        __import__("clientPanel.verification.api").verification.api.verify_identity_api,
+        name="crm-verify-identity",
+    ),
+    path(
+        "api/profile/documents/residence/",
+        __import__("clientPanel.verification.api").verification.api.verify_residence_api,
+        name="crm-verify-residence",
+    ),
     path("api/notifications/", get_notifications, name="api-client-notifications"),
     path(
         "api/notifications/<int:notification_id>/mark-read/",

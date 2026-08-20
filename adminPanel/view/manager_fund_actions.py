@@ -25,13 +25,17 @@ def _build_transaction_source(action_type: str) -> str:
     return " ".join(part for part in ["Manager", action_label or "Transaction"] if part).strip()
 
 
-def _format_transaction_source(transaction: ClientTransaction, default_role: str = "Manager") -> str:
+def _format_transaction_source(
+    transaction: ClientTransaction, default_role: str = "Manager"
+) -> str:
     source_value = normalize_transaction_source(transaction.source)
     if source_value:
         return source_value
 
     role = str(transaction.role or default_role or "").strip()
-    action_label = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+    action_label = str(
+        transaction.transaction_type or transaction.payment_method or "Transaction"
+    ).strip()
     action_label = action_label.replace("-", " ").replace("_", " ").title() or "Transaction"
     return " ".join(part for part in [role, action_label] if part).strip() or "Transaction"
 
@@ -100,9 +104,8 @@ async def manager_history_api(request, account_id: str):
             {"status": "error", "message": f"Trading account {account_id} not found"}, status=404
         )
 
-     # Filter strictly by account_number matching the requested account_id
+    # Filter strictly by account_number matching the requested account_id
     q_filter = Q(account_number=str(account_id))
-    
 
     transactions = await ClientTransaction.filter(q_filter).order_by("-created_at").limit(50)
     account_label = trading_acc.account_id
@@ -111,7 +114,7 @@ async def manager_history_api(request, account_id: str):
         {
             "id": f"TX-{tx.id}",
             "raw_id": tx.id,
-			 "account_number": tx.account_number or str(account_id),
+            "account_number": tx.account_number or str(account_id),
             "type": tx.transaction_type.capitalize(),
             "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",

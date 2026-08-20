@@ -26,7 +26,7 @@ class AsyncPersistenceManager:
         """Start background persistence threads."""
         for i in range(self._num_workers):
             t = threading.Thread(
-                target=self._worker_loop, name=f"MAM_Persistence_{i+1}", daemon=True
+                target=self._worker_loop, name=f"MAM_Persistence_{i + 1}", daemon=True
             )
             t.start()
             self._workers.append(t)
@@ -50,9 +50,7 @@ class AsyncPersistenceManager:
     ):
         """Non-blocking submission of activity log."""
         try:
-            self._queue.put_nowait(
-                ("activity_log", (user_email, action, details, ip_address), {})
-            )
+            self._queue.put_nowait(("activity_log", (user_email, action, details, ip_address), {}))
         except queue.Full:
             pass
 
@@ -171,11 +169,7 @@ class AsyncPersistenceManager:
                     for p in positions:
                         c = str(getattr(p, "Comment", ""))
                         pos_id = getattr(p, "Position", 0)
-                        if (
-                            pos_id == cmd.master_ticket
-                            or c == cmd.comment
-                            or master_id_ticket in c
-                        ):
+                        if pos_id == cmd.master_ticket or c == cmd.comment or master_id_ticket in c:
                             still_open = True
                             break
 
@@ -214,11 +208,7 @@ class AsyncPersistenceManager:
                         c = str(getattr(o, "Comment", ""))
                         ord_id = getattr(o, "Order", 0)
                         # For DELETE_ORDER, cmd.master_ticket is the follower's order ticket
-                        if (
-                            ord_id == cmd.master_ticket
-                            or c == cmd.comment
-                            or master_id_ticket in c
-                        ):
+                        if ord_id == cmd.master_ticket or c == cmd.comment or master_id_ticket in c:
                             still_open = True
                             break
 
@@ -252,5 +242,6 @@ class AsyncPersistenceManager:
                         f"reason=POSITION_STILL_OPEN_AFTER_CLOSE"
                     )
         except Exception as e:
-            logger.debug(f"[VERIFY_ERROR] Verification exception for follower {cmd.follower_id}: {e}")
-
+            logger.debug(
+                f"[VERIFY_ERROR] Verification exception for follower {cmd.follower_id}: {e}"
+            )

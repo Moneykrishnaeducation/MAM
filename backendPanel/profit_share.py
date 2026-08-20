@@ -76,14 +76,22 @@ def _is_monthly_settlement_time(now):
     first_day = current.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     return current.date() == first_day.date() and current.time() >= dt_time(1, 0)
 
+
 def handle_profit_share_async(manager, master_login, follower_id, pos_ticket):
-    logger.info(f"[PROFIT-SHARE] Starting async profit share for follower {follower_id} on master {master_login} (pos {pos_ticket})")
+    logger.info(
+        f"[PROFIT-SHARE] Starting async profit share for follower {follower_id} on master {master_login} (pos {pos_ticket})"
+    )
     deal = wait_for_deal_confirmation(manager, follower_id, pos_ticket)
     if deal:
-        logger.info(f"[PROFIT-SHARE] Deal confirmed for {follower_id} (deal {getattr(deal, 'Deal', 0)}, profit {getattr(deal, 'Profit', 0)})")
+        logger.info(
+            f"[PROFIT-SHARE] Deal confirmed for {follower_id} (deal {getattr(deal, 'Deal', 0)}, profit {getattr(deal, 'Profit', 0)})"
+        )
         process_profit_share(manager, master_login, follower_id, deal)
     else:
-        logger.warning(f"[PROFIT-SHARE] Deal NOT found or timed out for {follower_id} (pos {pos_ticket})")
+        logger.warning(
+            f"[PROFIT-SHARE] Deal NOT found or timed out for {follower_id} (pos {pos_ticket})"
+        )
+
 
 def wait_for_deal_confirmation(manager, follower_id, position_id, max_wait_sec=10):
     start_t = time()
@@ -94,8 +102,8 @@ def wait_for_deal_confirmation(manager, follower_id, position_id, max_wait_sec=1
             deals = manager.DealRequest(follower_id, from_dt, to_dt)
             if deals:
                 for d in deals:
-                    d_pos = getattr(d, 'PositionID', getattr(d, 'Position', 0))
-                    d_entry = getattr(d, 'Entry', 0)
+                    d_pos = getattr(d, "PositionID", getattr(d, "Position", 0))
+                    d_entry = getattr(d, "Entry", 0)
                     if d_pos == position_id and d_entry == 1:
                         return d
         except Exception as e:
@@ -103,9 +111,10 @@ def wait_for_deal_confirmation(manager, follower_id, position_id, max_wait_sec=1
         sleep(0.5)
     return None
 
+
 def process_profit_share(manager, master_login, follower_id, closed_deal):
     try:
-        profit = getattr(closed_deal, 'Profit', 0)
+        profit = getattr(closed_deal, "Profit", 0)
         if profit <= 0:
             logger.info(f"[PROFIT-SHARE] Skipping {follower_id}: profit {profit} <= 0")
             return
@@ -117,15 +126,15 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
 
         # Extract master_position from comment
         master_pos = None
-        deal_comment = str(getattr(closed_deal, 'Comment', ''))
-        if deal_comment and '_' in deal_comment:
-            parts = deal_comment.split('_')
+        deal_comment = str(getattr(closed_deal, "Comment", ""))
+        if deal_comment and "_" in deal_comment:
+            parts = deal_comment.split("_")
             if len(parts) >= 2 and parts[1].isdigit():
                 master_pos = parts[1]
 
         with connection.cursor() as cursor:
             cursor.execute(
-                '''
+                """
                 SELECT 
                     COALESCE(
                         p.profit_share_percentage, 
@@ -142,15 +151,17 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
                 LEFT JOIN "trading_accounts" tm ON t.mam_master_account_id = tm.id
                 LEFT JOIN "mam_plans" pm ON tm.mam_plan_id = pm.id
                 WHERE t.account_id = %s
-                ''',
-                [str(follower_id)]
+                """,
+                [str(follower_id)],
             )
             row = cursor.fetchone()
             if not row:
                 logger.warning(f"[PROFIT-SHARE] Account {follower_id} not found in DB")
                 return
             if row[0] is None:
-                logger.warning(f"[PROFIT-SHARE] Account {follower_id} has NULL profit_sharing_percentage")
+                logger.warning(
+                    f"[PROFIT-SHARE] Account {follower_id} has NULL profit_sharing_percentage"
+                )
                 return
             percentage = float(row[0])
             manager_account_id = str(row[1]) if row[1] else None
@@ -164,7 +175,9 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
 
         commission = round(profit * (percentage / 100), 2)
         if commission <= 0:
-            logger.info(f"[PROFIT-SHARE] Skipping {follower_id}: calculated commission {commission} <= 0")
+            logger.info(
+                f"[PROFIT-SHARE] Skipping {follower_id}: calculated commission {commission} <= 0"
+            )
             return
 
         payout_frequency = _normalize_frequency(payout_frequency)
@@ -173,23 +186,23 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                '''
+                """
                 INSERT INTO "profit_share_history"
                     (master_login, investor_login, master_position, investor_position, profit,
                      commission_percentage, commission_amount, manager_account, investor_account, created_at, status)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), %s)
-                ''',
+                """,
                 [
                     str(master_login),
                     str(follower_id),
                     str(master_pos) if master_pos else None,
-                    str(getattr(closed_deal, 'PositionID', 0)),
+                    str(getattr(closed_deal, "PositionID", 0)),
                     profit,
                     percentage,
                     commission,
                     manager_account_id,
                     investor_account_id,
-                    'Completed' if is_immediate_payout else 'Pending',
+                    "Completed" if is_immediate_payout else "Pending",
                 ],
             )
             logger.info(
@@ -254,7 +267,7 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
 
         with connection.cursor() as cursor:
             cursor.execute(
-                '''
+                """
                 SELECT id, commission_amount
                 FROM "profit_share_history"
                 WHERE master_login = %s
@@ -263,7 +276,7 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
                   AND created_at >= %s
                   AND created_at < %s
                 ORDER BY created_at ASC
-                ''',
+                """,
                 [str(master_login), str(follower_id), window_start, window_end],
             )
             pending_rows = cursor.fetchall() or []
@@ -281,9 +294,13 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
             master_login, total_commission, 2, f"Profit Share from Inv {follower_id}"
         )
         if success_master:
-            logger.info(f"[PROFIT-SHARE] Successfully credited master {master_login} with {total_commission}.")
+            logger.info(
+                f"[PROFIT-SHARE] Successfully credited master {master_login} with {total_commission}."
+            )
         else:
-            logger.error(f"[PROFIT-SHARE] Failed to credit master {master_login} with {total_commission}.")
+            logger.error(
+                f"[PROFIT-SHARE] Failed to credit master {master_login} with {total_commission}."
+            )
             return
 
         pending_ids = [str(r[0]) for r in pending_rows]
@@ -291,19 +308,19 @@ def process_profit_share(manager, master_login, follower_id, closed_deal):
             if pending_ids:
                 placeholders = ", ".join(["%s"] * len(pending_ids))
                 cursor.execute(
-                    f'''
+                    f"""
                     UPDATE "profit_share_history"
                     SET status = 'Completed'
                     WHERE id IN ({placeholders})
-                    ''',
+                    """,
                     pending_ids,
                 )
             cursor.execute(
-                '''
+                """
                 UPDATE "trading_accounts"
                 SET last_profit_share_at = NOW()
                 WHERE account_id = %s
-                ''',
+                """,
                 [str(master_login)],
             )
 

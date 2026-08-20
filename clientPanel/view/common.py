@@ -798,12 +798,13 @@ def build_document_details_payload(
     def _merge_pending(slot: str, request: PendingRequest | None) -> None:
         if request is None:
             return
-        
+
         slot_payload = document_data[slot]
-        
+
         # Prevent older pending requests from overriding newer auto-verified documents
         if request.created_at and slot_payload.get("uploaded_at"):
             from datetime import datetime
+
             try:
                 doc_time = datetime.strptime(slot_payload["uploaded_at"], "%Y-%m-%d %H:%M:%S")
                 # Need to strip timezone from request.created_at if it's aware to compare
@@ -812,7 +813,7 @@ def build_document_details_payload(
                     return
             except Exception:
                 pass
-                
+
         payload = request.payload or {}
         slot_payload["file_name"] = (
             str(

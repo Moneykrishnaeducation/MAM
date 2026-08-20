@@ -138,16 +138,18 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
             from .cross_document_verifier import verify_cross_documents
 
             cross_res = verify_cross_documents(user)
-            if not cross_res.get('is_consistent', True):
-                logger.warning(f"Cross-document mismatch detected for user {user.id}: {cross_res['explanation']}")
-                p_name = getattr(user, 'name', '').strip() or getattr(user, 'email', '')
-                failing_docs = cross_res.get('failing_docs', [])
+            if not cross_res.get("is_consistent", True):
+                logger.warning(
+                    f"Cross-document mismatch detected for user {user.id}: {cross_res['explanation']}"
+                )
+                p_name = getattr(user, "name", "").strip() or getattr(user, "email", "")
+                failing_docs = cross_res.get("failing_docs", [])
                 failing_ids = [f[0] for f in failing_docs]
 
                 if doc.id in failing_ids:
-                    decision = 'rejected'
-                    doc.verification_status = 'rejected'
-                    doc.status = 'rejected'
+                    decision = "rejected"
+                    doc.verification_status = "rejected"
+                    doc.status = "rejected"
                     reason = f"major_name_mismatch: The name on the uploaded document does not match your registered profile name ('{p_name}'). Please upload a document belonging to {p_name}."
                     doc.verification_reason = reason
                     doc.rejection_reason = reason
@@ -155,26 +157,26 @@ def process_document_verification(document_id, performed_by_user=None, ip_addres
                         errors.append(reason)
                     doc.verification_errors = errors
                     doc.save()
-                    _sync_user_profile_status(user, doc, 'rejected')
+                    _sync_user_profile_status(user, doc, "rejected")
                 else:
                     # Update any other document that failed profile name matching to rejected
                     for f_id, f_type, f_name in failing_docs:
                         try:
                             f_doc = UserDocument.objects.get(id=f_id)
-                            f_doc.verification_status = 'rejected'
-                            f_doc.status = 'rejected'
+                            f_doc.verification_status = "rejected"
+                            f_doc.status = "rejected"
                             f_reason = f"major_name_mismatch: The name on the uploaded document ('{f_name}') does not match your registered profile name ('{p_name}'). Please upload a document belonging to {p_name}."
                             f_doc.verification_reason = f_reason
                             f_doc.rejection_reason = f_reason
                             f_doc.save()
-                            _sync_user_profile_status(user, f_doc, 'rejected')
+                            _sync_user_profile_status(user, f_doc, "rejected")
                         except Exception:
                             pass
-                    if decision == 'approved':
-                        doc.verification_status = 'approved'
-                        doc.status = 'approved'
+                    if decision == "approved":
+                        doc.verification_status = "approved"
+                        doc.status = "approved"
                         doc.save()
-                        _sync_user_profile_status(user, doc, 'approved')
+                        _sync_user_profile_status(user, doc, "approved")
         except Exception as cross_err:
             logger.warning(f"Cross-document verification error: {cross_err}")
 

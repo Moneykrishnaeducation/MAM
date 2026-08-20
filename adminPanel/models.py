@@ -60,7 +60,9 @@ class ClientUser(models.Model):
 
     async def save(self, *args, **kwargs) -> None:
         if self.role not in ["Client", "Client User"]:
-            raise ValueError(f"ClientUser role must be 'Client' or 'Client User', got '{self.role}'")
+            raise ValueError(
+                f"ClientUser role must be 'Client' or 'Client User', got '{self.role}'"
+            )
         await super().save(*args, **kwargs)
 
     @property
@@ -673,6 +675,3 @@ class ProfitShareHistory(models.Model):
 
     class Meta:
         table = "profit_share_history"
-
-
-

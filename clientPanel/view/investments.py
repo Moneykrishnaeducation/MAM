@@ -80,6 +80,7 @@ async def get_client_investments(request):
         )
 
     if raw_search:
+
         def _matches(record):
             searchable = " ".join(
                 str(record.get(field) or "")

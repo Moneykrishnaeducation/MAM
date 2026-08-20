@@ -147,8 +147,18 @@ async def get_client_profile(request):
         profile.city = submission_payload["city"]
     if "postal_code" in submission_payload and submission_payload["postal_code"]:
         profile.postal_code = submission_payload["postal_code"]
-    
-    await profile.save(update_fields=["name", "phone", "country", "date_of_birth", "address", "city", "postal_code"])
+
+    await profile.save(
+        update_fields=[
+            "name",
+            "phone",
+            "country",
+            "date_of_birth",
+            "address",
+            "city",
+            "postal_code",
+        ]
+    )
 
     pending_request = await create_profile_pending_request(user, user, submission_payload)
 

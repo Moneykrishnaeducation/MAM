@@ -38,7 +38,9 @@ class IdempotencyEngine:
                 with self._lock:
                     for key, created_epoch in rows:
                         self._recent_copies[str(key)] = float(created_epoch)
-            logger.info(f"[IDEMPOTENCY] Preloaded {len(rows)} dedupe keys from database on startup.")
+            logger.info(
+                f"[IDEMPOTENCY] Preloaded {len(rows)} dedupe keys from database on startup."
+            )
         except Exception as e:
             logger.warning(f"[IDEMPOTENCY] Could not preload dedupe keys from DB: {e}")
 

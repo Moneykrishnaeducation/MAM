@@ -26,13 +26,17 @@ def _build_transaction_source(action_type: str) -> str:
     return " ".join(part for part in ["Investor", action_label or "Transaction"] if part).strip()
 
 
-def _format_transaction_source(transaction: ClientTransaction, default_role: str = "Investor") -> str:
+def _format_transaction_source(
+    transaction: ClientTransaction, default_role: str = "Investor"
+) -> str:
     source_value = normalize_transaction_source(transaction.source)
     if source_value:
         return source_value
 
     role = str(transaction.role or default_role or "").strip()
-    action_label = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+    action_label = str(
+        transaction.transaction_type or transaction.payment_method or "Transaction"
+    ).strip()
     action_label = action_label.replace("-", " ").replace("_", " ").title() or "Transaction"
     return " ".join(part for part in [role, action_label] if part).strip() or "Transaction"
 
@@ -74,20 +78,26 @@ async def investor_credit_out_api(request):
 @require_http_methods(["GET"])
 async def investor_equity_api(request, account_id: str):
     """Fetch current equity and balance state for a specific investor account."""
-    trading_acc = await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    trading_acc = (
+        await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    )
     if not trading_acc:
-        return JsonResponse({"status": "error", "message": f"Investor account {account_id} not found"}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": f"Investor account {account_id} not found"}, status=404
+        )
 
-    return JsonResponse({
-        "status": "ok",
-        "account_id": trading_acc.account_id,
-        "balance": float(trading_acc.balance or 0.0),
-        "credit": float(trading_acc.credit or 0.0),
-        "equity": float(trading_acc.equity or 0.0),
-        "margin": float(getattr(trading_acc, "margin", 0.0) or 0.0),
-        "free_margin": float(getattr(trading_acc, "free_margin", 0.0) or 0.0),
-        "profit": float(trading_acc.equity or 0.0) - float(trading_acc.balance or 0.0)
-    })
+    return JsonResponse(
+        {
+            "status": "ok",
+            "account_id": trading_acc.account_id,
+            "balance": float(trading_acc.balance or 0.0),
+            "credit": float(trading_acc.credit or 0.0),
+            "equity": float(trading_acc.equity or 0.0),
+            "margin": float(getattr(trading_acc, "margin", 0.0) or 0.0),
+            "free_margin": float(getattr(trading_acc, "free_margin", 0.0) or 0.0),
+            "profit": float(trading_acc.equity or 0.0) - float(trading_acc.balance or 0.0),
+        }
+    )
 
 
 @csrf_exempt
@@ -95,9 +105,13 @@ async def investor_equity_api(request, account_id: str):
 @require_http_methods(["GET"])
 async def investor_history_api(request, account_id: str):
     """Fetch transaction and credit history directly from DB for a specific investor account."""
-    trading_acc = await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    trading_acc = (
+        await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    )
     if not trading_acc:
-        return JsonResponse({"status": "error", "message": f"Investor account {account_id} not found"}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": f"Investor account {account_id} not found"}, status=404
+        )
 
     q_filter = Q(account_number=str(account_id))
     if trading_acc.user:
@@ -110,7 +124,7 @@ async def investor_history_api(request, account_id: str):
         {
             "id": f"TX-{tx.id}",
             "raw_id": tx.id,
-			"account_number": tx.account_number or str(account_id),
+            "account_number": tx.account_number or str(account_id),
             "type": tx.transaction_type.capitalize(),
             "transaction_type": tx.transaction_type,
             "amount": f"{'-' if tx.transaction_type.lower() in ['withdraw', 'withdrawal', 'credit-out', 'deduction'] else '+'}${tx.amount:,.2f}",
@@ -129,16 +143,14 @@ async def investor_history_api(request, account_id: str):
             "source": _format_transaction_source(tx),
             "status": tx.status or "Completed",
             "date": tx.created_at.strftime("%b %d, %Y %H:%M") if tx.created_at else "N/A",
-            "timestamp": tx.created_at.isoformat() if tx.created_at else None
+            "timestamp": tx.created_at.isoformat() if tx.created_at else None,
         }
         for tx in transactions
     ]
 
-    return JsonResponse({
-        "status": "ok",
-        "account_id": trading_acc.account_id,
-        "history": history_records
-    })
+    return JsonResponse(
+        {"status": "ok", "account_id": trading_acc.account_id, "history": history_records}
+    )
 
 
 async def _process_investor_financial_action(request, action_type: str):
@@ -152,29 +164,42 @@ async def _process_investor_financial_action(request, action_type: str):
     note = body.get("note", "")
 
     if not account_id or amount_raw is None:
-        return JsonResponse({"status": "error", "message": "accountId and amount are required"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "accountId and amount are required"}, status=400
+        )
 
     try:
         amount = float(amount_raw)
         if amount <= 0:
-            return JsonResponse({"status": "error", "message": "Amount must be greater than 0"}, status=400)
+            return JsonResponse(
+                {"status": "error", "message": "Amount must be greater than 0"}, status=400
+            )
     except (ValueError, TypeError):
         return JsonResponse({"status": "error", "message": "Invalid amount format"}, status=400)
 
-    trading_acc = await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    trading_acc = (
+        await TradingAccount.filter(account_id=str(account_id)).prefetch_related("user").first()
+    )
     if not trading_acc:
-        return JsonResponse({"status": "error", "message": f"Trading account {account_id} not found"}, status=404)
+        return JsonResponse(
+            {"status": "error", "message": f"Trading account {account_id} not found"}, status=404
+        )
 
     try:
         mt5 = MT5ManagerActions()
     except Exception as e:
         logger.error(f"MT5 Manager connection failed: {e}")
-        return JsonResponse({"status": "error", "message": f"MT5 connection failed: {e}"}, status=500)
+        return JsonResponse(
+            {"status": "error", "message": f"MT5 connection failed: {e}"}, status=500
+        )
 
     try:
         mt5_login = int(trading_acc.account_id)
     except ValueError:
-        return JsonResponse({"status": "error", "message": f"Invalid numeric account ID {trading_acc.account_id}"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": f"Invalid numeric account ID {trading_acc.account_id}"},
+            status=400,
+        )
 
     comment = note if note else f"Investor {action_type.capitalize()}"
     success = False
@@ -192,7 +217,13 @@ async def _process_investor_financial_action(request, action_type: str):
         success = mt5.credit_out_funds(mt5_login, amount, comment)
 
     if not success:
-        return JsonResponse({"status": "error", "message": f"Failed to execute MT5 {action_type} for investor account {account_id}"}, status=500)
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"Failed to execute MT5 {action_type} for investor account {account_id}",
+            },
+            status=500,
+        )
 
     current_balance = float(getattr(trading_acc, "balance", 0.0) or 0.0)
     current_credit = float(getattr(trading_acc, "credit", 0.0) or 0.0)
@@ -226,18 +257,22 @@ async def _process_investor_financial_action(request, action_type: str):
         approval_date=approval_date,
         description=comment,
         source=transaction_source,
-        status="Completed"
+        status="Completed",
     )
 
-    logger.info(f"[INVESTOR FINANCIAL ACTION] {action_type.upper()} of ${amount} applied to investor account {account_id} by admin.")
+    logger.info(
+        f"[INVESTOR FINANCIAL ACTION] {action_type.upper()} of ${amount} applied to investor account {account_id} by admin."
+    )
 
-    return JsonResponse({
-        "status": "ok",
-        "message": f"Investor {action_type.replace('-', ' ')} of ${amount:.2f} processed successfully for account {account_id}",
-        "account": {
-            "account_id": trading_acc.account_id,
-            "balance": float(trading_acc.balance),
-            "credit": float(trading_acc.credit),
-            "equity": float(trading_acc.equity),
+    return JsonResponse(
+        {
+            "status": "ok",
+            "message": f"Investor {action_type.replace('-', ' ')} of ${amount:.2f} processed successfully for account {account_id}",
+            "account": {
+                "account_id": trading_acc.account_id,
+                "balance": float(trading_acc.balance),
+                "credit": float(trading_acc.credit),
+                "equity": float(trading_acc.equity),
+            },
         }
-    })
+    )

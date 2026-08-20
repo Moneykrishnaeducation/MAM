@@ -111,7 +111,10 @@ async def internal_transfer_api(request):
                 {"status": "error", "message": "One or both accounts not found"}, status=404
             )
 
-        if from_account.account_type not in ["MAM", "Investor"] or to_account.account_type not in ["MAM", "Investor"]:
+        if from_account.account_type not in ["MAM", "Investor"] or to_account.account_type not in [
+            "MAM",
+            "Investor",
+        ]:
             return JsonResponse(
                 {
                     "status": "error",
@@ -132,7 +135,9 @@ async def internal_transfer_api(request):
             from_mt5_group = mt5action.get_group_of(int(from_account_id))
             to_mt5_group = mt5action.get_group_of(int(to_account_id))
 
-            if (from_mt5_group and "demo" in from_mt5_group.lower()) or (to_mt5_group and "demo" in to_mt5_group.lower()):
+            if (from_mt5_group and "demo" in from_mt5_group.lower()) or (
+                to_mt5_group and "demo" in to_mt5_group.lower()
+            ):
                 return JsonResponse(
                     {
                         "status": "error",

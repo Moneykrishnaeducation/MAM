@@ -445,7 +445,13 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
     )
     swift_code = payload.get("ifsc_swift") or payload.get("ifscSwift") or f"SWFT{request.id:04d}"
     branch_name = payload.get("branch_name") or payload.get("branchName") or payload.get("branch")
-    ifsc_code = payload.get("ifsc_code") or payload.get("ifscCode") or payload.get("ifsc") or payload.get("ifsc_swift") or payload.get("ifscSwift")
+    ifsc_code = (
+        payload.get("ifsc_code")
+        or payload.get("ifscCode")
+        or payload.get("ifsc")
+        or payload.get("ifsc_swift")
+        or payload.get("ifscSwift")
+    )
     network = payload.get("network") or "USDT-TRC20"
     wallet_address = (
         payload.get("wallet_address") or payload.get("cryptoAddress") or f"wallet-{request.id:04d}"
@@ -541,7 +547,11 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
 async def _fetch_pending_requests_for_tab(tab: str) -> list[dict]:
     aliases = TAB_ALIASES[tab]
     condition = _match_condition(aliases)
-    queryset = PendingRequest.filter(status__iexact="pending").order_by("-created_at").prefetch_related("user")
+    queryset = (
+        PendingRequest.filter(status__iexact="pending")
+        .order_by("-created_at")
+        .prefetch_related("user")
+    )
     if condition is not None:
         queryset = queryset.filter(condition)
 
@@ -619,7 +629,9 @@ async def list_pending_requests_summary(request):
     summary["bank"] = summary.get("banks", 0)
     summary["crypto"] = summary.get("cryptos", 0)
 
-    total_count = sum(summary[k] for k in ["deposits", "withdrawals", "documents", "profiles", "banks", "cryptos"])
+    total_count = sum(
+        summary[k] for k in ["deposits", "withdrawals", "documents", "profiles", "banks", "cryptos"]
+    )
     return JsonResponse({"status": "ok", "summary": summary, "total": total_count})
 
 
@@ -714,7 +726,12 @@ async def decide_pending_request(request, request_id: str):
                     tx.status = "Approved"
                     tx.approved_by = approved_by
                     tx.approval_date = pending_request.reviewed_at or timezone.now()
-                    request_label = str(request_type or "Transaction").replace("-", " ").replace("_", " ").title()
+                    request_label = (
+                        str(request_type or "Transaction")
+                        .replace("-", " ")
+                        .replace("_", " ")
+                        .title()
+                    )
                     tx.source = f"Request Approval ({request_label})"
                     await tx.save()
 

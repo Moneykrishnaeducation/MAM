@@ -150,6 +150,7 @@ async def list_client_tickets(request, user_id: str):
         }
     )
 
+
 def _serialize_ticket_with_user(ticket: ClientTicket) -> dict:
     user = getattr(ticket, "user", None)
     user_code = getattr(user, "user_code", None) or (f"USR-{user.id:03d}" if user else "N/A")
@@ -165,7 +166,11 @@ def _serialize_ticket_with_user(ticket: ClientTicket) -> dict:
         "date": ticket.created_at.strftime("%Y-%m-%d %H:%M:%S") if ticket.created_at else None,
         "attachments": getattr(ticket, "attachments", []) or [],
         "messages": getattr(ticket, "messages", []) or [],
-        "user_id": str(user.user_code) if user and hasattr(user, "user_code") else str(user.id) if user else "",
+        "user_id": str(user.user_code)
+        if user and hasattr(user, "user_code")
+        else str(user.id)
+        if user
+        else "",
     }
 
 
@@ -185,7 +190,9 @@ async def list_all_tickets(request):
         page = 1
 
     try:
-        per_page = max(1, min(100, int(request.GET.get("per_page") or request.GET.get("perPage") or 10)))
+        per_page = max(
+            1, min(100, int(request.GET.get("per_page") or request.GET.get("perPage") or 10))
+        )
     except (ValueError, TypeError):
         per_page = 10
 
@@ -303,7 +310,9 @@ async def add_admin_ticket_message(request, ticket_id: int):
 
     content = str(body.get("content") or "").strip()
     if not content and not uploaded_files:
-        return JsonResponse({"status": "error", "message": "Message content or document is required"}, status=400)
+        return JsonResponse(
+            {"status": "error", "message": "Message content or document is required"}, status=400
+        )
 
     file_attachment = None
     if uploaded_files:
@@ -320,14 +329,14 @@ async def add_admin_ticket_message(request, ticket_id: int):
         "sender": "admin",
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
-    
+
     if file_attachment:
         new_message["file"] = file_attachment
 
     messages = list(getattr(ticket, "messages", []) or [])
     messages.append(new_message)
     ticket.messages = messages
-    
+
     await ticket.save(update_fields=["messages"])
 
     return JsonResponse(
@@ -338,4 +347,3 @@ async def add_admin_ticket_message(request, ticket_id: int):
             "new_message": new_message,
         }
     )
-

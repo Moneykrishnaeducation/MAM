@@ -326,14 +326,14 @@ async def add_client_ticket_message(request, ticket_id: int):
         "sender": str(profile.id),
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
-    
+
     if file_attachment:
         new_message["file"] = file_attachment
 
     messages = list(getattr(ticket, "messages", []) or [])
     messages.append(new_message)
     ticket.messages = messages
-    
+
     await ticket.save(update_fields=["messages"])
 
     return JsonResponse(
@@ -344,4 +344,3 @@ async def add_client_ticket_message(request, ticket_id: int):
             "new_message": new_message,
         }
     )
-

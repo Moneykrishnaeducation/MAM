@@ -167,7 +167,6 @@ class ManagerEventRouter:
 
 # Legacy database helpers kept for backward compatibility
 class ServerSetting:
-
     @staticmethod
     def get_latest_setting():
         try:
@@ -272,13 +271,11 @@ def run_mam_script():
 
         # MT5 Event Sinks
         class DealSink:
-
             def OnDealAdd(self, deal):
                 if _global_engine:
                     _global_engine._last_activity_ts = time()
 
         class DealerSink:
-
             def OnDealerResult(self, result):
                 if _global_engine and _global_engine.dealer_sink:
                     _global_engine.dealer_sink.OnDealerResult(result)
@@ -287,7 +284,6 @@ def run_mam_script():
                 pass
 
         class OrderSink:
-
             def OnOrderUpdate(self, order):
                 if _global_engine:
                     # Filter market orders (copied via OnOrderDelete -> position open)
@@ -315,7 +311,6 @@ def run_mam_script():
                 return []
 
         class PositionSink:
-
             def OnPositionUpdate(self, position):
                 if _global_engine:
                     _global_engine.route_master_position_modify(position)
@@ -349,7 +344,9 @@ def run_mam_script():
                 logger.error(f"Failed to subscribe to deals: {MT5Manager.LastError()}")
                 break
 
-            logger.info("🚀 Subscribed to MT5 Manager Order, Position, and Deal events successfully.")
+            logger.info(
+                "🚀 Subscribed to MT5 Manager Order, Position, and Deal events successfully."
+            )
 
             # Background reconciler watcher thread
             def reconciler_loop():

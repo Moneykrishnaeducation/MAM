@@ -237,9 +237,6 @@ class StatefulReconciler:
                                 )
                                 self.dispatch_func(cmd)
                     except Exception as fe:
-                        logger.debug(
-                            f"[RECONCILER] Order resync error for follower {fid}: {fe}"
-                        )
+                        logger.debug(f"[RECONCILER] Order resync error for follower {fid}: {fe}")
         except Exception as e:
             logger.debug(f"[RECONCILER] Order resync check error for master {master_id}: {e}")
-

@@ -700,60 +700,49 @@ function VerifyModal({
     );
   };
 
-  const changeDocStatus = (type: KycDocument['type'], status: KycDocument['status']) => {
+  const changeDocStatus = async (type: KycDocument['type'], status: KycDocument['status']) => {
+    // Optimistic update
     setDocStates((prev) => prev.map((d) => (d.type === type ? { ...d, status } : d)));
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
+    
     try {
+      const targetDoc = docStates.find(d => d.type === type);
       const formData = new FormData();
       formData.append(
         'documents',
-        JSON.stringify(
-          docStates.map(({ file, ...doc }) => ({
-            ...doc,
-            file: undefined,
-          })),
-        ),
+        JSON.stringify([{
+          type,
+          status,
+          fileUrl: targetDoc?.fileUrl,
+          fileName: targetDoc?.fileName
+        }])
       );
-      docStates.forEach((doc) => {
-        if (doc.file) {
-          formData.append(doc.type, doc.file);
-        }
-      });
-
+      
+      if (targetDoc?.file) {
+        formData.append(type, targetDoc.file);
+      }
+      
       const res = await fetch(`/api/admin/users/${getAdminUserApiId(user)}/documents`, {
         method: 'POST',
         body: formData,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(data?.message || 'Failed to save document status');
+      if (res.ok && data.kyc) {
+        const nextKyc = normalizeKycDetails(data.kyc, kycPayload ?? user.kyc ?? undefined);
+        setKycPayload(nextKyc);
+        onSaved(user.id, nextKyc);
+      } else {
+        throw new Error(data?.message || 'Failed to update document status');
       }
-
-      const nextKyc = normalizeKycDetails(data?.kyc ?? data, kycPayload ?? user.kyc ?? undefined);
-      setKycPayload(nextKyc);
-      onSaved(user.id, nextKyc);
     } catch (err) {
       setKycError(err instanceof Error ? err.message : 'Failed to save document status');
-    } finally {
-      setSaving(false);
     }
   };
-
   const allApproved = docStates.every((d) => d.status === 'approved');
   const canEdit = !isViewerAdmin;
 
   return (
     <div className="space-y-5 text-xs">
-      <SectionTitle icon={ShieldCheck} label="Identity Verification & KYC Documents" color="text-blue-400" />
-      {kycLoading && (
-        <div className="flex items-center gap-2 rounded-xl border border-[#1745b3] bg-[#081d5f]/80 px-3 py-2 text-slate-400 text-[11px]">
-          <RefreshCw size={13} className="animate-spin text-blue-400" />
-          Loading verified KYC data from the database...
-        </div>
-      )}
+      
       {kycError && !kycLoading && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
           {kycError}
@@ -761,24 +750,7 @@ function VerifyModal({
       )}
 
       {/* Overall KYC Status */}
-      <div className="flex items-center justify-between bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4">
-        <div>
-          <p className="text-slate-400 text-[10px] uppercase tracking-wider mb-1">Overall KYC Status</p>
-          <StatusBadge status={getDisplayKycStatus(user.verified, kycPayload?.kyc_status ?? kycPayload?.profile?.kyc_status ?? sourceDocs?.identity?.status ?? user.kycStatus)} />
-        </div>
-        {canEdit && (
-          <button
-            onClick={() => onVerify(user.id, !user.verified)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              user.verified
-                ? 'bg-[#0b226a]/80 text-red-400 border border-[#1745b3] hover:border-red-500/40 hover:bg-red-950/40 hover:shadow-[0_4px_14px_rgba(239,68,68,0.1)]'
-                : 'bg-[linear-gradient(135deg,#10b981_0%,#059669_100%)] text-slate-950 border border-transparent shadow-[0_4px_14px_rgba(16,185,129,0.25)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 hover:brightness-110'
-            }`}
-          >
-            {user.verified ? <><Ban size={14} /> Revoke Verification</> : <><CheckCheck size={14} /> Approve KYC</>}
-          </button>
-        )}
-      </div>
+      
 
       {/* Documents Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -913,24 +885,6 @@ function VerifyModal({
         })}
       </div>
 
-      <div className="flex justify-end gap-3 pt-2 border-t border-[#1745b3]">
-        {canEdit && allApproved && !user.verified && (
-          <button
-            onClick={() => onVerify(user.id, true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-bold text-xs"
-          >
-            <Shield size={14} /> Mark KYC Verified
-          </button>
-        )}
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs disabled:opacity-60 transition-all"
-        >
-          {saving ? <RefreshCw size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
-          Save Document Status
-        </button>
-      </div>
     </div>
   );
 }
@@ -1200,48 +1154,7 @@ function ProfileModal({
           Loading profile data...
         </div>
       )}
-      <div className="flex items-center gap-5 bg-[#081d5f] border border-[#1745b3] rounded-2xl p-4">
-        <div className="relative group">
-          <img
-            src={form.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name)}&background=1e3a5f&color=7dd3fc&size=96`}
-            alt={form.name}
-            className="w-20 h-20 rounded-2xl object-cover ring-2 ring-[#214fbf]"
-          />
-          {editingEnabled && (
-            <>
-              <button
-                onClick={() => avatarRef.current?.click()}
-                className="absolute inset-0 rounded-2xl bg-[#081d5f]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <Camera size={20} className="text-white" />
-              </button>
-              <input
-                ref={avatarRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => e.target.files?.[0] && handleAvatarChange(e.target.files[0])}
-              />
-            </>
-          )}
-        </div>
-        <div>
-          <p className="font-bold text-white text-sm">{form.name}</p>
-          <p className="text-slate-400 text-xs mt-0.5">{form.email}</p>
-          {editingEnabled && (
-            <button
-              onClick={() => avatarRef.current?.click()}
-              className="mt-2 flex items-center gap-1.5 text-[11px] text-blue-400 hover:text-blue-300 font-semibold"
-            >
-              <Camera size={12} /> Change Photo
-            </button>
-          )}
-        </div>
-        <div className="ml-auto flex flex-col items-end gap-2">
-          <StatusBadge status={user.verified ? 'Verified' : 'Pending'} />
-          <StatusBadge status={user.status} />
-        </div>
-      </div>
+      
 
       {/* Form Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -2424,54 +2337,6 @@ export default function AdminUsersPage() {
     return () => clearTimeout(timer);
   }, [toastMessage]);
 
-  useEffect(() => {
-    if (!expandedRowId) return;
-
-    const activeUser = users.find((user) => user.id === expandedRowId);
-    if (!activeUser) return;
-
-    const controller = new AbortController();
-    setKycDetailsByUserId((prev) => ({
-      ...prev,
-      [expandedRowId]: {
-        loading: true,
-        error: null,
-        data: prev[expandedRowId]?.data ?? activeUser.kyc ?? null,
-      },
-    }));
-
-    fetch(`/api/admin/users/${getAdminUserApiId(activeUser)}/kyc`, { signal: controller.signal })
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) {
-          throw new Error(data?.message || 'Failed to load KYC data');
-        }
-        return data;
-      })
-      .then((data) => {
-        setKycDetailsByUserId((prev) => ({
-          ...prev,
-          [expandedRowId]: {
-            loading: false,
-            error: null,
-            data: normalizeKycDetails(data, activeUser.kyc),
-          },
-        }));
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
-        setKycDetailsByUserId((prev) => ({
-          ...prev,
-          [expandedRowId]: {
-            loading: false,
-            error: err instanceof Error ? err.message : 'Failed to load KYC data',
-            data: prev[expandedRowId]?.data ?? activeUser.kyc ?? null,
-          },
-        }));
-      });
-
-    return () => controller.abort();
-  }, [expandedRowId, users]);
 
   useEffect(() => {
     if (activeModalType !== 'transactions' || !activeModalUser) return;
@@ -3114,8 +2979,7 @@ export default function AdminUsersPage() {
                   renderedUsers.map((u) => {
                     const isExpanded = expandedRowId === u.id;
                     const isViewer = isViewerAdmin;
-                    const kycState = kycDetailsByUserId[u.id];
-                    const rowKyc = kycState?.data ?? u.kyc ?? null;
+                    const rowKyc = u.kyc ?? null;
                     return (
                       <React.Fragment key={u.id}>
                         <tr
@@ -3375,13 +3239,7 @@ export default function AdminUsersPage() {
 
                   {activeModalType === 'transactions' && (
                     <div className="space-y-4">
-                      <SectionTitle icon={ArrowUpRight} label="Transaction History" color="text-teal-400" />
-                      {transactionDetailsByUserId[activeModalUser.id]?.loading && (
-                        <div className="rounded-xl border border-[#1745b3] bg-[#081d5f] px-3 py-2 text-[11px] text-[#8fb8ff] flex items-center gap-2">
-                          <RefreshCw size={13} className="animate-spin text-[#f0b91f]" />
-                          Loading transaction history from the database...
-                        </div>
-                      )}
+                      
                       {transactionDetailsByUserId[activeModalUser.id]?.error && !transactionDetailsByUserId[activeModalUser.id]?.loading && (
                         <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-3 py-2 text-[11px] text-red-300">
                           {transactionDetailsByUserId[activeModalUser.id]?.error}
@@ -3494,117 +3352,139 @@ export default function AdminUsersPage() {
                             ))}
                           </div>
                           
-                          <div className="space-y-2">
-                            {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
-                              .filter((t) => {
-                                if (activeTicketTab === 'Open') return t.status === 'Open';
-                                if (activeTicketTab === 'Pending') return t.status === 'In Progress' ;
-                                if (activeTicketTab === 'Close') return t.status === 'Closed';
-                                return true;
-                              })
-                              .map((t) => (
-                              <div key={t.id} className="rounded-xl bg-[#081d5f] border border-[#1745b3] overflow-hidden transition-all duration-200">
-                                <div 
-                                  className="p-3.5 flex items-center justify-between cursor-pointer hover:bg-[#1745b3]/20"
-                                  onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
-                                >
-                                  <div>
-                                    <p className="font-mono text-blue-400 font-bold text-xs">{t.id} | {t.subject}</p>
-                                    <div className="flex items-center gap-3 mt-1.5">
-                                      <StatusBadge status={t.status} />
-                                      <span className="text-[#6f92e7] text-[10px] flex items-center gap-1">
-                                        <Clock size={10} /> {t.date}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="text-[#8fb8ff]">
-                                    {expandedTicketId === t.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                  </div>
-                                </div>
-                                
-                                {expandedTicketId === t.id && (
-                                  <div className="p-4 border-t border-[#1745b3] bg-[#040f33]">
-                                    {t.description && (
-                                      <div className="mb-4">
-                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1">Description</h4>
-                                        <div className="text-[11px] text-[#dbe8ff] bg-[#0b226a]/50 p-3 rounded-xl border border-[#1745b3] whitespace-pre-wrap">
-                                          {t.description}
-                                        </div>
-                                      </div>
-                                    )}
-                                    
-                                    {t.attachments && t.attachments.length > 0 && (
-                                      <div className="mb-4">
-                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1.5">Attachments</h4>
-                                        <div className="flex flex-wrap gap-2">
-                                          {t.attachments.map((att: any, idx: number) => (
-                                            <a
-                                              key={att.id || idx}
-                                              href={att.file_url || att.file || '#'}
-                                              target="_blank"
-                                              rel="noreferrer"
-                                              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1745b3]/30 border border-[#1745b3] hover:bg-[#1745b3] text-[10px] text-[#dbe8ff] transition-colors"
-                                            >
-                                              <FileText size={12} className="text-blue-400" />
-                                              <span>{att.name || `Attachment #${idx + 1}`}</span>
-                                            </a>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-
-                                    {t.messages && t.messages.length > 0 && (
-                                      <div className="mb-4">
-                                        <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-2">Communication History</h4>
-                                        <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
-                                          {t.messages.map((msg: any) => {
-                                            const isAdmin = msg.sender === 'admin';
-                                            return (
-                                              <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
-                                                <div className={`text-[9px] mb-0.5 font-bold ${isAdmin ? 'text-indigo-400' : 'text-blue-400'}`}>
-                                                  {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
-                                                </div>
-                                                <div className={`p-2.5 rounded-xl max-w-[90%] text-[11px] ${
-                                                  isAdmin 
-                                                    ? 'bg-indigo-500/20 border border-indigo-500/30 text-[#dbe8ff] rounded-tr-sm' 
-                                                    : 'bg-[#1745b3]/30 border border-[#1745b3] text-[#dbe8ff] rounded-tl-sm'
-                                                }`}>
-                                                  {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
-                                                  {msg.file && (
-                                                    <div className="mt-1.5">
-                                                      <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-bold ${isAdmin ? 'bg-indigo-500/30 text-indigo-300' : 'bg-[#1745b3] text-blue-300'}`}>
-                                                        <Paperclip size={10} />
-                                                        Attachment
-                                                      </a>
+                          <div className="rounded-2xl border border-[#1745b3] overflow-hidden mt-4">
+                            <div className="overflow-x-auto max-h-[360px] overflow-y-auto">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead className="sticky top-0 z-10">
+                                  <tr className="bg-[#0b226a] border-b border-[#1745b3] text-[#9ec0ff]">
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Ticket ID</th>
+                                    <th className="px-4 py-3 font-semibold w-full">Subject</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap">Date</th>
+                                    <th className="px-4 py-3 font-semibold whitespace-nowrap"></th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-[#153d9f]/60 bg-[#071a57]">
+                                  {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
+                                    .filter((t) => {
+                                      if (activeTicketTab === 'Open') return t.status === 'Open';
+                                      if (activeTicketTab === 'Pending') return t.status === 'In Progress';
+                                      if (activeTicketTab === 'Close') return t.status === 'Closed';
+                                      return true;
+                                    })
+                                    .map((t) => (
+                                      <React.Fragment key={t.id}>
+                                        <tr 
+                                          className="hover:bg-[#0a205f]/60 transition-colors cursor-pointer group"
+                                          onClick={() => setExpandedTicketId(expandedTicketId === t.id ? null : t.id)}
+                                        >
+                                          <td className="px-4 py-3 font-mono text-blue-400 font-bold whitespace-nowrap">{t.id}</td>
+                                          <td className="px-4 py-3 text-slate-300 font-medium group-hover:text-blue-300 transition-colors">{t.subject}</td>
+                                          <td className="px-4 py-3 whitespace-nowrap">
+                                            <StatusBadge status={t.status} />
+                                          </td>
+                                          <td className="px-4 py-3 text-[#6f92e7] whitespace-nowrap">
+                                            <div className="flex items-center gap-1.5"><Clock size={12} /> {t.date}</div>
+                                          </td>
+                                          <td className="px-4 py-3 text-[#8fb8ff] text-right whitespace-nowrap">
+                                            {expandedTicketId === t.id ? <ChevronUp size={16} className="inline-block" /> : <ChevronDown size={16} className="inline-block" />}
+                                          </td>
+                                        </tr>
+                                        {expandedTicketId === t.id && (
+                                          <tr>
+                                            <td colSpan={5} className="p-0 border-t-0">
+                                              <div className="p-4 bg-[#040f33]">
+                                                {t.description && (
+                                                  <div className="mb-4">
+                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1">Description</h4>
+                                                    <div className="text-[11px] text-[#dbe8ff] bg-[#0b226a]/50 p-3 rounded-xl border border-[#1745b3] whitespace-pre-wrap">
+                                                      {t.description}
                                                     </div>
-                                                  )}
-                                                </div>
-                                              </div>
-                                            );
-                                          })}
-                                        </div>
-                                      </div>
-                                    )}
+                                                  </div>
+                                                )}
+                                                
+                                                {t.attachments && t.attachments.length > 0 && (
+                                                  <div className="mb-4">
+                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-1.5">Attachments</h4>
+                                                    <div className="flex flex-wrap gap-2">
+                                                      {t.attachments.map((att: any, idx: number) => (
+                                                        <a
+                                                          key={att.id || idx}
+                                                          href={att.file_url || att.file || '#'}
+                                                          target="_blank"
+                                                          rel="noreferrer"
+                                                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#1745b3]/30 border border-[#1745b3] hover:bg-[#1745b3] text-[10px] text-[#dbe8ff] transition-colors"
+                                                        >
+                                                          <FileText size={12} className="text-blue-400" />
+                                                          <span>{att.name || `Attachment #${idx + 1}`}</span>
+                                                        </a>
+                                                      ))}
+                                                    </div>
+                                                  </div>
+                                                )}
 
-                                    {!isViewerAdmin && (
-                                      <ReplySection 
-                                        onSendMessage={(msg, file) => handleTicketSendMessage(t.id, msg, file)} 
-                                        isSubmitting={isSendingMessage} 
-                                      />
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                            {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
-                              .filter((t) => {
-                                if (activeTicketTab === 'Open') return t.status === 'Open';
-                                if (activeTicketTab === 'Pending') return t.status === 'In Progress';
-                                if (activeTicketTab === 'Close') return t.status === 'Closed';
-                                return true;
-                              }).length === 0 && !ticketDetailsByUserId[activeModalUser.id]?.loading && (
-                                <p className="text-[#6f92e7] text-xs text-center py-4">No {activeTicketTab.toLowerCase()} tickets found.</p>
-                            )}
+                                                {t.messages && t.messages.length > 0 && (
+                                                  <div className="mb-4">
+                                                    <h4 className="text-[10px] uppercase tracking-wider text-[#8fb8ff] font-bold mb-2">Communication History</h4>
+                                                    <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+                                                      {t.messages.map((msg: any) => {
+                                                        const isAdmin = msg.sender === 'admin';
+                                                        return (
+                                                          <div key={msg.id} className={`flex flex-col ${isAdmin ? 'items-end' : 'items-start'}`}>
+                                                            <div className={`text-[9px] mb-0.5 font-bold ${isAdmin ? 'text-indigo-400' : 'text-blue-400'}`}>
+                                                              {msg.sender_name} • {new Date(msg.created_at).toLocaleString()}
+                                                            </div>
+                                                            <div className={`p-2.5 rounded-xl max-w-[90%] text-[11px] ${
+                                                              isAdmin 
+                                                                ? 'bg-indigo-500/20 border border-indigo-500/30 text-[#dbe8ff] rounded-tr-sm' 
+                                                                : 'bg-[#1745b3]/30 border border-[#1745b3] text-[#dbe8ff] rounded-tl-sm'
+                                                            }`}>
+                                                              {msg.content && <div className="whitespace-pre-wrap">{msg.content}</div>}
+                                                              {msg.file && (
+                                                                <div className="mt-1.5">
+                                                                  <a href={msg.file} target="_blank" rel="noreferrer" className={`inline-flex items-center gap-1 px-1.5 py-1 rounded text-[10px] font-bold ${isAdmin ? 'bg-indigo-500/30 text-indigo-300' : 'bg-[#1745b3] text-blue-300'}`}>
+                                                                    <Paperclip size={10} />
+                                                                    Attachment
+                                                                  </a>
+                                                                </div>
+                                                              )}
+                                                            </div>
+                                                          </div>
+                                                        );
+                                                      })}
+                                                    </div>
+                                                  </div>
+                                                )}
+
+                                                {!isViewerAdmin && (
+                                                  <ReplySection 
+                                                    onSendMessage={(msg, file) => handleTicketSendMessage(t.id, msg, file)} 
+                                                    isSubmitting={isSendingMessage} 
+                                                  />
+                                                )}
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </React.Fragment>
+                                    ))}
+                                  
+                                  {(ticketDetailsByUserId[activeModalUser.id]?.tickets ?? [])
+                                    .filter((t) => {
+                                      if (activeTicketTab === 'Open') return t.status === 'Open';
+                                      if (activeTicketTab === 'Pending') return t.status === 'In Progress';
+                                      if (activeTicketTab === 'Close') return t.status === 'Closed';
+                                      return true;
+                                    }).length === 0 && !ticketDetailsByUserId[activeModalUser.id]?.loading && (
+                                      <tr>
+                                        <td colSpan={5} className="text-[#6f92e7] text-xs text-center py-6">
+                                          No {activeTicketTab.toLowerCase()} tickets found.
+                                        </td>
+                                      </tr>
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
                         </div>
                       )}
@@ -3669,7 +3549,7 @@ export default function AdminUsersPage() {
             </div>
 
             {/* Modal Footer */}
-            {activeModalType !== 'create_user' && activeModalType !== 'profile' && (
+            {activeModalType !== 'create_user' && activeModalType !== 'profile' && activeModalType !== 'transactions' && activeModalType !== 'trading' && activeModalType !== 'tickets' && (
               <div className="p-5 bg-transparent border-t border-[#1745b3] flex justify-end">
                 <button onClick={closeModal} className="px-5 py-2.5 rounded-xl border border-[#1745b3] bg-[#0b226a]/40 hover:bg-[#102c7c] hover:border-[#2450b7] text-slate-300 font-bold text-xs transition-all">
                   Close

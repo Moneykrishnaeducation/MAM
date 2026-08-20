@@ -66,13 +66,13 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
     - Document Subtype (passport, driver_license, aadhaar, pan_card, national_id, emirates_id)
     """
     extracted = {
-        'full_name': None,
-        'dob': None,
-        'doc_number': None,
-        'doc_subtype': 'identity_document',
-        'expiry_date': None,
-        'is_expired': False,
-        'raw_text_length': len(ocr_text) if ocr_text else 0,
+        "full_name": None,
+        "dob": None,
+        "doc_number": None,
+        "doc_subtype": "identity_document",
+        "expiry_date": None,
+        "is_expired": False,
+        "raw_text_length": len(ocr_text) if ocr_text else 0,
     }
 
     if not ocr_text:
@@ -99,9 +99,9 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
         ]
         if parts:
             if len(parts) >= 2:
-                extracted['full_name'] = f"{parts[1]} {parts[0]}".title()
+                extracted["full_name"] = f"{parts[1]} {parts[0]}".title()
             else:
-                extracted['full_name'] = parts[0].title()
+                extracted["full_name"] = parts[0].title()
 
         # DOB from MRZ Line 2 (YYMMDD)
         dob_raw = mrz_p2.group(3)
@@ -152,7 +152,11 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
             extracted["doc_subtype"] = "residence_permit"
         elif "aadhaar" in text_lower or "uidai" in text_lower:
             extracted["doc_subtype"] = "aadhaar"
-        elif re.search(r"\bpan\b", text_lower) or "permanent account" in text_lower or "income tax" in text_lower:
+        elif (
+            re.search(r"\bpan\b", text_lower)
+            or "permanent account" in text_lower
+            or "income tax" in text_lower
+        ):
             extracted["doc_subtype"] = "pan_card"
         elif "voter" in text_lower or "election" in text_lower:
             extracted["doc_subtype"] = "voter_id"
@@ -167,9 +171,9 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
     # Date of Birth (DOB) Extraction if not set by MRZ
     if not extracted["dob"]:
         # Tesseract often inserts spaces into numbers (e.g., "04/1 2/2002"). Remove spaces for robust date matching.
-        text_no_spaces = re.sub(r'\s+', '', text_lower)
-        ocr_no_spaces = re.sub(r'\s+', '', ocr_text)
-        
+        text_no_spaces = re.sub(r"\s+", "", text_lower)
+        ocr_no_spaces = re.sub(r"\s+", "", ocr_text)
+
         dob_match = re.search(
             r"(?:dob|dateofbirth|birthdate|bday|born|datedenaissance|fechadenacimiento)[:]*([0-9]{1,4}[-/.\s][0-9]{1,2}[-/.\s][0-9]{2,4}|[0-9]{1,2}[a-z]{3,9}[0-9]{4})",
             text_no_spaces,
@@ -322,7 +326,7 @@ def extract_identity_fields(ocr_text, user_profile_name=None):
             else:
                 extracted_name = candidates[0]
 
-    extracted['full_name'] = extracted_name
+    extracted["full_name"] = extracted_name
 
     return extracted
 
@@ -370,9 +374,9 @@ def verify_identity_document(user, document_instance, file_path, ocr_text, quali
     (matching_scores: dict, extracted_data: dict, verification_warnings: list)
     """
     warnings = []
-    profile_full_name = getattr(user, 'name', '').strip()
+    profile_full_name = getattr(user, "name", "").strip()
     if not profile_full_name:
-        profile_full_name = getattr(user, 'email', '')
+        profile_full_name = getattr(user, "email", "")
 
     extracted = extract_identity_fields(ocr_text, user_profile_name=profile_full_name)
 
@@ -382,14 +386,16 @@ def verify_identity_document(user, document_instance, file_path, ocr_text, quali
     extracted["face_count"] = face_count
 
     # 1. Compare Full Name against User Profile
-    doc_name = extracted.get('full_name') or ocr_text  # Fallback to full OCR text if structured name extract missing
+    doc_name = (
+        extracted.get("full_name") or ocr_text
+    )  # Fallback to full OCR text if structured name extract missing
     name_score = compare_names(profile_full_name, doc_name)
 
     if name_score < 50.0:
         warnings.append(f"Name mismatch: Profile '{profile_full_name}' vs Document Name.")
 
     # 2. Compare Date of Birth (DOB)
-    profile_dob = getattr(user, 'date_of_birth', None)
+    profile_dob = getattr(user, "date_of_birth", None)
     dob_score = 50.0  # Default neutral score if DOB not on profile or document
 
     if profile_dob and extracted.get("dob"):

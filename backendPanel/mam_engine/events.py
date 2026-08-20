@@ -73,4 +73,3 @@ class TradeExecutionResult:
     mt5_send_ms: float = 0.0
     total_latency_ms: float = 0.0
     verified: bool = False
-

@@ -43,7 +43,9 @@ def _serialize_transaction(transaction: ClientTransaction, user: ClientUser | No
     source_value = normalize_transaction_source(transaction.source)
     if not source_value:
         role = str(transaction.role or "").strip()
-        action = str(transaction.transaction_type or transaction.payment_method or "Transaction").strip()
+        action = str(
+            transaction.transaction_type or transaction.payment_method or "Transaction"
+        ).strip()
         action = action.replace("-", " ").replace("_", " ").title() or "Transaction"
         source_value = " ".join(part for part in [role, action] if part).strip() or "Transaction"
     return {

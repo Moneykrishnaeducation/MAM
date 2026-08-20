@@ -23,6 +23,7 @@ from clientPanel.view.documents import _save_uploaded_document
 
 logger = logging.getLogger(__name__)
 
+
 def _run_verification_pipeline(profile, file_path, document_type, identity_doc_number=None):
     """Runs the OCR and verification rules dynamically."""
     abs_path = os.path.join(settings.MEDIA_ROOT, file_path)
@@ -40,10 +41,19 @@ def _run_verification_pipeline(profile, file_path, document_type, identity_doc_n
     fraud_result = (False, "")
 
     # 5. Extract & Verify
-    if document_type == 'identity':
-        scores_dict, extracted_data, warnings = verify_identity_document(profile, None, abs_path, ocr_text, quality_metrics)
+    if document_type == "identity":
+        scores_dict, extracted_data, warnings = verify_identity_document(
+            profile, None, abs_path, ocr_text, quality_metrics
+        )
     else:
-        scores_dict, extracted_data, warnings = verify_residence_document(profile, None, abs_path, ocr_text, quality_metrics, identity_doc_number=identity_doc_number)
+        scores_dict, extracted_data, warnings = verify_residence_document(
+            profile,
+            None,
+            abs_path,
+            ocr_text,
+            quality_metrics,
+            identity_doc_number=identity_doc_number,
+        )
 
     # 6. Evaluate final decision
     decision, final_score, reason, decision_warnings = evaluate_verification_decision(
@@ -52,7 +62,7 @@ def _run_verification_pipeline(profile, file_path, document_type, identity_doc_n
         quality_metrics=quality_metrics,
         classification_result=classification_result,
         fraud_result=fraud_result,
-        warnings=warnings
+        warnings=warnings,
     )
 
     return decision, final_score, reason, extracted_data, decision_warnings
@@ -89,12 +99,8 @@ async def verify_identity_api(request):
     doc.identity_file_path = file_url
     doc.identity_extracted_data = extracted_data
 
-    status_mapping = {
-        'approved': 'approved',
-        'manual_review': 'pending',
-        'rejected': 'rejected'
-    }
-    db_status = status_mapping.get(decision, 'pending')
+    status_mapping = {"approved": "approved", "manual_review": "pending", "rejected": "rejected"}
+    db_status = status_mapping.get(decision, "pending")
     doc.identity_status = db_status
     doc.identity_uploaded_at = timezone.now()
     await doc.save()
@@ -119,7 +125,7 @@ async def verify_identity_api(request):
         "document": file_url,
         "extracted_data": extracted_data,
         "verification_errors": warnings,
-        "uploaded_at": doc.identity_uploaded_at.isoformat()
+        "uploaded_at": doc.identity_uploaded_at.isoformat(),
     }
 
     return JsonResponse(response_data, status=201)
@@ -161,12 +167,8 @@ async def verify_residence_api(request):
     doc.address_file_path = file_url
     doc.address_extracted_data = extracted_data
 
-    status_mapping = {
-        'approved': 'approved',
-        'manual_review': 'pending',
-        'rejected': 'rejected'
-    }
-    db_status = status_mapping.get(decision, 'pending')
+    status_mapping = {"approved": "approved", "manual_review": "pending", "rejected": "rejected"}
+    db_status = status_mapping.get(decision, "pending")
     doc.address_status = db_status
     doc.address_uploaded_at = timezone.now()
     await doc.save()
@@ -191,7 +193,7 @@ async def verify_residence_api(request):
         "document": file_url,
         "extracted_data": extracted_data,
         "verification_errors": warnings,
-        "uploaded_at": doc.address_uploaded_at.isoformat()
+        "uploaded_at": doc.address_uploaded_at.isoformat(),
     }
 
     return JsonResponse(response_data, status=201)
