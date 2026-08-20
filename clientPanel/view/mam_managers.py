@@ -152,7 +152,7 @@ async def get_my_mam_manager_detail(request, account_id: str):
     if user_id is None:
         return _error("Authenticated session is required", status=401)
 
-    manager, investor_count = await _load_manager_detail(user_id=user_id, account_id=account_id)
+    manager, investors, investor_count = await _load_manager_detail(user_id=user_id, account_id=account_id)
     if manager is None:
         return _error(f"MAM Manager account {account_id} not found or access denied", status=404)
 
