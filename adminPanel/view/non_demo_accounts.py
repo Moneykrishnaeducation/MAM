@@ -63,10 +63,7 @@ async def non_demo_accounts_api(request):
                     "id": acc.id,
                     "account_id": acc_id,
                     "user_name": name,
-                    "user_email": email,
                     "balance": balance,
-                    "group_name": group_name,
-                    "group_alias": group_alias,
                     "account_type": acc.account_type,
                 }
             )

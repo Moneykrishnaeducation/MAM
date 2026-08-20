@@ -217,7 +217,7 @@ async def list_admin_transactions(request):
         "internal_count": sum(
             1 for transaction in transactions if _transaction_family(transaction) == "internal"
         ),
-        "total_volume": sum(float(transaction.amount or 0.0) for transaction in transactions),
+        # "total_volume": sum(float(transaction.amount or 0.0) for transaction in transactions),
     }
 
     raw_page = request.GET.get("page")
