@@ -101,6 +101,9 @@ def _transaction_matches_filters(
                 created_date.isoformat() if created_date else "",
                 f"TXN-{transaction.id}",
                 str(transaction.amount),
+                str(transaction.account_number or ""),
+                str(transaction.account_id_from or ""),
+                str(transaction.account_id_to or ""),
             ]
         ).lower()
 
