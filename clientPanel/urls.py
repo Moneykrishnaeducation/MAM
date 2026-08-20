@@ -3,7 +3,11 @@
 from django.urls import path
 
 from backendPanel.permissions import IsClient, permission_required
-from clientPanel.view.account import create_client_trading_account, get_client_account
+from clientPanel.view.account import (
+    create_client_trading_account,
+    get_client_account,
+    get_client_trading_accounts,
+)
 from clientPanel.view.activity_logs import get_client_activity_logs
 from clientPanel.view.dashboard import get_client_dashboard
 from clientPanel.view.deposit import create_client_deposit
@@ -63,6 +67,7 @@ urlpatterns = [
     path("payment-details", client_only(client_payment_details), name="payment-details"),
     path("documents", client_only(client_documents), name="documents"),
     path("account", client_only(get_client_account), name="account"),
+    path("trading-accounts", client_only(get_client_trading_accounts), name="trading-accounts"),
     path("accounts/create", client_only(create_client_trading_account), name="create-account"),
     path("mam-managers", client_only(list_mam_managers), name="mam-managers-list"),
     path("my-mam-managers", client_only(list_my_mam_managers), name="my-mam-managers-list"),

@@ -138,40 +138,8 @@ async def get_client_dashboard(request):
                     "kyc_status": profile.kyc_status,
                 },
                 "cards": cards,
-                "recent_activity_logs": [_serialize_activity_log(log) for log in activity_logs],
+                # "recent_activity_logs": [_serialize_activity_log(log) for log in activity_logs],
                 "recent_transactions": serialized_txs,
-                "account": {
-                    "user_id": accounts[0].user_id if accounts else profile.id,
-                    "account_number": accounts[0].account_number,
-                    "server": accounts[0].server,
-                    "balance": float(accounts[0].balance),
-                    "equity": float(accounts[0].equity),
-                    "margin_free": float(accounts[0].margin_free),
-                    "leverage": accounts[0].leverage,
-                    "currency": accounts[0].currency,
-                    "status": accounts[0].status,
-                }
-                if accounts
-                else None,
-                "trading_accounts": [
-                    {
-                        "account_id": acc.account_id,
-                        "account_type": acc.account_type,
-                        "account_name": acc.account_name,
-                        "balance": float(acc.balance),
-                        "status": acc.status,
-                    }
-                    for acc in trading_accounts
-                ],
-                "investments": [
-                    {
-                        "id": inv.id,
-                        "manager_name": inv.manager_name,
-                        "allocated_amount": float(inv.allocated_amount),
-                        "status": inv.status,
-                    }
-                    for inv in investments
-                ],
             },
         }
     )

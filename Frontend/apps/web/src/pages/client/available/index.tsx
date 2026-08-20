@@ -666,12 +666,8 @@ export default function ClientAvailablePage() {
               <div className="flex flex-col items-center gap-3 shrink-0">
                 <div className="relative">
                   <img
-                    src={
-                      isAssigned
-                        ? managerInfo.avatar
-                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(highlightedManager.name)}&background=1e293b&color=34d399&size=128&bold=true`
-                    }
-                    alt={highlightedManager.name}
+                      src={highlightedManager.avatar}
+                      alt={highlightedManager.name}
                     className="w-24 h-24 md:w-28 md:h-28 rounded-2xl object-cover ring-2 ring-emerald-500/40 shadow-xl"
                   />
                   <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full border-2 border-slate-900 shadow" />
@@ -868,7 +864,7 @@ export default function ClientAvailablePage() {
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <img
-                              src={isClientManager ? managerInfo.avatar : `https://ui-avatars.com/api/?name=${encodeURIComponent(mgr.name)}&background=1e293b&color=34d399&size=64&bold=true`}
+                              src={mgr.avatar}
                               alt={mgr.name}
                               className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-700"
                             />

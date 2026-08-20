@@ -234,3 +234,28 @@ async def create_client_trading_account(request):
                 },
             }
         )
+
+@permission_required(IsClient)
+async def get_client_trading_accounts(request):
+    """Load all trading accounts for the logged-in client."""
+    await ensure_db_initialized()
+    profile, error = await _get_client_profile_for_request(request)
+    if error:
+        return error
+
+    trading_accounts = await TradingAccount.filter(user_id=profile.id).all()
+    return JsonResponse(
+        {
+            "status": "ok",
+            "trading_accounts": [
+                {
+                    "account_id": acc.account_id,
+                    "account_type": acc.account_type,
+                    "account_name": acc.account_name,
+                    "balance": float(acc.balance),
+                    "status": acc.status,
+                }
+                for acc in trading_accounts
+            ],
+        }
+    )

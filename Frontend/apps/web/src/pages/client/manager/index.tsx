@@ -548,11 +548,7 @@ export default function ClientManagerPage() {
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <img
-                              src={
-                                isClientManager
-                                  ? managerInfo.avatar
-                                  : `https://ui-avatars.com/api/?name=${encodeURIComponent(mgr.name)}&background=1e293b&color=34d399&size=64&bold=true`
-                              }
+                              src={mgr.avatar}
                               alt={mgr.name}
                               className="w-9 h-9 rounded-xl object-cover ring-1 ring-slate-700"
                             />
@@ -803,11 +799,7 @@ export default function ClientManagerPage() {
                 <div className="flex flex-col items-center gap-3 shrink-0">
                   <div className="relative">
                     <img
-                      src={
-                        isAssigned
-                          ? managerInfo.avatar
-                          : `https://ui-avatars.com/api/?name=${encodeURIComponent(activeManager.name)}&background=1e293b&color=34d399&size=128&bold=true`
-                      }
+                      src={activeManager.avatar}
                       alt={activeManager.name}
                       className="w-24 h-24 md:w-28 md:h-28 rounded-2xl object-cover ring-2 ring-emerald-500/40 shadow-xl"
                     />
@@ -936,7 +928,6 @@ export default function ClientManagerPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedManager(null);
                           setShowDepositModal(true);
                         }}
                         className={`px-5 py-2.5 rounded-lg font-black text-sm transition-all uppercase tracking-widest hover:scale-105 ${goldButtonClass}`}
@@ -946,7 +937,6 @@ export default function ClientManagerPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedManager(null);
                           setShowWithdrawalModal(true);
                         }}
                         className={`px-5 py-2.5 rounded-lg border text-white font-bold transition-all hover:scale-105 text-sm flex items-center gap-2 ${isDarkMode ? 'border-slate-800 bg-white/5 hover:bg-white/10' : 'border-blue-700/50 hover:bg-blue-800/30'}`}
@@ -1435,6 +1425,7 @@ export default function ClientManagerPage() {
           onClose={() => setShowWithdrawalModal(false)}
           isDarkMode={isDarkMode}
           currentAccount={currentAccountLabel}
+          currentBalance={toNumber(activeManager?.balance || managerInfo?.balance || clientAccount?.balance)}
         />
       )}
 

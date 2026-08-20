@@ -74,12 +74,11 @@ type ClientDashboardPayload = {
     status: string;
     date: string;
   }[];
-  trading_accounts?: {
-    account_id: string;
-    account_type: string;
-    account_name: string;
-    balance: number;
-    status: string;
+  investments?: {
+    id: number | string;
+    manager_name?: string;
+    allocated_amount?: number;
+    status?: string;
   }[];
 };
 
@@ -763,6 +762,24 @@ export default function ClientDashboardPage() {
   const [selectedDepositAccount, setSelectedDepositAccount] = useState('');
   const [depositAccountMenuOpen, setDepositAccountMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [tradingAccounts, setTradingAccounts] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (showDepositModal || showWithdrawModal) {
+      const fetchAccounts = async () => {
+        if (tradingAccounts.length > 0) return;
+        try {
+          const res = await fetchClientEndpoint<any>('/api/client/trading-accounts');
+          if (res?.trading_accounts) {
+            setTradingAccounts(res.trading_accounts);
+          }
+        } catch (error) {
+          console.error("Failed to fetch trading accounts:", error);
+        }
+      };
+      fetchAccounts();
+    }
+  }, [showDepositModal, showWithdrawModal, tradingAccounts.length]);
 
   useEffect(() => {
     let isMounted = true;
@@ -1098,7 +1115,7 @@ export default function ClientDashboardPage() {
                         <span className="truncate">
                           {selectedDepositAccount
                             ? (() => {
-                                const matchedAccount = dashboardData?.trading_accounts?.find((acc) => acc.account_id === selectedDepositAccount);
+                                const matchedAccount = tradingAccounts?.find((acc) => acc.account_id === selectedDepositAccount);
                                 if (matchedAccount) {
                                   return `${matchedAccount.account_type === 'MAM' ? 'MAM Master' : 'MAM Investor'} (${matchedAccount.account_id}) - ${formatCurrency(matchedAccount.balance)}`;
                                 }
@@ -1110,7 +1127,7 @@ export default function ClientDashboardPage() {
                       </button>
                       {depositAccountMenuOpen && (
                         <div className="absolute left-0 right-0 top-full z-20 mt-2 max-h-64 overflow-y-auto overflow-x-hidden rounded-2xl border border-white/10 bg-[#071a57] shadow-2xl custom-scrollbar">
-                          {dashboardData?.trading_accounts?.map((acc) => (
+                          {tradingAccounts?.map((acc) => (
                             <button
                               key={acc.account_id}
                               type="button"
@@ -1262,7 +1279,7 @@ export default function ClientDashboardPage() {
             accountCurrency={clientAccount?.currency}
             accountServer={clientAccount?.server}
             accountStatus={clientAccount?.status}
-            tradingAccounts={dashboardData?.trading_accounts}
+            tradingAccounts={tradingAccounts}
           />
 
           <AccountOpenModal showModal={showAccountOpenModal} setShowModal={setShowAccountOpenModal} isDarkMode={false} />

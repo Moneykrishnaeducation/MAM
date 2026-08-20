@@ -18,7 +18,10 @@ from clientPanel.view.common import _error, _resolve_client_user_id
 logger = logging.getLogger(__name__)
 
 
-def _manager_avatar(name: str) -> str:
+def _manager_avatar(mgr: TradingAccount) -> str:
+    if mgr and mgr.user and mgr.user.avatar:
+        return mgr.user.avatar
+    name = mgr.account_name or (mgr.user.name if mgr and mgr.user else "Unknown")
     return (
         f"https://ui-avatars.com/api/?name={name.replace(' ', '+')}&background=1e293b&color=34d399&size=128&bold=true"
     )
@@ -61,7 +64,7 @@ def _serialize_manager_row(mgr: TradingAccount, investor_count: int) -> dict:
     strategy = _manager_strategy(mgr)
     fee = _manager_fee(mgr)
     aum = float(mgr.balance)
-    avatar = _manager_avatar(name)
+    avatar = _manager_avatar(mgr)
     return {
         "id": mgr.id,
         "account_id": account_id,
@@ -149,56 +152,51 @@ async def get_my_mam_manager_detail(request, account_id: str):
     if user_id is None:
         return _error("Authenticated session is required", status=401)
 
-    manager, investors, investor_count = await _load_manager_detail(user_id=user_id, account_id=account_id)
+    manager, investor_count = await _load_manager_detail(user_id=user_id, account_id=account_id)
     if manager is None:
         return _error(f"MAM Manager account {account_id} not found or access denied", status=404)
 
-    manager_row = _serialize_manager_row(manager, investor_count)
-    
     pending_rows = await ProfitShareHistory.filter(master_login=str(manager.account_id), status="Pending").values("commission_amount")
     pending_wallet = sum(float(r["commission_amount"] or 0) for r in pending_rows)
 
     settled_rows = await ProfitShareHistory.filter(master_login=str(manager.account_id), status="Completed").values("commission_amount")
     settled_value = sum(float(r["commission_amount"] or 0) for r in settled_rows)
+
+    name = manager.account_name or (manager.user.name if manager.user else "") or ""
     
-    manager_row.pop("account_settings", None)
-    manager_row.pop("investorsList", None)
+    manager_detail = {
+        "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
+        "role": manager.risk_level or "MAM Portfolio Manager",
+        "phone": str(manager.account_id or ""),
+        "avatar": _manager_avatar(manager),
+        "investors_count": investor_count,
+        "performanceSummary": {
+            "aum": float(manager.balance or 0.0),
+            "netBalance": float(manager.balance or 0.0),
+            "totalProfit": float(max(float(manager.balance or 0.0) - float(manager.equity or 0.0), 0.0)),
+            "performanceFee": manager.profit_sharing_percentage or 20.0,
+            "status": manager.status or "Active",
+            "leverage": f"1:{manager.leverage}",
+        },
+        "wallet": {
+            "pending": pending_wallet,
+            "settled": settled_value,
+            "liveManagers": investor_count,
+        },
+        "configuration": {
+            "accountName": name,
+            "payoutCycle": manager.payout_frequency or "weekly",
+            "algoTrading": "Automatic"
+            if manager.copy_trade_enabled or manager.dual_trade_enabled
+            else "Manual",
+            "status": manager.status or "Active",
+            "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
+            "strategy": manager.risk_level or "Quantitative Grid",
+            "performanceFee": f"{manager.profit_sharing_percentage or 20.0}%",
+        },
+    }
 
-    manager_row.update(
-        {
-            "experience": f"Linked {investor_count} live investment{'s' if investor_count != 1 else ''}",
-            "role": manager.risk_level or "MAM Portfolio Manager",
-            "phone": str(manager.account_id or ""),
-            "avatar": _manager_avatar(manager_row["name"]),
-            "investors_count": investor_count,
-            "performanceSummary": {
-                "aum": float(manager.balance or 0.0),
-                "netBalance": float(manager.balance or 0.0),
-                "totalProfit": float(max(float(manager.balance or 0.0) - float(manager.equity or 0.0), 0.0)),
-                "performanceFee": manager.profit_sharing_percentage or 20.0,
-                "status": manager.status or "Active",
-                "leverage": f"1:{manager.leverage}",
-            },
-            "wallet": {
-                "pending": pending_wallet,
-                "settled": settled_value,
-                "liveManagers": investor_count,
-            },
-            "configuration": {
-                "accountName": manager.account_name or manager_row["name"],
-                "payoutCycle": manager.payout_frequency or "weekly",
-                "algoTrading": "Automatic"
-                if manager.copy_trade_enabled or manager.dual_trade_enabled
-                else "Manual",
-                "status": manager.status or "Active",
-                "masterSecurity": "Enabled" if manager.is_enabled else "Disabled",
-                "strategy": manager.risk_level or "Quantitative Grid",
-                "performanceFee": f"{manager.profit_sharing_percentage or 20.0}%",
-            },
-        }
-    )
-
-    return JsonResponse({"status": "ok", "manager": manager_row})
+    return JsonResponse({"status": "ok", "manager": manager_detail})
 
 
 def _render_investor_credentials_email(
@@ -326,6 +324,7 @@ async def list_my_mam_managers(request):
                 "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
                 "status": m.status or "Active",
                 "investors_count": investor_counts.get(m.id, 0),
+                "avatar": _manager_avatar(m),
             }
         )
 
@@ -421,6 +420,7 @@ async def list_mam_managers(request):
                 "performance_fee": f"{m.profit_sharing_percentage or 20.0}%",
                 "status": m.status or "Active",
                 "investors_count": investor_counts.get(m.id, 0),
+                "avatar": _manager_avatar(m),
             }
         )
 

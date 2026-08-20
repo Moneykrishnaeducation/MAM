@@ -1094,6 +1094,7 @@ export default function ClientMyInvestPage() {
           onClose={() => setShowWithdrawModal(false)}
           isDarkMode={isDarkMode}
           currentAccount={selectedInvestmentId}
+          currentBalance={selectedInvModal ? toNumber(selectedInvModal.currentValue) : null}
         />
       )}
 

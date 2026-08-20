@@ -34,6 +34,7 @@ export type AdminManagerSummary = {
   aum?: number | string | null;
   performance_fee?: number | string | null;
   status?: string | null;
+  avatar?: string | null;
 };
 
 export type ManagerLinkItem = {
@@ -167,7 +168,7 @@ export const buildManagerRows = (
       role: strategy,
       experience: `Linked ${linkedRows.length} live investment${linkedRows.length === 1 ? '' : 's'}`,
       phone: `AUM ${aum}`,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(manager.name)}&background=1e293b&color=34d399&size=128&bold=true`,
+      avatar: manager.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(manager.name)}&background=1e293b&color=34d399&size=128&bold=true`,
       strategy,
       aum,
       performanceFee,

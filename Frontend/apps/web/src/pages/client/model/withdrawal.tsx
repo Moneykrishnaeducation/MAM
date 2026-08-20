@@ -80,7 +80,8 @@ const NumberTicker = ({ value }: { value: number }) => (
 export default function WithdrawalModal({ 
   onClose, 
   isDarkMode = false, 
-  currentAccount = null 
+  currentAccount = null,
+  currentBalance = null
 }: any) {
   const router = useRouter();
   
@@ -99,8 +100,8 @@ export default function WithdrawalModal({
 
   const [bankDetails, setBankDetails] = useState<any>(null);
   const [cryptoDetails, setCryptoDetails] = useState<any>(null);
-  const [availableBalance, setAvailableBalance] = useState<number>(0);
-  const [accounts, setAccounts] = useState<any[]>([]);
+  const [availableBalance, setAvailableBalance] = useState<number>(currentBalance || 0);
+  const [accounts, setAccounts] = useState<any[]>(currentAccount ? [{ account_id: currentAccount, balance: currentBalance || 0 }] : []);
   const withdrawalInfo = { minimum_withdrawal: 10 };
 
   useEffect(() => {
@@ -108,29 +109,31 @@ export default function WithdrawalModal({
 
     const loadData = async () => {
       try {
-        const accRes = await fetch("/api/client/account", { credentials: "include" });
-        if (accRes.ok && active) {
-          const data = await accRes.json();
-          let accList: any[] = [];
-          if (data && Array.isArray(data.accounts) && data.accounts.length > 0) {
-            accList = data.accounts.map((a: any) => ({
-              account_id: a.account_number,
-              balance: Number(a.balance || 0),
-            }));
-          } else if (data && data.account) {
-            accList = [{
-              account_id: data.account.account_number,
-              balance: Number(data.account.balance || 0),
-            }];
-          }
-          setAccounts(accList);
+        if (!currentAccount && !currentBalance) {
+          const accRes = await fetch("/api/client/account", { credentials: "include" });
+          if (accRes.ok && active) {
+            const data = await accRes.json();
+            let accList: any[] = [];
+            if (data && Array.isArray(data.accounts) && data.accounts.length > 0) {
+              accList = data.accounts.map((a: any) => ({
+                account_id: a.account_number,
+                balance: Number(a.balance || 0),
+              }));
+            } else if (data && data.account) {
+              accList = [{
+                account_id: data.account.account_number,
+                balance: Number(data.account.balance || 0),
+              }];
+            }
+            setAccounts(accList);
 
-          const initialAccount = currentAccount || selectedAccount || (accList.length > 0 ? accList[0].account_id : "");
-          if (initialAccount) {
-            setSelectedAccount(initialAccount);
-            const matched = accList.find(a => String(a.account_id) === String(initialAccount));
-            if (matched) {
-              setAvailableBalance(matched.balance);
+            const initialAccount = currentAccount || selectedAccount || (accList.length > 0 ? accList[0].account_id : "");
+            if (initialAccount) {
+              setSelectedAccount(initialAccount);
+              const matched = accList.find(a => String(a.account_id) === String(initialAccount));
+              if (matched) {
+                setAvailableBalance(matched.balance);
+              }
             }
           }
         }
