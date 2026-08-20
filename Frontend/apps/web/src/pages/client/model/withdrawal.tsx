@@ -29,7 +29,7 @@ const ModalWrapper = ({
 }) => (
   <AnimatePresence>
     <motion.div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4"
+      className="fixed inset-0 z-[200000] flex items-start justify-center overflow-y-auto p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}

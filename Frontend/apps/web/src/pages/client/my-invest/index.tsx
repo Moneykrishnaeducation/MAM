@@ -15,8 +15,8 @@ const Modal: React.FC<{ title: string; onClose: () => void; children?: React.Rea
     : 'border-[#1d53ca] bg-[linear-gradient(180deg,#071a57_0%,#08286f_100%)] shadow-[0_24px_60px_rgba(4,15,54,0.36)]';
   const borderMutedClass = isDarkMode ? 'border-white/10' : 'border-[#1745b3]';
   return (
-    <div className="fixed inset-0 z-[99999] bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-      <div className={`relative z-[100000] w-full max-w-[1000px] rounded-[2rem] border overflow-hidden flex flex-col max-h-[95vh] ${panelClass}`}>
+    <div className="fixed inset-0 z-40 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+      <div className={`relative w-full max-w-[1000px] rounded-[2rem] border overflow-hidden flex flex-col max-h-[95vh] ${panelClass}`}>
         <div className={`flex items-center justify-between px-6 py-5 border-b ${borderMutedClass}`}>
           <h3 className="text-[17px] font-extrabold text-white tracking-wide">{title}</h3>
           <button onClick={onClose} className={`transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-white/70 hover:text-white'}`}>
@@ -43,8 +43,8 @@ type ClientInvestment = {
   copyFactor?: number;
   multiTradeCount?: number;
   managerAccountId?: string;
+  avatar?: string;
 };
-
 
 type ClientInvestmentApi = {
   id: number | string;
@@ -57,6 +57,7 @@ type ClientInvestmentApi = {
   current_value?: number | string | null;
   return_pct?: number | string | null;
   status?: string | null;
+  avatar?: string | null;
 };
 
 async function fetchClientEndpoint<T>(endpoint: string, options: RequestInit = {}): Promise<T | null> {
@@ -226,6 +227,7 @@ export default function ClientMyInvestPage() {
           copyFactor: toNumber(investment.copy_factor ?? 1.0),
           multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
           managerAccountId: String(investment.manager_account_id || ''),
+          avatar: String(investment.avatar || ''),
         }));
 
         if (!active) {
@@ -496,6 +498,7 @@ export default function ClientMyInvestPage() {
                 copyFactor: toNumber(investment.copy_factor ?? 1.0),
                 multiTradeCount: toNumber(investment.multi_trade_count ?? 1),
                 managerAccountId: String(investment.manager_account_id || ''),
+                avatar: String(investment.avatar || ''),
               }))
             : [];
           setInvestments(normalized);
@@ -751,9 +754,11 @@ export default function ClientMyInvestPage() {
                         {/* Strategy */}
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-blue-900 font-extrabold text-sm shadow-sm shrink-0">
-                              {inv.strategy.charAt(0).toUpperCase()}
-                            </div>
+                            <img
+                              src={inv.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(inv.manager)}&background=1e293b&color=34d399&size=64&bold=true`}
+                              alt={inv.manager}
+                              className="w-10 h-10 rounded-xl object-cover shadow-sm shrink-0 ring-1 ring-slate-700/50"
+                            />
                             <div>
                               <div className={`font-bold text-[14px] ${isDarkMode ? 'text-white' : 'text-white'}`}>
                                 {inv.strategy}

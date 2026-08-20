@@ -18,6 +18,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from tortoise import Tortoise
 
+from adminPanel.audit import create_audit_log
 from backendPanel.mail_queue import queue_email_message
 from adminPanel.models import (
     ActivityLog,
@@ -409,8 +410,29 @@ async def list_client_users(request):
     per_page = _parse_positive_int(raw_per_page, 10)
 
     client_users = await ClientUser.all()
-    results = []
+    filtered_users = []
+
     for user in client_users:
+        u_id_str = user.user_code or f"USR-{user.id:03d}"
+        if search_q:
+            haystack = f"{user.name} {user.email} {user.phone or ''} {u_id_str}".lower()
+            if search_q not in haystack:
+                continue
+        filtered_users.append(user)
+
+    total = len(filtered_users)
+
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        page_users = filtered_users[start_index:end_index]
+    else:
+        page_users = filtered_users
+
+    results = []
+    for user in page_users:
         bank_detail = None
         crypto_detail = None
         bank_detail, crypto_detail = await get_client_payment_details(user)
@@ -505,40 +527,11 @@ async def list_client_users(request):
                 "tickets": [],
             }
         )
-    total = len(results)
 
     if paginate:
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        page = min(page, total_pages)
-        start_index = (page - 1) * per_page
-        end_index = start_index + per_page
-
-        # Apply basic search filtering on the server side if requested
-        if search_q:
-            filtered = [
-                r
-                for r in results
-                if search_q
-                in (
-                    str(r.get("name") or "")
-                    + " "
-                    + str(r.get("email") or "")
-                    + " "
-                    + str(r.get("id") or "")
-                ).lower()
-            ]
-            total = len(filtered)
-            total_pages = max(1, (total + per_page - 1) // per_page)
-            page = min(page, total_pages)
-            start_index = (page - 1) * per_page
-            end_index = start_index + per_page
-            paginated_results = filtered[start_index:end_index]
-        else:
-            paginated_results = results[start_index:end_index]
-
         response = {
             "status": "ok",
-            "users": paginated_results,
+            "users": results,
             "pagination": {
                 "page": page,
                 "per_page": per_page,
@@ -823,18 +816,32 @@ async def list_managers(request):
     per_page = _parse_positive_int(raw_per_page, 10)
 
     managers = await TradingAccount.filter(account_type="MAM").prefetch_related("user").all()
-    results = []
-
+    filtered_managers = []
+    
     for m in managers:
         name = m.account_name or (m.user.name if m.user else "MAM Manager")
         email = m.user.email if m.user else "manager@mam.com"
         acc_id = m.account_id or ""
-
+        
         if search_q:
             haystack = f"{name} {email} {acc_id}".lower()
             if search_q not in haystack:
                 continue
-
+        filtered_managers.append((m, name, email, acc_id))
+        
+    total = len(filtered_managers)
+    
+    if paginate:
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = min(page, total_pages)
+        start_index = (page - 1) * per_page
+        end_index = start_index + per_page
+        page_managers = filtered_managers[start_index:end_index]
+    else:
+        page_managers = filtered_managers
+        
+    results = []
+    for m, name, email, acc_id in page_managers:
         balance_value = float(m.balance or 0.0)
         equity_value = float(m.equity or 0.0)
         credit_value = float(m.credit or 0.0)
@@ -864,18 +871,10 @@ async def list_managers(request):
             }
         )
 
-    total = len(results)
-
     if paginate:
-        total_pages = max(1, (total + per_page - 1) // per_page)
-        page = min(page, total_pages)
-        start_index = (page - 1) * per_page
-        end_index = start_index + per_page
-        paginated_results = results[start_index:end_index]
-
         response = {
             "status": "ok",
-            "managers": paginated_results,
+            "managers": results,
             "pagination": {
                 "page": page,
                 "per_page": per_page,
@@ -913,7 +912,7 @@ async def list_investors(request):
     page = _parse_positive_int(raw_page, 1)
     per_page = _parse_positive_int(raw_per_page, 10)
 
-    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user")
+    investors = await TradingAccount.filter(account_type="Investor").prefetch_related("user", "mam_master_account")
     results = []
     for i in investors:
         name = i.user.name if i.user else "Investor User"
@@ -925,10 +924,7 @@ async def list_investors(request):
             if search_q not in haystack:
                 continue
 
-        try:
-            mam_master = await i.mam_master_account
-        except Exception:
-            mam_master = None
+        mam_master = i.mam_master_account
 
         results.append(
             {

@@ -172,7 +172,7 @@ export default function DepositModal({
   return (
     <AnimatePresence>
       {showDepositModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden">
+        <div className="fixed inset-0 z-[200000] flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-hidden">
           {showToast && (
             <div className={`fixed top-6 right-6 font-bold px-5 py-3 rounded-2xl shadow-lg flex items-center gap-2 border z-[999999] animate-in fade-in slide-in-from-top-4 duration-300 ${
               isDarkMode

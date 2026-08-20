@@ -10,6 +10,7 @@ from adminPanel.mt5.services import MT5ManagerActions
 from backendPanel.database import ensure_db_initialized
 from backendPanel.permissions import IsClient, permission_required
 from clientPanel.view.common import _error, _get_client_profile_for_request, _resolve_client_user_id
+from clientPanel.view.mam_managers import _manager_avatar
 
 
 @permission_required(IsClient)
@@ -76,6 +77,7 @@ async def get_client_investments(request):
                 "manager_account_id": inv.mam_master_account.account_id
                 if inv.mam_master_account
                 else None,
+                "avatar": _manager_avatar(inv.mam_master_account) if inv.mam_master_account else f"https://ui-avatars.com/api/?name={manager_name.replace(' ', '+')}&background=1e293b&color=34d399&size=128&bold=true",
             }
         )
 
