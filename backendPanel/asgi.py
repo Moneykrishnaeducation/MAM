@@ -114,6 +114,13 @@ async def application(scope, receive, send):
                         start_mail_queue_thread(interval_seconds=5.0, batch_size=100)
                     except Exception as mail_err:
                         logger.warning(f"[STARTUP] Could not start mail queue thread: {mail_err}")
+                    try:
+                        from backendPanel.MPIB_DB import start_mam_engine_thread
+
+                        logger.info("[STARTUP] Initializing MAM Copy Engine background thread...")
+                        start_mam_engine_thread()
+                    except Exception as mam_err:
+                        logger.warning(f"[STARTUP] Could not start MAM engine thread: {mam_err}")
                     await send({"type": "lifespan.startup.complete"})
                 elif message["type"] == "lifespan.shutdown":
                     if _global_tortoise_ctx is not None:

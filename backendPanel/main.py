@@ -72,7 +72,6 @@ if not settings.configured:
 
 if __name__ == "__main__":
     import uvicorn
-    import threading
     import sys
 
     # Acquire process lock on the main thread to prevent starting if another instance is running
@@ -90,11 +89,9 @@ if __name__ == "__main__":
 
     # Start MAM copy trading engine in a background thread
     try:
-        from backendPanel.MPIB_DB import run_mam_script
+        from backendPanel.MPIB_DB import start_mam_engine_thread
 
-        mam_thread = threading.Thread(target=run_mam_script, name="MAM_Engine", daemon=True)
-        mam_thread.start()
-        print("🚀 Started MAM copy trading engine background thread.")
+        start_mam_engine_thread()
     except Exception as e:
         print(f"⚠️ Failed to start MAM engine: {e}")
 

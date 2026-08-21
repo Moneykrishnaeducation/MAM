@@ -95,6 +95,25 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+_mam_thread_started = False
+
+
+def start_mam_engine_thread() -> bool:
+    """Safely initialize MAM copy engine in a background thread if not already running."""
+    global _mam_thread_started
+    if _mam_thread_started:
+        return True
+
+    if acquire_process_lock():
+        mam_thread = threading.Thread(target=run_mam_script, name="MAM_Engine", daemon=True)
+        mam_thread.start()
+        _mam_thread_started = True
+        logger.info("🚀 Started MAM copy trading engine background thread.")
+        return True
+    else:
+        logger.info("[MAM] Engine process lock already held or running in another instance.")
+        return False
+
 # Legacy global executor alias kept for backward-compatibility
 from concurrent.futures import ThreadPoolExecutor
 
