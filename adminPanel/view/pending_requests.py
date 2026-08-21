@@ -421,7 +421,7 @@ async def _resolve_user_for_pending_request(pending_request: PendingRequest) -> 
 
 
 def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
-    title = TAB_DEFAULT_TITLES[tab]
+    title = TAB_DEFAULT_TITLES.get(tab, "Request")
     payload = _pending_payload(request)
     request_type = _sanitize_request_type(request.request_type)
     document_type = (
@@ -500,7 +500,7 @@ def _serialize_pending_request(request: PendingRequest, tab: str) -> dict:
         "status": request.status,
         "priority": "Normal",
         "amount": f"${request.amount:,.2f}",
-        "method": TAB_DEFAULT_METHODS[tab],
+        "method": TAB_DEFAULT_METHODS.get(tab, "System Update"),
         "referenceNo": f"{title[:3].upper()}-{request.id}",
         "proofUrl": file_url,
         "availableBalance": None,
@@ -617,6 +617,14 @@ async def list_pending_cryptos(request):
 
 
 
+def _tab_for_request_type(request_type: str | None) -> str:
+    req_type = _sanitize_request_type(request_type)
+    for tab, aliases in TAB_ALIASES.items():
+        if req_type in aliases:
+            return tab
+    if req_type in ("profile", "profiles", "profile update"):
+        return "profile"
+    return "deposits"
 
 
 def _resolve_pending_request_id(request_id: str) -> int | None:

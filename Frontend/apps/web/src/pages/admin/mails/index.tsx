@@ -298,7 +298,7 @@ const MailPage = () => {
   return (
     <>
       {/* Main Gmail-like Interface */}
-      <div className="w-full h-[calc(100vh-60px)] md:h-[calc(100vh-80px)] flex flex-col bg-transparent text-white overflow-hidden md:p-6 relative">
+      <div className="w-full h-[calc(100vh-60px)] md:h-[calc(100vh-80px)] flex flex-col bg-[#0c1c59] text-white overflow-hidden md:p-6 relative">
         
         {/* Top Gmail Header & Action Bar */}
         {/* Mobile Search Header (Gmail Dark) */}

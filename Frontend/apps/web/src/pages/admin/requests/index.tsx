@@ -357,7 +357,7 @@ export default function AdminPendingRequestsPage() {
                 <div className="relative z-10 space-y-8">
 
                     {/* SEARCH FILTER */}
-                    <div className="relative group w-full md:w-80">
+                    {/* <div className="relative group w-full md:w-80">
                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                             <Search size={16} className="text-blue-300 group-focus-within:text-white transition-colors" />
                         </div>
@@ -376,11 +376,11 @@ export default function AdminPendingRequestsPage() {
                                 <X size={14} />
                             </button>
                         )}
-                    </div>
+                    </div> */}
 
                     {/* TAB NAVIGATION BAR */}
                     <div className="flex justify-center">
-                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center items-center gap-2 p-2 rounded-[2rem] border shadow-[0_10px_32px_rgba(4,15,54,0.22)] border-[#1747b8] bg-[linear-gradient(180deg,#071a57_0%,#082468_100%)] w-full max-w-5xl">
+                        <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center items-center gap-2 p-2 w-full max-w-5xl">
 
                         <button
                             onClick={() => setActiveTab('deposit')}

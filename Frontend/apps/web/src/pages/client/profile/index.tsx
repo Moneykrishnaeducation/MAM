@@ -1088,13 +1088,7 @@ export default function ClientProfilePage() {
         </div>
 
         <div className="relative z-10">
-          {showToast && typeof document !== 'undefined' ? createPortal(
-            <div className="fixed bottom-6 right-6 bg-amber-500 text-slate-950 font-bold px-5 py-3 rounded-2xl shadow-lg shadow-amber-500/20 flex items-center gap-2 border border-amber-400 z-[9999] animate-in fade-in slide-in-from-bottom-4 duration-300">
-              <Check size={18} />
-              <span>{toastMessage}</span>
-            </div>,
-            document.body
-          ) : null}
+
 
           {showWizardModal && typeof document !== 'undefined' ? createPortal(
             <div className="fixed inset-0 z-[9990] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-4 backdrop-blur-md">

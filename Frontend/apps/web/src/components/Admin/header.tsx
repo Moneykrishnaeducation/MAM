@@ -59,6 +59,7 @@ export default function AdminHeader() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const [userRole, setUserRole] = useState("");
+  const [adminAvatar, setAdminAvatar] = useState("");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => {
     if (typeof window === "undefined") {
@@ -148,7 +149,24 @@ export default function AdminHeader() {
       }
     };
 
+    const loadProfile = async () => {
+      try {
+        const response = await fetch("/api/admin/profile", {
+          credentials: "include",
+          headers: { Accept: "application/json" },
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (isMounted && data?.admin_user?.avatar) {
+          setAdminAvatar(data.admin_user.avatar);
+        }
+      } catch (error) {
+        console.error("Error loading admin profile for header:", error);
+      }
+    };
+
     void loadNotifications();
+    void loadProfile();
 
     return () => {
       isMounted = false;
@@ -333,11 +351,15 @@ export default function AdminHeader() {
             {/* Admin Profile Link */}
             <Link
               href="/admin/profile"
-              className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-sm hover:border-[#d4af37]/60 hover:bg-white/20 transition-all"
+              className="flex h-9 w-9 overflow-hidden items-center justify-center rounded-xl border border-white/15 bg-white/10 text-white shadow-sm hover:border-[#d4af37]/60 hover:bg-white/20 transition-all"
               aria-label="Admin profile"
               title="Profile Settings"
             >
-              <User size={18} className="text-[#d4af37]" />
+              {adminAvatar ? (
+                <img src={adminAvatar} alt="Admin profile" className="h-full w-full object-cover" />
+              ) : (
+                <User size={18} className="text-[#d4af37]" />
+              )}
             </Link>
 
             {/* Logout Button */}
